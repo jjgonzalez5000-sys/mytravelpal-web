@@ -1,0 +1,27 @@
+Prompt:
+Aunque al finalizar el proyecto hablaremos en inglés y el código y otra documentación se generará en inglés, prefiero explicar en español por ahora. Quiero construir una aplicación de navegación en carretera innovadora,inicialmente sería para el mercado europeo, la aplicación pretende rellenar el gap que dejan otras como google maps, waze, sygic,etc,
+Se trataría de una aplicación con una capa gratis y una de pago. El objetivo es ayudar al usuario a planificar sus viajes en carretera de forma mucho más óptima de lo que es posible con las aplicaciones actuales. 
+En la actualidad, si quiero viajar digamos , de parís a madrid un lunes a las 8, programo la ruta y el navegador me dice la mejor manera de llegar de parís a Madrid, sin embargo echo en falta lo siguiente:
+
+- Sugerencias de horario en las que puedo ahorrar atascos u otros incidentes
+- Información y recomendaciones sobre paradas estratégicas en el camino, como restaurantes, gasolineras, áreas de descanso y puntos de interés turístico.
+- Alertas en tiempo real sobre condiciones de tráfico, obras en la carretera, accidentes y otros
+- Mostrar posibilidades de ahorro en peajes, por ejemplo si se puede saltar un peaje concreto que es muy caro respecto a otras rutas alternativas.
+- Mostrar las gasolineras y electrolineras (o estaciones de servicio) más baratas a lo largo de la ruta, incluyendo comparativas de precios y promociones.
+- Integración con servicios de reserva de alojamiento y restaurantes, permitiendo al usuario planificar paradas y reservas directamente desde la aplicación.
+- Funcionalidad de planificación de rutas personalizadas, teniendo en cuenta las preferencias del usuario, como evitar autopistas, carreteras con peajes, o priorizar rutas escénicas.
+- Posibilidad de compartir la ruta planificada con amigos o familiares, permitiendo que otros puedan seguir la misma ruta o hacer ajustes según sus preferencias.
+- Integración con servicios de transporte público y opciones de movilidad alternativa, como bicicletas o scooters, para ofrecer soluciones de viaje multimodales y sostenibles.
+- Funcionalidad de historial de viajes, permitiendo al usuario revisar rutas anteriores, tiempos de viaje y experiencias, así como recibir recomendaciones basadas en sus hábitos de viaje.
+- Integración con sistemas de navegación por voz y asistentes virtuales, para ofrecer una experiencia de conducción más segura y cómoda, permitiendo al usuario recibir indicaciones y alertas sin necesidad de mirar la pantalla.
+- Funcionalidad de gamificación, ofreciendo recompensas o incentivos por completar rutas, explorar nuevas rutas o utilizar características específicas de la aplicación, fomentando así la participación y el compromiso
+- Integración con redes sociales, permitiendo a los usuarios compartir sus experiencias de viaje, fotos y recomendaciones con su comunidad.
+- Funcionalidad de realidad aumentada, permitiendo al usuario visualizar información relevante sobre su entorno, como puntos de interés, restaurantes o gasolineras, directamente en la pantalla de su dispositivo
+- Posibilidad de recibir recomendaciones personalizadas basadas en el historial de viajes del usuario, sus preferencias y su comportamiento en la aplicación.
+- Funcionalidad de planificación de viajes en grupo, permitiendo a varios usuarios coordinar y planificar un viaje juntos, compartiendo rutas, paradas y horarios.
+- Integración con servicios de pago y suscripciones, ofreciendo contenido exclusivo, funciones avanzadas y beneficios adicionales para los usuarios premium
+- Funcionalidad de alertas de seguridad, informando al usuario sobre condiciones peligrosas en la carretera, como mal tiempo, carreteras cerradas o zonas de alta criminalidad, para garantizar una experiencia de viaje más segura y confiable.
+- Integración con servicios de asistencia en carretera, permitiendo al usuario solicitar ayuda en caso de averías, accidentes o emergencias, y recibir asistencia rápida y eficiente.
+- Funcionalidad de planificación de rutas para vehículos eléctricos, incluyendo información sobre estaciones de carga, autonomía del vehículo y recomendaciones para optimizar el consumo de energía durante el viaje.
+- Integración con servicios de alquiler de vehículos, permitiendo al usuario reservar coches, motos o bicicletas para su viaje, y recibir recomendaciones sobre opciones de transporte según sus necesidades y preferencias.
+- Funcionalidad de planificación de rutas para vehículos autónomos, incluyendo información sobre la disponibilidad de vehículos autónomos en la zona, rutas recomendadas y opciones de transporte autónomo para el usuario.
