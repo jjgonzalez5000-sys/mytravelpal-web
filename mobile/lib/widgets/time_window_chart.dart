@@ -35,9 +35,8 @@ class TimeWindowChart extends StatelessWidget {
     // see, at a glance, how much they save by shifting.
     final desiredIndex = _indexClosestTo(sorted, desiredDepartureAt);
 
-    final maxMinutes = sorted
-        .map((w) => w.estimatedMinutes)
-        .reduce((a, b) => a > b ? a : b);
+    final maxMinutes =
+        sorted.map((w) => w.estimatedMinutes).reduce((a, b) => a > b ? a : b);
     final yMax = (maxMinutes * 1.15).ceilToDouble();
     final fmt = DateFormat.Hm();
 
@@ -57,9 +56,8 @@ class TimeWindowChart extends StatelessWidget {
                     BarChartRodData(
                       toY: sorted[i].estimatedMinutes,
                       width: 18,
-                      color: sorted[i].recommended
-                          ? recommendedColor
-                          : otherColor,
+                      color:
+                          sorted[i].recommended ? recommendedColor : otherColor,
                       borderRadius:
                           const BorderRadius.vertical(top: Radius.circular(4)),
                       borderSide: i == desiredIndex && !sorted[i].recommended

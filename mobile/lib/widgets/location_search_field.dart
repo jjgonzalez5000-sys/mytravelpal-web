@@ -31,7 +31,6 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
   final _controller = SearchController();
   GeocodeResult? _picked;
   Timer? _debounce;
-  List<GeocodeResult> _lastSuggestions = const [];
 
   @override
   void initState() {
@@ -54,9 +53,7 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
     final completer = Completer<List<GeocodeResult>>();
     _debounce = Timer(const Duration(milliseconds: 250), () async {
       try {
-        final results = await widget.geocode(query);
-        _lastSuggestions = results;
-        completer.complete(results);
+        completer.complete(await widget.geocode(query));
       } on ApiException {
         completer.complete(const []);
       } catch (_) {

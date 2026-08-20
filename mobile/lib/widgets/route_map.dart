@@ -22,13 +22,13 @@ class RouteMap extends StatefulWidget {
 }
 
 class _RouteMapState extends State<RouteMap> {
-  MaplibreMapController? _controller;
+  MapLibreMapController? _controller;
 
   @override
   Widget build(BuildContext context) {
     final midLat = (widget.origin.lat + widget.destination.lat) / 2;
     final midLon = (widget.origin.lon + widget.destination.lon) / 2;
-    return MaplibreMap(
+    return MapLibreMap(
       styleString: _mapStyle,
       initialCameraPosition: CameraPosition(
         target: LatLng(midLat, midLon),

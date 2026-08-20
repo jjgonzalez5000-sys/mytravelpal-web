@@ -6,6 +6,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../providers.dart';
 import '../widgets/location_search_field.dart';
+import 'history_screen.dart';
 import 'result_screen.dart';
 
 class PlanScreen extends ConsumerStatefulWidget {
@@ -91,7 +92,20 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final api = ref.watch(apiClientProvider);
     final dateFmt = DateFormat('EEE, d MMM y — HH:mm');
     return Scaffold(
-      appBar: AppBar(title: const Text('Plan a road trip')),
+      appBar: AppBar(
+        title: const Text('Plan a road trip'),
+        actions: [
+          IconButton(
+            tooltip: 'Saved trips',
+            icon: const Icon(Icons.bookmark_border),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const HistoryScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
@@ -105,8 +119,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               initial: _origin,
             ),
             const SizedBox(height: 24),
-            Text('Destination',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text('Destination', style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             LocationSearchField(
               label: 'To',
@@ -145,7 +158,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             const SizedBox(height: 16),
             Text(
               'Countries crossed are inferred automatically from the '
-              "origin and destination you pick.",
+              'origin and destination you pick.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],

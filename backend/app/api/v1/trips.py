@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field
 from app.domain import Coordinate, Country, Trip
 from app.providers import get_providers
 from app.providers.factory import Providers
-from app.services.country_detection import infer_countries_crossed
 from app.services.time_window import compute_time_windows
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -72,17 +71,14 @@ async def plan_trip(
 ) -> TripPlanResponse:
     origin = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
     destination = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
-    if payload.countries:
-        countries = tuple(payload.countries)
-    else:
-        countries = infer_countries_crossed((origin, destination))
+    countries_override = tuple(payload.countries) if payload.countries else None
+    route = await providers.routing.route(origin, destination, countries_override)
     trip = Trip(
         origin=origin,
         destination=destination,
         desired_departure_at=payload.desired_departure_at,
-        countries=countries,
+        countries=route.countries_crossed,
     )
-    route = await providers.routing.route(trip.origin, trip.destination, trip.countries)
     windows = await compute_time_windows(
         route=route,
         desired_departure_at=trip.desired_departure_at,

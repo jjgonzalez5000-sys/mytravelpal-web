@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 
-enum Country { ch, fr, it, es;
+enum Country {
+  ch,
+  fr,
+  it,
+  es;
 
   String get code => switch (this) {
         Country.ch => 'CH',

@@ -10,22 +10,24 @@ Europe scope thereafter.
 
 > Original brief (Spanish): [Prompt:.yml](Prompt:.yml)
 
-## Project state — Sprints 1-3
+## Project state — Sprints 1-4
 
 Backend + Flutter app slice with mocked external providers. See
 [docs/mvp_scope.md](docs/mvp_scope.md) for what's in and out.
 
 - [x] FastAPI backend with `POST /v1/trips/plan` and `GET /v1/geocode`
 - [x] Optimal-departure-window service (killer feature)
-- [x] Country auto-detection from origin/destination (bounding-box heuristic)
+- [x] Waypoint-aware country auto-detection along the route
 - [x] Mock providers for routing, historic traffic, tolls, fuel, geocoding
 - [x] `docker compose up` local environment
-- [x] Unit + API tests (29 passing)
-- [x] Flutter mobile app (city-search plan form + map + best-departure chart with desired-time marker) — see [mobile/README.md](mobile/README.md)
-- [ ] Real provider integrations (HERE / TomTom / TollGuru / Nominatim / …) — on hold
+- [x] Backend tests: 35 passing
+- [x] Flutter mobile app: city search, map, best-departure chart, saved trips history — see [mobile/README.md](mobile/README.md)
+- [x] Mobile tests: 20 passing (`flutter analyze` clean)
+- [ ] Real provider integrations (HERE / TomTom / TollGuru / Nominatim / Spanish fuel API / …) — on hold
 
 Architecture: [docs/architecture.md](docs/architecture.md).
 Mock strategy: [docs/mock_data_strategy.md](docs/mock_data_strategy.md).
+Sprint history: [docs/sprints.md](docs/sprints.md).
 
 ## Quickstart
 

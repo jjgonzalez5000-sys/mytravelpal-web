@@ -33,6 +33,14 @@ class Route:
     polyline: str
     toll_cost_eur: float
     countries_crossed: tuple[Country, ...]
+    waypoints: tuple[Coordinate, ...] = ()
+    """Ordered interpolated points from origin to destination.
+
+    In the MVP these come from the mock routing provider's great-circle
+    interpolation; a real HERE/TomTom integration will return actual
+    polyline vertices along the road. Used by country-detection to spot
+    intermediate countries the endpoints alone would miss.
+    """
 
 
 @dataclass(frozen=True, slots=True)
