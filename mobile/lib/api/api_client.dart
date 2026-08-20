@@ -37,6 +37,54 @@ class ApiClient {
     );
   }
 
+  Future<NarrativeResponse> tripNarrative({
+    required TripPlanRequest planRequest,
+    required String originName,
+    required String destinationName,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/narrative');
+    final response = await _http.post(
+      uri,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'plan_request': planRequest.toJson(),
+        'origin_name': originName,
+        'destination_name': destinationName,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return NarrativeResponse.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  Future<Map<String, dynamic>> submitAdverseEvent({
+    required AdverseEventType type,
+    required AdverseEventSeverity severity,
+    required double lat,
+    required double lon,
+    required String description,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/adverse-events');
+    final response = await _http.post(
+      uri,
+      headers: const {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'type': type.code,
+        'severity': severity.code,
+        'lat': lat,
+        'lon': lon,
+        'description': description,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<List<GeocodeResult>> geocode(String query, {int limit = 5}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];

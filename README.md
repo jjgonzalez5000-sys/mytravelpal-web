@@ -10,20 +10,29 @@ Europe scope thereafter.
 
 > Original brief (Spanish): [Prompt:.yml](Prompt:.yml)
 
-## Project state — Sprints 1-4
+## Project state — Sprints 1-7
 
-Backend + Flutter app slice with mocked external providers. See
-[docs/mvp_scope.md](docs/mvp_scope.md) for what's in and out.
+Backend + Flutter app slice with mocked external providers (plus real
+Nominatim as a geocoding fallback, and real Claude Opus 5 for the AI
+assistant when `ANTHROPIC_API_KEY` is set). See
+[docs/mvp_scope.md](docs/mvp_scope.md) for what's in and out and
+[docs/sprints.md](docs/sprints.md) for per-sprint delivery notes.
 
-- [x] FastAPI backend with `POST /v1/trips/plan` and `GET /v1/geocode`
+- [x] FastAPI backend: `POST /v1/trips/plan`, `POST /v1/trips/narrative`, `GET /v1/geocode`, `POST /v1/adverse-events`
 - [x] Optimal-departure-window service (killer feature)
 - [x] Waypoint-aware country auto-detection along the route
-- [x] Mock providers for routing, historic traffic, tolls, fuel, geocoding
+- [x] Hotels + restaurants along the route (max detour + price band)
+- [x] Recommended rest stops every 2 h of driving
+- [x] Adverse-event alerts (fires, strikes, weather, accidents, roadwork, floods, snow, protests) — mock catalogue + user-submitted
+- [x] AI trip assistant (Premium): Claude Opus 5 narrative with recommendations, mock fallback for offline dev
+- [x] Hybrid geocoding: mock catalogue with Nominatim fallback for any place worldwide
 - [x] `docker compose up` local environment
-- [x] Backend tests: 35 passing
-- [x] Flutter mobile app: city search, map, best-departure chart, saved trips history — see [mobile/README.md](mobile/README.md)
-- [x] Mobile tests: 20 passing (`flutter analyze` clean)
-- [ ] Real provider integrations (HERE / TomTom / TollGuru / Nominatim / Spanish fuel API / …) — on hold
+- [x] Backend tests: 88 passing
+- [x] Revenue-modeling tools (ads, subs, funnel): 68 passing — see [tools/README.md](tools/README.md)
+- [x] Flutter mobile app: city search, map, best-departure chart, saved trips, hotels & restaurants filters, rest-stops, adverse-event alerts, AI briefing — see [mobile/README.md](mobile/README.md)
+- [x] Mobile tests: 46 passing (`flutter analyze` clean)
+- [ ] Real provider integrations (HERE / TomTom / TollGuru / EFFIS / Open-Meteo / Spanish fuel API / …) — on hold
+- [ ] Real auth + Premium subscription gating (RevenueCat / StoreKit / Play Billing) — placeholder today
 
 Architecture: [docs/architecture.md](docs/architecture.md).
 Mock strategy: [docs/mock_data_strategy.md](docs/mock_data_strategy.md).

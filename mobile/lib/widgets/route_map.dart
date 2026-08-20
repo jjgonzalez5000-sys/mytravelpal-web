@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:maplibre_gl/maplibre_gl.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../api/models.dart';
 
-/// Free demo tiles from OpenFreeMap. Replace with HERE/TomTom tiles when a
-/// paid provider is contracted.
-const _mapStyle = 'https://tiles.openfreemap.org/styles/liberty';
+/// OpenStreetMap raster tiles. Free, no key needed, adequate for the MVP.
+/// Swap to HERE/TomTom tiles once a paid provider is contracted.
+const _tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const _userAgent = 'com.mytravelpal.app';
 
-class RouteMap extends StatefulWidget {
+class RouteMap extends StatelessWidget {
   const RouteMap({
     super.key,
     required this.origin,
@@ -18,49 +20,84 @@ class RouteMap extends StatefulWidget {
   final LatLon destination;
 
   @override
-  State<RouteMap> createState() => _RouteMapState();
-}
-
-class _RouteMapState extends State<RouteMap> {
-  MapLibreMapController? _controller;
-
-  @override
   Widget build(BuildContext context) {
-    final midLat = (widget.origin.lat + widget.destination.lat) / 2;
-    final midLon = (widget.origin.lon + widget.destination.lon) / 2;
-    return MapLibreMap(
-      styleString: _mapStyle,
-      initialCameraPosition: CameraPosition(
-        target: LatLng(midLat, midLon),
-        zoom: 5,
+    final o = LatLng(origin.lat, origin.lon);
+    final d = LatLng(destination.lat, destination.lon);
+    final scheme = Theme.of(context).colorScheme;
+
+    return FlutterMap(
+      options: MapOptions(
+        initialCameraFit: CameraFit.bounds(
+          bounds: LatLngBounds.fromPoints([o, d]),
+          padding: const EdgeInsets.all(40),
+        ),
+        interactionOptions: const InteractionOptions(
+          flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+        ),
       ),
-      onMapCreated: (c) => _controller = c,
-      onStyleLoadedCallback: _addMarkers,
+      children: [
+        TileLayer(
+          urlTemplate: _tileUrl,
+          userAgentPackageName: _userAgent,
+          maxZoom: 19,
+        ),
+        PolylineLayer(
+          polylines: [
+            Polyline(
+              points: [o, d],
+              strokeWidth: 3,
+              color: scheme.primary,
+            ),
+          ],
+        ),
+        MarkerLayer(
+          markers: [
+            _endpoint(o, 'A', scheme),
+            _endpoint(d, 'B', scheme),
+          ],
+        ),
+      ],
     );
   }
 
-  Future<void> _addMarkers() async {
-    final c = _controller;
-    if (c == null) return;
-    await c.addSymbol(SymbolOptions(
-      geometry: LatLng(widget.origin.lat, widget.origin.lon),
-      iconImage: 'marker-15',
-      textField: 'A',
-      textOffset: const Offset(0, 1.2),
-    ));
-    await c.addSymbol(SymbolOptions(
-      geometry: LatLng(widget.destination.lat, widget.destination.lon),
-      iconImage: 'marker-15',
-      textField: 'B',
-      textOffset: const Offset(0, 1.2),
-    ));
-    await c.addLine(LineOptions(
-      geometry: [
-        LatLng(widget.origin.lat, widget.origin.lon),
-        LatLng(widget.destination.lat, widget.destination.lon),
-      ],
-      lineWidth: 3.0,
-      lineColor: '#1F6FEB',
-    ));
+  Marker _endpoint(LatLng at, String label, ColorScheme scheme) {
+    return Marker(
+      point: at,
+      width: 36,
+      height: 36,
+      alignment: Alignment.topCenter,
+      child: _EndpointPin(label: label, color: scheme.primary),
+    );
   }
 }
+
+class _EndpointPin extends StatelessWidget {
+  const _EndpointPin({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 2),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x33000000), blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+

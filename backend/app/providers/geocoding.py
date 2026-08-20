@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Protocol
 
+import httpx
+
 from app.domain import Coordinate, Country
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,3 +81,93 @@ class MockGeocodingProvider:
         matches.sort(key=lambda r: (0 if r.display_name.casefold().startswith(q) else 1,
                                     r.display_name))
         return tuple(matches[:limit])
+
+
+class NominatimGeocodingProvider:
+    """Real OpenStreetMap Nominatim geocoder.
+
+    Free public service, covers every populated place worldwide. Rate
+    limited to ~1 req/s; requires a descriptive User-Agent. Suitable for
+    MVP scale (single-user demos with debounced typing on the client);
+    switch to a self-hosted instance or a paid geocoder before scaling.
+    """
+
+    _URL = "https://nominatim.openstreetmap.org/search"
+    _USER_AGENT = "MyTravelPal-dev/0.1 (contact@mytravelpal.example)"
+    _COUNTRY_CODES = "ch,fr,it,es"
+
+    def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+        self._client = http_client or httpx.AsyncClient(timeout=5.0)
+
+    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
+        q = query.strip()
+        if not q:
+            return ()
+        params = {
+            "q": q,
+            "format": "json",
+            "limit": str(limit),
+            "addressdetails": "1",
+            "countrycodes": self._COUNTRY_CODES,
+        }
+        try:
+            response = await self._client.get(
+                self._URL,
+                params=params,
+                headers={
+                    "User-Agent": self._USER_AGENT,
+                    "Accept-Language": "en",
+                },
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            _log.warning("Nominatim request failed: %s", exc)
+            return ()
+
+        results: list[GeocodeResult] = []
+        for item in response.json():
+            address = item.get("address") or {}
+            code = (address.get("country_code") or "").upper()
+            try:
+                country = Country(code)
+            except ValueError:
+                continue  # outside launch markets
+            try:
+                lat = float(item["lat"])
+                lon = float(item["lon"])
+            except (KeyError, ValueError):
+                continue
+            display = item.get("display_name") or ""
+            if not display:
+                continue
+            results.append(
+                GeocodeResult(
+                    display_name=display,
+                    coordinate=Coordinate(lat=lat, lon=lon),
+                    country=country,
+                )
+            )
+        return tuple(results)
+
+
+class HybridGeocodingProvider:
+    """Tries `primary` first; if it returns no results, falls back to `secondary`.
+
+    Purpose: keep the small in-memory mock catalogue as a fast local cache
+    for the well-known launch cities, and only reach out to a real geocoder
+    (e.g. Nominatim) when the user queries something not covered locally.
+    """
+
+    def __init__(
+        self,
+        primary: GeocodingProvider,
+        fallback: GeocodingProvider,
+    ) -> None:
+        self._primary = primary
+        self._fallback = fallback
+
+    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
+        results = await self._primary.search(query, limit=limit)
+        if results:
+            return results
+        return await self._fallback.search(query, limit=limit)

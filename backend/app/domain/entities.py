@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 
@@ -10,6 +10,46 @@ class Country(str, Enum):
     FR = "FR"
     IT = "IT"
     ES = "ES"
+
+
+class AdverseEventType(str, Enum):
+    FIRE = "fire"
+    STRIKE = "strike"
+    WEATHER = "weather"
+    ACCIDENT = "accident"
+    ROADWORK = "roadwork"
+    FLOOD = "flood"
+    SNOW = "snow"
+    PROTEST = "protest"
+    OTHER = "other"
+
+
+class AdverseEventSeverity(str, Enum):
+    INFO = "info"
+    WARNING = "warning"
+    CRITICAL = "critical"
+
+
+class AdverseEventSource(str, Enum):
+    USER = "user"
+    WEATHER = "weather"
+    MOCK = "mock"
+    OFFICIAL = "official"
+
+
+class PriceBand(str, Enum):
+    BUDGET = "budget"  # roughly < 80 €/night
+    MID = "mid"        # 80 – 160 €/night
+    LUX = "lux"        # > 160 €/night
+    ANY = "any"        # request-side wildcard; a Hotel never carries ANY
+
+    @classmethod
+    def from_price_eur(cls, price: float) -> PriceBand:
+        if price < 80:
+            return cls.BUDGET
+        if price <= 160:
+            return cls.MID
+        return cls.LUX
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +93,52 @@ class TimeWindow:
     @property
     def arrival_at(self) -> datetime:
         return self.departure_at + self.estimated_duration
+
+
+@dataclass(frozen=True, slots=True)
+class Hotel:
+    name: str
+    coordinate: Coordinate
+    country: Country
+    price_eur_per_night: float
+    price_band: PriceBand
+    distance_from_route_km: float
+    detour_minutes: float
+
+
+@dataclass(frozen=True, slots=True)
+class Restaurant:
+    name: str
+    coordinate: Coordinate
+    country: Country
+    price_eur_per_meal: float
+    price_band: PriceBand
+    distance_from_route_km: float
+    detour_minutes: float
+
+
+@dataclass(frozen=True, slots=True)
+class RestStop:
+    coordinate: Coordinate
+    distance_from_origin_km: float
+    cumulative_driving_hours: float
+    recommended_break_minutes: int
+
+
+@dataclass(frozen=True, slots=True)
+class AdverseEvent:
+    id: str
+    type: AdverseEventType
+    severity: AdverseEventSeverity
+    source: AdverseEventSource
+    coordinate: Coordinate
+    description: str
+    reported_at: datetime
+    expires_at: datetime
+    country: Country | None = None
+
+    def is_active_at(self, when: datetime) -> bool:
+        return self.reported_at <= when <= self.expires_at
 
 
 @dataclass(frozen=True, slots=True)

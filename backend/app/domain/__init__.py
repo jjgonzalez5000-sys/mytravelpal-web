@@ -1,6 +1,14 @@
 from app.domain.entities import (
+    AdverseEvent,
+    AdverseEventSeverity,
+    AdverseEventSource,
+    AdverseEventType,
     Coordinate,
     Country,
+    Hotel,
+    PriceBand,
+    Restaurant,
+    RestStop,
     Route,
     TimeWindow,
     Trip,
@@ -8,8 +16,16 @@ from app.domain.entities import (
 )
 
 __all__ = [
+    "AdverseEvent",
+    "AdverseEventSeverity",
+    "AdverseEventSource",
+    "AdverseEventType",
     "Coordinate",
     "Country",
+    "Hotel",
+    "PriceBand",
+    "Restaurant",
+    "RestStop",
     "Route",
     "TimeWindow",
     "Trip",

@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../providers.dart';
+import '../widgets/hotel_preferences.dart';
 import '../widgets/location_search_field.dart';
+import '../widgets/restaurant_preferences.dart';
 import 'history_screen.dart';
 import 'result_screen.dart';
 
@@ -20,6 +22,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   GeocodeResult? _origin;
   GeocodeResult? _destination;
   DateTime _departure = _defaultDeparture();
+  HotelPreferences _hotelPrefs = HotelPreferences.disabled;
+  RestaurantPreferences _restaurantPrefs = RestaurantPreferences.disabled;
+  bool _alertsEnabled = false;
   bool _loading = false;
   String? _error;
 
@@ -64,6 +69,15 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         origin: origin.coordinate,
         destination: destination.coordinate,
         desiredDepartureAt: _departure,
+        hotelMaxDetourMinutes:
+            _hotelPrefs.enabled ? _hotelPrefs.maxDetourMinutes : null,
+        hotelPriceBand: _hotelPrefs.enabled ? _hotelPrefs.priceBand : null,
+        restaurantMaxDetourMinutes: _restaurantPrefs.enabled
+            ? _restaurantPrefs.maxDetourMinutes
+            : null,
+        restaurantPriceBand:
+            _restaurantPrefs.enabled ? _restaurantPrefs.priceBand : null,
+        includeAdverseEvents: _alertsEnabled,
       );
       final response = await api.planTrip(request);
       if (!mounted) return;
@@ -136,7 +150,28 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               icon: const Icon(Icons.event),
               label: Text(dateFmt.format(_departure)),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
+            HotelPreferencesSection(
+              value: _hotelPrefs,
+              onChanged: (v) => setState(() => _hotelPrefs = v),
+            ),
+            const SizedBox(height: 8),
+            RestaurantPreferencesSection(
+              value: _restaurantPrefs,
+              onChanged: (v) => setState(() => _restaurantPrefs = v),
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Alert me about adverse events'),
+              subtitle: const Text(
+                'Fires, strikes, adverse weather, roadworks, accidents, '
+                'floods, snow, protests within 25 km of the route.',
+              ),
+              value: _alertsEnabled,
+              onChanged: (v) => setState(() => _alertsEnabled = v),
+            ),
+            const SizedBox(height: 24),
             if (_error != null) ...[
               Text(
                 _error!,

@@ -20,14 +20,14 @@ def _haversine_km(a: Coordinate, b: Coordinate) -> float:
     return 2 * _EARTH_RADIUS_KM * asin(sqrt(h))
 
 
-def _great_circle_interpolate(
-    a: Coordinate, b: Coordinate, n: int
-) -> tuple[Coordinate, ...]:
-    """Return `n` intermediate coordinates evenly spaced along the great
-    circle from `a` to `b` (excluding the endpoints themselves).
+def point_at_fraction(a: Coordinate, b: Coordinate, f: float) -> Coordinate:
+    """Point at fractional position `f` (0..1) along the great circle from
+    `a` to `b`. f=0 returns `a`, f=1 returns `b`.
     """
-    if n <= 0:
-        return ()
+    if f <= 0:
+        return a
+    if f >= 1:
+        return b
     lat1, lon1, lat2, lon2 = map(radians, (a.lat, a.lon, b.lat, b.lon))
     d = 2 * asin(
         sqrt(
@@ -36,19 +36,26 @@ def _great_circle_interpolate(
         )
     )
     if d == 0:
+        return a
+    a_coef = sin((1 - f) * d) / sin(d)
+    b_coef = sin(f * d) / sin(d)
+    x = a_coef * cos(lat1) * cos(lon1) + b_coef * cos(lat2) * cos(lon2)
+    y = a_coef * cos(lat1) * sin(lon1) + b_coef * cos(lat2) * sin(lon2)
+    z = a_coef * sin(lat1) + b_coef * sin(lat2)
+    lat = atan2(z, sqrt(x * x + y * y))
+    lon = atan2(y, x)
+    return Coordinate(lat=degrees(lat), lon=degrees(lon))
+
+
+def _great_circle_interpolate(
+    a: Coordinate, b: Coordinate, n: int
+) -> tuple[Coordinate, ...]:
+    """Return `n` intermediate coordinates evenly spaced along the great
+    circle from `a` to `b` (excluding the endpoints themselves).
+    """
+    if n <= 0:
         return ()
-    points: list[Coordinate] = []
-    for i in range(1, n + 1):
-        f = i / (n + 1)
-        a_coef = sin((1 - f) * d) / sin(d)
-        b_coef = sin(f * d) / sin(d)
-        x = a_coef * cos(lat1) * cos(lon1) + b_coef * cos(lat2) * cos(lon2)
-        y = a_coef * cos(lat1) * sin(lon1) + b_coef * cos(lat2) * sin(lon2)
-        z = a_coef * sin(lat1) + b_coef * sin(lat2)
-        lat = atan2(z, sqrt(x * x + y * y))
-        lon = atan2(y, x)
-        points.append(Coordinate(lat=degrees(lat), lon=degrees(lon)))
-    return tuple(points)
+    return tuple(point_at_fraction(a, b, i / (n + 1)) for i in range(1, n + 1))
 
 
 class RoutingProvider(Protocol):
