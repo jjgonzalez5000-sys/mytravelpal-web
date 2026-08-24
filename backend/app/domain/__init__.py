@@ -5,7 +5,10 @@ from app.domain.entities import (
     AdverseEventType,
     Coordinate,
     Country,
+    FuelType,
     Hotel,
+    MealPreferences,
+    MealSlot,
     PriceBand,
     Restaurant,
     RestStop,
@@ -13,6 +16,9 @@ from app.domain.entities import (
     TimeWindow,
     Trip,
     TripPlan,
+    TripProfile,
+    Vehicle,
+    VehicleType,
 )
 
 __all__ = [
@@ -22,7 +28,10 @@ __all__ = [
     "AdverseEventType",
     "Coordinate",
     "Country",
+    "FuelType",
     "Hotel",
+    "MealPreferences",
+    "MealSlot",
     "PriceBand",
     "Restaurant",
     "RestStop",
@@ -30,4 +39,7 @@ __all__ = [
     "TimeWindow",
     "Trip",
     "TripPlan",
+    "TripProfile",
+    "Vehicle",
+    "VehicleType",
 ]

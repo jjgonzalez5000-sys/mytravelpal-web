@@ -472,3 +472,263 @@ route, and (3) a Premium narrative assistant powered by Claude.
   on `NarrativeScreen`).
 - User-marked events UI in mobile — backend endpoint exists but no
   submission screen shipped yet. That's the natural next mobile task.
+
+---
+
+## Sprint 8 — UI polish (Nordic redesign)
+
+**Goal:** move the app from "default Material 3" to a coherent visual
+system that reads as premium — same information density, meaningfully
+better hierarchy, typography, colour, and motion.
+
+**Delivered — design system**
+
+- [design/tokens.dart](../mobile/lib/design/tokens.dart) — colour
+  ("Nordic warm neutrals + forest green primary + terracotta accent"),
+  8pt spacing scale, radii, three levels of soft shadows, motion
+  durations, and easing.
+- [design/components.dart](../mobile/lib/design/components.dart) —
+  `SoftCard`, `SectionHeader` (with eyebrow), `StatTile`, `PrimaryCta`,
+  `SoftBadge`, `EmptyState`. Used across every screen so a change to
+  tokens ripples through the app.
+- [theme.dart](../mobile/lib/theme.dart) rewritten with full Material 3
+  overrides for AppBar / Card / Chip / Divider / InputDecoration /
+  Buttons / ListTile / Switch / Slider / SnackBar. Typography: Inter
+  via `google_fonts`.
+
+**Delivered — new screens**
+
+- [splash_screen.dart](../mobile/lib/screens/splash_screen.dart) —
+  animated brand mark then routes to onboarding (first launch) or
+  planner (returning users).
+- [onboarding_screen.dart](../mobile/lib/screens/onboarding_screen.dart)
+  — 3-slide intro (killer feature, honest planning, alerts), animated
+  page dots, "Skip / Continue / Get started" flow. `onboarding_shown`
+  flag persisted via new `AppPrefs`.
+
+**Delivered — screen refactors**
+
+- `PlanScreen`: hero "Where are we going today?" (display 32pt Inter),
+  form grouped in a `SoftCard`, preferences grouped in a second card,
+  full-width `PrimaryCta`, staggered fade-in on load.
+- `ResultScreen`: hero recommendation card with gradient + 3 stat
+  chips (shift / traffic / total), StatTile row for distance / free-flow
+  / tolls, section groups in cards with divider separators, avatar-style
+  leading icons on tiles.
+- `HistoryScreen`: cards instead of dense list tiles, badges for
+  distance / best time / countries, better empty state with CTA.
+- `NarrativeScreen`: editorial layout (eyebrow + display title + body),
+  pulsing brand mark on loading, error state via shared `EmptyState`.
+
+**Micro-animations** via `flutter_animate` — staggered fade + moveY on
+entry across every screen, `easeOutBack` scale on splash mark, pulse on
+AI loading, animated onboarding dots, zoom page transitions.
+
+**Validation**
+
+- `flutter analyze` clean.
+- 46/46 mobile tests passing (updated 3 for new layouts).
+
+**Deliberately out**
+
+- No custom app icon / launcher assets yet.
+- No haptics — nice-to-have but not required for the visual polish.
+- Voice narrative still deferred.
+
+---
+
+## Sprint 9 — Real routes on the map, theme toggle, toll savings
+
+**Goal:** three related tracks — (1) let users switch between system /
+light / dark, (2) draw the actual road-following route on the map (not
+a straight great-circle line), (3) show a toll-free alternative with a
+concrete money-vs-minutes comparison.
+
+**Delivered — theme toggle**
+
+- `AppPrefs` gains `themeMode` (system/light/dark) persisted in
+  SharedPreferences.
+- `ThemeModeNotifier` + `themeModeProvider` in Riverpod; `MyTravelPalApp`
+  becomes `ConsumerWidget` and passes the mode to `MaterialApp`.
+- [design/theme_toggle.dart](../mobile/lib/design/theme_toggle.dart) —
+  `PopupMenuButton` with sun / moon / auto icons; live in
+  `PlanScreen`'s AppBar.
+
+**Delivered — real map routes (OSRM)**
+
+- `Route` domain entity extended with `geometry: tuple[Coordinate, ...]`
+  and `avoid_tolls: bool`.
+- `RoutingProvider.route()` protocol takes an `avoid_tolls` keyword.
+- [providers/routing.py](../backend/app/providers/routing.py) now ships
+  three implementations behind the protocol:
+  - `MockRoutingProvider` (unchanged behaviour + toll-free variant
+    approximation: +15 % distance, 78 km/h secondary-road speed).
+  - `OsrmRoutingProvider` — hits public OSRM
+    (`router.project-osrm.org`; override via `MYTRAVELPAL_OSRM_URL`).
+    Parses GeoJSON geometry, distance, duration; supports
+    `?exclude=toll`; falls back to the mock via
+    `FallbackRoutingProvider` when unreachable or `NoRoute`.
+- `default_routing_provider()` chooses OSRM by default; tests set
+  `MYTRAVELPAL_ROUTING=mock` (in [conftest.py](../backend/tests/conftest.py))
+  so no test hits the internet.
+- Response gets `route.geometry: [[lon, lat], …]`; empty when the
+  fallback ran.
+- Mobile: `RouteInfo.geometry`, `RouteMap` now draws the real polyline
+  (solid) when available and a dashed straight line otherwise, with a
+  small "Straight-line approx." badge over the map so the user knows
+  what they're seeing.
+
+**Delivered — toll savings**
+
+- [services/toll_savings.py](../backend/app/services/toll_savings.py) —
+  pure `compare(main, alt) → TollAlternative` with savings, time
+  penalty, extra distance, and a `worth_it` heuristic (savings ≥ 5 € AND
+  penalty ≤ 30 min).
+- `POST /v1/trips/plan` accepts `include_toll_alternative: bool`;
+  response gains `toll_alternative: TollAlternativeOut | null`.
+- Mobile: `PlanScreen` gets a "Show toll-free alternative" switch; on
+  the result screen the alternative is a full card ("Save €X for +Y
+  min") with a "Worth it / Marginal" chip and, when geometry exists,
+  is drawn dashed and dimmed on the same map layer.
+
+**Validation**
+
+- Backend: 101/101 tests (previous 88 + 13 new — OSRM parsing, mock
+  avoid-tolls, fallback, toll-savings comparison, endpoint).
+- Mobile: `flutter analyze` clean, 54/54 tests passing.
+- Live: Paris → Madrid via public OSRM returns 17,833 geometry
+  points. Toll alternative: saves 203 € but +356 min (Pyrenees
+  detour) — correctly labelled "Marginal".
+
+**Deliberately out**
+
+- No time-varying toll skipping ("skip this toll during commute
+  hours" — user's Premium-track suggestion). Belongs in a later sprint
+  with real traffic data and a per-toll model; the current mock returns
+  route-level pricing.
+- No dedicated self-hosted OSRM. The public demo server has fair-use
+  limits and offers no SLA — good for the MVP demo, needs replacing
+  before scale.
+- The toll-free polyline is often unavailable on the public server for
+  long transcontinental routes (OSRM returns `NoRoute` when
+  toll-avoidance would require exotic secondary paths). We degrade
+  gracefully to the mock, so the *comparison numbers* still work; the
+  alternative just isn't drawn.
+
+---
+
+## Sprint 10 — Trip profile, vehicle-aware costs, trip optimizations, hourly toll, event submission, geometry simplification
+
+**Goal:** four short-list candidates (polyline simplification, route
+options, hourly-toll analysis, user-marked event UI) plus a bigger
+theme — a persistent **trip profile** that captures vehicle + travellers
++ meals and drives smarter POI ranking and a new "Optimized for your
+trip" section that binds specific meal/sleep stops. Design intent:
+users configure the profile *once*, plans absorb it silently, and the
+result screen shows a small number of clear recommendations instead of
+long lists.
+
+**Delivered — backend**
+
+- [services/polyline_simplify.py](../backend/app/services/polyline_simplify.py)
+  — iterative Ramer-Douglas-Peucker (no recursion, safe for 17k+
+  point OSRM outputs). `POST /v1/trips/plan` applies it (ε=0.2 km) to
+  main and toll-free geometries before serialisation — Paris → Madrid
+  drops from ~800 KB to a few hundred points with no visual difference
+  at any usable map zoom.
+- Route options extended: `avoid_motorways` and `prefer_scenic` join
+  `avoid_tolls` on the `RoutingProvider.route()` protocol. OSRM combines
+  `exclude=toll,motorway`; the mock applies proportional distance / speed
+  penalties. `prefer_scenic` bumps the duration by 8 % (curvier
+  secondaries; no OSRM native equivalent yet).
+- New domain: [`Vehicle`, `FuelType`, `VehicleType`, `MealPreferences`,
+  `TripProfile`, `MealSlot`](../backend/app/domain/entities.py). Kept in
+  the pure domain layer, no ORM.
+- [services/fuel_cost.py](../backend/app/services/fuel_cost.py) —
+  distance × consumption × unit price, with per-fuel-type multipliers
+  applied to the mock's petrol prices and a separate EV branch (kWh at
+  €0.35, range check + note when the trip exceeds one charge).
+- Hotels + Restaurants gained `kid_friendly`, `pet_friendly`, and
+  parking / meal-slot metadata (deterministic from the mock seed).
+  `filter_hotels` / `filter_restaurants` now accept an optional
+  `TripProfile`; when set they *demote* (not exclude) hotels/restaurants
+  that don't advertise the profile trait — the list stays populated
+  even when the mock catalogue is small.
+- [services/trip_optimizations.py](../backend/app/services/trip_optimizations.py)
+  — pure function that binds each meal slot in scope to the closest
+  rest stop within ±90 min of the target hour, then picks the nearest
+  matching restaurant. Adds a sleep stop if the driver would still be
+  on the road at 22:00 local. Returns at most 4 items (3 meals + 1
+  sleep) so the UI stays legible.
+- [services/hourly_toll_analysis.py](../backend/app/services/hourly_toll_analysis.py)
+  — 24-hour verdict table using the traffic provider: for each hour
+  compares toll-route minutes (with hour-specific traffic factor) to
+  toll-free minutes (dampened traffic sensitivity, secondary roads
+  suffer less commuter congestion). Reports best/worst 3 hours to
+  skip. Premium.
+- `POST /v1/trips/plan` extended with `trip_profile`, `avoid_motorways`,
+  `prefer_scenic`, `include_hourly_toll_analysis`. Response gains
+  `optimizations: {meal_stops, sleep_stop, fuel_cost}` and
+  `hourly_toll_report`.
+
+**Delivered — mobile**
+
+- [domain/trip_profile.dart](../mobile/lib/domain/trip_profile.dart) —
+  Dart mirror of the backend profile with JSON roundtrip, enum labels
+  and icons.
+- `AppPrefs` persists the profile as one JSON blob; new
+  `tripProfileProvider` (Riverpod StateNotifier) exposes it.
+- New [ProfileScreen](../mobile/lib/screens/profile_screen.dart) — one
+  form, three sections (People / Vehicle / Meal times), designed so a
+  user can complete it in under a minute. EV branch swaps to kWh + range
+  inputs.
+- `PlanScreen` gets a **compact profile chip** at the top: tap → open
+  `ProfileScreen`. If no profile is set, the chip invites the user to
+  create one; otherwise it summarises `Car · Petrol · kids · pets` etc.
+  The plan flow itself does not add any new questions.
+- `PlanScreen` preferences card gains 4 new switches: hourly toll
+  analysis (Premium badge, only visible when toll-alternative is on),
+  avoid motorways, prefer scenic.
+- `ResultScreen` gains an **"Optimized for your trip"** section (fuel
+  budget hero + meal-stop rows + optional sleep-stop row) — rendered
+  only when a profile is present. Hourly toll verdict shows as a
+  compact 24-column strip with a highlight of best/worst hours.
+- New [MarkEventScreen](../mobile/lib/screens/mark_event_screen.dart)
+  — form for the user to submit an adverse event they've spotted
+  (type / severity / location / description). Launched from a new
+  bell-plus icon in `PlanScreen`'s AppBar. Hits the existing
+  `POST /v1/adverse-events`.
+
+**Validation**
+
+- Backend: **120/120** tests passing (previous 101 + 19 new —
+  Douglas-Peucker properties, route options, fuel cost, profile-aware
+  filtering, trip optimizations binding, hourly toll table, endpoint
+  integration for profile + hourly + motorways).
+- Mobile: `flutter analyze` clean, **61/61** tests (previous 54 + 7
+  new — TripProfile roundtrip, AppPrefs persistence, request/response
+  serialisation for the new fields, Optimizations + HourlyTollReport
+  parsing).
+- Live smoke: Paris → Madrid with a profile
+  `{diesel, kids: true, pets: true}` returns 3 meal stops matched to
+  timing, sleep stop at ~22:00, fuel budget ~€93 for a diesel car,
+  and the response is ~50 KB down from ~800 KB thanks to polyline
+  simplification.
+
+**Deliberately out**
+
+- No dedicated "settings" tab yet — profile is reached from the plan
+  screen chip. If more per-user settings accumulate we split it out
+  into its own drawer/tab.
+- Real fuel-type-specific prices — the mock still returns "petrol"
+  prices and we apply approximate per-type multipliers. A real provider
+  will report diesel/LPG/EV prices directly and we can drop the
+  multipliers.
+- Hourly toll analysis uses the same traffic mock as the rest of the
+  planner; when we contract HERE Traffic Stats, the same shape works
+  with real data.
+- Save memory captured: realtime weather alerts and sudden/emerging
+  risk events (fires, emergencies, accidents) are deferred to the
+  future navigation-mode sprint. See
+  [`project_navigation_phase`](../../../.claude/projects/-home-blu3-Apps-MyTravelPal/memory/project_navigation_phase.md)
+  memory.

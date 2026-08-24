@@ -62,6 +62,11 @@ class MockHotelsProvider:
                 price = round(anchor * (1 + unit_b * self._PRICE_SPREAD_FRACTION), 2)
                 if price < 30:
                     price = 30.0  # nothing lower than a hostel bunk
+                # Attributes: deterministically derived from seed bytes so
+                # the same trip renders the same distribution.
+                kid_friendly = seed[(wi * 7 + hi) % len(seed)] % 3 != 0
+                pet_friendly = seed[(wi * 11 + hi) % len(seed)] % 2 == 0
+                has_parking = seed[(wi * 13 + hi) % len(seed)] % 5 != 0
                 hotels.append(
                     Hotel(
                         name=f"{country.value} Hotel {wi + 1}-{hi + 1}",
@@ -71,6 +76,9 @@ class MockHotelsProvider:
                         price_band=PriceBand.from_price_eur(price),
                         distance_from_route_km=round(distance_km, 2),
                         detour_minutes=round(detour_minutes, 1),
+                        kid_friendly=kid_friendly,
+                        pet_friendly=pet_friendly,
+                        has_parking=has_parking,
                     )
                 )
         return tuple(hotels)

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../api/api_client.dart';
 import '../api/models.dart';
+import '../design/components.dart';
+import '../design/tokens.dart';
 import '../providers.dart';
 import '../storage/saved_trip.dart';
 import 'result_screen.dart';
@@ -35,7 +38,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     await _reload();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Deleted ${_shortName(trip.origin)} → ${_shortName(trip.destination)}.')),
+      SnackBar(
+        content: Text(
+          'Deleted ${_shortName(trip.origin)} → ${_shortName(trip.destination)}',
+        ),
+      ),
     );
   }
 
@@ -70,6 +77,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(title: const Text('Saved trips')),
       body: FutureBuilder<List<SavedTrip>>(
@@ -80,19 +88,46 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           }
           final trips = snapshot.data ?? const <SavedTrip>[];
           if (trips.isEmpty) {
-            return const _EmptyState();
+            return EmptyState(
+              icon: Icons.bookmark_outline,
+              title: 'No saved trips yet',
+              description:
+                  'Plan a trip and tap the bookmark to keep it here for later.',
+              action: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Plan a trip'),
+              ),
+            );
           }
           return RefreshIndicator(
             onRefresh: _reload,
             child: ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: trips.length,
-              separatorBuilder: (_, __) => const Divider(height: 1),
-              itemBuilder: (context, i) => _TripTile(
-                trip: trips[i],
-                onOpen: () => _reopen(trips[i]),
-                onDelete: () => _delete(trips[i]),
-              ),
+              padding: const EdgeInsets.all(Tokens.space20),
+              itemCount: trips.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(height: Tokens.space12),
+              itemBuilder: (context, i) {
+                if (i == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: Tokens.space4),
+                    child: Text(
+                      '${trips.length} saved',
+                      style: t.labelSmall?.copyWith(letterSpacing: 1.2),
+                    ),
+                  );
+                }
+                final trip = trips[i - 1];
+                return _TripCard(
+                  trip: trip,
+                  onOpen: () => _reopen(trip),
+                  onDelete: () => _delete(trip),
+                )
+                    .animate()
+                    .fadeIn(
+                      delay: Duration(milliseconds: 30 * (i - 1)),
+                      duration: Tokens.motionBase,
+                    )
+                    .moveY(begin: 6, end: 0, curve: Tokens.curveOut);
+              },
             ),
           );
         },
@@ -101,8 +136,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 }
 
-class _TripTile extends StatelessWidget {
-  const _TripTile({
+class _TripCard extends StatelessWidget {
+  const _TripCard({
     required this.trip,
     required this.onOpen,
     required this.onDelete,
@@ -114,57 +149,64 @@ class _TripTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFmt = DateFormat('d MMM y — HH:mm');
-    return ListTile(
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final dateFmt = DateFormat('d MMM · HH:mm');
+    return SoftCard(
       onTap: onOpen,
-      leading: const Icon(Icons.route),
-      title: Text(
-        '${_shortName(trip.origin)} → ${_shortName(trip.destination)}',
-        style: const TextStyle(fontWeight: FontWeight.w600),
-      ),
-      subtitle: Column(
+      padding: const EdgeInsets.all(Tokens.space20),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('${trip.distanceKm.toStringAsFixed(0)} km · '
-              'best at ${DateFormat.Hm().format(trip.recommendedDepartureAt)}'),
-          Text('Wanted ${dateFmt.format(trip.desiredDepartureAt)}',
-              style: Theme.of(context).textTheme.bodySmall),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(_shortName(trip.origin), style: t.bodySmall),
+                    Text(
+                      _shortName(trip.destination),
+                      style: t.titleLarge,
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: scheme.onSurfaceVariant),
+                tooltip: 'Delete',
+                onPressed: onDelete,
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space16),
+          Wrap(
+            spacing: Tokens.space8,
+            runSpacing: Tokens.space8,
+            children: [
+              SoftBadge(
+                icon: Icons.route,
+                label: '${trip.distanceKm.toStringAsFixed(0)} km',
+              ),
+              SoftBadge(
+                icon: Icons.schedule,
+                label:
+                    'Best ${DateFormat.Hm().format(trip.recommendedDepartureAt)}',
+                color: scheme.primary,
+                background: scheme.primaryContainer,
+                borderColor: scheme.primary.withValues(alpha: 0.25),
+              ),
+              for (final c in trip.countriesCrossed)
+                SoftBadge(label: c.code),
+            ],
+          ),
+          const SizedBox(height: Tokens.space12),
+          Text(
+            'Wanted ${dateFmt.format(trip.desiredDepartureAt)}',
+            style: t.bodySmall,
+          ),
         ],
-      ),
-      isThreeLine: true,
-      trailing: IconButton(
-        icon: const Icon(Icons.delete_outline),
-        tooltip: 'Delete',
-        onPressed: onDelete,
-      ),
-    );
-  }
-}
-
-class _EmptyState extends StatelessWidget {
-  const _EmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.bookmark_border,
-                size: 64, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 12),
-            Text('No saved trips yet.',
-                style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              'Plan a trip and hit the bookmark to keep it here.',
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }

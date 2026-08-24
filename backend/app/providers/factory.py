@@ -18,7 +18,7 @@ from app.providers.geocoding import (
 from app.providers.hotels import HotelsProvider, MockHotelsProvider
 from app.providers.llm import LlmProvider, default_llm_provider
 from app.providers.restaurants import MockRestaurantsProvider, RestaurantsProvider
-from app.providers.routing import MockRoutingProvider, RoutingProvider
+from app.providers.routing import RoutingProvider, default_routing_provider
 from app.providers.tolls import MockTollsProvider, TollsProvider
 from app.providers.traffic import MockTrafficProvider, TrafficProvider
 
@@ -46,7 +46,7 @@ def get_providers() -> Providers:
     villages without us having to hand-curate every place name.
     """
     return Providers(
-        routing=MockRoutingProvider(),
+        routing=_ROUTING,
         traffic=MockTrafficProvider(),
         tolls=MockTollsProvider(),
         fuel=MockFuelProvider(),
@@ -64,6 +64,7 @@ def get_providers() -> Providers:
 
 # Shared singletons — user-marked events must persist across requests, and
 # the composite must reference the same in-memory registry every call.
+_ROUTING = default_routing_provider()
 _USER_MARKED = UserMarkedAdverseEventsProvider()
 _ADVERSE = CompositeAdverseEventsProvider(
     providers=(MockAdverseEventsProvider(), _USER_MARKED),

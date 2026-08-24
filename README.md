@@ -10,7 +10,7 @@ Europe scope thereafter.
 
 > Original brief (Spanish): [Prompt:.yml](Prompt:.yml)
 
-## Project state — Sprints 1-7
+## Project state — Sprints 1-10
 
 Backend + Flutter app slice with mocked external providers (plus real
 Nominatim as a geocoding fallback, and real Claude Opus 5 for the AI
@@ -26,12 +26,19 @@ assistant when `ANTHROPIC_API_KEY` is set). See
 - [x] Adverse-event alerts (fires, strikes, weather, accidents, roadwork, floods, snow, protests) — mock catalogue + user-submitted
 - [x] AI trip assistant (Premium): Claude Opus 5 narrative with recommendations, mock fallback for offline dev
 - [x] Hybrid geocoding: mock catalogue with Nominatim fallback for any place worldwide
+- [x] Real road-following routes via OSRM (`router.project-osrm.org`) with graceful mock fallback + Douglas-Peucker polyline simplification (~10× smaller payloads)
+- [x] Toll-free alternative with money-vs-minutes comparison, "Worth it / Marginal" heuristic, and Premium hourly toll analysis (24-hour verdict of best/worst hours to skip tolls)
+- [x] Route options: avoid motorways, prefer scenic
+- [x] Trip profile (vehicle type + fuel + consumption + travellers + kids/pets + meal times) — configured once, drives POI ranking and cost estimates silently
+- [x] Trip optimizations: meal-stop matching (breakfast/lunch/dinner), sleep-stop suggestion, fuel-cost estimate (€ + L or kWh) with EV range check
+- [x] User-submitted adverse events with type/severity picker + description
+- [x] Nordic/Airbnb-style UI system with light/dark theme toggle, onboarding, splash, and reusable design components
 - [x] `docker compose up` local environment
-- [x] Backend tests: 88 passing
+- [x] Backend tests: 120 passing
 - [x] Revenue-modeling tools (ads, subs, funnel): 68 passing — see [tools/README.md](tools/README.md)
-- [x] Flutter mobile app: city search, map, best-departure chart, saved trips, hotels & restaurants filters, rest-stops, adverse-event alerts, AI briefing — see [mobile/README.md](mobile/README.md)
-- [x] Mobile tests: 46 passing (`flutter analyze` clean)
-- [ ] Real provider integrations (HERE / TomTom / TollGuru / EFFIS / Open-Meteo / Spanish fuel API / …) — on hold
+- [x] Flutter mobile app: onboarding, city search, real-road map, best-departure chart, saved trips, trip profile, hotels/restaurants profile-aware filters, rest stops, adverse-event alerts + submission, toll savings, hourly toll (Premium), route options, trip optimizations, AI briefing — see [mobile/README.md](mobile/README.md)
+- [x] Mobile tests: 61 passing (`flutter analyze` clean)
+- [ ] Real paid provider integrations (HERE / TomTom / TollGuru / EFFIS / Open-Meteo / Spanish fuel API / …) — on hold; OSRM + Nominatim + Claude cover the MVP
 - [ ] Real auth + Premium subscription gating (RevenueCat / StoreKit / Play Billing) — placeholder today
 
 Architecture: [docs/architecture.md](docs/architecture.md).

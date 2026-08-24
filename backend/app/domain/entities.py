@@ -12,6 +12,27 @@ class Country(str, Enum):
     ES = "ES"
 
 
+class VehicleType(str, Enum):
+    CAR = "car"
+    MOTORBIKE = "motorbike"
+    VAN = "van"
+    CAMPER = "camper"
+
+
+class FuelType(str, Enum):
+    PETROL = "petrol"
+    DIESEL = "diesel"
+    HYBRID = "hybrid"
+    ELECTRIC = "electric"
+    LPG = "lpg"
+
+
+class MealSlot(str, Enum):
+    BREAKFAST = "breakfast"
+    LUNCH = "lunch"
+    DINNER = "dinner"
+
+
 class AdverseEventType(str, Enum):
     FIRE = "fire"
     STRIKE = "strike"
@@ -81,6 +102,15 @@ class Route:
     polyline vertices along the road. Used by country-detection to spot
     intermediate countries the endpoints alone would miss.
     """
+    geometry: tuple[Coordinate, ...] = ()
+    """Dense polyline that follows real roads, populated by OSRM / HERE /
+    TomTom providers. Empty when only the mock provider ran — in that
+    case the mobile client should draw a straight-line fallback.
+    """
+    avoid_tolls: bool = False
+    """Whether this route was computed with tolls avoided. Used by the
+    toll-savings comparison to label the alternative correctly.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +134,9 @@ class Hotel:
     price_band: PriceBand
     distance_from_route_km: float
     detour_minutes: float
+    kid_friendly: bool = False
+    pet_friendly: bool = False
+    has_parking: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,6 +148,39 @@ class Restaurant:
     price_band: PriceBand
     distance_from_route_km: float
     detour_minutes: float
+    kid_friendly: bool = False
+    pet_friendly: bool = False
+    open_meal_slots: tuple[MealSlot, ...] = ()  # empty = we don't know
+
+
+@dataclass(frozen=True, slots=True)
+class Vehicle:
+    """A vehicle description used to estimate trip fuel cost and to hint
+    routing / hotel-parking requirements downstream.
+    """
+    type: VehicleType = VehicleType.CAR
+    fuel_type: FuelType = FuelType.PETROL
+    consumption_l_per_100km: float = 6.5
+    consumption_kwh_per_100km: float = 18.0  # for electric only
+    fuel_tank_l: float = 50.0
+    ev_range_km: float = 350.0
+
+
+@dataclass(frozen=True, slots=True)
+class MealPreferences:
+    breakfast_hour: int = 8
+    lunch_hour: int = 13
+    dinner_hour: int = 20
+    typical_stop_minutes: int = 45
+
+
+@dataclass(frozen=True, slots=True)
+class TripProfile:
+    travellers: int = 1
+    has_kids: bool = False
+    has_pets: bool = False
+    vehicle: Vehicle = field(default_factory=Vehicle)
+    meals: MealPreferences = field(default_factory=MealPreferences)
 
 
 @dataclass(frozen=True, slots=True)

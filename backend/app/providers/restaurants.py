@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 from typing import Protocol
 
-from app.domain import Coordinate, Country, PriceBand, Restaurant, Route
+from app.domain import Coordinate, Country, MealSlot, PriceBand, Restaurant, Route
+
+_ALL_SLOTS = (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
 
 _AVG_DETOUR_SPEED_KMH = 60.0  # off-motorway roads are slower
 
@@ -73,6 +75,14 @@ class MockRestaurantsProvider:
                 price = round(anchor * (1 + unit_b * self._PRICE_SPREAD_FRACTION), 2)
                 if price < 8:
                     price = 8.0  # nothing lower than a service-area sandwich
+                kid_friendly = seed[(wi * 7 + ri) % len(seed)] % 2 == 0
+                pet_friendly = seed[(wi * 11 + ri) % len(seed)] % 3 != 0
+                # Meal slots this place typically serves; every restaurant
+                # covers at least lunch or dinner (bar service-area coffee).
+                slot_mask = seed[(wi * 17 + ri) % len(seed)] % 7 + 1
+                slots = tuple(
+                    s for i, s in enumerate(_ALL_SLOTS) if (slot_mask >> i) & 1
+                ) or (MealSlot.LUNCH,)
                 restaurants.append(
                     Restaurant(
                         name=f"{country.value} Restaurant {wi + 1}-{ri + 1}",
@@ -82,6 +92,9 @@ class MockRestaurantsProvider:
                         price_band=_classify_meal_price(price),
                         distance_from_route_km=round(distance_km, 2),
                         detour_minutes=round(detour_minutes, 1),
+                        kid_friendly=kid_friendly,
+                        pet_friendly=pet_friendly,
+                        open_meal_slots=slots,
                     )
                 )
         return tuple(restaurants)

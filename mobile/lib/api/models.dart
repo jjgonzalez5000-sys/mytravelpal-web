@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../domain/trip_profile.dart';
+
 enum AdverseEventType {
   fire,
   strike,
@@ -158,6 +160,11 @@ class TripPlanRequest {
     this.restaurantPriceBand,
     this.includeAdverseEvents = false,
     this.adverseEventsMaxDistanceKm = 25.0,
+    this.includeTollAlternative = false,
+    this.includeHourlyTollAnalysis = false,
+    this.avoidMotorways = false,
+    this.preferScenic = false,
+    this.tripProfile,
   });
 
   final LatLon origin;
@@ -189,6 +196,23 @@ class TripPlanRequest {
   /// be included. Only meaningful when [includeAdverseEvents] is true.
   final double adverseEventsMaxDistanceKm;
 
+  /// If true, ask the backend to also compute a toll-free alternative
+  /// and return a side-by-side comparison.
+  final bool includeTollAlternative;
+
+  /// Premium. If true, backend returns a 24-hour verdict table on
+  /// whether skipping tolls beats keeping them at each hour of the day.
+  final bool includeHourlyTollAnalysis;
+
+  /// Routing options: skip motorways / bias to scenic routes.
+  final bool avoidMotorways;
+  final bool preferScenic;
+
+  /// Trip profile (vehicle + travellers + meals). When present the
+  /// backend applies profile-aware ranking to POIs and computes trip
+  /// optimizations (meal stops, sleep stop, fuel cost).
+  final TripProfile? tripProfile;
+
   Map<String, dynamic> toJson() => {
         'origin': origin.toJson(),
         'destination': destination.toJson(),
@@ -205,6 +229,11 @@ class TripPlanRequest {
         if (includeAdverseEvents) 'include_adverse_events': true,
         if (includeAdverseEvents)
           'adverse_events_max_distance_km': adverseEventsMaxDistanceKm,
+        if (includeTollAlternative) 'include_toll_alternative': true,
+        if (includeHourlyTollAnalysis) 'include_hourly_toll_analysis': true,
+        if (avoidMotorways) 'avoid_motorways': true,
+        if (preferScenic) 'prefer_scenic': true,
+        if (tripProfile != null) 'trip_profile': tripProfile!.toJson(),
       };
 }
 
@@ -283,6 +312,7 @@ class RouteInfo {
     required this.polyline,
     required this.tollCostEur,
     required this.countriesCrossed,
+    this.geometry = const [],
   });
 
   final double distanceKm;
@@ -290,6 +320,10 @@ class RouteInfo {
   final String polyline;
   final double tollCostEur;
   final List<Country> countriesCrossed;
+
+  /// Ordered points that follow real roads. Empty when the backend fell
+  /// back to the mock — clients should draw a straight A→B line then.
+  final List<LatLon> geometry;
 
   factory RouteInfo.fromJson(Map<String, dynamic> json) => RouteInfo(
         distanceKm: (json['distance_km'] as num).toDouble(),
@@ -299,6 +333,55 @@ class RouteInfo {
         countriesCrossed: (json['countries_crossed'] as List<dynamic>)
             .map((c) => Country.fromCode(c as String))
             .toList(growable: false),
+        geometry: (json['geometry'] as List<dynamic>? ?? const <dynamic>[])
+            .map((p) {
+          final pair = p as List<dynamic>;
+          return LatLon(
+            lat: (pair[1] as num).toDouble(),
+            lon: (pair[0] as num).toDouble(),
+          );
+        }).toList(growable: false),
+      );
+}
+
+@immutable
+class TollAlternative {
+  const TollAlternative({
+    required this.distanceKm,
+    required this.durationMinutes,
+    required this.tollCostEur,
+    required this.savingsEur,
+    required this.timePenaltyMinutes,
+    required this.extraDistanceKm,
+    required this.worthIt,
+    this.geometry = const [],
+  });
+
+  final double distanceKm;
+  final double durationMinutes;
+  final double tollCostEur;
+  final double savingsEur;
+  final double timePenaltyMinutes;
+  final double extraDistanceKm;
+  final bool worthIt;
+  final List<LatLon> geometry;
+
+  factory TollAlternative.fromJson(Map<String, dynamic> json) => TollAlternative(
+        distanceKm: (json['distance_km'] as num).toDouble(),
+        durationMinutes: (json['duration_minutes'] as num).toDouble(),
+        tollCostEur: (json['toll_cost_eur'] as num).toDouble(),
+        savingsEur: (json['savings_eur'] as num).toDouble(),
+        timePenaltyMinutes: (json['time_penalty_minutes'] as num).toDouble(),
+        extraDistanceKm: (json['extra_distance_km'] as num).toDouble(),
+        worthIt: json['worth_it'] as bool,
+        geometry: (json['geometry'] as List<dynamic>? ?? const <dynamic>[])
+            .map((p) {
+          final pair = p as List<dynamic>;
+          return LatLon(
+            lat: (pair[1] as num).toDouble(),
+            lon: (pair[0] as num).toDouble(),
+          );
+        }).toList(growable: false),
       );
 }
 
@@ -445,6 +528,179 @@ class RestStop {
 }
 
 @immutable
+class FuelCost {
+  const FuelCost({
+    required this.totalCostEur,
+    required this.averageUnitPriceEur,
+    required this.fuelType,
+    required this.fuelUnits,
+    required this.unitLabel,
+    required this.rangeOk,
+    required this.notes,
+  });
+
+  final double totalCostEur;
+  final double averageUnitPriceEur;
+  final FuelType fuelType;
+  final double fuelUnits;
+  final String unitLabel;
+  final bool rangeOk;
+  final List<String> notes;
+
+  factory FuelCost.fromJson(Map<String, dynamic> j) => FuelCost(
+        totalCostEur: (j['total_cost_eur'] as num).toDouble(),
+        averageUnitPriceEur: (j['average_unit_price_eur'] as num).toDouble(),
+        fuelType: FuelType.fromCode(j['fuel_type'] as String),
+        fuelUnits: (j['fuel_units'] as num).toDouble(),
+        unitLabel: j['unit_label'] as String,
+        rangeOk: j['range_ok'] as bool,
+        notes: (j['notes'] as List<dynamic>? ?? const [])
+            .map((n) => n as String)
+            .toList(growable: false),
+      );
+}
+
+@immutable
+class MealStopOpt {
+  const MealStopOpt({
+    required this.slot,
+    required this.at,
+    required this.distanceFromOriginKm,
+    this.restaurantName,
+    this.restaurantPriceEurPerMeal,
+    this.restaurantCoordinate,
+  });
+
+  final String slot; // "breakfast" | "lunch" | "dinner"
+  final DateTime at;
+  final double distanceFromOriginKm;
+  final String? restaurantName;
+  final double? restaurantPriceEurPerMeal;
+  final LatLon? restaurantCoordinate;
+
+  factory MealStopOpt.fromJson(Map<String, dynamic> j) => MealStopOpt(
+        slot: j['slot'] as String,
+        at: DateTime.parse(j['at'] as String),
+        distanceFromOriginKm:
+            (j['distance_from_origin_km'] as num).toDouble(),
+        restaurantName: j['restaurant_name'] as String?,
+        restaurantPriceEurPerMeal:
+            (j['restaurant_price_eur_per_meal'] as num?)?.toDouble(),
+        restaurantCoordinate: j['restaurant_lat'] == null
+            ? null
+            : LatLon(
+                lat: (j['restaurant_lat'] as num).toDouble(),
+                lon: (j['restaurant_lon'] as num).toDouble(),
+              ),
+      );
+}
+
+@immutable
+class SleepStopOpt {
+  const SleepStopOpt({
+    required this.at,
+    required this.distanceFromOriginKm,
+    this.hotelName,
+    this.hotelPriceEurPerNight,
+    this.hotelCoordinate,
+  });
+
+  final DateTime at;
+  final double distanceFromOriginKm;
+  final String? hotelName;
+  final double? hotelPriceEurPerNight;
+  final LatLon? hotelCoordinate;
+
+  factory SleepStopOpt.fromJson(Map<String, dynamic> j) => SleepStopOpt(
+        at: DateTime.parse(j['at'] as String),
+        distanceFromOriginKm:
+            (j['distance_from_origin_km'] as num).toDouble(),
+        hotelName: j['hotel_name'] as String?,
+        hotelPriceEurPerNight:
+            (j['hotel_price_eur_per_night'] as num?)?.toDouble(),
+        hotelCoordinate: j['hotel_lat'] == null
+            ? null
+            : LatLon(
+                lat: (j['hotel_lat'] as num).toDouble(),
+                lon: (j['hotel_lon'] as num).toDouble(),
+              ),
+      );
+}
+
+@immutable
+class Optimizations {
+  const Optimizations({
+    required this.mealStops,
+    this.sleepStop,
+    required this.fuelCost,
+  });
+
+  final List<MealStopOpt> mealStops;
+  final SleepStopOpt? sleepStop;
+  final FuelCost fuelCost;
+
+  factory Optimizations.fromJson(Map<String, dynamic> j) => Optimizations(
+        mealStops: (j['meal_stops'] as List<dynamic>)
+            .map((m) => MealStopOpt.fromJson(m as Map<String, dynamic>))
+            .toList(growable: false),
+        sleepStop: j['sleep_stop'] == null
+            ? null
+            : SleepStopOpt.fromJson(j['sleep_stop'] as Map<String, dynamic>),
+        fuelCost: FuelCost.fromJson(j['fuel_cost'] as Map<String, dynamic>),
+      );
+}
+
+@immutable
+class HourlyTollVerdict {
+  const HourlyTollVerdict({
+    required this.hour,
+    required this.tollRouteMinutes,
+    required this.tollFreeRouteMinutes,
+    required this.savingsEur,
+    required this.recommendation,
+  });
+
+  final int hour;
+  final double tollRouteMinutes;
+  final double tollFreeRouteMinutes;
+  final double savingsEur;
+  final String recommendation;
+
+  factory HourlyTollVerdict.fromJson(Map<String, dynamic> j) => HourlyTollVerdict(
+        hour: (j['hour'] as num).toInt(),
+        tollRouteMinutes: (j['toll_route_minutes'] as num).toDouble(),
+        tollFreeRouteMinutes: (j['toll_free_route_minutes'] as num).toDouble(),
+        savingsEur: (j['savings_eur'] as num).toDouble(),
+        recommendation: j['recommendation'] as String,
+      );
+}
+
+@immutable
+class HourlyTollReport {
+  const HourlyTollReport({
+    required this.verdicts,
+    required this.bestHoursToSkip,
+    required this.worstHoursToSkip,
+  });
+
+  final List<HourlyTollVerdict> verdicts;
+  final List<int> bestHoursToSkip;
+  final List<int> worstHoursToSkip;
+
+  factory HourlyTollReport.fromJson(Map<String, dynamic> j) => HourlyTollReport(
+        verdicts: (j['verdicts'] as List<dynamic>)
+            .map((v) => HourlyTollVerdict.fromJson(v as Map<String, dynamic>))
+            .toList(growable: false),
+        bestHoursToSkip: (j['best_hours_to_skip'] as List<dynamic>)
+            .map((h) => (h as num).toInt())
+            .toList(growable: false),
+        worstHoursToSkip: (j['worst_hours_to_skip'] as List<dynamic>)
+            .map((h) => (h as num).toInt())
+            .toList(growable: false),
+      );
+}
+
+@immutable
 class TripPlanResponse {
   const TripPlanResponse({
     required this.route,
@@ -454,6 +710,9 @@ class TripPlanResponse {
     required this.restaurants,
     required this.restStops,
     required this.adverseEvents,
+    this.tollAlternative,
+    this.optimizations,
+    this.hourlyTollReport,
   });
 
   final RouteInfo route;
@@ -463,6 +722,9 @@ class TripPlanResponse {
   final List<Restaurant> restaurants;
   final List<RestStop> restStops;
   final List<AdverseEvent> adverseEvents;
+  final TollAlternative? tollAlternative;
+  final Optimizations? optimizations;
+  final HourlyTollReport? hourlyTollReport;
 
   factory TripPlanResponse.fromJson(Map<String, dynamic> json) =>
       TripPlanResponse(
@@ -487,6 +749,21 @@ class TripPlanResponse {
             (json['adverse_events'] as List<dynamic>? ?? const <dynamic>[])
                 .map((e) => AdverseEvent.fromJson(e as Map<String, dynamic>))
                 .toList(growable: false),
+        tollAlternative: json['toll_alternative'] == null
+            ? null
+            : TollAlternative.fromJson(
+                json['toll_alternative'] as Map<String, dynamic>,
+              ),
+        optimizations: json['optimizations'] == null
+            ? null
+            : Optimizations.fromJson(
+                json['optimizations'] as Map<String, dynamic>,
+              ),
+        hourlyTollReport: json['hourly_toll_report'] == null
+            ? null
+            : HourlyTollReport.fromJson(
+                json['hourly_toll_report'] as Map<String, dynamic>,
+              ),
       );
 }
 

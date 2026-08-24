@@ -21,7 +21,13 @@ from app.providers.geocoding import (
     MockGeocodingProvider,
     NominatimGeocodingProvider,
 )
-from app.providers.routing import MockRoutingProvider, RoutingProvider
+from app.providers.routing import (
+    FallbackRoutingProvider,
+    MockRoutingProvider,
+    OsrmRoutingProvider,
+    RoutingProvider,
+    default_routing_provider,
+)
 from app.providers.tolls import MockTollsProvider, TollsProvider
 from app.providers.traffic import MockTrafficProvider, TrafficProvider
 
@@ -29,8 +35,11 @@ __all__ = [
     "AdverseEventsProvider",
     "ClaudeLlmProvider",
     "CompositeAdverseEventsProvider",
+    "FallbackRoutingProvider",
     "FuelPrice",
     "FuelProvider",
+    "OsrmRoutingProvider",
+    "default_routing_provider",
     "GeocodeResult",
     "GeocodingProvider",
     "HotelsProvider",

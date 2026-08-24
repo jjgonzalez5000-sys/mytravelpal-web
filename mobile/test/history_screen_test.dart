@@ -6,6 +6,7 @@ import 'package:mytravelpal/providers.dart';
 import 'package:mytravelpal/screens/history_screen.dart';
 import 'package:mytravelpal/storage/saved_trip.dart';
 import 'package:mytravelpal/storage/trip_storage.dart';
+import 'package:mytravelpal/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<TripStorage> _seed(List<SavedTrip> trips) async {
@@ -16,6 +17,14 @@ Future<TripStorage> _seed(List<SavedTrip> trips) async {
   }
   return storage;
 }
+
+Widget _appHost(TripStorage storage) => ProviderScope(
+      overrides: [tripStorageProvider.overrideWithValue(storage)],
+      child: MaterialApp(
+        theme: AppTheme.light(),
+        home: const HistoryScreen(),
+      ),
+    );
 
 SavedTrip _sampleTrip(String id) => SavedTrip(
       id: id,
@@ -41,44 +50,30 @@ void main() {
   testWidgets('empty state renders when no trips are saved',
       (tester) async {
     final storage = await _seed(const []);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [tripStorageProvider.overrideWithValue(storage)],
-        child: const MaterialApp(home: HistoryScreen()),
-      ),
-    );
+    await tester.pumpWidget(_appHost(storage));
     await tester.pumpAndSettle();
-    expect(find.text('No saved trips yet.'), findsOneWidget);
+    expect(find.text('No saved trips yet'), findsOneWidget);
   });
 
-  testWidgets('renders saved trips as tiles', (tester) async {
+  testWidgets('renders saved trips as cards', (tester) async {
     final storage = await _seed([_sampleTrip('abc')]);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [tripStorageProvider.overrideWithValue(storage)],
-        child: const MaterialApp(home: HistoryScreen()),
-      ),
-    );
+    await tester.pumpWidget(_appHost(storage));
     await tester.pumpAndSettle();
-    expect(find.text('Paris → Madrid'), findsOneWidget);
+    expect(find.text('Paris'), findsOneWidget);
+    expect(find.text('Madrid'), findsOneWidget);
     expect(find.textContaining('1316 km'), findsOneWidget);
   });
 
-  testWidgets('delete button removes the tile', (tester) async {
+  testWidgets('delete button removes the card', (tester) async {
     final storage = await _seed([_sampleTrip('abc')]);
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [tripStorageProvider.overrideWithValue(storage)],
-        child: const MaterialApp(home: HistoryScreen()),
-      ),
-    );
+    await tester.pumpWidget(_appHost(storage));
     await tester.pumpAndSettle();
-    expect(find.text('Paris → Madrid'), findsOneWidget);
+    expect(find.text('Madrid'), findsOneWidget);
 
     await tester.tap(find.byIcon(Icons.delete_outline));
     await tester.pumpAndSettle();
 
-    expect(find.text('Paris → Madrid'), findsNothing);
-    expect(find.text('No saved trips yet.'), findsOneWidget);
+    expect(find.text('Madrid'), findsNothing);
+    expect(find.text('No saved trips yet'), findsOneWidget);
   });
 }
