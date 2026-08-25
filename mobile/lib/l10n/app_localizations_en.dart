@@ -1,0 +1,1024 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appName => 'MyTravelPal';
+
+  @override
+  String get appTagline => 'Plan the drive, not just the destination';
+
+  @override
+  String get onboardEyebrowKiller => 'THE MISSING FEATURE';
+
+  @override
+  String get onboardTitleKiller => 'Leave at the right time';
+
+  @override
+  String get onboardBodyKiller =>
+      'We look at historic traffic around your desired departure and show you the sweet spot — sometimes leaving 30 minutes earlier saves you 90.';
+
+  @override
+  String get onboardEyebrowHonest => 'HONEST PLANNING';
+
+  @override
+  String get onboardTitleHonest => 'Every cost, up front';
+
+  @override
+  String get onboardBodyHonest =>
+      'Toll totals, cheapest fuel and EV charging along the route, suggested stops, and hotels or restaurants at the exact detour you can afford.';
+
+  @override
+  String get onboardEyebrowAlerts => 'STAY AWARE';
+
+  @override
+  String get onboardTitleAlerts => 'Alerts that matter';
+
+  @override
+  String get onboardBodyAlerts =>
+      'Fires, strikes, adverse weather, roadworks — you decide when we surface them, and only when they actually touch your route.';
+
+  @override
+  String get onboardSkip => 'Skip';
+
+  @override
+  String get onboardContinue => 'Continue';
+
+  @override
+  String get onboardGetStarted => 'Get started';
+
+  @override
+  String get onboardFooter =>
+      'Free to start · Premium unlocks the AI trip briefing';
+
+  @override
+  String get loginContinueApple => 'Continue with Apple';
+
+  @override
+  String get loginContinueGoogle => 'Continue with Google';
+
+  @override
+  String get loginContinueFacebook => 'Continue with Facebook';
+
+  @override
+  String get loginContinueDemo => 'Continue as demo';
+
+  @override
+  String get loginDivider => 'or';
+
+  @override
+  String get loginTerms =>
+      'By continuing you accept our terms and privacy policy.';
+
+  @override
+  String get loginBusy => 'Signing you in…';
+
+  @override
+  String get planTitle => 'Plan a road trip';
+
+  @override
+  String get planEyebrow => 'THE PLANNER';
+
+  @override
+  String get planHero => 'Where are we going\ntoday?';
+
+  @override
+  String get planIntro => 'Pick two points and a time. We handle the rest.';
+
+  @override
+  String get planFrom => 'From';
+
+  @override
+  String get planTo => 'To';
+
+  @override
+  String get planDesiredDeparture => 'Desired departure';
+
+  @override
+  String get planCta => 'Plan trip';
+
+  @override
+  String get planCtaBusy => 'Planning your trip…';
+
+  @override
+  String get planCountriesNote =>
+      'Countries are detected automatically from your route.';
+
+  @override
+  String get planSectionOptional => 'Along the route';
+
+  @override
+  String get planOverrideForTrip => 'Override for this trip';
+
+  @override
+  String get planOverrideActive => 'Overriding for this trip';
+
+  @override
+  String get planOverrideClear => 'Clear override';
+
+  @override
+  String get planTooltipDashboard => 'Dashboard';
+
+  @override
+  String get planTooltipReport => 'Report an event';
+
+  @override
+  String get planTooltipSaved => 'Saved trips';
+
+  @override
+  String get planErrorPickEndpoints => 'Pick an origin and a destination.';
+
+  @override
+  String get resultBestTimeToLeave => 'BEST TIME TO LEAVE';
+
+  @override
+  String get resultTripSavings => 'YOUR SAVINGS ON THIS TRIP';
+
+  @override
+  String get resultTimeSavedLabel => 'time saved';
+
+  @override
+  String get resultExtraTimeLabel => 'extra time';
+
+  @override
+  String get resultMoneySavedLabel => 'money saved';
+
+  @override
+  String get resultDepartureWindowTitle => 'Departure window';
+
+  @override
+  String get resultDepartureWindowDesc =>
+      'Total minutes at each candidate departure time.';
+
+  @override
+  String get resultCompareVariantsTitle => 'Compare your options';
+
+  @override
+  String get resultCompareVariantsEyebrow => 'Route variants';
+
+  @override
+  String get resultAlertsTitle => 'Alerts along your route';
+
+  @override
+  String get resultRestStopsTitle => 'Rest stops';
+
+  @override
+  String get resultHotelsTitle => 'Hotels';
+
+  @override
+  String get resultRestaurantsTitle => 'Restaurants';
+
+  @override
+  String get resultFuelTitle => 'Fuel';
+
+  @override
+  String get resultTollAlternativeEyebrow => 'TOLL-FREE ALTERNATIVE';
+
+  @override
+  String get resultTollAlternativeWorthIt => 'Worth it';
+
+  @override
+  String get resultTollAlternativeMarginal => 'Marginal';
+
+  @override
+  String get resultShareTooltip => 'Share this trip';
+
+  @override
+  String get resultExplainTooltip => 'Explain my trip (Premium)';
+
+  @override
+  String get resultSaveTooltip => 'Save trip';
+
+  @override
+  String get resultSavedTooltip => 'Saved';
+
+  @override
+  String get resultTripSaved => 'Trip saved';
+
+  @override
+  String get dashboardTitle => 'Dashboard';
+
+  @override
+  String dashboardGreeting(String name) {
+    return 'Hi, $name';
+  }
+
+  @override
+  String get dashboardTravelSoFar => 'Your travel so far';
+
+  @override
+  String get dashboardTrips => 'Trips';
+
+  @override
+  String get dashboardDistance => 'Distance';
+
+  @override
+  String get dashboardHours => 'Hours';
+
+  @override
+  String get dashboardTimeSaved => 'TIME SAVED';
+
+  @override
+  String get dashboardMoneySaved => 'MONEY SAVED';
+
+  @override
+  String get dashboardFuelBudget => 'ESTIMATED FUEL BUDGET';
+
+  @override
+  String get dashboardTopSavers => 'Top savers';
+
+  @override
+  String get dashboardCountries => 'Countries';
+
+  @override
+  String get dashboardSignOut => 'Sign out';
+
+  @override
+  String get profileTitle => 'Trip profile';
+
+  @override
+  String get profileOverrideTitle => 'Override for this trip';
+
+  @override
+  String get profileSave => 'Save';
+
+  @override
+  String get profileUse => 'Use';
+
+  @override
+  String get profileWhoTravelling => 'Who is travelling';
+
+  @override
+  String get profileTravellers => 'Travellers';
+
+  @override
+  String get profileHasKids => 'Travelling with kids';
+
+  @override
+  String get profileHasPets => 'Travelling with pets';
+
+  @override
+  String get profileVehicle => 'Vehicle';
+
+  @override
+  String get profileMealTimes => 'Meal times';
+
+  @override
+  String get profileReminders => 'Reminders';
+
+  @override
+  String get profilePremiumSection => 'Premium (demo)';
+
+  @override
+  String get profileClearProfile => 'Clear profile';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get commonCancel => 'Cancel';
+
+  @override
+  String get commonClear => 'Clear';
+
+  @override
+  String get commonSave => 'Save';
+
+  @override
+  String get commonRemove => 'Remove';
+
+  @override
+  String get searchPlaceholderLegacy => 'Search a city…';
+
+  @override
+  String get searchNoMatches => 'No matches.';
+
+  @override
+  String get searchStartTyping => 'Type at least 2 characters.';
+
+  @override
+  String get searchRecent => 'RECENT';
+
+  @override
+  String get searchUseMyLocation => 'Use my location';
+
+  @override
+  String get locationServiceOff => 'Location services are off on this device.';
+
+  @override
+  String get locationPermissionDenied => 'Location permission denied.';
+
+  @override
+  String get locationUnavailable => 'Couldn\'t determine your location.';
+
+  @override
+  String get favoritesTitle => 'Favorites';
+
+  @override
+  String get favoritesEmptyHotels =>
+      'No favorite hotels yet. Tap the star on any hotel to save it.';
+
+  @override
+  String get favoritesEmptyRestaurants =>
+      'No favorite restaurants yet. Tap the star on any restaurant to save it.';
+
+  @override
+  String get favoritesTabHotels => 'Hotels';
+
+  @override
+  String get favoritesTabRestaurants => 'Restaurants';
+
+  @override
+  String get favoritesTooltipAdd => 'Add to favorites';
+
+  @override
+  String get favoritesTooltipRemove => 'Remove from favorites';
+
+  @override
+  String get planTooltipFavorites => 'Favorites';
+
+  @override
+  String get resultBackToPlan => 'Back to plan';
+
+  @override
+  String get alertsAlongYourRoute => 'Alerts along your route';
+
+  @override
+  String get alertsAlongYourRouteDesc =>
+      'Fires, strikes, adverse weather, roadworks, accidents, floods, snow, protests — sorted by severity.';
+
+  @override
+  String get restStopsHint =>
+      'Recommended every 2 h of driving. Short breaks keep you sharp on long trips.';
+
+  @override
+  String get fuelAlongTheRoute => 'Fuel along the route';
+
+  @override
+  String get hotelsNearYourRoute => 'Hotels near your route';
+
+  @override
+  String get restaurantsNearYourRoute => 'Restaurants near your route';
+
+  @override
+  String get narrativeTitle => 'Trip briefing';
+
+  @override
+  String get narrativeGenerating => 'Writing your briefing…';
+
+  @override
+  String get narrativeFailed =>
+      'Couldn\'t generate the briefing. Try again in a bit.';
+
+  @override
+  String get narrativeFooter =>
+      'Generated by Claude — content may miss real-time changes.';
+
+  @override
+  String get narrativePremiumBadge => 'Premium';
+
+  @override
+  String get shareTripSubject => 'My road trip via MyTravelPal';
+
+  @override
+  String get eventReport => 'Report an event';
+
+  @override
+  String get eventDescription => 'Description';
+
+  @override
+  String get eventType => 'Type';
+
+  @override
+  String get eventSeverity => 'Severity';
+
+  @override
+  String get eventLocation => 'Location';
+
+  @override
+  String get eventSubmit => 'Submit';
+
+  @override
+  String get eventSubmitted => 'Reported.';
+
+  @override
+  String get resultStatDistance => 'Distance';
+
+  @override
+  String get resultStatFreeFlow => 'Free flow';
+
+  @override
+  String get resultStatTolls => 'Tolls';
+
+  @override
+  String get resultEyebrowNearRoute => 'Near your route';
+
+  @override
+  String get resultEyebrowAlongRoute => 'Along the route';
+
+  @override
+  String get resultAlerts => 'Alerts';
+
+  @override
+  String get resultRestStops => 'Rest stops';
+
+  @override
+  String get resultHotels => 'Hotels';
+
+  @override
+  String get resultRestaurants => 'Restaurants';
+
+  @override
+  String get resultFuel => 'Fuel';
+
+  @override
+  String get resultOptimized => 'Optimized for your trip';
+
+  @override
+  String get resultOptimizedFuelBudget => 'Estimated fuel budget';
+
+  @override
+  String get resultCompareTitle => 'Compare your options';
+
+  @override
+  String get resultCompareStraightApprox => 'Straight-line approx.';
+
+  @override
+  String resultSleepAt(String when) {
+    return 'Sleep · $when';
+  }
+
+  @override
+  String get resultHourlyTollEyebrow => 'HOURLY TOLL VERDICT';
+
+  @override
+  String get resultSkipLabel => 'Skip';
+
+  @override
+  String get resultKeepLabel => 'Keep';
+
+  @override
+  String get resultSaveExactly => 'Save ';
+
+  @override
+  String get notificationsLeaveSoonTitle => 'Time to leave soon';
+
+  @override
+  String get localeSystem => 'System';
+
+  @override
+  String get localeMenuTooltip => 'Language';
+
+  @override
+  String get dashboardCountry => 'Country';
+
+  @override
+  String get dashboardNoTripsYet =>
+      'No saved trips yet. Plan and save one to see stats.';
+
+  @override
+  String get dashboardStatCards => 'OVERVIEW';
+
+  @override
+  String get profileVehicleType => 'Vehicle type';
+
+  @override
+  String get profileFuelType => 'Fuel type';
+
+  @override
+  String get profileConsumption => 'Consumption';
+
+  @override
+  String get profileEvRange => 'EV range';
+
+  @override
+  String get profileFuelTank => 'Fuel tank';
+
+  @override
+  String get profileBreakfast => 'Breakfast';
+
+  @override
+  String get profileLunch => 'Lunch';
+
+  @override
+  String get profileDinner => 'Dinner';
+
+  @override
+  String get profileStopMinutes => 'Typical stop minutes';
+
+  @override
+  String get profileReminderMinutes => 'Reminder before departure';
+
+  @override
+  String get profilePremiumHint =>
+      'Toggle to preview Premium features locally.';
+
+  @override
+  String get profileNoProfile => 'No profile saved yet.';
+
+  @override
+  String get eventPlaceholderDescription => 'Short description of what you saw';
+
+  @override
+  String get eventCurrentLocation => 'Current location';
+
+  @override
+  String get eventPickOnMap => 'Pick on map';
+
+  @override
+  String eventLocationCoords(String lat, String lon) {
+    return 'Selected: $lat, $lon';
+  }
+
+  @override
+  String get narrativeRegenerate => 'Regenerate';
+
+  @override
+  String get narrativeUpgrade => 'Unlock the AI briefing with Premium.';
+
+  @override
+  String get compareVariantsRecommended => 'Recommended';
+
+  @override
+  String get compareVariantsFastest => 'Fastest';
+
+  @override
+  String get compareVariantsCheapest => 'Cheapest';
+
+  @override
+  String get compareVariantsScenic => 'Scenic';
+
+  @override
+  String get compareVariantsAvoidTolls => 'No tolls';
+
+  @override
+  String get compareVariantsAvoidMotorways => 'No motorways';
+
+  @override
+  String get hourlyBestHours => 'Best hours to skip tolls';
+
+  @override
+  String get hourlyWorstHours => 'Worst hours to skip tolls';
+
+  @override
+  String get partialTollSkipsTitle => 'Booth-by-booth skips';
+
+  @override
+  String get partialTollSkipsEyebrow => 'Zoom in';
+
+  @override
+  String get sleepEyebrow => 'OVERNIGHT';
+
+  @override
+  String get sleepNoHotelSuggestion =>
+      'No hotel picked yet — see the Hotels section.';
+
+  @override
+  String get lunchEyebrow => 'LUNCH STOP';
+
+  @override
+  String get dinnerEyebrow => 'DINNER STOP';
+
+  @override
+  String get breakfastEyebrow => 'BREAKFAST STOP';
+
+  @override
+  String get resultCompareEyebrow => 'Route variants';
+
+  @override
+  String get resultCompareDescription =>
+      'Same start and end — different priorities. Numbers are free-flow.';
+
+  @override
+  String get resultVariantDashed => 'Dashed on the map above';
+
+  @override
+  String get resultOptimizedEyebrow => 'Profile-aware';
+
+  @override
+  String get resultOptimizedDescription =>
+      'Meal, sleep and fuel picks that match your profile.';
+
+  @override
+  String get resultSavingsShiftAndSkip =>
+      'By shifting your departure and skipping tolls.';
+
+  @override
+  String get resultSavingsShift =>
+      'By shifting your departure to the recommended window.';
+
+  @override
+  String get resultSavingsSkip => 'By taking the toll-free alternative.';
+
+  @override
+  String get resultSavingsNone => 'No savings identified for this route yet.';
+
+  @override
+  String get resultShift => 'SHIFT';
+
+  @override
+  String get resultTraffic => 'TRAFFIC';
+
+  @override
+  String get resultTotal => 'TOTAL';
+
+  @override
+  String resultRestStopNoRestaurant(String km) {
+    return 'Rest stop at $km km — no matching restaurant found.';
+  }
+
+  @override
+  String resultNoHotelHere(String km) {
+    return 'You should stop around here (~$km km). No matching hotel found.';
+  }
+
+  @override
+  String get resultMealFallback => 'Meal';
+
+  @override
+  String get resultHourlyExplainer =>
+      'Common in France & Italy: exit before an expensive toll, take a parallel road for a stretch, re-enter later — often 15-40 min but saves €5-15.';
+
+  @override
+  String get profileSaved => 'Profile saved';
+
+  @override
+  String get profileWhoEyebrow => 'People';
+
+  @override
+  String get profileKidsSubtitle =>
+      'Prefers kid-friendly restaurants and hotels.';
+
+  @override
+  String get profilePetsSubtitle =>
+      'Prefers pet-friendly places, prioritises parking.';
+
+  @override
+  String get profileVehicleEyebrow => 'For cost + parking hints';
+
+  @override
+  String get profileMealsEyebrow => 'To match restaurant stops';
+
+  @override
+  String get profileRemindersEyebrow => 'Local notifications';
+
+  @override
+  String get profileNotifyBefore => 'Notify me before departure';
+
+  @override
+  String get profileNotifyOff => 'Off — no reminder will be scheduled.';
+
+  @override
+  String profileNotifyMinutesBefore(int minutes) {
+    return '$minutes minutes before';
+  }
+
+  @override
+  String get profilePremiumEyebrow => 'Local toggle · no real payment';
+
+  @override
+  String get profilePremiumBody =>
+      'Real StoreKit / Play Billing gating comes later. For now this toggle enables Premium locally so you can preview those features.';
+
+  @override
+  String get profileSimulatePremium => 'Simulate Premium';
+
+  @override
+  String get profileSimulatePremiumSubtitle =>
+      'Unlocks the AI trip briefing and hourly toll analysis.';
+
+  @override
+  String get profileOverrideHeroDesc =>
+      'Change your profile just for this trip — different vehicle, travellers or meal times without touching your saved profile.';
+
+  @override
+  String get profileGlobalHeroDesc =>
+      'Set this once. Every plan uses it to rank hotels and restaurants, estimate fuel, and time meal stops.';
+
+  @override
+  String get eventPickPlace => 'Pick a place and describe what you saw.';
+
+  @override
+  String get eventThankYou => 'Report submitted — thank you!';
+
+  @override
+  String eventCouldNotSubmit(String reason) {
+    return 'Could not submit: $reason';
+  }
+
+  @override
+  String get eventIntro =>
+      'Help other drivers know what you saw. Reports expire after 24 hours by default.';
+
+  @override
+  String get eventWhatHappened => 'What happened';
+
+  @override
+  String get eventWhatHappenedEyebrow => 'Type';
+
+  @override
+  String get eventSeverityInfo => 'Info';
+
+  @override
+  String get eventSeverityWarning => 'Warning';
+
+  @override
+  String get eventSeverityCritical => 'Critical';
+
+  @override
+  String get eventWhere => 'Where';
+
+  @override
+  String get eventWhereEyebrow => 'Nearest city';
+
+  @override
+  String get eventDescribeTitle => 'Describe it';
+
+  @override
+  String get eventDescribeEyebrow => 'Short & useful';
+
+  @override
+  String get eventDescribeHint =>
+      'e.g. Trees down on A6 southbound, 2 lanes closed';
+
+  @override
+  String get eventSubmitting => 'Submitting…';
+
+  @override
+  String get eventSubmitReport => 'Submit report';
+
+  @override
+  String get narrativeBusy => 'Composing your trip briefing…';
+
+  @override
+  String get narrativeErrorTitle => 'Could not fetch the briefing';
+
+  @override
+  String narrativeGeneratedAt(String when) {
+    return 'Generated $when';
+  }
+
+  @override
+  String get narrativeReadAloud => 'Read aloud';
+
+  @override
+  String get narrativeStop => 'Stop';
+
+  @override
+  String get historyTitle => 'Saved trips';
+
+  @override
+  String get historyEmptyTitle => 'No saved trips yet';
+
+  @override
+  String get historyEmptyBody =>
+      'Plan a trip and tap the bookmark to keep it here for later.';
+
+  @override
+  String get historyPlanCta => 'Plan a trip';
+
+  @override
+  String historyDeleted(String trip) {
+    return 'Deleted $trip';
+  }
+
+  @override
+  String historyReplanFailed(int status) {
+    return 'Re-plan failed: $status';
+  }
+
+  @override
+  String get historyDeleteTooltip => 'Delete';
+
+  @override
+  String historyBestAt(String when) {
+    return 'Best $when';
+  }
+
+  @override
+  String historyWantedAt(String when) {
+    return 'Wanted $when';
+  }
+
+  @override
+  String get searchPlaceholder => 'Search a city, museum, place…';
+
+  @override
+  String get placesSectionTitle => 'SAVED PLACES';
+
+  @override
+  String get placeSaveAsTooltip => 'Save as place';
+
+  @override
+  String get placeSaveDialogTitle => 'Save as…';
+
+  @override
+  String get placeCustomLabel => 'Label';
+
+  @override
+  String get placeCustomHint => 'Home, Work, Grandma…';
+
+  @override
+  String get placePresetHome => 'Home';
+
+  @override
+  String get placePresetWork => 'Work';
+
+  @override
+  String get placePresetSchool => 'School';
+
+  @override
+  String get placePresetGym => 'Gym';
+
+  @override
+  String placeSavedAs(String label) {
+    return 'Saved as $label';
+  }
+
+  @override
+  String get favoritesTabPlaces => 'Places';
+
+  @override
+  String get favoritesEmptyPlaces =>
+      'No saved places yet. Tap the star on any search result to save it.';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsSectionAppearance => 'Appearance';
+
+  @override
+  String get settingsLanguage => 'Language';
+
+  @override
+  String get settingsTheme => 'Theme';
+
+  @override
+  String get settingsSectionUnits => 'Units';
+
+  @override
+  String get settingsUnitSystem => 'Unit system';
+
+  @override
+  String get settingsUnitsMetric => 'Metric';
+
+  @override
+  String get settingsUnitsImperial => 'Imperial';
+
+  @override
+  String get settingsSectionTrip => 'Trip';
+
+  @override
+  String get settingsSectionAbout => 'About';
+
+  @override
+  String get settingsVersion => 'Version';
+
+  @override
+  String get planTooltipSettings => 'Settings';
+
+  @override
+  String get styleSectionTitle => 'Travel style';
+
+  @override
+  String get styleSectionEyebrow => 'How you like to drive';
+
+  @override
+  String get stylePresetDirect => 'Direct';
+
+  @override
+  String get stylePresetBalanced => 'Balanced';
+
+  @override
+  String get stylePresetSlow => 'Slow';
+
+  @override
+  String get stylePresetDirectHint =>
+      'Push through, minimal stops, never overnight.';
+
+  @override
+  String get stylePresetBalancedHint =>
+      'Steady pace, breaks when it makes sense.';
+
+  @override
+  String get stylePresetSlowHint =>
+      'Savour the drive, generous stops, split long trips.';
+
+  @override
+  String get styleCustom => 'Custom';
+
+  @override
+  String get styleAdvanced => 'Advanced';
+
+  @override
+  String get stylePaceLabel => 'Pace';
+
+  @override
+  String get stylePacePush => 'Push';
+
+  @override
+  String get stylePaceSteady => 'Steady';
+
+  @override
+  String get stylePaceSavour => 'Savour';
+
+  @override
+  String get styleOvernightLabel => 'Overnight stops';
+
+  @override
+  String get styleOvernightNever => 'Never';
+
+  @override
+  String get styleOvernightIfNeeded => 'If needed';
+
+  @override
+  String get styleOvernightAlwaysIfLong => 'Split long trips';
+
+  @override
+  String get styleDailyCapLabel => 'Max hours driving per day';
+
+  @override
+  String get styleBedtimeLabel => 'Bedtime';
+
+  @override
+  String get styleWakeLabel => 'Wake time';
+
+  @override
+  String get styleBreakLabel => 'Break style';
+
+  @override
+  String get styleBreakMinimal => 'Minimal';
+
+  @override
+  String get styleBreakScenic => 'Scenic';
+
+  @override
+  String get styleBreakFoodie => 'Foodie';
+
+  @override
+  String planStyleChip(String preset, int hours) {
+    return '$preset · ${hours}h/day';
+  }
+
+  @override
+  String planStyleChipCustom(int hours) {
+    return 'Custom · ${hours}h/day';
+  }
+
+  @override
+  String get planStyleOverrideTitle => 'Style for this trip';
+
+  @override
+  String get planStyleOverrideSubtitle =>
+      'Overrides your saved profile only for this plan.';
+
+  @override
+  String get planStyleUseSavedProfile => 'Use my saved profile';
+
+  @override
+  String arrivalHintTitle(String hour) {
+    return 'You\'d arrive at $hour:00';
+  }
+
+  @override
+  String arrivalHintBody(String bedtime) {
+    return 'Later than your bedtime ($bedtime:00). Consider stopping overnight — hotels are ready below.';
+  }
+
+  @override
+  String get arrivalHintCta => 'See hotels';
+
+  @override
+  String get vehicleTypeCar => 'Car';
+
+  @override
+  String get vehicleTypeMotorbike => 'Motorbike';
+
+  @override
+  String get vehicleTypeVan => 'Van';
+
+  @override
+  String get vehicleTypeCamper => 'Camper';
+
+  @override
+  String get fuelTypePetrol => 'Petrol';
+
+  @override
+  String get fuelTypeDiesel => 'Diesel';
+
+  @override
+  String get fuelTypeHybrid => 'Hybrid';
+
+  @override
+  String get fuelTypeElectric => 'Electric';
+
+  @override
+  String get fuelTypeLpg => 'LPG';
+}

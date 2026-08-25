@@ -6,10 +6,42 @@ from enum import Enum
 
 
 class Country(str, Enum):
+    # Launch four
     CH = "CH"
     FR = "FR"
     IT = "IT"
     ES = "ES"
+    # Nordics
+    NO = "NO"
+    SE = "SE"
+    DK = "DK"
+    FI = "FI"
+    IS = "IS"
+    # Western
+    DE = "DE"
+    AT = "AT"
+    BE = "BE"
+    NL = "NL"
+    LU = "LU"
+    IE = "IE"
+    GB = "GB"
+    # Southern
+    PT = "PT"
+    GR = "GR"
+    MT = "MT"
+    CY = "CY"
+    # Central / Eastern
+    PL = "PL"
+    CZ = "CZ"
+    SK = "SK"
+    HU = "HU"
+    SI = "SI"
+    HR = "HR"
+    RO = "RO"
+    BG = "BG"
+    EE = "EE"
+    LV = "LV"
+    LT = "LT"
 
 
 class VehicleType(str, Enum):
@@ -25,6 +57,52 @@ class FuelType(str, Enum):
     HYBRID = "hybrid"
     ELECTRIC = "electric"
     LPG = "lpg"
+
+
+class TravelPace(str, Enum):
+    """How aggressively the driver wants to eat kilometres.
+
+    - `push` — long stretches with minimal breaks. No overnight unless
+      absolutely required.
+    - `steady` (default) — the natural cadence. Break if the trip
+      crosses bedtime or exceeds the daily driving cap.
+    - `savour` — frequent stops; viewpoints and food matter as much as
+      arrival time.
+    """
+
+    PUSH = "push"
+    STEADY = "steady"
+    SAVOUR = "savour"
+
+
+class OvernightPolicy(str, Enum):
+    """When to suggest a hotel mid-trip.
+
+    - `never` — surface hotels only when the user explicitly asks.
+    - `if_needed` (default) — hotel is suggested when the trip crosses
+      bedtime OR would exceed `daily_driving_cap_hours`.
+    - `always_if_long` — split trips > 6 h into 2 days even when a
+      single push is technically possible.
+    """
+
+    NEVER = "never"
+    IF_NEEDED = "if_needed"
+    ALWAYS_IF_LONG = "always_if_long"
+
+
+class BreakStyle(str, Enum):
+    """Flavour of rest-stop / restaurant suggestions to surface.
+
+    - `minimal` — only when strictly necessary; service areas over
+      curated stops.
+    - `scenic` (default) — viewpoints, parks, small historic detours.
+    - `foodie` — bias restaurant picks toward good food that aligns
+      with configured meal hours.
+    """
+
+    MINIMAL = "minimal"
+    SCENIC = "scenic"
+    FOODIE = "foodie"
 
 
 class MealSlot(str, Enum):
@@ -137,6 +215,12 @@ class Hotel:
     kid_friendly: bool = False
     pet_friendly: bool = False
     has_parking: bool = True
+    attributes: tuple[tuple[str, str], ...] = ()
+    """Curated OSM tags — stars, phone, website, opening_hours,
+    wheelchair, wifi, air_conditioning, breakfast, brand. Empty for
+    mock entries. Stored as a tuple of pairs (rather than a dict) so
+    the dataclass stays hashable / frozen.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +235,11 @@ class Restaurant:
     kid_friendly: bool = False
     pet_friendly: bool = False
     open_meal_slots: tuple[MealSlot, ...] = ()  # empty = we don't know
+    attributes: tuple[tuple[str, str], ...] = ()
+    """Curated OSM tags — cuisine, phone, website, opening_hours,
+    outdoor_seating, takeaway, delivery, wheelchair, dog, brand.
+    Empty for mock entries.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,6 +270,17 @@ class TripProfile:
     has_pets: bool = False
     vehicle: Vehicle = field(default_factory=Vehicle)
     meals: MealPreferences = field(default_factory=MealPreferences)
+
+    # -- Travel style (Sprint 22) --
+    travel_pace: TravelPace = TravelPace.STEADY
+    overnight_policy: OvernightPolicy = OvernightPolicy.IF_NEEDED
+    daily_driving_cap_hours: int = 8
+    """Hard ceiling on driving hours before the planner requires an
+    overnight break. Ignored when `overnight_policy == NEVER`.
+    """
+    bedtime_hour: int = 22
+    wake_hour: int = 8
+    break_style: BreakStyle = BreakStyle.SCENIC
 
 
 @dataclass(frozen=True, slots=True)

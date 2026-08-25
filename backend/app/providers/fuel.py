@@ -4,7 +4,8 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-from app.domain import Country, Route
+from app.data.countries import COUNTRIES
+from app.domain import Coordinate, Country, Route
 
 
 @dataclass(frozen=True, slots=True)
@@ -13,20 +14,21 @@ class FuelPrice:
     country: Country
     price_eur_per_l: float
     distance_from_origin_km: float
+    coordinate: Coordinate | None = None
+    attributes: tuple[tuple[str, str], ...] = ()
+    """Curated OSM tags — brand, opening_hours, payment:contactless,
+    fuel:diesel/octane_95/lpg availability, car_wash, shop. Empty for
+    mock entries.
+    """
 
 
 class FuelProvider(Protocol):
     async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]: ...
 
 
-# Rough recent-history averages for unleaded 95, EUR/L. Numbers vary week
-# to week; these are placeholders good enough to demo the ordering.
-_BASE_PRICE_BY_COUNTRY: dict[Country, float] = {
-    Country.CH: 1.75,
-    Country.FR: 1.80,
-    Country.IT: 1.85,
-    Country.ES: 1.55,
-}
+def _base_price(country: Country) -> float:
+    data = COUNTRIES.get(country.value)
+    return data.fuel_petrol_anchor_eur if data else 1.75
 
 
 class MockFuelProvider:
@@ -48,7 +50,7 @@ class MockFuelProvider:
         stations: list[FuelPrice] = []
         for i in range(n_stations):
             country = countries[i % len(countries)]
-            base = _BASE_PRICE_BY_COUNTRY.get(country, 1.75)
+            base = _base_price(country)
             # Map a seed byte to [-1, 1] then to [-spread, +spread].
             delta = ((seed[i % len(seed)] / 255.0) * 2 - 1) * self._PRICE_SPREAD
             price = round(base + delta, 3)

@@ -3,9 +3,15 @@ from __future__ import annotations
 import hashlib
 from typing import Protocol
 
+from app.data.countries import COUNTRIES
 from app.domain import Coordinate, Country, MealSlot, PriceBand, Restaurant, Route
 
 _ALL_SLOTS = (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
+
+
+def _restaurant_anchor(country: Country) -> float:
+    data = COUNTRIES.get(country.value)
+    return data.restaurant_anchor_eur if data else 25.0
 
 _AVG_DETOUR_SPEED_KMH = 60.0  # off-motorway roads are slower
 
@@ -18,17 +24,6 @@ class RestaurantsProvider(Protocol):
         restaurant_search service, not here.
         """
         ...
-
-
-# Per-country meal-price anchors, EUR per person for a mid-tier lunch.
-# Placeholders; a real POI integration (TripAdvisor / Google Places)
-# will replace with actual data.
-_PRICE_ANCHORS: dict[Country, float] = {
-    Country.CH: 40.0,
-    Country.FR: 28.0,
-    Country.IT: 25.0,
-    Country.ES: 22.0,
-}
 
 
 def _classify_meal_price(price: float) -> PriceBand:
@@ -63,7 +58,7 @@ class MockRestaurantsProvider:
         restaurants: list[Restaurant] = []
         for wi, wp in enumerate(route.waypoints):
             country = _country_or_first(route, wp)
-            anchor = _PRICE_ANCHORS.get(country, 25.0)
+            anchor = _restaurant_anchor(country)
             for ri in range(self._RESTAURANTS_PER_WAYPOINT):
                 b = seed[(wi * self._RESTAURANTS_PER_WAYPOINT + ri) % len(seed)]
                 unit_a = (b / 255.0) * 2 - 1

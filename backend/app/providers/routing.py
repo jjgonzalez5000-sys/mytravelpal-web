@@ -93,17 +93,24 @@ class RoutingProvider(Protocol):
 def _apply_toll_pricing(
     distance_km: float, countries: tuple[Country, ...],
 ) -> float:
-    """Toll approximation per country — realistic order of magnitude."""
-    per_km_by_country = {
-        Country.FR: 0.09,
-        Country.IT: 0.08,
-        Country.ES: 0.07,
-        Country.CH: 0.0,  # CH uses an annual vignette, not per-km tolls.
-    }
-    toll = sum(per_km_by_country.get(c, 0.0) for c in countries) * distance_km
-    if Country.CH in countries:
-        toll += 40.0  # amortized vignette contribution
-    return toll
+    """Toll approximation across the whole supported map.
+
+    Per-km motorway pricing for countries that price by distance
+    (FR/IT/ES/PT/GR/HR/…) plus a flat vignette contribution for
+    sticker countries (CH/AT/SI/CZ/SK/HU/BG/RO). Data lives in
+    [`countries`](../data/countries.py); this function just applies it.
+    """
+    from app.data.countries import COUNTRIES
+
+    per_km_sum = 0.0
+    vignette_sum = 0.0
+    for c in countries:
+        data = COUNTRIES.get(c.value)
+        if data is None:
+            continue
+        per_km_sum += data.toll_per_km_eur
+        vignette_sum += data.vignette_eur
+    return per_km_sum * distance_km + vignette_sum
 
 
 class MockRoutingProvider:

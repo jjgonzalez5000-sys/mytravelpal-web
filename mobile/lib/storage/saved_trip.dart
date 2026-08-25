@@ -16,6 +16,11 @@ class SavedTrip {
     required this.recommendedDepartureAt,
     required this.recommendedMinutes,
     required this.countriesCrossed,
+    this.savedMinutesVsDesired = 0,
+    this.savedEurVsTolls = 0,
+    this.fuelCostEur = 0,
+    this.reminderMinutesBefore = 0,
+    this.notificationId,
   });
 
   final String id;
@@ -29,6 +34,29 @@ class SavedTrip {
   final double recommendedMinutes;
   final List<Country> countriesCrossed;
 
+  /// Minutes the driver saved by taking our recommended departure over
+  /// the sample closest to their desired departure. Persisted so the
+  /// dashboard can sum real savings across trips.
+  final double savedMinutesVsDesired;
+
+  /// Euros saved by taking the toll-free alternative (only when the
+  /// heuristic flagged it "worth it" at plan time).
+  final double savedEurVsTolls;
+
+  /// Fuel budget estimated for the trip from the profile+vehicle. Zero
+  /// when the trip was planned without a profile.
+  final double fuelCostEur;
+
+  /// How many minutes before the recommended departure a local
+  /// notification was scheduled. Zero when no reminder was requested.
+  final int reminderMinutesBefore;
+
+  /// The `flutter_local_notifications` ID used when scheduling this
+  /// trip's reminder — kept so we can cancel/reschedule cleanly.
+  /// Null for trips saved before Sprint 15 or when notifications were
+  /// disabled at save time.
+  final int? notificationId;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'origin': _geocodeJson(origin),
@@ -40,6 +68,11 @@ class SavedTrip {
         'recommended_minutes': recommendedMinutes,
         'countries_crossed':
             countriesCrossed.map((c) => c.code).toList(growable: false),
+        'saved_minutes_vs_desired': savedMinutesVsDesired,
+        'saved_eur_vs_tolls': savedEurVsTolls,
+        'fuel_cost_eur': fuelCostEur,
+        'reminder_minutes_before': reminderMinutesBefore,
+        if (notificationId != null) 'notification_id': notificationId,
       };
 
   factory SavedTrip.fromJson(Map<String, dynamic> json) => SavedTrip(
@@ -55,6 +88,14 @@ class SavedTrip {
         countriesCrossed: (json['countries_crossed'] as List<dynamic>)
             .map((c) => Country.fromCode(c as String))
             .toList(growable: false),
+        savedMinutesVsDesired:
+            (json['saved_minutes_vs_desired'] as num?)?.toDouble() ?? 0,
+        savedEurVsTolls:
+            (json['saved_eur_vs_tolls'] as num?)?.toDouble() ?? 0,
+        fuelCostEur: (json['fuel_cost_eur'] as num?)?.toDouble() ?? 0,
+        reminderMinutesBefore:
+            (json['reminder_minutes_before'] as num?)?.toInt() ?? 0,
+        notificationId: (json['notification_id'] as num?)?.toInt(),
       );
 }
 

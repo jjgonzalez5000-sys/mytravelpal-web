@@ -102,6 +102,21 @@ class TestFilter:
         kept = filter_events_near_route((info, warn, crit), self._route())
         assert [e.id for e in kept] == ["c", "w", "i"]
 
+    def test_true_duplicates_collapse_to_one(self) -> None:
+        """Same type + severity + description within 0.5 km → one entry."""
+        a = _event(id="a", coord=Coordinate(46.00, 3.00))
+        b = _event(id="b", coord=Coordinate(46.001, 3.001))  # ~150 m
+        kept = filter_events_near_route((a, b), self._route())
+        assert len(kept) == 1
+        assert kept[0].id == "a"  # first one wins
+
+    def test_same_id_repeated_collapses(self) -> None:
+        """Composite providers may return the same id twice."""
+        one = _event(id="dup", coord=Coordinate(46, 3))
+        two = _event(id="dup", coord=Coordinate(46, 3))
+        kept = filter_events_near_route((one, two), self._route())
+        assert len(kept) == 1
+
 
 class TestCompositeProvider:
     @pytest.mark.asyncio

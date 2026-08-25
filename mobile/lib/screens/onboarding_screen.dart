@@ -4,8 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/components.dart';
 import '../design/tokens.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
-import 'plan_screen.dart';
+import 'login_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -18,45 +19,37 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _controller = PageController();
   int _page = 0;
 
-  static const _slides = <_OnboardingSlide>[
-    _OnboardingSlide(
-      icon: Icons.schedule,
-      eyebrow: 'THE MISSING FEATURE',
-      title: 'Leave at the right time',
-      body:
-          'We look at historic traffic around your desired departure and '
-          'show you the sweet spot — sometimes leaving 30 minutes earlier '
-          'saves you 90.',
-    ),
-    _OnboardingSlide(
-      icon: Icons.route_outlined,
-      eyebrow: 'HONEST PLANNING',
-      title: 'Every cost, up front',
-      body:
-          'Toll totals, cheapest fuel and EV charging along the route, '
-          'suggested stops, and hotels or restaurants at the exact detour '
-          'you can afford.',
-    ),
-    _OnboardingSlide(
-      icon: Icons.warning_amber_outlined,
-      eyebrow: 'STAY AWARE',
-      title: 'Alerts that matter',
-      body:
-          'Fires, strikes, adverse weather, roadworks — you decide when we '
-          'surface them, and only when they actually touch your route.',
-    ),
-  ];
+  List<_OnboardingSlide> _slides(AppLocalizations l) => [
+        _OnboardingSlide(
+          icon: Icons.schedule,
+          eyebrow: l.onboardEyebrowKiller,
+          title: l.onboardTitleKiller,
+          body: l.onboardBodyKiller,
+        ),
+        _OnboardingSlide(
+          icon: Icons.route_outlined,
+          eyebrow: l.onboardEyebrowHonest,
+          title: l.onboardTitleHonest,
+          body: l.onboardBodyHonest,
+        ),
+        _OnboardingSlide(
+          icon: Icons.warning_amber_outlined,
+          eyebrow: l.onboardEyebrowAlerts,
+          title: l.onboardTitleAlerts,
+          body: l.onboardBodyAlerts,
+        ),
+      ];
 
   Future<void> _finish() async {
     await ref.read(appPrefsProvider).markOnboardingShown();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute<void>(builder: (_) => const PlanScreen()),
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
     );
   }
 
-  void _next() {
-    if (_page == _slides.length - 1) {
+  void _next(int slideCount) {
+    if (_page == slideCount - 1) {
       _finish();
       return;
     }
@@ -70,7 +63,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final isLast = _page == _slides.length - 1;
+    final l = AppLocalizations.of(context);
+    final slides = _slides(l);
+    final isLast = _page == slides.length - 1;
 
     return Scaffold(
       backgroundColor: scheme.surface,
@@ -85,7 +80,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 ),
                 child: TextButton(
                   onPressed: _finish,
-                  child: Text(isLast ? '' : 'Skip'),
+                  child: Text(isLast ? '' : l.onboardSkip),
                 ),
               ),
             ),
@@ -93,26 +88,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               child: PageView.builder(
                 controller: _controller,
                 onPageChanged: (i) => setState(() => _page = i),
-                itemCount: _slides.length,
-                itemBuilder: (context, i) => _SlideView(slide: _slides[i]),
+                itemCount: slides.length,
+                itemBuilder: (context, i) => _SlideView(slide: slides[i]),
               ),
             ),
             Padding(
               padding: const EdgeInsets.all(Tokens.space24),
               child: Column(
                 children: [
-                  _Dots(count: _slides.length, active: _page),
+                  _Dots(count: slides.length, active: _page),
                   const SizedBox(height: Tokens.space24),
                   PrimaryCta(
-                    label: isLast ? 'Get started' : 'Continue',
+                    label: isLast ? l.onboardGetStarted : l.onboardContinue,
                     icon: isLast ? Icons.arrow_forward : null,
-                    onPressed: _next,
+                    onPressed: () => _next(slides.length),
                   ),
                   const SizedBox(height: Tokens.space8),
-                  Text(
-                    'Free to start · Premium unlocks the AI trip briefing',
-                    style: t.bodySmall,
-                  ),
+                  Text(l.onboardFooter, style: t.bodySmall),
                 ],
               ),
             ),

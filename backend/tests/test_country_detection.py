@@ -11,11 +11,19 @@ def test_detects_launch_countries_from_city_centres() -> None:
     assert detect_country(Coordinate(46.9481, 7.4474)) is Country.CH   # Bern
 
 
-def test_returns_none_outside_launch_countries() -> None:
-    # Berlin — outside our launch set.
-    assert detect_country(Coordinate(52.52, 13.405)) is None
-    # Middle of the North Atlantic.
+def test_detects_more_european_countries() -> None:
+    assert detect_country(Coordinate(52.52, 13.405)) is Country.DE   # Berlin
+    assert detect_country(Coordinate(52.37, 4.90)) is Country.NL     # Amsterdam
+    assert detect_country(Coordinate(59.33, 18.07)) is Country.SE    # Stockholm
+    assert detect_country(Coordinate(52.23, 21.01)) is Country.PL    # Warszawa
+    assert detect_country(Coordinate(38.72, -9.14)) is Country.PT    # Lisboa
+
+
+def test_returns_none_outside_all_supported_countries() -> None:
+    # Middle of the North Atlantic — outside every bbox.
     assert detect_country(Coordinate(0.0, -30.0)) is None
+    # Central Sahara — Africa, unsupported.
+    assert detect_country(Coordinate(20.0, 10.0)) is None
 
 
 def test_infer_countries_crossed_preserves_order_and_dedupes() -> None:

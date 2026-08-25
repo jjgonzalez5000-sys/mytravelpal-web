@@ -732,3 +732,639 @@ long lists.
   future navigation-mode sprint. See
   [`project_navigation_phase`](../../../.claude/projects/-home-blu3-Apps-MyTravelPal/memory/project_navigation_phase.md)
   memory.
+
+---
+
+## Sprint 11 — Full-Europe coverage, real weather forecasts, Premium gating, per-trip overrides, voice narrative, partial toll skipping
+
+**Goal:** grow the app from launch-four countries to **all of the
+supported European market** (30 countries: EU-27 + UK + NO + IS + CH),
+turn the four remaining sprint-10 candidates into shipped features, and
+add the "skip only some tolls" behaviour the user asked about.
+
+**Delivered — full-Europe expansion**
+
+- New [`app/data/countries.py`](../backend/app/data/countries.py) with one
+  `CountryData` row per country: bounding box, toll-per-km and vignette,
+  hotel / restaurant / fuel anchors, Nominatim country code, sample
+  cities. Single source of truth; providers stopped hard-coding per-country
+  dicts.
+- `Country` enum extended to 31 members. `country_detection`,
+  `routing._apply_toll_pricing`, `hotels`, `restaurants`, `fuel` and
+  `geocoding._CATALOGUE` all read from the table.
+- Country-detection priority hand-tuned so Norway's very wide bbox
+  doesn't spuriously claim Stockholm.
+- Nominatim requests now cover all 30 nominatim codes so users searching
+  Berlin / Dublin / Warszawa / Reykjavik land results from the fallback
+  when the mock catalogue misses.
+- Mobile `Country` enum mirrored — 31 members with display names.
+
+**Delivered — real weather feed (Open-Meteo)**
+
+- New [`providers/weather.py`](../backend/app/providers/weather.py) —
+  `OpenMeteoWeatherProvider` implements `AdverseEventsProvider`. Samples
+  5 waypoints along the route, requests hourly forecasts, maps WMO
+  weather codes (thunderstorm / heavy rain / snow / freezing rain / fog)
+  to `AdverseEvent`s with `source=WEATHER`.
+- Time-aware: for each sample point we ask "what's the weather when the
+  driver will be *here*", not "at trip start".
+- Opt-in via `MYTRAVELPAL_WEATHER=openmeteo` env var. Off by default in
+  tests and CI to avoid the network hop.
+- Graceful degradation: any HTTP error returns an empty tuple; the
+  composite pipeline continues with mock + user-submitted events.
+
+**Delivered — Premium gating**
+
+- New [`api/premium.py`](../backend/app/api/premium.py) dependencies:
+  `is_premium` (soft check for opt-in features) and `require_premium`
+  (hard 402 when required).
+- `POST /v1/trips/plan` returns 402 with `{error: "premium_required"}`
+  when the client requests `include_hourly_toll_analysis` without the
+  Premium header.
+- `POST /v1/trips/narrative` requires Premium unconditionally.
+- MVP transport: `X-MyTravelPal-Premium: true` request header — this
+  is *not* production security; a follow-up sprint will replace it with
+  proper receipt verification (RevenueCat webhook + StoreKit / Play
+  Billing).
+- Mobile: `AppPrefs.isPremium` (persisted bool), `premiumProvider`
+  (Riverpod), a "Simulate Premium" section at the bottom of
+  `ProfileScreen`, new `apiClientWithPremiumProvider` that injects the
+  header on every outgoing request when Premium is on.
+
+**Delivered — per-trip profile override**
+
+- `ProfileScreen` gained an `override_` mode. In this mode the "Use"
+  button pops with the edited profile via `Navigator.pop(profile)`
+  without touching global prefs.
+- `PlanScreen` shows a small "Override for this trip" text button below
+  the profile chip; when active, the chip shows an "OVERRIDE ACTIVE"
+  eyebrow and a border in the accent colour. Plan requests use the
+  override; nothing is written to the global profile.
+
+**Delivered — voice narrative**
+
+- `flutter_tts` added; `NarrativeScreen` gains a "Read aloud" button
+  in the header row that toggles TTS playback of the narrative. Stops
+  automatically on dispose and on completion.
+
+**Delivered — partial toll skipping**
+
+- New backend service
+  [`services/partial_toll_skips.py`](../backend/app/services/partial_toll_skips.py)
+  — heuristic that chops the route into 5 segments, attributes each a
+  weighted share of the total toll, estimates a small detour penalty,
+  and flags the ones where savings-per-minute is high as "Skip".
+- Response gains `partial_toll_skips: [...]` when
+  `include_toll_alternative` is on. The whole-route toll_alternative and
+  the per-segment skips are shown side by side in the UI.
+- Mobile: `PartialTollSkip` model + a dedicated card on `ResultScreen`
+  with per-stretch "Skip / Keep" chips.
+- Honest limitation documented in the service: proper booth-level
+  savings need a paid provider (HERE/TomTom/TollGuru); the current
+  numbers are a planning-phase heuristic that gets *replaced* — not
+  merely refined — once real toll data is available. Interface stays
+  the same.
+
+**Validation**
+
+- Backend: **141/141** tests passing (previous 120 + 21 new —
+  country table integrity, DE/AT/GR/IE/LU/SE detection, partial toll
+  skips ranking + endpoint, Premium 402 vs 200 with header,
+  OpenMeteo parsing + benign-code short-circuit + HTTP error graceful).
+- Mobile: `flutter analyze` clean, **70/70** tests (previous 61 + 9
+  new — Country enum size, PartialTollSkip parsing, TripPlanResponse
+  default, ApiClient premium header presence/absence, AppPrefs premium
+  persistence).
+- Smoke: `curl` for Berlin lands DE via the extended mock;
+  `include_hourly_toll_analysis` returns 402 without header and 200 with
+  it; `include_toll_alternative` returns the whole-route comparison plus
+  5 `partial_toll_skips` with "worth_it" flags.
+
+**Deliberately out**
+
+- No real IAP integration yet. RevenueCat + StoreKit + Play Billing
+  are the natural next-sprint work; the header contract already lets
+  the mobile client send verified state without touching endpoint code.
+- Weather feed limited to Open-Meteo — richer providers (AEMET, MeteoFR)
+  will layer in without changing the `AdverseEventsProvider` protocol.
+- Partial toll skipping is heuristic, as noted above.
+- Balkans / Turkey / Belarus / Russia / Ukraine and micro-states not in
+  the country table — deferred until a real routing provider handles
+  their quirks (partial motorway networks, non-EU vignette systems).
+
+---
+
+## Sprint 12 — User accounts, real POIs, real wildfires, real toll pricing, personal dashboard, trip sharing
+
+**Goal:** move from "everything is mock or local" to a proper account
+model and real external data where a free feed exists. Adds sign-in,
+personal dashboard, share, and real providers for wildfires, POIs
+(hotels + fuel), and toll pricing.
+
+**Delivered — backend auth**
+
+- New [`app/auth/`](../backend/app/auth/) package: JWT helpers
+  (HS256, 30-day TTL, `MYTRAVELPAL_JWT_SECRET`), OAuth verifiers for
+  Google (`google-auth`), Facebook (Graph API), and a **strict demo
+  provider** for dev/preview; FastAPI dependencies for optional and
+  required user context.
+- Endpoints: `POST /v1/auth/session` (exchange provider id-token for
+  app JWT), `GET /v1/auth/me` (bearer-only, returns current user).
+- Demo mode ships enabled — real Google/Facebook require
+  `GOOGLE_CLIENT_ID` + `google-auth` / `FACEBOOK_APP_SECRET` before they
+  accept live tokens.
+
+**Delivered — real emergencies (EFFIS wildfires)**
+
+- New [`providers/effis.py`](../backend/app/providers/effis.py) —
+  `EffisFireProvider` implements `AdverseEventsProvider`. Queries the
+  **EFFIS VIIRS 24h hotspots** WFS layer (Copernicus, public, no key)
+  bounded by the route's bbox, maps hotspots to `AdverseEvent`s with
+  `source=OFFICIAL` and severity derived from FRP (fire radiative
+  power ≥100 MW = critical).
+- Opt-in via `MYTRAVELPAL_FIRES=effis`. Graceful empty return on HTTP
+  errors — planner keeps working.
+- **Direct answer to the user's question about the emergency source
+  stack**: before this sprint, adverse events were 100 % mock +
+  user-submitted. Now: mock + user-submitted + **Open-Meteo weather
+  (real)** + **EFFIS wildfires (real)**. Police / traffic-agency feeds
+  are country-specific and mostly gated by agreements — see
+  `national_weather.py` stubs for the same pattern applied to
+  Météo-France / AEMET / DWD / MetOffice for advisories, off by
+  default until each key is set.
+
+**Delivered — real POIs (Overpass)**
+
+- New [`providers/overpass.py`](../backend/app/providers/overpass.py):
+  - `OverpassHotelsProvider` queries OSM `tourism=hotel|guest_house|
+    motel` in the route corridor, parses `family_friendly`, `dog`,
+    `pets`, `parking`, and `stars` tags → `Hotel` with kid/pet/parking
+    flags and a star-based price.
+  - `OverpassFuelProvider` queries `amenity=fuel`, synthesises a price
+    from the country anchor (no free per-station price feed exists
+    outside the Spanish government API yet).
+  - `FallbackHotelsProvider` / `FallbackFuelProvider` compose real +
+    mock so an empty or slow Overpass response still ships a plan.
+- Opt-in via `MYTRAVELPAL_HOTELS=overpass` and
+  `MYTRAVELPAL_FUEL=overpass`. Off in tests to avoid the fair-use hit
+  on the Overpass servers.
+
+**Delivered — real toll pricing (TollGuru)**
+
+- New [`providers/tollguru.py`](../backend/app/providers/tollguru.py):
+  `TollGuruProvider` encodes the route geometry as a Google polyline
+  and posts to `apis.tollguru.com/toll/v2/complete-polyline-…`, parses
+  `costs.tag` / `costs.cash` and per-booth positions.
+- Requires `TOLLGURU_API_KEY`; returns `None` without it or when the
+  route has no geometry (mock routing). When a quote arrives, the
+  existing whole-route heuristic and `partial_toll_skips` service will
+  swap to real numbers in a follow-up wiring pass — this sprint ships
+  the client + tests so the API contract is locked.
+
+**Delivered — national weather stubs**
+
+- [`providers/national_weather.py`](../backend/app/providers/national_weather.py)
+  ships AEMET / Météo-France / DWD / MetOffice stubs. Each becomes an
+  active `AdverseEventsProvider` when its env var is set. Honest note in
+  docstring: Open-Meteo already covers all 30 countries with model
+  forecasts; the national feeds add *advisory bulletins* (human-authored
+  storm/snow warnings) that model output doesn't include.
+
+**Delivered — mobile auth + dashboard + share**
+
+- `AuthUser` domain model + `AuthSessionResponse`, `AuthNotifier`
+  (Riverpod), `AppPrefs.setAuthSession` for persistence, JWT attached
+  as `Authorization: Bearer …` on every request via
+  `apiClientWithPremiumProvider`.
+- New [LoginScreen](../mobile/lib/screens/login_screen.dart) — Google /
+  Facebook OAuth buttons (require host-app configuration to fire) plus a
+  demo login dialog that works out of the box.
+- `SplashScreen` routing extended: **onboarding → login → planner**.
+  Returning authenticated users skip straight to the planner.
+- New [DashboardScreen](../mobile/lib/screens/dashboard_screen.dart)
+  aggregating saved trips into headline stats (trips, km, hours,
+  best-time savings estimate, top-5 countries with progress bars,
+  most-recent trip). Sign-out button live here.
+- `share_plus` wired via
+  [services/trip_sharing.dart](../mobile/lib/services/trip_sharing.dart)
+  — `ResultScreen` gets an `ios_share` button in the AppBar that opens
+  the OS share sheet with a plain-text summary (origin, distance,
+  countries, best time, toll savings if worth it).
+
+**Validation**
+
+- Backend: **154/154** tests passing (previous 141 + 13 new — JWT
+  helpers, demo/google-401/me endpoints, EFFIS parsing + graceful
+  errors, Overpass hotels/fuel parsing + fallback, TollGuru payload
+  parsing + missing-key short-circuit).
+- Mobile: `flutter analyze` clean, **75/75** tests (previous 70 + 5
+  new — AuthUser roundtrip, AppPrefs auth session persistence,
+  createSession POST body + response parsing, Authorization header
+  presence, compose share text).
+
+**Deliberately out**
+
+- Real Google/Facebook sign-in requires host-app configuration (Google
+  Cloud Console OAuth client IDs, SHA-1 fingerprints, `Info.plist` URL
+  schemes, Meta developer app + `strings.xml` entries). The buttons
+  attempt the real flow — bring your own client IDs.
+- No deep links yet; shared trips are text-only. When a real
+  `mytravelpal://` URL scheme + universal-link setup lands, the share
+  message includes the URL.
+- Dashboard's "best-time savings" is a conservative estimate — we
+  don't persist `desired − recommended` per saved trip yet. Documented
+  in the `_Stats` factory.
+- National weather feeds beyond Open-Meteo are stubs until each service
+  is subscribed and wired.
+- Apple Sign In deferred — mandatory on iOS App Store when other social
+  sign-ins are present; add before submission.
+
+---
+
+## Sprint 13 — Apple Sign-In, TollGuru wired into `/trips/plan`, trip sharing with deep links
+
+**Goal:** close three follow-ups from Sprint 12: (1) add Apple as the
+third real OAuth provider, (2) actually *use* the TollGuru client
+we shipped by feeding real per-booth prices into the planner, and (3)
+turn trip sharing from plain text into a deep link that reopens the
+plan in the recipient's app.
+
+**Delivered — Apple Sign-In**
+
+- New `AppleOAuthProvider` in
+  [`auth/providers.py`](../backend/app/auth/providers.py) — verifies
+  Apple's `id_token` via the public JWKS at
+  `https://appleid.apple.com/auth/keys`, validates `aud=APPLE_APP_ID`
+  and `iss=https://appleid.apple.com`. No app secret needed on the
+  server; only the bundle ID.
+- Registered in `get_provider("apple")`. Returns 401 with a clear
+  message when `APPLE_APP_ID` isn't configured, same shape as Google.
+- Apple only surfaces the user's name on **first** login and outside
+  the id_token — the mobile client forwards `givenName + familyName`
+  via the `demo_name` channel and the backend picks it up when the
+  id_token has no name claim.
+- Mobile: `sign_in_with_apple` package + a black Apple button at the
+  top of `LoginScreen`.
+
+**Delivered — TollGuru wired into `/trips/plan`**
+
+- `Providers` dataclass gained an optional `tollguru: TollProvider |
+  None` slot. Factory instantiates the real client whenever
+  `TOLLGURU_API_KEY` is set; otherwise `None` and the plan endpoint
+  keeps its heuristic pricing.
+- `POST /v1/trips/plan` handler now: after routing, if `tollguru is
+  not None` **and** the route has geometry (i.e. OSRM ran), post the
+  encoded polyline to TollGuru; on a valid `TollQuote`, replace
+  `route.toll_cost_eur` with the real total and stash the per-booth
+  list.
+- `services/partial_toll_skips.compute()` grows an optional
+  `real_tolls` kwarg. When present it emits one recommendation per
+  real booth with a low, fixed ~5 min penalty — a huge improvement
+  over the heuristic's 6-10 min per made-up segment. The API's
+  `partial_toll_skips` field automatically carries the real booth
+  names (e.g. "Fleury", "Poitiers") when TollGuru data flowed through.
+
+**Delivered — trip sharing with deep links**
+
+- New URL scheme `mytravelpal://trip?o=lat,lon&d=lat,lon&t=ISO&on=…&dn=…`
+  encoded/decoded in
+  [`services/trip_sharing.dart`](../mobile/lib/services/trip_sharing.dart).
+  Stateless — every field is in the URL, no backend endpoint needed.
+- `shareTrip()` now appends the deep link to the share message so the
+  recipient can tap it and land back in the app.
+- `AndroidManifest.xml` gets an `intent-filter` matching
+  `scheme=mytravelpal` + `host=trip` on the `MainActivity`.
+- New [`services/deep_link_handler.dart`](../mobile/lib/services/deep_link_handler.dart)
+  wires `app_links` to listen for both cold-start URLs and warm links
+  while the app is running, decodes them, and pushes a `PlanScreen`
+  with the shared trip prefilled.
+- `PlanScreen` gains an optional `initialShared` constructor param —
+  when present, origin/destination search fields and the departure
+  time are prefilled from the shared link so the recipient just taps
+  Plan. Deliberate: no auto-submit (avoid planning things the user
+  didn't ask for).
+- `main.dart` sets up the deep-link handler after the widget tree has
+  a navigator to push into (`rootNavigatorKey`).
+
+**Validation**
+
+- Backend: **162/162** tests passing (previous 154 + 8 new — Apple
+  registration + missing-app-id, endpoint 401 for Apple without config,
+  real-booth partial-skip count / worth-it flag / penalty magnitude,
+  `/plan` uses TollGuru total when quote arrives, `/plan` degrades to
+  heuristic without a key).
+- Mobile: `flutter analyze` clean, **80/80** tests (previous 75 + 5
+  new — trip URL roundtrip, foreign-scheme rejection, missing-coord
+  rejection, out-of-range coord rejection, composed share text).
+
+**Deliberately out**
+
+- Universal links (`https://mytravelpal.app/trip/…`) — needs an
+  `apple-app-site-association` file hosted on a real domain +
+  `.well-known/assetlinks.json`. Custom scheme covers native today.
+- iOS platform folder — not generated yet, so the Apple button only
+  fires when `flutter create . --platforms=ios` is added and the iOS
+  project configured with Apple's capability + bundle ID.
+- No cloud sync of trips — the recipient of a shared link plans it
+  locally; there's no "accept" flow that stores the trip in a shared
+  space. Follow-up sprint if trips move to the cloud.
+- TollGuru wiring today replaces `toll_cost_eur` and feeds real booths
+  into `partial_toll_skips`. The whole-route `toll_alternative`
+  (alternative avoiding all tolls) still uses the heuristic because
+  TollGuru gives us tolled-route pricing, not tolled-vs-toll-free
+  route pairs. That's a follow-up where we ask TollGuru for the
+  alternative geometry too.
+
+---
+
+## Sprint 14 — Savings surfaced everywhere
+
+**Goal:** the user's core value prop — "how much time and money did the
+app save you?" — was implicit. Make it explicit: the plan preview, the
+best-time recommendation card, saved trips, and the personal dashboard
+now all quote real minutes-saved and euros-saved based on data we
+already computed.
+
+**Delivered — backend**
+
+- New pure helper in
+  [`services/time_window.py::minutes_saved_vs_desired`](../backend/app/services/time_window.py)
+  — compares the recommended window vs the sample closest to the
+  desired departure and returns positive minutes when the recommendation
+  is faster. Zero when there's no better option. No new provider calls.
+- New response block `savings: {time_saved_minutes_vs_desired,
+  money_saved_eur_vs_tolls}` on `POST /v1/trips/plan`. Time savings come
+  from the helper above. Money savings are the `toll_alternative`
+  savings when the heuristic flagged the alternative as *worth it* —
+  zero otherwise. Always present on the response so clients don't need
+  to handle nulls.
+
+**Delivered — mobile**
+
+- Mirror models: `TripSavings` in
+  [api/models.dart](../mobile/lib/api/models.dart); `TripPlanResponse`
+  gets a `savings` field with a zero default so older-shape responses
+  parse cleanly.
+- [SavedTrip](../mobile/lib/storage/saved_trip.dart) persists
+  `savedMinutesVsDesired` and `savedEurVsTolls`, defaulting to 0 when
+  reading trips saved before the schema change (backwards-compatible).
+  `ResultScreen._save` populates both from the plan response.
+- `ResultScreen`:
+  - New **"YOUR SAVINGS ON THIS TRIP"** card at the top (below the map,
+    above the recommendation hero) with two big stats — time saved and
+    money saved — with a short caption explaining where the savings
+    come from (departure shift / toll-free alternative / both).
+  - The **Best-time hero** now shows a pill badge *"X min saved"* right
+    next to the "BEST TIME TO LEAVE" eyebrow when the recommendation
+    beats the desired-time sample.
+- `DashboardScreen`:
+  - Replaces the old "BEST-TIME SAVINGS" placeholder with a two-card row:
+    **TIME SAVED** (primary tone) and **MONEY SAVED** (tertiary tone),
+    values summed honestly from persisted `SavedTrip` fields.
+  - The "across N nudged trips" subtitle counts real trips where either
+    time or money was saved, not a proxy.
+
+**Validation**
+
+- Backend: **169/169** tests passing (previous 162 + 7 new — 4 for the
+  `minutes_saved_vs_desired` helper covering equal/faster/empty/closest
+  cases, 3 for the endpoint contract).
+- Mobile: `flutter analyze` clean, **85/85** tests (previous 80 + 5
+  new — TripSavings parsing, default-zero when field missing,
+  SavedTrip roundtrip + legacy fallback for the two new fields).
+
+**Deliberately out**
+
+- Fuel-cost savings (from picking a cheaper station or a better vehicle
+  route) aren't in the aggregate yet — the persisted `SavedTrip` only
+  knows what was on the plan, not what the driver actually spent.
+  Requires a "log actual trip" flow first.
+- No comparison across time periods on the dashboard ("this month vs
+  last") — needs cloud sync so trips carry a canonical timestamp; noted
+  in [`project_deferred_features`](../../../.claude/projects/-home-blu3-Apps-MyTravelPal/memory/project_deferred_features.md).
+
+---
+
+## Sprint 15 — Route comparison, fuel in dashboard, ranking, local reminders
+
+**Goal:** four accretive features around the plan and the dashboard.
+Each is small on its own, all rest on existing infra.
+
+**Delivered — backend**
+
+- [`services/route_variants.py`](../backend/app/services/route_variants.py)
+  — pure orchestrator that returns 3 named variants: **fastest**
+  (echoes primary), **toll-free** (`avoid_tolls=True`), **scenic**
+  (`prefer_scenic=True`). Two extra `RoutingProvider.route()` calls
+  when opted in.
+- `POST /v1/trips/plan` gets `include_route_comparison: bool` and a
+  `route_variants: [{key, label, distance_km, free_flow_minutes,
+  toll_cost_eur}]` field on the response.
+
+**Delivered — mobile**
+
+- `TripPlanRequest` mirrors `includeRouteComparison`.
+- `RouteVariant` model + parse. New `_RouteVariantsSection` on
+  `ResultScreen` renders the three rows with icon (speed / savings /
+  landscape) and per-row summary (km · time · tolls). "PRIMARY" chip
+  next to the fastest row so the driver sees which one the rest of the
+  plan is based on.
+- New switch **"Compare route variants"** in `PlanScreen` preferences,
+  wired into the request.
+- `SavedTrip` grows three fields (all defaulted for backwards
+  compatibility): `fuelCostEur`, `reminderMinutesBefore`,
+  `notificationId`. `ResultScreen._save` populates all three at
+  save-time — fuel comes from the optimizations block, reminder from
+  the trip profile, notification id from the scheduling call.
+- New `MealPreferences.reminderMinutesBefore` (default 30) — the
+  cleanest existing home for the setting; `ProfileScreen` gains a
+  "Reminders" section with a stepper 0-120.
+- [`services/notifications.dart`](../mobile/lib/services/notifications.dart)
+  wraps `flutter_local_notifications`: init (Android channel +
+  timezone data + permission requests), `scheduleDepartureReminder`
+  bound to the SavedTrip id (`String.hashCode` → int notification
+  id, deterministic so we can cancel/reschedule), `cancel`. On
+  web/desktop every method is a no-op — the rest of the app doesn't
+  have to guard `kIsWeb`.
+- `main.dart` initialises the service before `runApp` so
+  ResultScreen's Save flow can schedule without race.
+- History screen's delete now cancels the associated notification.
+- **Dashboard extended**:
+  - New "ESTIMATED FUEL BUDGET" card when trips carry fuel costs
+    (sum of persisted `fuelCostEur` across trips + count).
+  - New **"Top savers"** section — ranks the 5 best-saving saved trips
+    by `savedEurVsTolls + 0.10 × savedMinutesVsDesired` (common
+    time-value heuristic).
+  - Per-country row extended with a small right-aligned "€X" showing
+    the toll savings attributed to that country (split equally across
+    countries a trip crosses — coarse but honest without booth-level
+    data).
+
+**Validation**
+
+- Backend: **174/174** tests (previous 169 + 5 new — service returns
+  three keys, toll-free zeroes toll cost, scenic is slower, endpoint
+  empty by default, endpoint returns the three variants when opted in).
+- Mobile: `flutter analyze` clean, **94/94** tests (previous 85 + 9 new —
+  RouteVariant parsing, request field serialisation on/off,
+  route_variants default when missing, SavedTrip roundtrip of new
+  fields, legacy fallback, MealPreferences reminder default + roundtrip).
+
+**Deliberately out**
+
+- Reminders don't survive a device reboot on Android — needs a
+  `BOOT_COMPLETED` receiver + rescheduling service to be truly
+  robust. Fine for MVP; the trip's `notificationId` is persisted so
+  we can restore on next launch when we add the receiver.
+- Notifications on iOS/macOS wait for the platform folders to exist
+  (still web + Android only in this repo).
+- Route variants ship as summary rows — no map overlay of the two
+  extra polylines yet; the current map already gets busy with primary
+  + toll-alt dashed. When we add layer toggles it's a natural spot.
+- Per-country savings attribution splits equally across countries in
+  the route. A real booth-level attribution requires the TollGuru
+  booth country codes (TollGuru's response has them; not wired yet).
+
+---
+
+## Sprint 16 — Localisation (EN/ES/FR/IT/DE) + shareable APK
+
+**Goal:** two things the user asked for: run the app in the user's own
+language, and produce a distributable Android APK for family testers.
+
+**Delivered — localisation**
+
+- `flutter_localizations` + `intl` 0.20 wired in.
+- `l10n.yaml` config + ARB files for **English, Spanish, French,
+  Italian and German** in [`lib/l10n/`](../mobile/lib/l10n/). ~50
+  strings each — the app's first-touch surface plus critical labels.
+- `MaterialApp` gains `localizationsDelegates` + `supportedLocales`;
+  device-language wins (fall back to English if unsupported).
+- First-touch surface refactored to `AppLocalizations`: **onboarding
+  slides** (3), **login screen** (Apple/Google/Facebook/demo +
+  divider + terms + tagline), **plan screen** (hero eyebrow +
+  headline, intro, From/To labels, CTA, error, AppBar tooltips,
+  bottom note). The result / dashboard / profile screens keep their
+  keys in the ARB — those refactors are a follow-up sweep noted in
+  the deferred-features memory.
+
+**Delivered — Android APK**
+
+- Fixed Android build: `isCoreLibraryDesugaringEnabled = true` +
+  `desugar_jdk_libs 2.1.4` so `flutter_local_notifications`'
+  `zonedSchedule` compiles for release. `multiDexEnabled = true` for
+  the growing dependency graph. `minSdk = 21` (already the default but
+  now explicit).
+- `flutter build apk --release --split-per-abi` produces three
+  architecture-specific APKs under
+  `mobile/build/app/outputs/flutter-apk/`:
+  - `app-arm64-v8a-release.apk` — 22 MB, ~95 % of modern phones.
+  - `app-armeabi-v7a-release.apk` — 20 MB, older devices.
+  - `app-x86_64-release.apk` — 24 MB, emulators.
+- New [`docs/apk_distribution.md`](apk_distribution.md) covers build,
+  signing (debug keystore is fine for family; Play needs a real one),
+  three ways to solve the backend URL problem (LAN, ngrok tunnel,
+  deploy), share channels (WhatsApp / email / Drive / adb), and the
+  recipient's install flow (unknown sources dialog + MIUI's Install
+  via USB toggle).
+
+**Validation**
+
+- `flutter analyze` clean.
+- **94/94** mobile tests still passing after the l10n refactor.
+- Release APKs built without errors on all three ABIs.
+
+**Deliberately out**
+
+- **Full string sweep** across result / dashboard / profile /
+  history / narrative / mark-event / restaurant + hotel preferences.
+  The ARB has the keys, only the widget-side substitutions are
+  pending. Deferred to a "polish pass" so we don't rush translation
+  quality on 100+ strings.
+- No pluralisation or gender-agreement rules yet — Spanish/French/German
+  have edge cases (viajero/viajera; les/le; der/die/das) that need
+  ICU plural/select forms in the ARBs. Fine while every user-visible
+  string is agnostic.
+- Signed release keystore, Play Console setup, obfuscation
+  (`--obfuscate --split-debug-info`) — all deferred until we actually
+  publish. Debug-signed APK is fine for family sideloading.
+- Backend deployment — apk_distribution.md documents the tunnel /
+  LAN-IP workarounds, but a real production URL is a separate
+  infrastructure sprint.
+
+---
+
+## Sprint 17 — Backend deployment (Fly.io) with API-key gate
+
+**Goal:** move from "backend runs on your laptop" to "backend runs on a
+stable HTTPS URL your family can hit any time" — **without** exposing
+the codebase or letting internet strangers use your compute.
+
+**Delivered — API-key gate**
+
+- New [`app/api/api_key.py`](../backend/app/api/api_key.py) middleware.
+  When `MYTRAVELPAL_API_KEY` is set in the environment, every incoming
+  request to `/v1/*` must carry `X-MyTravelPal-Api-Key` matching it.
+  `/health` and `/docs` remain open (infra probes + OpenAPI). Missing
+  or wrong key → 401 `{error: "api_key_required"}`.
+- Middleware is a **no-op in dev** (env var unset) — existing tests
+  and local `uvicorn --reload` continue working without headers.
+
+**Delivered — Fly.io deployment config**
+
+- Production-ready `backend/Dockerfile` — multi-stage
+  friendly base, only runtime deps installed (`pip install -e .`, no
+  `[dev]` extras), no `--reload` in `CMD`, no test/docs files in the
+  image.
+- `backend/.dockerignore` — keeps venv, tests, docs, docker-compose,
+  git metadata out of the image.
+- `backend/fly.toml` — deployment config: primary region `mad`
+  (Madrid, closest to launch markets), auto-stop when idle to save
+  free-tier hours, `/health` check, non-secret env vars set inline
+  (`MYTRAVELPAL_ROUTING=osrm`, `MYTRAVELPAL_WEATHER=openmeteo`,
+  `MYTRAVELPAL_FIRES=effis`).
+
+**Delivered — mobile API-key wiring**
+
+- `ApiConfig` reads `--dart-define=API_KEY=…` at build time. Empty
+  default keeps local dev working.
+- `ApiClient._headers()` adds `X-MyTravelPal-Api-Key` on every request
+  when the key is set — beside the existing Premium and Authorization
+  headers.
+
+**Delivered — docs**
+
+- New [`docs/deployment.md`](deployment.md) with the full Fly.io
+  walkthrough: install, `fly launch --no-deploy`, seed secrets
+  (`MYTRAVELPAL_API_KEY`, `MYTRAVELPAL_JWT_SECRET`, optional
+  `ANTHROPIC_API_KEY`, `TOLLGURU_API_KEY`, `GOOGLE_CLIENT_ID`,
+  `FACEBOOK_APP_SECRET`, `APPLE_APP_ID`), `fly deploy`, verify with
+  curl, wire APK. Also explains what "not exposing" means at three
+  levels (source, URL, usage) and where each is handled. Covers
+  provider alternatives (Railway / Render / Hetzner) and lists what
+  the setup deliberately does NOT include (custom domain, DB backup,
+  rate limiting beyond the gate, CI deploy).
+- [`docs/apk_distribution.md`](apk_distribution.md) Option 3 updated
+  to point at the new deployment guide + shows the double `--dart-define`
+  (both URL and key).
+
+**Validation**
+
+- Backend: **179/179** tests passing (previous 174 + 5 new — gate
+  off by default, health always exempt, rejects without header,
+  rejects wrong key, passes with correct key).
+- Mobile: `flutter analyze` clean, **94/94** tests (unchanged surface,
+  new header only added when `API_KEY` is provided).
+- Docker image builds locally without warnings that matter.
+
+**Deliberately out**
+
+- Custom domain — buy a real one and `fly certs create` when ready.
+- Persistent DB — nothing needs it yet (user-marked events and
+  auth are in-memory today). Fly Postgres or external Postgres when
+  cloud-sync of trips lands.
+- Rate limiting beyond the key gate — `slowapi` or Cloudflare in
+  front if a real leak happens.
+- CI-based deployment — `fly deploy` from a laptop covers the current
+  release cadence; GitHub Actions is a follow-up once we have a git
+  host.

@@ -1,62 +1,40 @@
 """Country detection from geographic coordinates.
 
-MVP heuristic: axis-aligned bounding boxes per launch country. Good enough
-for planning routes between well-known cities in CH/FR/IT/ES; a real
-implementation will use PostGIS polygons.
+Uses axis-aligned bounding boxes from [`countries data`](../data/countries.py)
+so adding a country doesn't require touching this service. Overlaps are
+resolved by a hand-tuned priority order (smaller / more specific
+countries win — CH beats FR near Geneva, LU beats DE/BE/FR, etc.).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Iterable
 
+from app.data.countries import COUNTRIES, priority_order
 from app.domain import Coordinate, Country
 
 
-@dataclass(frozen=True, slots=True)
-class _BBox:
-    min_lat: float
-    max_lat: float
-    min_lon: float
-    max_lon: float
-
-    def contains(self, c: Coordinate) -> bool:
-        return (
-            self.min_lat <= c.lat <= self.max_lat
-            and self.min_lon <= c.lon <= self.max_lon
-        )
-
-
-# Approximate mainland bounding boxes for the four launch countries.
-# Overseas territories intentionally out of scope for the MVP.
-_BOXES: dict[Country, _BBox] = {
-    Country.CH: _BBox(45.82, 47.81, 5.96, 10.49),
-    Country.FR: _BBox(41.36, 51.09, -5.14, 9.56),
-    Country.IT: _BBox(35.49, 47.09, 6.63, 18.52),
-    Country.ES: _BBox(35.95, 43.79, -9.30, 4.32),
-}
+def _contains(bbox: tuple[float, float, float, float], c: Coordinate) -> bool:
+    return bbox[0] <= c.lat <= bbox[1] and bbox[2] <= c.lon <= bbox[3]
 
 
 def detect_country(coord: Coordinate) -> Country | None:
-    """Return the launch country containing `coord`, or None if outside all.
+    """Return the country whose bounding box contains `coord`.
 
-    Overlap handling: CH is checked first (smallest, wins over FR/IT border
-    overlap); ES before FR (Pyrenees overlap); IT before FR (Alps overlap).
+    Returns None if `coord` falls outside every supported country's
+    bounding box.
     """
-    for country in (Country.CH, Country.ES, Country.IT, Country.FR):
-        if _BOXES[country].contains(coord):
-            return country
+    for code in priority_order():
+        data = COUNTRIES.get(code)
+        if data is not None and _contains(data.bbox, coord):
+            return Country(code)
     return None
 
 
 def infer_countries_crossed(
     points: Iterable[Coordinate],
 ) -> tuple[Country, ...]:
-    """Return the ordered, de-duplicated countries covering `points`.
-
-    In the MVP we only pass origin and destination; a future real routing
-    provider will let us pass every polyline vertex.
-    """
+    """Ordered, de-duplicated countries covering `points`."""
     seen: list[Country] = []
     for p in points:
         c = detect_country(p)

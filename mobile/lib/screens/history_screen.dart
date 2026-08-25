@@ -7,7 +7,9 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../design/components.dart';
 import '../design/tokens.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/notifications.dart';
 import '../storage/saved_trip.dart';
 import 'result_screen.dart';
 
@@ -34,20 +36,24 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   }
 
   Future<void> _delete(SavedTrip trip) async {
+    final l = AppLocalizations.of(context);
+    await NotificationService.instance.cancel(trip.notificationId);
     await ref.read(tripStorageProvider).delete(trip.id);
     await _reload();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Deleted ${_shortName(trip.origin)} → ${_shortName(trip.destination)}',
+          l.historyDeleted(
+            '${_shortName(trip.origin)} → ${_shortName(trip.destination)}',
+          ),
         ),
       ),
     );
   }
 
   Future<void> _reopen(SavedTrip trip) async {
-    final api = ref.read(apiClientProvider);
+    final api = ref.read(apiClientWithPremiumProvider);
     final request = TripPlanRequest(
       origin: trip.origin.coordinate,
       destination: trip.destination.coordinate,
@@ -70,7 +76,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Re-plan failed: ${e.statusCode}')),
+        SnackBar(content: Text(
+          AppLocalizations.of(context).historyReplanFailed(e.statusCode),
+        )),
       );
     }
   }
@@ -78,8 +86,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Saved trips')),
+      appBar: AppBar(title: Text(l.historyTitle)),
       body: FutureBuilder<List<SavedTrip>>(
         future: _future,
         builder: (context, snapshot) {
@@ -90,12 +99,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           if (trips.isEmpty) {
             return EmptyState(
               icon: Icons.bookmark_outline,
-              title: 'No saved trips yet',
-              description:
-                  'Plan a trip and tap the bookmark to keep it here for later.',
+              title: l.historyEmptyTitle,
+              description: l.historyEmptyBody,
               action: OutlinedButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Plan a trip'),
+                child: Text(l.historyPlanCta),
               ),
             );
           }
@@ -151,7 +159,8 @@ class _TripCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final dateFmt = DateFormat('d MMM · HH:mm');
+    final l = AppLocalizations.of(context);
+    final dateFmt = DateFormat('d MMM · HH:mm', l.localeName);
     return SoftCard(
       onTap: onOpen,
       padding: const EdgeInsets.all(Tokens.space20),
@@ -175,7 +184,7 @@ class _TripCard extends StatelessWidget {
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: scheme.onSurfaceVariant),
-                tooltip: 'Delete',
+                tooltip: l.historyDeleteTooltip,
                 onPressed: onDelete,
               ),
             ],
@@ -191,8 +200,10 @@ class _TripCard extends StatelessWidget {
               ),
               SoftBadge(
                 icon: Icons.schedule,
-                label:
-                    'Best ${DateFormat.Hm().format(trip.recommendedDepartureAt)}',
+                label: l.historyBestAt(
+                  DateFormat.Hm(l.localeName)
+                      .format(trip.recommendedDepartureAt),
+                ),
                 color: scheme.primary,
                 background: scheme.primaryContainer,
                 borderColor: scheme.primary.withValues(alpha: 0.25),
@@ -203,7 +214,7 @@ class _TripCard extends StatelessWidget {
           ),
           const SizedBox(height: Tokens.space12),
           Text(
-            'Wanted ${dateFmt.format(trip.desiredDepartureAt)}',
+            l.historyWantedAt(dateFmt.format(trip.desiredDepartureAt)),
             style: t.bodySmall,
           ),
         ],

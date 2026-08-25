@@ -10,7 +10,7 @@ Europe scope thereafter.
 
 > Original brief (Spanish): [Prompt:.yml](Prompt:.yml)
 
-## Project state — Sprints 1-10
+## Project state — Sprints 1-17
 
 Backend + Flutter app slice with mocked external providers (plus real
 Nominatim as a geocoding fallback, and real Claude Opus 5 for the AI
@@ -32,12 +32,33 @@ assistant when `ANTHROPIC_API_KEY` is set). See
 - [x] Trip profile (vehicle type + fuel + consumption + travellers + kids/pets + meal times) — configured once, drives POI ranking and cost estimates silently
 - [x] Trip optimizations: meal-stop matching (breakfast/lunch/dinner), sleep-stop suggestion, fuel-cost estimate (€ + L or kWh) with EV range check
 - [x] User-submitted adverse events with type/severity picker + description
+- [x] **Full European coverage** — EU-27 + UK + NO + IS + CH (31 countries) with per-country bounding boxes, toll pricing, price anchors and sample cities
+- [x] Real weather forecasts along the route via **Open-Meteo** (opt-in, mock fallback for CI)
+- [x] Partial toll skipping — per-stretch recommendations to exit before an expensive toll and rejoin after (heuristic; real booth-level data comes with paid provider)
+- [x] Premium gating (`X-MyTravelPal-Premium` header) for AI briefing + hourly toll analysis; local "Simulate Premium" toggle in mobile until real IAP lands
+- [x] Per-trip profile override — change vehicle/travellers for a single trip without touching the global profile
+- [x] Voice narrative — TTS "Read aloud" on the AI briefing via `flutter_tts`
+- [x] User accounts (JWT sessions) — Apple / Google / Facebook / demo sign-in; backend auth endpoints + `Authorization: Bearer` on all requests
+- [x] Personal dashboard — headline stats (trips, km, hours, best-time savings estimate, top countries) with sign-out
+- [x] Share trip via the OS share sheet with a **deep link** (`mytravelpal://trip?…`) that reopens the plan on the recipient's device
+- [x] Real wildfires via **EFFIS** (Copernicus, free) — first real emergency source alongside Open-Meteo weather
+- [x] Real hotels via **Overpass API** (OSM `tourism=hotel|guest_house|motel` with kid/pet/parking tags) — graceful mock fallback
+- [x] Real fuel stations via **Overpass API** — graceful mock fallback
+- [x] Real toll pricing via **TollGuru** — booth-level prices wired into `/trips/plan`, replace heuristic and feed per-booth partial-toll-skip recommendations
+- [x] National weather feed stubs (AEMET / Météo-France / DWD / MetOffice) — activate per-key when subscribed
 - [x] Nordic/Airbnb-style UI system with light/dark theme toggle, onboarding, splash, and reusable design components
+- [x] Time-saved and money-saved surfaced on the plan preview (hero + summary card), on saved-trip persistence, and aggregated on the personal dashboard
+- [x] Route comparison (fastest / toll-free / scenic) side-by-side on the result screen
+- [x] Dashboard fuel budget, top-savers ranking, and per-country savings breakdown
+- [x] Local reminder notifications X minutes before the recommended departure (configurable per-user)
+- [x] App localised to **EN / ES / FR / IT / DE** — onboarding, login and planner surfaces translated; ARB has full key set for remaining screens
+- [x] Release Android APK build documented in [docs/apk_distribution.md](docs/apk_distribution.md) — build, sign, backend-URL options, share, install flow
+- [x] Backend deployment recipe (Fly.io, HTTPS, secrets, API-key gate) in [docs/deployment.md](docs/deployment.md) — source stays local, strangers can't use the URL
 - [x] `docker compose up` local environment
-- [x] Backend tests: 120 passing
+- [x] Backend tests: 174 passing
 - [x] Revenue-modeling tools (ads, subs, funnel): 68 passing — see [tools/README.md](tools/README.md)
-- [x] Flutter mobile app: onboarding, city search, real-road map, best-departure chart, saved trips, trip profile, hotels/restaurants profile-aware filters, rest stops, adverse-event alerts + submission, toll savings, hourly toll (Premium), route options, trip optimizations, AI briefing — see [mobile/README.md](mobile/README.md)
-- [x] Mobile tests: 61 passing (`flutter analyze` clean)
+- [x] Flutter mobile app: sign-in, onboarding, city search across all EU countries, real-road map, best-departure chart with per-trip savings, saved trips, dashboard with time+money+fuel totals and top-savers ranking, share via deep link, trip profile + per-trip override + reminder setting, hotels/restaurants profile-aware filters, rest stops, adverse-event alerts + submission, toll savings, partial toll skips, hourly toll (Premium), route options + variants comparison, trip optimizations, AI briefing + voice — see [mobile/README.md](mobile/README.md)
+- [x] Mobile tests: 94 passing (`flutter analyze` clean)
 - [ ] Real paid provider integrations (HERE / TomTom / TollGuru / EFFIS / Open-Meteo / Spanish fuel API / …) — on hold; OSRM + Nominatim + Claude cover the MVP
 - [ ] Real auth + Premium subscription gating (RevenueCat / StoreKit / Play Billing) — placeholder today
 

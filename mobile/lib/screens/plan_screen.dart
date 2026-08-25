@@ -6,20 +6,29 @@ import 'package:intl/intl.dart';
 import '../api/api_client.dart';
 import '../api/models.dart';
 import '../design/components.dart';
-import '../design/theme_toggle.dart';
 import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/trip_sharing.dart';
 import '../widgets/hotel_preferences.dart';
 import '../widgets/location_search_field.dart';
 import '../widgets/restaurant_preferences.dart';
+import '../widgets/travel_style_chip.dart';
+import 'dashboard_screen.dart';
+import 'favorites_screen.dart';
 import 'history_screen.dart';
 import 'mark_event_screen.dart';
+import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'result_screen.dart';
 
 class PlanScreen extends ConsumerStatefulWidget {
-  const PlanScreen({super.key});
+  const PlanScreen({super.key, this.initialShared});
+
+  /// When arriving via a shared trip link, prefill the form with the
+  /// origin / destination / departure so the user just taps Plan.
+  final SharedTrip? initialShared;
 
   @override
   ConsumerState<PlanScreen> createState() => _PlanScreenState();
@@ -28,20 +37,48 @@ class PlanScreen extends ConsumerStatefulWidget {
 class _PlanScreenState extends ConsumerState<PlanScreen> {
   GeocodeResult? _origin;
   GeocodeResult? _destination;
-  DateTime _departure = _defaultDeparture();
+  late DateTime _departure = _defaultDeparture();
   HotelPreferences _hotelPrefs = HotelPreferences.disabled;
   RestaurantPreferences _restaurantPrefs = RestaurantPreferences.disabled;
   bool _alertsEnabled = false;
   bool _tollAlternativeEnabled = false;
   bool _hourlyTollEnabled = false;
+  bool _routeComparisonEnabled = false;
   bool _avoidMotorways = false;
   bool _preferScenic = false;
+  TripProfile? _overrideProfile;
   bool _loading = false;
   String? _error;
 
   static DateTime _defaultDeparture() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day + 1, 8);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final incoming = widget.initialShared;
+    if (incoming != null) {
+      _origin = GeocodeResult(
+        displayName: incoming.originName ?? 'Shared origin',
+        coordinate: incoming.origin,
+        country: _guessCountry(incoming.origin) ?? Country.fr,
+      );
+      _destination = GeocodeResult(
+        displayName: incoming.destinationName ?? 'Shared destination',
+        coordinate: incoming.destination,
+        country: _guessCountry(incoming.destination) ?? Country.fr,
+      );
+      _departure = incoming.departureAt.toLocal();
+      // Note: we don't auto-submit — user confirms with the CTA.
+    }
+  }
+
+  Country? _guessCountry(LatLon _) {
+    // Country is only used for display in the search chip; the backend
+    // re-detects from coordinates. Nothing to do beyond the fallback.
+    return null;
   }
 
   Future<void> _pickDeparture() async {
@@ -67,7 +104,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final origin = _origin;
     final destination = _destination;
     if (origin == null || destination == null) {
-      setState(() => _error = 'Pick an origin and a destination.');
+      setState(() => _error =
+          AppLocalizations.of(context).planErrorPickEndpoints);
       return;
     }
     setState(() {
@@ -75,7 +113,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       _error = null;
     });
     try {
-      final api = ref.read(apiClientProvider);
+      final api = ref.read(apiClientWithPremiumProvider);
       final request = TripPlanRequest(
         origin: origin.coordinate,
         destination: destination.coordinate,
@@ -90,10 +128,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             _restaurantPrefs.enabled ? _restaurantPrefs.priceBand : null,
         includeAdverseEvents: _alertsEnabled,
         includeTollAlternative: _tollAlternativeEnabled,
+        includeRouteComparison: _routeComparisonEnabled,
         includeHourlyTollAnalysis: _hourlyTollEnabled,
         avoidMotorways: _avoidMotorways,
         preferScenic: _preferScenic,
-        tripProfile: ref.read(tripProfileProvider),
+        tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
       );
       final response = await api.planTrip(request);
       if (!mounted) return;
@@ -119,9 +158,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final api = ref.watch(apiClientProvider);
+    final api = ref.watch(apiClientWithPremiumProvider);
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     final dateFmt = DateFormat('EEE, d MMM · HH:mm');
 
     return Scaffold(
@@ -137,12 +177,36 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                 children: [
                   Icon(Icons.explore_outlined, color: scheme.primary),
                   const SizedBox(width: Tokens.space8),
-                  Text('MyTravelPal', style: t.titleLarge),
+                  Text(l.appName, style: t.titleLarge),
                 ],
               ),
               actions: [
+                TravelStyleChip(
+                  activeProfile: _overrideProfile
+                      ?? ref.watch(tripProfileProvider)
+                      ?? const TripProfile(),
+                  savedProfile: ref.watch(tripProfileProvider),
+                  isOverride: _overrideProfile != null,
+                  onPresetPicked: (preset) {
+                    final base = _overrideProfile
+                        ?? ref.read(tripProfileProvider)
+                        ?? const TripProfile();
+                    setState(() => _overrideProfile = preset.apply(base));
+                  },
+                  onClearOverride: () =>
+                      setState(() => _overrideProfile = null),
+                ),
                 IconButton(
-                  tooltip: 'Report an event',
+                  tooltip: l.planTooltipDashboard,
+                  icon: const Icon(Icons.dashboard_outlined),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const DashboardScreen(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.planTooltipReport,
                   icon: const Icon(Icons.add_alert_outlined),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -150,9 +214,26 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     ),
                   ),
                 ),
-                const ThemeToggleButton(),
                 IconButton(
-                  tooltip: 'Saved trips',
+                  tooltip: l.planTooltipFavorites,
+                  icon: const Icon(Icons.star_border),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const FavoritesScreen(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.planTooltipSettings,
+                  icon: const Icon(Icons.settings_outlined),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const SettingsScreen(),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  tooltip: l.planTooltipSaved,
                   icon: const Icon(Icons.bookmark_outline),
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -170,30 +251,70 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   // Hero
-                  Text('THE PLANNER',
+                  Text(l.planEyebrow,
                       style: t.labelSmall?.copyWith(
                         color: scheme.tertiary, letterSpacing: 1.4,
                       )),
                   const SizedBox(height: Tokens.space8),
-                  Text('Where are we going\ntoday?', style: t.displayMedium)
+                  Text(l.planHero, style: t.displayMedium)
                       .animate()
                       .fadeIn(duration: Tokens.motionBase)
                       .moveY(begin: 8, end: 0, curve: Tokens.curveOut),
                   const SizedBox(height: Tokens.space8),
                   Text(
-                    'Pick two points and a time. We handle the rest.',
+                    l.planIntro,
                     style: t.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: Tokens.space16),
                   _ProfileChip(
-                    profile: ref.watch(tripProfileProvider),
+                    profile: _overrideProfile
+                        ?? ref.watch(tripProfileProvider),
+                    isOverride: _overrideProfile != null,
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const ProfileScreen(),
                       ),
                     ),
                   ),
-                  const SizedBox(height: Tokens.space24),
+                  const SizedBox(height: Tokens.space8),
+                  Row(
+                    children: [
+                      TextButton.icon(
+                        icon: const Icon(Icons.tune, size: 16),
+                        label: Text(
+                          _overrideProfile != null
+                              ? 'Overriding for this trip'
+                              : 'Override for this trip',
+                        ),
+                        onPressed: () async {
+                          final base = _overrideProfile
+                              ?? ref.read(tripProfileProvider)
+                              ?? const TripProfile();
+                          final result = await Navigator.of(context)
+                              .push<TripProfile?>(
+                            MaterialPageRoute(
+                              builder: (_) => ProfileScreen(
+                                mode: ProfileScreenMode.override_,
+                                initial: base,
+                              ),
+                            ),
+                          );
+                          if (!mounted) return;
+                          if (result != null) {
+                            setState(() => _overrideProfile = result);
+                          }
+                        },
+                      ),
+                      if (_overrideProfile != null)
+                        TextButton.icon(
+                          icon: const Icon(Icons.clear, size: 16),
+                          label: const Text('Clear override'),
+                          onPressed: () =>
+                              setState(() => _overrideProfile = null),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Tokens.space16),
 
                   // Route card
                   SoftCard(
@@ -201,16 +322,49 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     child: Column(
                       children: [
                         LocationSearchField(
-                          label: 'From',
+                          label: l.planFrom,
                           geocode: api.geocode,
-                          onSelected: (r) => setState(() => _origin = r),
+                          onUseCurrentLocation: () async {
+                            final res = await ref
+                                .read(currentLocationServiceProvider)
+                                .resolve();
+                            if (!context.mounted) return null;
+                            if (res.disabled || res.denied) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(
+                                  res.disabled
+                                      ? l.locationServiceOff
+                                      : l.locationPermissionDenied,
+                                )),
+                              );
+                              return null;
+                            }
+                            if (res.timedOut || res.place == null) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(l.locationUnavailable)),
+                              );
+                              return null;
+                            }
+                            return res.place;
+                          },
+                          onSelected: (r) {
+                            setState(() => _origin = r);
+                            if (r != null) {
+                              ref.read(recentSearchesProvider.notifier).push(r);
+                            }
+                          },
                           initial: _origin,
                         ),
                         const SizedBox(height: Tokens.space12),
                         LocationSearchField(
-                          label: 'To',
+                          label: l.planTo,
                           geocode: api.geocode,
-                          onSelected: (r) => setState(() => _destination = r),
+                          onSelected: (r) {
+                            setState(() => _destination = r);
+                            if (r != null) {
+                              ref.read(recentSearchesProvider.notifier).push(r);
+                            }
+                          },
                           initial: _destination,
                         ),
                         const SizedBox(height: Tokens.space12),
@@ -321,6 +475,24 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         const Divider(height: Tokens.space16),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            'Compare route variants', style: t.titleMedium,
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Fastest vs. toll-free vs. scenic — see all '
+                              'three side by side on the results.',
+                              style: t.bodySmall,
+                            ),
+                          ),
+                          value: _routeComparisonEnabled,
+                          onChanged: (v) =>
+                              setState(() => _routeComparisonEnabled = v),
+                        ),
+                        const Divider(height: Tokens.space16),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
                           title: Text('Avoid motorways', style: t.titleMedium),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
@@ -377,17 +549,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     ),
 
                   PrimaryCta(
-                    label: _loading ? 'Planning your trip…' : 'Plan trip',
+                    label: _loading ? l.planCtaBusy : l.planCta,
                     icon: _loading ? null : Icons.arrow_forward,
                     loading: _loading,
                     onPressed: _submit,
                   ),
                   const SizedBox(height: Tokens.space12),
                   Center(
-                    child: Text(
-                      'Countries are detected automatically from your route.',
-                      style: t.bodySmall,
-                    ),
+                    child: Text(l.planCountriesNote, style: t.bodySmall),
                   ),
                 ]),
               ),
@@ -400,10 +569,15 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 }
 
 class _ProfileChip extends StatelessWidget {
-  const _ProfileChip({required this.profile, required this.onTap});
+  const _ProfileChip({
+    required this.profile,
+    required this.onTap,
+    this.isOverride = false,
+  });
 
   final TripProfile? profile;
   final VoidCallback onTap;
+  final bool isOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -412,13 +586,16 @@ class _ProfileChip extends StatelessWidget {
     final hasProfile = profile != null;
     final children = <Widget>[
       Icon(
-        hasProfile ? Icons.person_outline : Icons.person_add_alt_1,
-        size: 18, color: scheme.onSurfaceVariant,
+        isOverride
+            ? Icons.tune
+            : (hasProfile ? Icons.person_outline : Icons.person_add_alt_1),
+        size: 18,
+        color: isOverride ? scheme.tertiary : scheme.onSurfaceVariant,
       ),
       const SizedBox(width: Tokens.space8),
       Expanded(
         child: hasProfile
-            ? _profileSummary(profile!, t, scheme)
+            ? _profileSummary(profile!, t, scheme, isOverride)
             : Text(
                 'Set up your trip profile',
                 style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
@@ -428,6 +605,7 @@ class _ProfileChip extends StatelessWidget {
     ];
     return SoftCard(
       onTap: onTap,
+      borderColor: isOverride ? scheme.tertiary.withValues(alpha: 0.4) : null,
       padding: const EdgeInsets.symmetric(
         horizontal: Tokens.space16, vertical: Tokens.space12,
       ),
@@ -435,7 +613,9 @@ class _ProfileChip extends StatelessWidget {
     );
   }
 
-  Widget _profileSummary(TripProfile p, TextTheme t, ColorScheme scheme) {
+  Widget _profileSummary(
+    TripProfile p, TextTheme t, ColorScheme scheme, bool isOverride,
+  ) {
     final bits = <String>[
       p.vehicle.type.label,
       p.vehicle.fuelType.label,
@@ -443,10 +623,21 @@ class _ProfileChip extends StatelessWidget {
       if (p.hasKids) 'kids',
       if (p.hasPets) 'pets',
     ];
-    return Text(
-      bits.join(' · '),
-      style: t.bodyMedium?.copyWith(color: scheme.onSurface),
-      overflow: TextOverflow.ellipsis,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (isOverride)
+          Text(
+            'OVERRIDE ACTIVE',
+            style: t.labelSmall
+                ?.copyWith(color: scheme.tertiary, letterSpacing: 1.2),
+          ),
+        Text(
+          bits.join(' · '),
+          style: t.bodyMedium?.copyWith(color: scheme.onSurface),
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }

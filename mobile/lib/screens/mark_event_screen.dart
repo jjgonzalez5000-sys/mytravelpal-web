@@ -5,6 +5,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../design/components.dart';
 import '../design/tokens.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../widgets/location_search_field.dart';
 
@@ -33,10 +34,11 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
 
   Future<void> _submit() async {
     if (_submitting) return;
+    final l = AppLocalizations.of(context);
     final place = _place;
     final description = _descriptionCtrl.text.trim();
     if (place == null || description.isEmpty) {
-      setState(() => _error = 'Pick a place and describe what you saw.');
+      setState(() => _error = l.eventPickPlace);
       return;
     }
     setState(() {
@@ -44,7 +46,7 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
       _error = null;
     });
     try {
-      await ref.read(apiClientProvider).submitAdverseEvent(
+      await ref.read(apiClientWithPremiumProvider).submitAdverseEvent(
             type: _type,
             severity: _severity,
             lat: place.coordinate.lat,
@@ -53,13 +55,13 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
           );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Report submitted — thank you!')),
+        SnackBar(content: Text(l.eventThankYou)),
       );
       Navigator.of(context).pop();
     } on ApiException catch (e) {
       setState(() => _error = 'API error ${e.statusCode}');
     } catch (e) {
-      setState(() => _error = 'Could not submit: $e');
+      setState(() => _error = l.eventCouldNotSubmit('$e'));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -67,21 +69,22 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final api = ref.watch(apiClientProvider);
+    final api = ref.watch(apiClientWithPremiumProvider);
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Report an event')),
+      appBar: AppBar(title: Text(l.eventReport)),
       body: ListView(
         padding: const EdgeInsets.all(Tokens.space20),
         children: [
           Text(
-            'Help other drivers know what you saw. Reports expire after '
-            '24 h.',
+            l.eventIntro,
             style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: Tokens.space24),
-          const SectionHeader(title: 'What happened', eyebrow: 'Type'),
+          SectionHeader(
+              title: l.eventWhatHappened, eyebrow: l.eventWhatHappenedEyebrow),
           SoftCard(
             padding: const EdgeInsets.all(Tokens.space16),
             child: Wrap(
@@ -101,24 +104,24 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
             ),
           ),
           const SizedBox(height: Tokens.space24),
-          const SectionHeader(title: 'Severity'),
+          SectionHeader(title: l.eventSeverity),
           SoftCard(
             padding: const EdgeInsets.symmetric(
               horizontal: Tokens.space16, vertical: Tokens.space8,
             ),
             child: SegmentedButton<AdverseEventSeverity>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: AdverseEventSeverity.info,
-                  label: Text('Info'),
+                  label: Text(l.eventSeverityInfo),
                 ),
                 ButtonSegment(
                   value: AdverseEventSeverity.warning,
-                  label: Text('Warning'),
+                  label: Text(l.eventSeverityWarning),
                 ),
                 ButtonSegment(
                   value: AdverseEventSeverity.critical,
-                  label: Text('Critical'),
+                  label: Text(l.eventSeverityCritical),
                 ),
               ],
               selected: {_severity},
@@ -126,23 +129,25 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
             ),
           ),
           const SizedBox(height: Tokens.space24),
-          const SectionHeader(title: 'Where', eyebrow: 'Nearest city'),
+          SectionHeader(
+              title: l.eventWhere, eyebrow: l.eventWhereEyebrow),
           LocationSearchField(
-            label: 'Location',
+            label: l.eventLocation,
             geocode: api.geocode,
             onSelected: (r) => setState(() => _place = r),
             initial: _place,
           ),
           const SizedBox(height: Tokens.space24),
-          const SectionHeader(title: 'Describe it', eyebrow: 'Short & useful'),
+          SectionHeader(
+              title: l.eventDescribeTitle, eyebrow: l.eventDescribeEyebrow),
           SoftCard(
             padding: const EdgeInsets.all(Tokens.space12),
             child: TextField(
               controller: _descriptionCtrl,
               minLines: 2, maxLines: 5,
               maxLength: 280,
-              decoration: const InputDecoration(
-                hintText: 'e.g. Trees down on A6 southbound, 2 lanes closed',
+              decoration: InputDecoration(
+                hintText: l.eventDescribeHint,
                 border: InputBorder.none,
               ),
             ),
@@ -155,7 +160,7 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
                   style: TextStyle(color: scheme.error)),
             ),
           PrimaryCta(
-            label: _submitting ? 'Submitting…' : 'Submit report',
+            label: _submitting ? l.eventSubmitting : l.eventSubmitReport,
             icon: _submitting ? null : Icons.send,
             loading: _submitting,
             onPressed: _submit,

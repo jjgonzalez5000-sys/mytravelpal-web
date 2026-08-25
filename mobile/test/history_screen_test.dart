@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/l10n/app_localizations.dart';
 import 'package:mytravelpal/providers.dart';
 import 'package:mytravelpal/screens/history_screen.dart';
 import 'package:mytravelpal/storage/saved_trip.dart';
@@ -22,6 +23,8 @@ Widget _appHost(TripStorage storage) => ProviderScope(
       overrides: [tripStorageProvider.overrideWithValue(storage)],
       child: MaterialApp(
         theme: AppTheme.light(),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: const HistoryScreen(),
       ),
     );

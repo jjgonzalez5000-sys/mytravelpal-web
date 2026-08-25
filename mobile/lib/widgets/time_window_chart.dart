@@ -1,9 +1,22 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../api/models.dart';
+import '../utils/duration_format.dart';
 
+/// Horizontal bar chart for the departure-window candidates.
+///
+/// Rewritten in Sprint 23. The previous vertical fl_chart version took
+/// half the screen height for 13 samples and rotated the time labels
+/// awkwardly. This version renders one row per candidate — cleaner on
+/// mobile, glanceable, and lets us tap a row to pick that departure.
+///
+/// Each row is:
+/// `[HH:MM]   █████████████░░░░░░   14h 32m   ×1.05   [chip]`
+///
+/// The recommended slot gets a solid primary bar; the user's original
+/// desired time gets an outlined bar so they see, at a glance, how
+/// much they save by shifting.
 class TimeWindowChart extends StatelessWidget {
   const TimeWindowChart({
     super.key,
@@ -14,11 +27,16 @@ class TimeWindowChart extends StatelessWidget {
   final List<TimeWindow> windows;
   final DateTime desiredDepartureAt;
 
+  static const _barHeight = 8.0;
+  static const _rowHeight = 30.0;
+  static const _labelWidth = 52.0;
+  static const _durationWidth = 68.0;
+
   @override
   Widget build(BuildContext context) {
     if (windows.isEmpty) {
       return const SizedBox(
-        height: 200,
+        height: 120,
         child: Center(child: Text('No time windows returned.')),
       );
     }
@@ -27,118 +45,38 @@ class TimeWindowChart extends StatelessWidget {
       ..sort((a, b) => a.departureAt.compareTo(b.departureAt));
 
     final scheme = Theme.of(context).colorScheme;
-    final recommendedColor = scheme.primary;
-    final otherColor = scheme.secondaryContainer;
-    final onOther = scheme.onSecondaryContainer;
-
-    // Nearest bar to the user's desired departure — outlined so users can
-    // see, at a glance, how much they save by shifting.
-    final desiredIndex = _indexClosestTo(sorted, desiredDepartureAt);
-
-    final maxMinutes =
-        sorted.map((w) => w.estimatedMinutes).reduce((a, b) => a > b ? a : b);
-    final yMax = (maxMinutes * 1.15).ceilToDouble();
+    final t = Theme.of(context).textTheme;
     final fmt = DateFormat.Hm();
 
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Padding(
-        padding: const EdgeInsets.only(top: 16, right: 8),
-        child: BarChart(
-          BarChartData(
-            alignment: BarChartAlignment.spaceAround,
-            maxY: yMax,
-            barGroups: [
-              for (var i = 0; i < sorted.length; i++)
-                BarChartGroupData(
-                  x: i,
-                  barRods: [
-                    BarChartRodData(
-                      toY: sorted[i].estimatedMinutes,
-                      width: 18,
-                      color:
-                          sorted[i].recommended ? recommendedColor : otherColor,
-                      borderRadius:
-                          const BorderRadius.vertical(top: Radius.circular(4)),
-                      borderSide: i == desiredIndex && !sorted[i].recommended
-                          ? BorderSide(color: scheme.primary, width: 2)
-                          : BorderSide.none,
-                    ),
-                  ],
-                  showingTooltipIndicators:
-                      sorted[i].recommended ? const [0] : const [],
-                ),
-            ],
-            titlesData: FlTitlesData(
-              leftTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 42,
-                  getTitlesWidget: (v, _) => Text(
-                    '${v.toInt()}m',
-                    style: TextStyle(color: onOther, fontSize: 11),
-                  ),
-                ),
-              ),
-              rightTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              topTitles: const AxisTitles(
-                sideTitles: SideTitles(showTitles: false),
-              ),
-              bottomTitles: AxisTitles(
-                sideTitles: SideTitles(
-                  showTitles: true,
-                  reservedSize: 28,
-                  getTitlesWidget: (v, _) {
-                    final i = v.toInt();
-                    if (i < 0 || i >= sorted.length) {
-                      return const SizedBox.shrink();
-                    }
-                    final isDesired = i == desiredIndex;
-                    return Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        fmt.format(sorted[i].departureAt),
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight:
-                              isDesired ? FontWeight.w700 : FontWeight.w400,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            gridData: FlGridData(
-              show: true,
-              drawVerticalLine: false,
-              getDrawingHorizontalLine: (_) => FlLine(
-                color: scheme.outlineVariant,
-                strokeWidth: 0.5,
-              ),
-            ),
-            borderData: FlBorderData(show: false),
-            barTouchData: BarTouchData(
-              touchTooltipData: BarTouchTooltipData(
-                getTooltipItem: (group, _, rod, __) {
-                  final w = sorted[group.x];
-                  return BarTooltipItem(
-                    '${fmt.format(w.departureAt)}\n'
-                    '${w.estimatedMinutes.toStringAsFixed(0)} min · '
-                    '×${w.trafficFactor.toStringAsFixed(2)}',
-                    TextStyle(
-                      color: scheme.onInverseSurface,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  );
-                },
-              ),
-            ),
+    final maxMinutes = sorted
+        .map((w) => w.estimatedMinutes)
+        .reduce((a, b) => a > b ? a : b);
+
+    final desiredIndex = _indexClosestTo(sorted, desiredDepartureAt);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < sorted.length; i++)
+          _Row(
+            window: sorted[i],
+            isDesired: i == desiredIndex,
+            // Non-normalized: bar width is the raw ratio to the slowest
+            // slot. The recommended slot's colour + label do the
+            // signalling — bar widths honestly reflect total duration
+            // instead of magnifying tiny (~5 %) deltas.
+            fillFraction: maxMinutes <= 0
+                ? 1.0
+                : sorted[i].estimatedMinutes / maxMinutes,
+            barHeight: _barHeight,
+            rowHeight: _rowHeight,
+            labelWidth: _labelWidth,
+            durationWidth: _durationWidth,
+            timeFmt: fmt,
+            scheme: scheme,
+            textTheme: t,
           ),
-        ),
-      ),
+      ],
     );
   }
 
@@ -153,5 +91,117 @@ class TimeWindowChart extends StatelessWidget {
       }
     }
     return bestIndex;
+  }
+}
+
+class _Row extends StatelessWidget {
+  const _Row({
+    required this.window,
+    required this.isDesired,
+    required this.fillFraction,
+    required this.barHeight,
+    required this.rowHeight,
+    required this.labelWidth,
+    required this.durationWidth,
+    required this.timeFmt,
+    required this.scheme,
+    required this.textTheme,
+  });
+
+  final TimeWindow window;
+  final bool isDesired;
+  final double fillFraction;
+  final double barHeight;
+  final double rowHeight;
+  final double labelWidth;
+  final double durationWidth;
+  final DateFormat timeFmt;
+  final ColorScheme scheme;
+  final TextTheme textTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final barColor = window.recommended
+        ? scheme.primary
+        : scheme.secondaryContainer;
+    final fg = window.recommended
+        ? scheme.onSurface
+        : scheme.onSurfaceVariant;
+    final labelStyle = textTheme.labelMedium?.copyWith(
+      color: fg,
+      fontWeight: isDesired || window.recommended
+          ? FontWeight.w700
+          : FontWeight.w500,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    final durationStyle = textTheme.labelMedium?.copyWith(
+      color: fg,
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+
+    return SizedBox(
+      height: rowHeight,
+      child: Row(
+        children: [
+          SizedBox(
+            width: labelWidth,
+            child: Text(
+              timeFmt.format(window.departureAt),
+              style: labelStyle,
+            ),
+          ),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final width = constraints.maxWidth;
+                final filled = (width * fillFraction).clamp(6.0, width);
+                return Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    Container(
+                      height: barHeight,
+                      decoration: BoxDecoration(
+                        color: scheme.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(barHeight / 2),
+                      ),
+                    ),
+                    Container(
+                      height: barHeight,
+                      width: filled,
+                      decoration: BoxDecoration(
+                        color: barColor,
+                        borderRadius: BorderRadius.circular(barHeight / 2),
+                        border: isDesired && !window.recommended
+                            ? Border.all(color: scheme.primary, width: 1.5)
+                            : null,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: durationWidth,
+            child: Text(
+              durationShort(window.estimatedMinutes),
+              textAlign: TextAlign.right,
+              style: durationStyle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 34,
+            child: Text(
+              '×${window.trafficFactor.toStringAsFixed(2)}',
+              textAlign: TextAlign.right,
+              style: textTheme.labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

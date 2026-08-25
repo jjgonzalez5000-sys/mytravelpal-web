@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/tokens.dart';
 import '../providers.dart';
+import 'login_screen.dart';
 import 'onboarding_screen.dart';
 import 'plan_screen.dart';
 
@@ -30,9 +31,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
     final prefs = ref.read(appPrefsProvider);
-    final next = prefs.onboardingShown
-        ? const PlanScreen()
-        : const OnboardingScreen();
+    final auth = ref.read(authProvider);
+    final Widget next;
+    if (!prefs.onboardingShown) {
+      next = const OnboardingScreen();
+    } else if (!auth.isAuthenticated) {
+      next = const LoginScreen();
+    } else {
+      next = const PlanScreen();
+    }
     await Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
         pageBuilder: (_, __, ___) => next,

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/components.dart';
 import '../design/tokens.dart';
+import '../domain/travel_style_presets.dart';
 import '../domain/trip_profile.dart';
+import '../domain/vehicle_labels.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 
 /// Single-form profile editor. Users set this once; the plan screen
@@ -11,8 +14,23 @@ import '../providers.dart';
 /// plan request. Structured as clearly-titled sections so it doesn't
 /// look overwhelming — travellers first (least intimidating), vehicle,
 /// then meal times last (most granular).
+///
+/// Two modes:
+/// - **persist** (default): "Save" writes to global prefs and pops.
+/// - **override**: "Use for this trip" pops returning the edited profile
+///   via `Navigator.pop(profile)` without touching prefs. Used by the
+///   plan screen's per-trip override sheet.
+enum ProfileScreenMode { persist, override_ }
+
 class ProfileScreen extends ConsumerStatefulWidget {
-  const ProfileScreen({super.key});
+  const ProfileScreen({
+    super.key,
+    this.mode = ProfileScreenMode.persist,
+    this.initial,
+  });
+
+  final ProfileScreenMode mode;
+  final TripProfile? initial;
 
   @override
   ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
@@ -24,14 +42,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   void initState() {
     super.initState();
-    _profile = ref.read(tripProfileProvider) ?? const TripProfile();
+    _profile = widget.initial
+        ?? ref.read(tripProfileProvider)
+        ?? const TripProfile();
   }
 
   Future<void> _save() async {
+    final l = AppLocalizations.of(context);
+    if (widget.mode == ProfileScreenMode.override_) {
+      Navigator.of(context).pop(_profile);
+      return;
+    }
     await ref.read(tripProfileProvider.notifier).set(_profile);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Profile saved')),
+      SnackBar(content: Text(l.profileSaved)),
     );
     Navigator.of(context).pop();
   }
@@ -41,14 +66,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final t = Theme.of(context).textTheme;
     final v = _profile.vehicle;
     final isEv = v.fuelType == FuelType.electric;
+    final l = AppLocalizations.of(context);
 
+    final overrideMode = widget.mode == ProfileScreenMode.override_;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Trip profile'),
+        title: Text(overrideMode ? l.profileOverrideTitle : l.profileTitle),
         actions: [
           TextButton(
             onPressed: _save,
-            child: const Text('Save'),
+            child: Text(overrideMode ? l.profileUse : l.profileSave),
           ),
           const SizedBox(width: Tokens.space8),
         ],
@@ -57,17 +84,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         padding: const EdgeInsets.all(Tokens.space20),
         children: [
           Text(
-            'Set this once. Every plan uses it to rank hotels and '
-            'restaurants, estimate fuel cost, and suggest meal stops.',
+            overrideMode ? l.profileOverrideHeroDesc : l.profileGlobalHeroDesc,
             style: t.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: Tokens.space24),
 
-          const SectionHeader(
-            title: 'Who is travelling',
-            eyebrow: 'People',
+          SectionHeader(
+            title: l.styleSectionTitle,
+            eyebrow: l.styleSectionEyebrow,
+          ),
+          _TravelStyleCard(
+            profile: _profile,
+            onChanged: (p) => setState(() => _profile = p),
+          ),
+          const SizedBox(height: Tokens.space24),
+
+          SectionHeader(
+            title: l.profileWhoTravelling,
+            eyebrow: l.profileWhoEyebrow,
           ),
           SoftCard(
             padding: const EdgeInsets.symmetric(
@@ -77,7 +113,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Travellers'),
+                  title: Text(l.profileTravellers),
                   trailing: _Stepper(
                     value: _profile.travellers,
                     min: 1, max: 9,
@@ -89,10 +125,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const Divider(height: 1),
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Travelling with kids'),
-                  subtitle: const Text(
-                    'Prefers kid-friendly restaurants and hotels.',
-                  ),
+                  title: Text(l.profileHasKids),
+                  subtitle: Text(l.profileKidsSubtitle),
                   value: _profile.hasKids,
                   onChanged: (v) => setState(
                     () => _profile = _profile.copyWith(hasKids: v),
@@ -101,10 +135,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const Divider(height: 1),
                 SwitchListTile.adaptive(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Travelling with pets'),
-                  subtitle: const Text(
-                    'Prefers pet-friendly places, prioritises parking.',
-                  ),
+                  title: Text(l.profileHasPets),
+                  subtitle: Text(l.profilePetsSubtitle),
                   value: _profile.hasPets,
                   onChanged: (v) => setState(
                     () => _profile = _profile.copyWith(hasPets: v),
@@ -115,9 +147,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const SizedBox(height: Tokens.space24),
 
-          const SectionHeader(
-            title: 'Vehicle',
-            eyebrow: 'For cost + parking hints',
+          SectionHeader(
+            title: l.profileVehicle,
+            eyebrow: l.profileVehicleEyebrow,
           ),
           SoftCard(
             padding: const EdgeInsets.all(Tokens.space16),
@@ -125,10 +157,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _LabeledChoice<VehicleType>(
-                  label: 'Type',
+                  label: l.profileVehicleType,
                   value: v.type,
                   options: VehicleType.values,
-                  optionLabel: (t) => t.label,
+                  optionLabel: (t) => vehicleTypeLabel(context, t),
                   optionIcon: (t) => t.icon,
                   onChanged: (t) => setState(
                     () => _profile = _profile.copyWith(
@@ -138,10 +170,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
                 const SizedBox(height: Tokens.space16),
                 _LabeledChoice<FuelType>(
-                  label: 'Fuel',
+                  label: l.profileFuelType,
                   value: v.fuelType,
                   options: FuelType.values,
-                  optionLabel: (f) => f.label,
+                  optionLabel: (f) => fuelTypeLabel(context, f),
                   onChanged: (f) => setState(
                     () => _profile = _profile.copyWith(
                       vehicle: v.copyWith(fuelType: f),
@@ -151,7 +183,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: Tokens.space16),
                 if (isEv) ...[
                   _LabeledSlider(
-                    label: 'Consumption',
+                    label: l.profileConsumption,
                     suffix: 'kWh / 100 km',
                     value: v.consumptionKwhPer100km,
                     min: 8, max: 40, divisions: 32,
@@ -163,7 +195,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   const SizedBox(height: Tokens.space16),
                   _LabeledSlider(
-                    label: 'EV range on one charge',
+                    label: l.profileEvRange,
                     suffix: 'km',
                     value: v.evRangeKm,
                     min: 100, max: 800, divisions: 70,
@@ -175,7 +207,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ] else ...[
                   _LabeledSlider(
-                    label: 'Consumption',
+                    label: l.profileConsumption,
                     suffix: 'L / 100 km',
                     value: v.consumptionLPer100km,
                     min: 2, max: 20, divisions: 36,
@@ -191,16 +223,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           const SizedBox(height: Tokens.space24),
 
-          const SectionHeader(
-            title: 'Meal times',
-            eyebrow: 'To match restaurant stops',
+          SectionHeader(
+            title: l.profileMealTimes,
+            eyebrow: l.profileMealsEyebrow,
           ),
           SoftCard(
             padding: const EdgeInsets.all(Tokens.space16),
             child: Column(
               children: [
                 _HourPicker(
-                  label: 'Breakfast',
+                  label: l.profileBreakfast,
                   value: _profile.meals.breakfastHour,
                   min: 4, max: 12,
                   onChanged: (h) => setState(
@@ -210,7 +242,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
                 _HourPicker(
-                  label: 'Lunch',
+                  label: l.profileLunch,
                   value: _profile.meals.lunchHour,
                   min: 11, max: 16,
                   onChanged: (h) => setState(
@@ -220,7 +252,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                 ),
                 _HourPicker(
-                  label: 'Dinner',
+                  label: l.profileDinner,
                   value: _profile.meals.dinnerHour,
                   min: 17, max: 23,
                   onChanged: (h) => setState(
@@ -232,17 +264,71 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ],
             ),
           ),
-          const SizedBox(height: Tokens.space32),
-          if (ref.watch(tripProfileProvider) != null)
-            OutlinedButton.icon(
-              icon: const Icon(Icons.delete_outline),
-              label: const Text('Clear profile'),
-              onPressed: () async {
-                await ref.read(tripProfileProvider.notifier).clear();
-                if (!context.mounted) return;
-                Navigator.of(context).pop();
-              },
+          if (!overrideMode) ...[
+            const SizedBox(height: Tokens.space24),
+            SectionHeader(
+              title: l.profileReminders,
+              eyebrow: l.profileRemindersEyebrow,
             ),
+            SoftCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Tokens.space16, vertical: Tokens.space4,
+              ),
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l.profileNotifyBefore),
+                subtitle: Text(
+                  _profile.meals.reminderMinutesBefore == 0
+                      ? l.profileNotifyOff
+                      : l.profileNotifyMinutesBefore(
+                          _profile.meals.reminderMinutesBefore),
+                ),
+                trailing: _Stepper(
+                  value: _profile.meals.reminderMinutesBefore,
+                  min: 0, max: 120,
+                  onChanged: (v) => setState(
+                    () => _profile = _profile.copyWith(
+                      meals: _profile.meals.copyWith(
+                        reminderMinutesBefore: v,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (!overrideMode) ...[
+            const SizedBox(height: Tokens.space32),
+            SectionHeader(
+              title: l.profilePremiumSection,
+              eyebrow: l.profilePremiumEyebrow,
+              description: l.profilePremiumBody,
+            ),
+            SoftCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Tokens.space16, vertical: Tokens.space4,
+              ),
+              child: SwitchListTile.adaptive(
+                contentPadding: EdgeInsets.zero,
+                title: Text(l.profileSimulatePremium),
+                subtitle: Text(l.profileSimulatePremiumSubtitle),
+                value: ref.watch(premiumProvider),
+                onChanged: (v) =>
+                    ref.read(premiumProvider.notifier).set(v),
+              ),
+            ),
+            const SizedBox(height: Tokens.space24),
+            if (ref.watch(tripProfileProvider) != null)
+              OutlinedButton.icon(
+                icon: const Icon(Icons.delete_outline),
+                label: Text(l.profileClearProfile),
+                onPressed: () async {
+                  await ref.read(tripProfileProvider.notifier).clear();
+                  if (!context.mounted) return;
+                  Navigator.of(context).pop();
+                },
+              ),
+          ],
         ],
       ),
     );
@@ -260,6 +346,7 @@ class _Stepper extends StatelessWidget {
   final int min;
   final int max;
   final ValueChanged<int> onChanged;
+  int get step => 1;
 
   @override
   Widget build(BuildContext context) {
@@ -268,16 +355,18 @@ class _Stepper extends StatelessWidget {
       children: [
         IconButton(
           icon: const Icon(Icons.remove_circle_outline),
-          onPressed: value > min ? () => onChanged(value - 1) : null,
+          onPressed:
+              value > min ? () => onChanged((value - step).clamp(min, max)) : null,
         ),
         SizedBox(
-          width: 24,
+          width: 36,
           child: Text('$value', textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.titleMedium),
         ),
         IconButton(
           icon: const Icon(Icons.add_circle_outline),
-          onPressed: value < max ? () => onChanged(value + 1) : null,
+          onPressed:
+              value < max ? () => onChanged((value + step).clamp(min, max)) : null,
         ),
       ],
     );
@@ -401,4 +490,216 @@ class _HourPicker extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Travel-style section: preset chips + collapsible Advanced.
+///
+/// The 3 presets rewrite the 4 style axes; anything else the user has
+/// tweaked (bedtime, wake, meals, vehicle) is preserved by
+/// [TravelStylePreset.apply].
+class _TravelStyleCard extends StatefulWidget {
+  const _TravelStyleCard({required this.profile, required this.onChanged});
+  final TripProfile profile;
+  final ValueChanged<TripProfile> onChanged;
+
+  @override
+  State<_TravelStyleCard> createState() => _TravelStyleCardState();
+}
+
+class _TravelStyleCardState extends State<_TravelStyleCard> {
+  bool _expanded = false;
+
+  String _presetLabel(BuildContext c, TravelStylePreset p) {
+    final l = AppLocalizations.of(c);
+    return switch (p) {
+      TravelStylePreset.direct => l.stylePresetDirect,
+      TravelStylePreset.balanced => l.stylePresetBalanced,
+      TravelStylePreset.slow => l.stylePresetSlow,
+    };
+  }
+
+  String _presetHint(BuildContext c, TravelStylePreset p) {
+    final l = AppLocalizations.of(c);
+    return switch (p) {
+      TravelStylePreset.direct => l.stylePresetDirectHint,
+      TravelStylePreset.balanced => l.stylePresetBalancedHint,
+      TravelStylePreset.slow => l.stylePresetSlowHint,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final active = TravelStylePreset.matching(widget.profile);
+
+    return SoftCard(
+      padding: const EdgeInsets.all(Tokens.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: Tokens.space8,
+            runSpacing: Tokens.space8,
+            children: [
+              for (final preset in TravelStylePreset.values)
+                ChoiceChip(
+                  selected: preset == active,
+                  avatar: Icon(preset.icon, size: 16),
+                  label: Text(_presetLabel(context, preset)),
+                  onSelected: (v) {
+                    if (!v) return;
+                    widget.onChanged(preset.apply(widget.profile));
+                  },
+                ),
+              if (active == null)
+                Chip(
+                  avatar: const Icon(Icons.tune, size: 16),
+                  label: Text(l.styleCustom),
+                  backgroundColor: scheme.tertiaryContainer,
+                ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space8),
+          Text(
+            active == null ? l.styleCustom : _presetHint(context, active),
+            style: t.bodySmall
+                ?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: Tokens.space8),
+          TextButton.icon(
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            onPressed: () => setState(() => _expanded = !_expanded),
+            icon: Icon(
+              _expanded ? Icons.expand_less : Icons.expand_more,
+              size: 18,
+            ),
+            label: Text(l.styleAdvanced),
+          ),
+          if (_expanded) _AdvancedStyleControls(
+            profile: widget.profile,
+            onChanged: widget.onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AdvancedStyleControls extends StatelessWidget {
+  const _AdvancedStyleControls({
+    required this.profile, required this.onChanged,
+  });
+  final TripProfile profile;
+  final ValueChanged<TripProfile> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: Tokens.space12),
+        _LabelText(l.stylePaceLabel),
+        SegmentedButton<TravelPace>(
+          segments: [
+            ButtonSegment(
+              value: TravelPace.push, label: Text(l.stylePacePush),
+            ),
+            ButtonSegment(
+              value: TravelPace.steady, label: Text(l.stylePaceSteady),
+            ),
+            ButtonSegment(
+              value: TravelPace.savour, label: Text(l.stylePaceSavour),
+            ),
+          ],
+          selected: {profile.travelPace},
+          onSelectionChanged: (s) =>
+              onChanged(profile.copyWith(travelPace: s.first)),
+        ),
+        const SizedBox(height: Tokens.space16),
+        _LabelText(l.styleOvernightLabel),
+        SegmentedButton<OvernightPolicy>(
+          segments: [
+            ButtonSegment(
+              value: OvernightPolicy.never,
+              label: Text(l.styleOvernightNever),
+            ),
+            ButtonSegment(
+              value: OvernightPolicy.ifNeeded,
+              label: Text(l.styleOvernightIfNeeded),
+            ),
+            ButtonSegment(
+              value: OvernightPolicy.alwaysIfLong,
+              label: Text(l.styleOvernightAlwaysIfLong),
+            ),
+          ],
+          selected: {profile.overnightPolicy},
+          onSelectionChanged: (s) =>
+              onChanged(profile.copyWith(overnightPolicy: s.first)),
+        ),
+        const SizedBox(height: Tokens.space16),
+        Row(
+          children: [
+            Expanded(child: Text(
+              '${l.styleDailyCapLabel}: ${profile.dailyDrivingCapHours} h',
+            )),
+            _Stepper(
+              value: profile.dailyDrivingCapHours,
+              min: 4, max: 14,
+              onChanged: (v) => onChanged(
+                profile.copyWith(dailyDrivingCapHours: v),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Tokens.space8),
+        _HourPicker(
+          label: l.styleBedtimeLabel,
+          value: profile.bedtimeHour,
+          min: 18, max: 23,
+          onChanged: (h) => onChanged(profile.copyWith(bedtimeHour: h)),
+        ),
+        _HourPicker(
+          label: l.styleWakeLabel,
+          value: profile.wakeHour,
+          min: 5, max: 11,
+          onChanged: (h) => onChanged(profile.copyWith(wakeHour: h)),
+        ),
+        const SizedBox(height: Tokens.space16),
+        _LabelText(l.styleBreakLabel),
+        SegmentedButton<BreakStyle>(
+          segments: [
+            ButtonSegment(
+              value: BreakStyle.minimal, label: Text(l.styleBreakMinimal),
+            ),
+            ButtonSegment(
+              value: BreakStyle.scenic, label: Text(l.styleBreakScenic),
+            ),
+            ButtonSegment(
+              value: BreakStyle.foodie, label: Text(l.styleBreakFoodie),
+            ),
+          ],
+          selected: {profile.breakStyle},
+          onSelectionChanged: (s) =>
+              onChanged(profile.copyWith(breakStyle: s.first)),
+        ),
+      ],
+    );
+  }
+}
+
+class _LabelText extends StatelessWidget {
+  const _LabelText(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: Theme.of(context).textTheme.labelMedium,
+        ),
+      );
 }

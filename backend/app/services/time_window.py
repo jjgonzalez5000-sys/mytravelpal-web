@@ -14,6 +14,37 @@ from app.domain import Route, TimeWindow
 from app.providers import TrafficProvider
 
 
+def minutes_saved_vs_desired(
+    windows: tuple[TimeWindow, ...],
+    desired_departure_at: datetime,
+) -> float:
+    """Time (in minutes) saved by taking the recommended window instead
+    of the sample closest to the user's desired departure time.
+
+    Positive → recommendation is faster than the original choice.
+    Negative → recommendation is slower (shouldn't happen but keeps
+    the sign contract explicit).
+    Zero if no windows returned.
+    """
+    if not windows:
+        return 0.0
+    recommended = next(
+        (w for w in windows if w.recommended),
+        windows[0],
+    )
+    # The sample closest to the desired time — that's what the driver
+    # would have taken without our nudge.
+    at_desired = min(
+        windows,
+        key=lambda w: abs((w.departure_at - desired_departure_at).total_seconds()),
+    )
+    delta_seconds = (
+        at_desired.estimated_duration.total_seconds()
+        - recommended.estimated_duration.total_seconds()
+    )
+    return round(delta_seconds / 60.0, 1)
+
+
 @dataclass(frozen=True, slots=True)
 class TimeWindowConfig:
     window_span: timedelta = timedelta(hours=3)

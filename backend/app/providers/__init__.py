@@ -5,6 +5,7 @@ from app.providers.adverse_events import (
     UserMarkedAdverseEventsProvider,
 )
 from app.providers.factory import get_providers
+from app.providers.weather import OpenMeteoWeatherProvider
 from app.providers.llm import (
     ClaudeLlmProvider,
     LlmProvider,

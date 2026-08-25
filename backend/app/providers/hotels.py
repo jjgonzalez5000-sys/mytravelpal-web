@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 from typing import Protocol
 
+from app.data.countries import COUNTRIES
 from app.domain import Coordinate, Country, Hotel, PriceBand, Route
 
 _AVG_DETOUR_SPEED_KMH = 60.0  # off-motorway roads are slower
@@ -18,14 +19,9 @@ class HotelsProvider(Protocol):
         ...
 
 
-# Rough per-country hotel-price anchors, EUR/night for a 3-star mid room.
-# Placeholders; real integration (e.g. Booking Rapid API) will replace.
-_PRICE_ANCHORS: dict[Country, float] = {
-    Country.CH: 180.0,
-    Country.FR: 120.0,
-    Country.IT: 110.0,
-    Country.ES: 95.0,
-}
+def _hotel_anchor(country: Country) -> float:
+    data = COUNTRIES.get(country.value)
+    return data.hotel_anchor_eur if data else 120.0
 
 
 class MockHotelsProvider:
@@ -48,7 +44,7 @@ class MockHotelsProvider:
         hotels: list[Hotel] = []
         for wi, wp in enumerate(route.waypoints):
             country = _country_or_first(route, wp)
-            anchor = _PRICE_ANCHORS.get(country, 120.0)
+            anchor = _hotel_anchor(country)
             for hi in range(self._HOTELS_PER_WAYPOINT):
                 b = seed[(wi * self._HOTELS_PER_WAYPOINT + hi) % len(seed)]
                 # Two seed-derived unit-scaled values in [-1, 1].

@@ -25,14 +25,51 @@ def filter_events_near_route(
     max_distance_km: float = _DEFAULT_MAX_DISTANCE_KM,
     limit: int = 20,
 ) -> tuple[AdverseEvent, ...]:
-    """Return events within `max_distance_km` of the route, sorted by
-    severity (critical first) then by proximity.
+    """Return events within `max_distance_km` of the route, deduplicated,
+    sorted by severity (critical first) then by proximity.
+
+    De-duplication rules (Sprint 23):
+    - Same `id` collapses to one entry (composite providers may return
+      overlapping IDs when the same feed is queried twice for a long
+      route that spans two bounding boxes).
+    - Same coordinate + description + type within 0.5 km also collapses.
+      Prevents FIRMS from surfacing every VIIRS pixel of the same fire
+      as a separate row and the mock demo events from appearing twice
+      for round-trip queries.
     """
     severity_order = {"critical": 0, "warning": 1, "info": 2}
     scored: list[tuple[float, int, AdverseEvent]] = []
+    seen_ids: set[str] = set()
+    seen_signatures: list[tuple[str, str, float, float]] = []
     for e in events:
+        if e.id in seen_ids:
+            continue
+        # Signature includes severity so the test-suite fabrications
+        # of 3 severities at the same coord still all survive; only
+        # honest duplicates (same type + severity + description at the
+        # same spot) are collapsed.
+        signature = (
+            e.type.value,
+            e.severity.value,
+            e.description,
+            round(e.coordinate.lat, 2),
+            round(e.coordinate.lon, 2),
+        )
+        if any(
+            existing[0] == signature[0]
+            and existing[1] == signature[1]
+            and existing[2] == signature[2]
+            and _haversine_km(
+                Coordinate(lat=existing[3], lon=existing[4]),
+                Coordinate(lat=signature[3], lon=signature[4]),
+            ) <= 0.5
+            for existing in seen_signatures
+        ):
+            continue
         d = _min_distance_to_route(e.coordinate, route)
         if d <= max_distance_km:
             scored.append((d, severity_order.get(e.severity.value, 3), e))
+            seen_ids.add(e.id)
+            seen_signatures.append(signature)
     scored.sort(key=lambda t: (t[1], t[0]))
     return tuple(e for _, _, e in scored[:limit])

@@ -37,6 +37,47 @@ enum FuelType {
       values.firstWhere((v) => v.code == c, orElse: () => FuelType.petrol);
 }
 
+/// How aggressively the driver wants to eat kilometres.
+enum TravelPace {
+  push('push'),
+  steady('steady'),
+  savour('savour');
+
+  const TravelPace(this.code);
+  final String code;
+
+  static TravelPace fromCode(String? c) =>
+      values.firstWhere((v) => v.code == c, orElse: () => TravelPace.steady);
+}
+
+/// When to surface hotels mid-trip.
+enum OvernightPolicy {
+  never('never'),
+  ifNeeded('if_needed'),
+  alwaysIfLong('always_if_long');
+
+  const OvernightPolicy(this.code);
+  final String code;
+
+  static OvernightPolicy fromCode(String? c) => values.firstWhere(
+        (v) => v.code == c,
+        orElse: () => OvernightPolicy.ifNeeded,
+      );
+}
+
+/// Flavour of rest-stop / restaurant suggestions.
+enum BreakStyle {
+  minimal('minimal'),
+  scenic('scenic'),
+  foodie('foodie');
+
+  const BreakStyle(this.code);
+  final String code;
+
+  static BreakStyle fromCode(String? c) =>
+      values.firstWhere((v) => v.code == c, orElse: () => BreakStyle.scenic);
+}
+
 @immutable
 class Vehicle {
   const Vehicle({
@@ -101,6 +142,7 @@ class MealPreferences {
     this.lunchHour = 13,
     this.dinnerHour = 20,
     this.typicalStopMinutes = 45,
+    this.reminderMinutesBefore = 30,
   });
 
   final int breakfastHour;
@@ -108,17 +150,24 @@ class MealPreferences {
   final int dinnerHour;
   final int typicalStopMinutes;
 
+  /// How many minutes before the recommended departure to fire a local
+  /// notification. 0 disables. Defaults to 30 minutes.
+  final int reminderMinutesBefore;
+
   MealPreferences copyWith({
     int? breakfastHour,
     int? lunchHour,
     int? dinnerHour,
     int? typicalStopMinutes,
+    int? reminderMinutesBefore,
   }) =>
       MealPreferences(
         breakfastHour: breakfastHour ?? this.breakfastHour,
         lunchHour: lunchHour ?? this.lunchHour,
         dinnerHour: dinnerHour ?? this.dinnerHour,
         typicalStopMinutes: typicalStopMinutes ?? this.typicalStopMinutes,
+        reminderMinutesBefore:
+            reminderMinutesBefore ?? this.reminderMinutesBefore,
       );
 
   Map<String, dynamic> toJson() => {
@@ -126,6 +175,7 @@ class MealPreferences {
         'lunch_hour': lunchHour,
         'dinner_hour': dinnerHour,
         'typical_stop_minutes': typicalStopMinutes,
+        'reminder_minutes_before': reminderMinutesBefore,
       };
 
   factory MealPreferences.fromJson(Map<String, dynamic> j) => MealPreferences(
@@ -133,6 +183,8 @@ class MealPreferences {
         lunchHour: (j['lunch_hour'] as num?)?.toInt() ?? 13,
         dinnerHour: (j['dinner_hour'] as num?)?.toInt() ?? 20,
         typicalStopMinutes: (j['typical_stop_minutes'] as num?)?.toInt() ?? 45,
+        reminderMinutesBefore:
+            (j['reminder_minutes_before'] as num?)?.toInt() ?? 30,
       );
 }
 
@@ -144,6 +196,12 @@ class TripProfile {
     this.hasPets = false,
     this.vehicle = const Vehicle(),
     this.meals = const MealPreferences(),
+    this.travelPace = TravelPace.steady,
+    this.overnightPolicy = OvernightPolicy.ifNeeded,
+    this.dailyDrivingCapHours = 8,
+    this.bedtimeHour = 22,
+    this.wakeHour = 8,
+    this.breakStyle = BreakStyle.scenic,
   });
 
   final int travellers;
@@ -152,12 +210,26 @@ class TripProfile {
   final Vehicle vehicle;
   final MealPreferences meals;
 
+  // -- Travel style --
+  final TravelPace travelPace;
+  final OvernightPolicy overnightPolicy;
+  final int dailyDrivingCapHours;
+  final int bedtimeHour;
+  final int wakeHour;
+  final BreakStyle breakStyle;
+
   TripProfile copyWith({
     int? travellers,
     bool? hasKids,
     bool? hasPets,
     Vehicle? vehicle,
     MealPreferences? meals,
+    TravelPace? travelPace,
+    OvernightPolicy? overnightPolicy,
+    int? dailyDrivingCapHours,
+    int? bedtimeHour,
+    int? wakeHour,
+    BreakStyle? breakStyle,
   }) =>
       TripProfile(
         travellers: travellers ?? this.travellers,
@@ -165,6 +237,13 @@ class TripProfile {
         hasPets: hasPets ?? this.hasPets,
         vehicle: vehicle ?? this.vehicle,
         meals: meals ?? this.meals,
+        travelPace: travelPace ?? this.travelPace,
+        overnightPolicy: overnightPolicy ?? this.overnightPolicy,
+        dailyDrivingCapHours:
+            dailyDrivingCapHours ?? this.dailyDrivingCapHours,
+        bedtimeHour: bedtimeHour ?? this.bedtimeHour,
+        wakeHour: wakeHour ?? this.wakeHour,
+        breakStyle: breakStyle ?? this.breakStyle,
       );
 
   Map<String, dynamic> toJson() => {
@@ -173,6 +252,12 @@ class TripProfile {
         'has_pets': hasPets,
         'vehicle': vehicle.toJson(),
         'meals': meals.toJson(),
+        'travel_pace': travelPace.code,
+        'overnight_policy': overnightPolicy.code,
+        'daily_driving_cap_hours': dailyDrivingCapHours,
+        'bedtime_hour': bedtimeHour,
+        'wake_hour': wakeHour,
+        'break_style': breakStyle.code,
       };
 
   factory TripProfile.fromJson(Map<String, dynamic> j) => TripProfile(
@@ -185,5 +270,13 @@ class TripProfile {
         meals: j['meals'] == null
             ? const MealPreferences()
             : MealPreferences.fromJson(j['meals'] as Map<String, dynamic>),
+        travelPace: TravelPace.fromCode(j['travel_pace'] as String?),
+        overnightPolicy:
+            OvernightPolicy.fromCode(j['overnight_policy'] as String?),
+        dailyDrivingCapHours:
+            (j['daily_driving_cap_hours'] as num?)?.toInt() ?? 8,
+        bedtimeHour: (j['bedtime_hour'] as num?)?.toInt() ?? 22,
+        wakeHour: (j['wake_hour'] as num?)?.toInt() ?? 8,
+        breakStyle: BreakStyle.fromCode(j['break_style'] as String?),
       );
 }

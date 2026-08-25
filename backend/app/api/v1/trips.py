@@ -2,18 +2,23 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
+
+from app.api.premium import is_premium
 
 from app.domain import (
     AdverseEventSeverity,
     AdverseEventType,
+    BreakStyle,
     Coordinate,
     Country,
     FuelType,
     MealPreferences,
     MealSlot,
+    OvernightPolicy,
     PriceBand,
+    TravelPace,
     Trip,
     TripProfile,
     Vehicle,
@@ -28,9 +33,13 @@ from app.services.hourly_toll_analysis import analyze as hourly_toll_analyze
 from app.services.polyline_simplify import simplify as simplify_polyline
 from app.services.rest_stops import compute_rest_stops
 from app.services.restaurant_search import filter_restaurants
-from app.services.time_window import compute_time_windows
+from app.services.time_window import compute_time_windows, minutes_saved_vs_desired
+from app.services.partial_toll_skips import compute as compute_partial_skips
+from app.services.route_variants import compute_variants
 from app.services.toll_savings import compare as compare_toll
+from dataclasses import replace as _dc_replace
 from app.services.trip_optimizations import compute as compute_optimizations
+from app.services.trip_style import derive_scope as derive_style_scope
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 
@@ -63,6 +72,14 @@ class TripProfileIn(BaseModel):
     vehicle: VehicleIn = Field(default_factory=VehicleIn)
     meals: MealPreferencesIn = Field(default_factory=MealPreferencesIn)
 
+    # -- Travel style --
+    travel_pace: TravelPace = TravelPace.STEADY
+    overnight_policy: OvernightPolicy = OvernightPolicy.IF_NEEDED
+    daily_driving_cap_hours: int = Field(default=8, ge=4, le=14)
+    bedtime_hour: int = Field(default=22, ge=18, le=23)
+    wake_hour: int = Field(default=8, ge=5, le=11)
+    break_style: BreakStyle = BreakStyle.SCENIC
+
     def to_domain(self) -> TripProfile:
         return TripProfile(
             travellers=self.travellers,
@@ -82,6 +99,12 @@ class TripProfileIn(BaseModel):
                 dinner_hour=self.meals.dinner_hour,
                 typical_stop_minutes=self.meals.typical_stop_minutes,
             ),
+            travel_pace=self.travel_pace,
+            overnight_policy=self.overnight_policy,
+            daily_driving_cap_hours=self.daily_driving_cap_hours,
+            bedtime_hour=self.bedtime_hour,
+            wake_hour=self.wake_hour,
+            break_style=self.break_style,
         )
 
 
@@ -146,6 +169,14 @@ class TripPlanRequest(BaseModel):
             "be included. Only meaningful when include_adverse_events=true."
         ),
     )
+    include_route_comparison: bool = Field(
+        default=False,
+        description=(
+            "If true, compute two extra route variants (toll-free and "
+            "scenic) alongside the fastest so the client can render a "
+            "side-by-side comparison."
+        ),
+    )
     include_toll_alternative: bool = Field(
         default=False,
         description=(
@@ -192,6 +223,17 @@ class TollAlternativeOut(BaseModel):
     extra_distance_km: float
     worth_it: bool
     geometry: list[list[float]] = Field(default_factory=list)
+
+
+class PartialTollSkipOut(BaseModel):
+    label: str
+    distance_from_origin_km: float
+    savings_eur: float
+    time_penalty_minutes: float
+    extra_distance_km: float
+    worth_it: bool
+    lat: float
+    lon: float
 
 
 class FuelCostOut(BaseModel):
@@ -255,6 +297,9 @@ class FuelPriceOut(BaseModel):
     country: Country
     price_eur_per_l: float
     distance_from_origin_km: float
+    lat: float | None = None
+    lon: float | None = None
+    attributes: dict[str, str] = Field(default_factory=dict)
 
 
 class HotelOut(BaseModel):
@@ -266,6 +311,7 @@ class HotelOut(BaseModel):
     distance_from_route_km: float
     lat: float
     lon: float
+    attributes: dict[str, str] = Field(default_factory=dict)
 
 
 class RestaurantOut(BaseModel):
@@ -277,6 +323,7 @@ class RestaurantOut(BaseModel):
     distance_from_route_km: float
     lat: float
     lon: float
+    attributes: dict[str, str] = Field(default_factory=dict)
 
 
 class RestStopOut(BaseModel):
@@ -300,6 +347,55 @@ class AdverseEventOut(BaseModel):
     country: Country | None
 
 
+class RouteVariantOut(BaseModel):
+    key: str
+    label: str
+    distance_km: float
+    free_flow_minutes: float
+    toll_cost_eur: float
+
+
+class SavingsSummaryOut(BaseModel):
+    """Money and time the user is expected to save by taking the plan
+    the app is nudging them towards, vs. the choice they'd have made
+    without it.
+    """
+    time_saved_minutes_vs_desired: float = Field(
+        description=(
+            "Minutes saved by taking the recommended departure window "
+            "instead of the window closest to the desired time. Positive "
+            "when the recommendation is faster. Zero when no better "
+            "option was found."
+        ),
+    )
+    money_saved_eur_vs_tolls: float = Field(
+        default=0.0,
+        description=(
+            "Euros saved by taking the toll-free alternative when the "
+            "heuristic flags it as worth it. Zero otherwise."
+        ),
+    )
+
+
+class RecommendationScopeOut(BaseModel):
+    """Which sections the client should surface for this trip.
+
+    Derived server-side from the TripProfile's travel-style fields and
+    the route duration. The client is trusted to hide sections when a
+    flag is false, but the payload arrays (hotels / restaurants /
+    rest_stops) are still populated so features like Favorites and the
+    AI narrative keep working from the same response.
+    """
+    show_rest_stops: bool
+    show_hotels: bool
+    show_restaurants: bool
+    requires_overnight: bool
+    rest_stops_count_target: int
+    arrival_after_bedtime: bool
+    arrival_local_hour: int
+    reason: str
+
+
 class TripPlanResponse(BaseModel):
     route: RouteOut
     time_windows: list[TimeWindowOut]
@@ -309,8 +405,14 @@ class TripPlanResponse(BaseModel):
     rest_stops: list[RestStopOut]
     adverse_events: list[AdverseEventOut]
     toll_alternative: TollAlternativeOut | None = None
+    partial_toll_skips: list[PartialTollSkipOut] = Field(default_factory=list)
     optimizations: OptimizationsOut | None = None
     hourly_toll_report: HourlyTollReportOut | None = None
+    savings: SavingsSummaryOut = Field(default_factory=lambda: SavingsSummaryOut(
+        time_saved_minutes_vs_desired=0.0, money_saved_eur_vs_tolls=0.0,
+    ))
+    route_variants: list[RouteVariantOut] = Field(default_factory=list)
+    recommendation_scope: RecommendationScopeOut | None = None
 
 
 def _providers() -> Providers:
@@ -321,7 +423,19 @@ def _providers() -> Providers:
 async def plan_trip(
     payload: TripPlanRequest,
     providers: Providers = Depends(_providers),
+    premium: bool = Depends(is_premium),
 ) -> TripPlanResponse:
+    if payload.include_hourly_toll_analysis and not premium:
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "error": "premium_required",
+                "message": (
+                    "Hourly toll analysis is a Premium feature. "
+                    "Upgrade to enable it."
+                ),
+            },
+        )
     origin = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
     destination = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
     countries_override = tuple(payload.countries) if payload.countries else None
@@ -331,6 +445,38 @@ async def plan_trip(
         avoid_motorways=payload.avoid_motorways,
         prefer_scenic=payload.prefer_scenic,
     )
+
+    # Trip-style scope: which sections the client should surface. Only
+    # computed when the caller passes a profile — else the response's
+    # `recommendation_scope` stays null and the client renders the
+    # legacy "show everything" behaviour.
+    scope_out: RecommendationScopeOut | None = None
+    if profile is not None:
+        scope = derive_style_scope(
+            profile=profile,
+            route=route,
+            desired_departure_at=payload.desired_departure_at,
+        )
+        scope_out = RecommendationScopeOut(
+            show_rest_stops=scope.show_rest_stops,
+            show_hotels=scope.show_hotels,
+            show_restaurants=scope.show_restaurants,
+            requires_overnight=scope.requires_overnight,
+            rest_stops_count_target=scope.rest_stops_count_target,
+            arrival_after_bedtime=scope.arrival_after_bedtime,
+            arrival_local_hour=scope.arrival_local_hour,
+            reason=scope.reason,
+        )
+
+    # Real toll pricing via TollGuru when a key is set + we have real
+    # geometry to send. Replaces the heuristic toll_cost_eur and feeds
+    # per-booth data into partial_toll_skips below.
+    real_tolls = None
+    if providers.tollguru is not None and route.geometry:
+        quote = await providers.tollguru.quote(route)
+        if quote is not None:
+            real_tolls = quote.tolls
+            route = _dc_replace(route, toll_cost_eur=round(quote.total_eur, 2))
     trip = Trip(
         origin=origin,
         destination=destination,
@@ -346,11 +492,20 @@ async def plan_trip(
 
     all_hotels_cache = None  # avoid re-hitting provider for optimizations
     hotels_out: list[HotelOut] = []
-    if payload.hotel_max_detour_minutes and payload.hotel_max_detour_minutes > 0:
+    # Effective hotel filter: the caller's explicit value wins. When
+    # `requires_overnight` is true and no explicit filter was set, we
+    # auto-populate with a 25 min detour / any band default — the user
+    # asked us to plan an overnight, so quietly forcing a fetch is the
+    # helpful move.
+    effective_hotel_detour = payload.hotel_max_detour_minutes
+    if (not effective_hotel_detour or effective_hotel_detour <= 0) and \
+            scope_out is not None and scope_out.requires_overnight:
+        effective_hotel_detour = 25
+    if effective_hotel_detour and effective_hotel_detour > 0:
         all_hotels_cache = await providers.hotels.hotels_along(route)
         filtered = filter_hotels(
             all_hotels_cache,
-            max_detour_minutes=float(payload.hotel_max_detour_minutes),
+            max_detour_minutes=float(effective_hotel_detour),
             price_band=payload.hotel_price_band or PriceBand.ANY,
             profile=profile,
         )
@@ -364,6 +519,7 @@ async def plan_trip(
                 distance_from_route_km=h.distance_from_route_km,
                 lat=h.coordinate.lat,
                 lon=h.coordinate.lon,
+                attributes=dict(h.attributes),
             )
             for h in filtered
         ]
@@ -391,6 +547,7 @@ async def plan_trip(
                 distance_from_route_km=r.distance_from_route_km,
                 lat=r.coordinate.lat,
                 lon=r.coordinate.lon,
+                attributes=dict(r.attributes),
             )
             for r in filtered_r
         ]
@@ -414,6 +571,22 @@ async def plan_trip(
         alt_route_domain = await providers.routing.route(
             origin, destination, route.countries_crossed, avoid_tolls=True,
         )
+    partial_skips_out: list[PartialTollSkipOut] = []
+    if payload.include_toll_alternative and route.toll_cost_eur > 0:
+        for skip in compute_partial_skips(route, real_tolls=real_tolls):
+            partial_skips_out.append(
+                PartialTollSkipOut(
+                    label=skip.label,
+                    distance_from_origin_km=skip.distance_from_origin_km,
+                    savings_eur=skip.savings_eur,
+                    time_penalty_minutes=skip.time_penalty_minutes,
+                    extra_distance_km=skip.extra_distance_km,
+                    worth_it=skip.worth_it,
+                    lat=skip.coordinate.lat,
+                    lon=skip.coordinate.lon,
+                )
+            )
+
     if payload.include_toll_alternative and alt_route_domain is not None:
         alt = compare_toll(route, alt_route_domain)
         toll_alternative_out = TollAlternativeOut(
@@ -566,7 +739,34 @@ async def plan_trip(
             for e in near
         ]
 
+    variants_out: list[RouteVariantOut] = []
+    if payload.include_route_comparison:
+        variants = await compute_variants(
+            provider=providers.routing, primary=route,
+            origin=origin, destination=destination,
+            countries=route.countries_crossed,
+        )
+        variants_out = [
+            RouteVariantOut(
+                key=v.key, label=v.label,
+                distance_km=v.route.distance_km,
+                free_flow_minutes=_minutes(v.route.free_flow_duration),
+                toll_cost_eur=v.route.toll_cost_eur,
+            )
+            for v in variants
+        ]
+
     simplified = simplify_polyline(route.geometry, epsilon_km=0.2)
+    savings = SavingsSummaryOut(
+        time_saved_minutes_vs_desired=minutes_saved_vs_desired(
+            windows, payload.desired_departure_at,
+        ),
+        money_saved_eur_vs_tolls=(
+            toll_alternative_out.savings_eur
+            if toll_alternative_out is not None and toll_alternative_out.worth_it
+            else 0.0
+        ),
+    )
     return TripPlanResponse(
         route=RouteOut(
             distance_km=route.distance_km,
@@ -591,6 +791,9 @@ async def plan_trip(
                 country=fp.country,
                 price_eur_per_l=fp.price_eur_per_l,
                 distance_from_origin_km=fp.distance_from_origin_km,
+                lat=fp.coordinate.lat if fp.coordinate is not None else None,
+                lon=fp.coordinate.lon if fp.coordinate is not None else None,
+                attributes=dict(fp.attributes),
             )
             for fp in fuel
         ],
@@ -599,8 +802,12 @@ async def plan_trip(
         rest_stops=rest_stops_out,
         adverse_events=adverse_events_out,
         toll_alternative=toll_alternative_out,
+        partial_toll_skips=partial_skips_out,
         optimizations=optimizations_out,
         hourly_toll_report=hourly_toll_out,
+        savings=savings,
+        route_variants=variants_out,
+        recommendation_scope=scope_out,
     )
 
 

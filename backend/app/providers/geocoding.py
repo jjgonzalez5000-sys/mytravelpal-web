@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass
 from typing import Protocol
 
 import httpx
 
+from app.data.countries import COUNTRIES, all_nominatim_codes
 from app.domain import Coordinate, Country
 
 _log = logging.getLogger(__name__)
@@ -16,51 +18,47 @@ class GeocodeResult:
     display_name: str
     coordinate: Coordinate
     country: Country
+    poi_class: str | None = None
+    """OSM top-level class: `tourism`, `amenity`, `shop`, `natural`,
+    `historic`, `place`, `leisure`, `railway`, `aeroway`, `office`,
+    `building`, `highway`, `landuse`, `boundary`, `waterway`, `man_made`,
+    `emergency`, `sport`, `craft`, `military`, `power`, `barrier`.
+    None for mock catalogue entries (they're just cities).
+    """
+    poi_type: str | None = None
+    """OSM subtype for the class. Examples:
+    `amenity=restaurant`, `tourism=museum`, `shop=bakery`,
+    `natural=peak`, `place=city`. See `mobile/lib/widgets/poi_icons.dart`
+    for the full mapping the client uses to pick an icon.
+    """
 
 
 class GeocodingProvider(Protocol):
     async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]: ...
 
+    async def reverse(
+        self, lat: float, lon: float,
+    ) -> GeocodeResult | None:
+        """Look up the human-readable place at `lat`,`lon`.
 
-# Small city catalogue for the four launch countries. Enough to demo
-# autocomplete and drive plans end-to-end without leaving mock-land.
-# Coordinates from public city-centre references.
-_CATALOGUE: tuple[GeocodeResult, ...] = (
-    # CH
-    GeocodeResult("Zürich, Switzerland", Coordinate(47.3769, 8.5417), Country.CH),
-    GeocodeResult("Genève, Switzerland", Coordinate(46.2044, 6.1432), Country.CH),
-    GeocodeResult("Bern, Switzerland", Coordinate(46.9481, 7.4474), Country.CH),
-    GeocodeResult("Basel, Switzerland", Coordinate(47.5596, 7.5886), Country.CH),
-    GeocodeResult("Lausanne, Switzerland", Coordinate(46.5197, 6.6323), Country.CH),
-    GeocodeResult("Lugano, Switzerland", Coordinate(46.0037, 8.9511), Country.CH),
-    # FR
-    GeocodeResult("Paris, France", Coordinate(48.8566, 2.3522), Country.FR),
-    GeocodeResult("Lyon, France", Coordinate(45.7640, 4.8357), Country.FR),
-    GeocodeResult("Marseille, France", Coordinate(43.2965, 5.3698), Country.FR),
-    GeocodeResult("Bordeaux, France", Coordinate(44.8378, -0.5792), Country.FR),
-    GeocodeResult("Toulouse, France", Coordinate(43.6047, 1.4442), Country.FR),
-    GeocodeResult("Nice, France", Coordinate(43.7102, 7.2620), Country.FR),
-    GeocodeResult("Nantes, France", Coordinate(47.2184, -1.5536), Country.FR),
-    GeocodeResult("Strasbourg, France", Coordinate(48.5734, 7.7521), Country.FR),
-    GeocodeResult("Lille, France", Coordinate(50.6292, 3.0573), Country.FR),
-    # IT
-    GeocodeResult("Roma, Italy", Coordinate(41.9028, 12.4964), Country.IT),
-    GeocodeResult("Milano, Italy", Coordinate(45.4642, 9.1900), Country.IT),
-    GeocodeResult("Napoli, Italy", Coordinate(40.8518, 14.2681), Country.IT),
-    GeocodeResult("Torino, Italy", Coordinate(45.0703, 7.6869), Country.IT),
-    GeocodeResult("Firenze, Italy", Coordinate(43.7696, 11.2558), Country.IT),
-    GeocodeResult("Bologna, Italy", Coordinate(44.4949, 11.3426), Country.IT),
-    GeocodeResult("Venezia, Italy", Coordinate(45.4408, 12.3155), Country.IT),
-    GeocodeResult("Palermo, Italy", Coordinate(38.1157, 13.3615), Country.IT),
-    # ES
-    GeocodeResult("Madrid, Spain", Coordinate(40.4168, -3.7038), Country.ES),
-    GeocodeResult("Barcelona, Spain", Coordinate(41.3874, 2.1686), Country.ES),
-    GeocodeResult("Valencia, Spain", Coordinate(39.4699, -0.3763), Country.ES),
-    GeocodeResult("Sevilla, Spain", Coordinate(37.3891, -5.9845), Country.ES),
-    GeocodeResult("Bilbao, Spain", Coordinate(43.2630, -2.9350), Country.ES),
-    GeocodeResult("Zaragoza, Spain", Coordinate(41.6488, -0.8891), Country.ES),
-    GeocodeResult("Málaga, Spain", Coordinate(36.7213, -4.4213), Country.ES),
-    GeocodeResult("Palma, Spain", Coordinate(39.5696, 2.6502), Country.ES),
+        Returns None when no populated place is close enough (open sea,
+        remote wilderness) or when the provider can't answer (network
+        error). Callers should always be prepared for None.
+        """
+        ...
+
+
+# City catalogue built from `data.countries`. Anything not covered by
+# the catalogue falls through to the Nominatim provider (via
+# `HybridGeocodingProvider`), so small towns still work.
+_CATALOGUE: tuple[GeocodeResult, ...] = tuple(
+    GeocodeResult(
+        display_name=name,
+        coordinate=Coordinate(lat=lat, lon=lon),
+        country=Country(data.code),
+    )
+    for data in COUNTRIES.values()
+    for (name, lat, lon) in data.sample_cities
 )
 
 
@@ -82,6 +80,23 @@ class MockGeocodingProvider:
                                     r.display_name))
         return tuple(matches[:limit])
 
+    async def reverse(
+        self, lat: float, lon: float,
+    ) -> GeocodeResult | None:
+        # Mock returns the catalogue city closest to (lat, lon) if any is
+        # within ~50 km — enough for demos, not for reality.
+        best: GeocodeResult | None = None
+        best_km = 50.0
+        for entry in _CATALOGUE:
+            dx = (entry.coordinate.lat - lat) * 111.0
+            dy = (entry.coordinate.lon - lon) * 111.0 * max(0.1,
+                (1 - abs(entry.coordinate.lat) / 90.0))
+            km = (dx * dx + dy * dy) ** 0.5
+            if km < best_km:
+                best_km = km
+                best = entry
+        return best
+
 
 class NominatimGeocodingProvider:
     """Real OpenStreetMap Nominatim geocoder.
@@ -93,8 +108,9 @@ class NominatimGeocodingProvider:
     """
 
     _URL = "https://nominatim.openstreetmap.org/search"
+    _REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
     _USER_AGENT = "MyTravelPal-dev/0.1 (contact@mytravelpal.example)"
-    _COUNTRY_CODES = "ch,fr,it,es"
+    _COUNTRY_CODES = all_nominatim_codes()
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client or httpx.AsyncClient(timeout=5.0)
@@ -140,23 +156,90 @@ class NominatimGeocodingProvider:
             display = item.get("display_name") or ""
             if not display:
                 continue
+            poi_class = item.get("class") or None
+            poi_type = item.get("type") or None
             results.append(
                 GeocodeResult(
                     display_name=display,
                     coordinate=Coordinate(lat=lat, lon=lon),
                     country=country,
+                    poi_class=poi_class,
+                    poi_type=poi_type,
                 )
             )
         return tuple(results)
 
 
-class HybridGeocodingProvider:
-    """Tries `primary` first; if it returns no results, falls back to `secondary`.
+    async def reverse(
+        self, lat: float, lon: float,
+    ) -> GeocodeResult | None:
+        params = {
+            "lat": f"{lat:.6f}",
+            "lon": f"{lon:.6f}",
+            "format": "json",
+            "addressdetails": "1",
+            "zoom": "12",  # town / suburb level — meaningful place labels
+        }
+        try:
+            response = await self._client.get(
+                self._REVERSE_URL, params=params,
+                headers={
+                    "User-Agent": self._USER_AGENT,
+                    "Accept-Language": "en",
+                },
+            )
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            _log.warning("Nominatim reverse request failed: %s", exc)
+            return None
+        try:
+            item = response.json()
+        except ValueError:
+            return None
+        if not isinstance(item, dict) or "lat" not in item:
+            return None
+        address = item.get("address") or {}
+        try:
+            country = Country((address.get("country_code") or "").upper())
+        except ValueError:
+            return None
+        try:
+            r_lat = float(item["lat"])
+            r_lon = float(item["lon"])
+        except (KeyError, ValueError):
+            return None
+        display = (
+            item.get("display_name")
+            or f"{address.get('city') or address.get('town') or 'Unknown'}, "
+            f"{country.value}"
+        )
+        return GeocodeResult(
+            display_name=display,
+            coordinate=Coordinate(lat=r_lat, lon=r_lon),
+            country=country,
+            poi_class=item.get("class") or None,
+            poi_type=item.get("type") or None,
+        )
 
-    Purpose: keep the small in-memory mock catalogue as a fast local cache
-    for the well-known launch cities, and only reach out to a real geocoder
-    (e.g. Nominatim) when the user queries something not covered locally.
+
+class HybridGeocodingProvider:
+    """Merges results from `primary` and `secondary`.
+
+    For queries of 2 characters (city-prefix typing) we only hit the mock
+    catalogue — cheap, deterministic, no external call. For longer queries
+    (users looking for a specific place — a small town, a POI like the
+    Musée du Louvre) we run both providers concurrently and merge the
+    results, primary first, deduped by display name.
+
+    Why: the mock catalogue only knows city centres. Searching for
+    "louvre" or "colegio X" would return no mock hit and, under the old
+    "primary-first-falls-through-if-empty" strategy, would defer to
+    Nominatim only if the mock returned zero. With the merged strategy,
+    even ambiguous queries like "lo" that hit a couple of mock cities
+    still surface Nominatim's POI matches below.
     """
+
+    _NOMINATIM_MIN_CHARS = 3
 
     def __init__(
         self,
@@ -167,7 +250,34 @@ class HybridGeocodingProvider:
         self._fallback = fallback
 
     async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
-        results = await self._primary.search(query, limit=limit)
-        if results:
-            return results
-        return await self._fallback.search(query, limit=limit)
+        q = query.strip()
+        if len(q) < self._NOMINATIM_MIN_CHARS:
+            return await self._primary.search(q, limit=limit)
+        primary_task = asyncio.create_task(self._primary.search(q, limit=limit))
+        fallback_task = asyncio.create_task(self._fallback.search(q, limit=limit))
+        primary, fallback = await asyncio.gather(
+            primary_task, fallback_task, return_exceptions=True,
+        )
+        merged: list[GeocodeResult] = []
+        seen: set[str] = set()
+        for source in (primary, fallback):
+            if isinstance(source, BaseException):
+                _log.warning("geocoding provider failed: %s", source)
+                continue
+            for r in source:
+                key = r.display_name.casefold()
+                if key in seen:
+                    continue
+                seen.add(key)
+                merged.append(r)
+                if len(merged) >= limit:
+                    return tuple(merged)
+        return tuple(merged)
+
+    async def reverse(
+        self, lat: float, lon: float,
+    ) -> GeocodeResult | None:
+        result = await self._primary.reverse(lat, lon)
+        if result is not None:
+            return result
+        return await self._fallback.reverse(lat, lon)

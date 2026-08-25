@@ -101,33 +101,53 @@ enum PriceBand {
       };
 }
 
+/// Every country the backend understands. Keep in sync with
+/// `backend/app/data/countries.py`.
 enum Country {
-  ch,
-  fr,
-  it,
-  es;
+  ch('CH', 'Switzerland'),
+  fr('FR', 'France'),
+  it('IT', 'Italy'),
+  es('ES', 'Spain'),
+  no('NO', 'Norway'),
+  se('SE', 'Sweden'),
+  dk('DK', 'Denmark'),
+  fi('FI', 'Finland'),
+  is_('IS', 'Iceland'),
+  de('DE', 'Germany'),
+  at('AT', 'Austria'),
+  be('BE', 'Belgium'),
+  nl('NL', 'Netherlands'),
+  lu('LU', 'Luxembourg'),
+  ie('IE', 'Ireland'),
+  gb('GB', 'United Kingdom'),
+  pt('PT', 'Portugal'),
+  gr('GR', 'Greece'),
+  mt('MT', 'Malta'),
+  cy('CY', 'Cyprus'),
+  pl('PL', 'Poland'),
+  cz('CZ', 'Czechia'),
+  sk('SK', 'Slovakia'),
+  hu('HU', 'Hungary'),
+  si('SI', 'Slovenia'),
+  hr('HR', 'Croatia'),
+  ro('RO', 'Romania'),
+  bg('BG', 'Bulgaria'),
+  ee('EE', 'Estonia'),
+  lv('LV', 'Latvia'),
+  lt('LT', 'Lithuania');
 
-  String get code => switch (this) {
-        Country.ch => 'CH',
-        Country.fr => 'FR',
-        Country.it => 'IT',
-        Country.es => 'ES',
-      };
+  const Country(this.code, this.displayName);
 
-  String get displayName => switch (this) {
-        Country.ch => 'Switzerland',
-        Country.fr => 'France',
-        Country.it => 'Italy',
-        Country.es => 'Spain',
-      };
+  final String code;
+  final String displayName;
 
-  static Country fromCode(String code) => switch (code.toUpperCase()) {
-        'CH' => Country.ch,
-        'FR' => Country.fr,
-        'IT' => Country.it,
-        'ES' => Country.es,
-        _ => throw ArgumentError('Unknown country: $code'),
-      };
+  static Country fromCode(String code) {
+    final upper = code.toUpperCase();
+    for (final c in values) {
+      if (c.code == upper) return c;
+    }
+    throw ArgumentError('Unknown country: $code');
+  }
 }
 
 @immutable
@@ -161,6 +181,7 @@ class TripPlanRequest {
     this.includeAdverseEvents = false,
     this.adverseEventsMaxDistanceKm = 25.0,
     this.includeTollAlternative = false,
+    this.includeRouteComparison = false,
     this.includeHourlyTollAnalysis = false,
     this.avoidMotorways = false,
     this.preferScenic = false,
@@ -200,6 +221,10 @@ class TripPlanRequest {
   /// and return a side-by-side comparison.
   final bool includeTollAlternative;
 
+  /// If true, the backend also returns two extra route variants
+  /// (toll-free + scenic) alongside the fastest for a full comparison.
+  final bool includeRouteComparison;
+
   /// Premium. If true, backend returns a 24-hour verdict table on
   /// whether skipping tolls beats keeping them at each hour of the day.
   final bool includeHourlyTollAnalysis;
@@ -230,6 +255,7 @@ class TripPlanRequest {
         if (includeAdverseEvents)
           'adverse_events_max_distance_km': adverseEventsMaxDistanceKm,
         if (includeTollAlternative) 'include_toll_alternative': true,
+        if (includeRouteComparison) 'include_route_comparison': true,
         if (includeHourlyTollAnalysis) 'include_hourly_toll_analysis': true,
         if (avoidMotorways) 'avoid_motorways': true,
         if (preferScenic) 'prefer_scenic': true,
@@ -285,11 +311,24 @@ class GeocodeResult {
     required this.displayName,
     required this.coordinate,
     required this.country,
+    this.poiClass,
+    this.poiType,
   });
 
   final String displayName;
   final LatLon coordinate;
   final Country country;
+
+  /// OSM top-level class from Nominatim: `tourism`, `amenity`, `shop`,
+  /// `natural`, `historic`, `place`, `leisure`, `railway`, `aeroway`,
+  /// `office`, `building`, `highway`, `waterway`, `man_made`,
+  /// `emergency`, `sport`, `craft`, `military`, `power`. Null for
+  /// mock catalogue entries (they're just cities).
+  final String? poiClass;
+
+  /// OSM subtype. Pair with [poiClass] to look up an icon via
+  /// `iconForPoi(poiClass, poiType, displayName)`.
+  final String? poiType;
 
   factory GeocodeResult.fromJson(Map<String, dynamic> json) {
     final coord = json['coordinate'] as Map<String, dynamic>;
@@ -300,8 +339,31 @@ class GeocodeResult {
         lon: (coord['lon'] as num).toDouble(),
       ),
       country: Country.fromCode(json['country'] as String),
+      poiClass: json['poi_class'] as String?,
+      poiType: json['poi_type'] as String?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'display_name': displayName,
+        'coordinate': {'lat': coordinate.lat, 'lon': coordinate.lon},
+        'country': country.code,
+        if (poiClass != null) 'poi_class': poiClass,
+        if (poiType != null) 'poi_type': poiType,
+      };
+
+  @override
+  bool operator ==(Object other) =>
+      other is GeocodeResult &&
+      other.displayName == displayName &&
+      other.coordinate == coordinate &&
+      other.country == country &&
+      other.poiClass == poiClass &&
+      other.poiType == poiType;
+
+  @override
+  int get hashCode =>
+      Object.hash(displayName, coordinate, country, poiClass, poiType);
 }
 
 @immutable
@@ -341,6 +403,42 @@ class RouteInfo {
             lon: (pair[0] as num).toDouble(),
           );
         }).toList(growable: false),
+      );
+}
+
+@immutable
+class PartialTollSkip {
+  const PartialTollSkip({
+    required this.label,
+    required this.distanceFromOriginKm,
+    required this.savingsEur,
+    required this.timePenaltyMinutes,
+    required this.extraDistanceKm,
+    required this.worthIt,
+    required this.coordinate,
+  });
+
+  final String label;
+  final double distanceFromOriginKm;
+  final double savingsEur;
+  final double timePenaltyMinutes;
+  final double extraDistanceKm;
+  final bool worthIt;
+  final LatLon coordinate;
+
+  factory PartialTollSkip.fromJson(Map<String, dynamic> j) => PartialTollSkip(
+        label: j['label'] as String,
+        distanceFromOriginKm:
+            (j['distance_from_origin_km'] as num).toDouble(),
+        savingsEur: (j['savings_eur'] as num).toDouble(),
+        timePenaltyMinutes:
+            (j['time_penalty_minutes'] as num).toDouble(),
+        extraDistanceKm: (j['extra_distance_km'] as num).toDouble(),
+        worthIt: j['worth_it'] as bool,
+        coordinate: LatLon(
+          lat: (j['lat'] as num).toDouble(),
+          lon: (j['lon'] as num).toDouble(),
+        ),
       );
 }
 
@@ -407,6 +505,14 @@ class TimeWindow {
       );
 }
 
+/// Read a `Map<String, String>` from a possibly-null JSON dict. Backend
+/// always sends an empty object for entries with no OSM tags; older
+/// clients that pre-date the field see null and fall back to empty.
+Map<String, String> _readAttrs(Object? raw) {
+  if (raw is! Map) return const {};
+  return raw.map((k, v) => MapEntry(k.toString(), v.toString()));
+}
+
 @immutable
 class FuelPrice {
   const FuelPrice({
@@ -414,6 +520,8 @@ class FuelPrice {
     required this.country,
     required this.priceEurPerL,
     required this.distanceFromOriginKm,
+    this.coordinate,
+    this.attributes = const {},
   });
 
   final String stationName;
@@ -421,12 +529,28 @@ class FuelPrice {
   final double priceEurPerL;
   final double distanceFromOriginKm;
 
+  /// Present only when the backend was able to attach one. Mock fuel
+  /// prices along a route don't carry coordinates yet; Overpass ones do.
+  final LatLon? coordinate;
+
+  /// Curated OSM tags from the backend (brand, opening_hours,
+  /// payment options, fuel types available, car_wash, shop). Empty
+  /// for mock stations.
+  final Map<String, String> attributes;
+
   factory FuelPrice.fromJson(Map<String, dynamic> json) => FuelPrice(
         stationName: json['station_name'] as String,
         country: Country.fromCode(json['country'] as String),
         priceEurPerL: (json['price_eur_per_l'] as num).toDouble(),
         distanceFromOriginKm:
             (json['distance_from_origin_km'] as num).toDouble(),
+        coordinate: (json['lat'] == null || json['lon'] == null)
+            ? null
+            : LatLon(
+                lat: (json['lat'] as num).toDouble(),
+                lon: (json['lon'] as num).toDouble(),
+              ),
+        attributes: _readAttrs(json['attributes']),
       );
 }
 
@@ -440,6 +564,7 @@ class Hotel {
     required this.detourMinutes,
     required this.distanceFromRouteKm,
     required this.coordinate,
+    this.attributes = const {},
   });
 
   final String name;
@@ -449,6 +574,11 @@ class Hotel {
   final double detourMinutes;
   final double distanceFromRouteKm;
   final LatLon coordinate;
+
+  /// Curated OSM tags from the backend — stars, phone, website,
+  /// opening_hours, wheelchair, wifi, air_conditioning, breakfast,
+  /// brand. Empty for mock hotels.
+  final Map<String, String> attributes;
 
   factory Hotel.fromJson(Map<String, dynamic> json) => Hotel(
         name: json['name'] as String,
@@ -462,7 +592,27 @@ class Hotel {
           lat: (json['lat'] as num).toDouble(),
           lon: (json['lon'] as num).toDouble(),
         ),
+        attributes: _readAttrs(json['attributes']),
       );
+
+  /// Stable identifier used to dedupe favorites across sessions.
+  /// Name + country + rounded coordinate is stable enough for our use.
+  String get favoriteId => 'hotel:${country.code}:'
+      '${coordinate.lat.toStringAsFixed(3)}:'
+      '${coordinate.lon.toStringAsFixed(3)}:$name';
+
+  /// Minimal payload stored in `AppPrefs` — enough to render the tile
+  /// in the Favorites screen without re-planning to fetch it back.
+  Map<String, dynamic> toFavoriteJson() => {
+        'id': favoriteId,
+        'kind': 'hotel',
+        'name': name,
+        'country': country.code,
+        'price_eur_per_night': priceEurPerNight,
+        'price_band': priceBand.code,
+        'lat': coordinate.lat,
+        'lon': coordinate.lon,
+      };
 }
 
 @immutable
@@ -475,6 +625,7 @@ class Restaurant {
     required this.detourMinutes,
     required this.distanceFromRouteKm,
     required this.coordinate,
+    this.attributes = const {},
   });
 
   final String name;
@@ -484,6 +635,11 @@ class Restaurant {
   final double detourMinutes;
   final double distanceFromRouteKm;
   final LatLon coordinate;
+
+  /// Curated OSM tags — cuisine, phone, website, opening_hours,
+  /// outdoor_seating, takeaway, delivery, wheelchair, dog, brand.
+  /// Empty for mock restaurants.
+  final Map<String, String> attributes;
 
   factory Restaurant.fromJson(Map<String, dynamic> json) => Restaurant(
         name: json['name'] as String,
@@ -497,7 +653,23 @@ class Restaurant {
           lat: (json['lat'] as num).toDouble(),
           lon: (json['lon'] as num).toDouble(),
         ),
+        attributes: _readAttrs(json['attributes']),
       );
+
+  String get favoriteId => 'restaurant:${country.code}:'
+      '${coordinate.lat.toStringAsFixed(3)}:'
+      '${coordinate.lon.toStringAsFixed(3)}:$name';
+
+  Map<String, dynamic> toFavoriteJson() => {
+        'id': favoriteId,
+        'kind': 'restaurant',
+        'name': name,
+        'country': country.code,
+        'price_eur_per_meal': priceEurPerMeal,
+        'price_band': priceBand.code,
+        'lat': coordinate.lat,
+        'lon': coordinate.lon,
+      };
 }
 
 @immutable
@@ -701,6 +873,102 @@ class HourlyTollReport {
 }
 
 @immutable
+class RouteVariant {
+  const RouteVariant({
+    required this.key,
+    required this.label,
+    required this.distanceKm,
+    required this.freeFlowMinutes,
+    required this.tollCostEur,
+  });
+
+  /// "fastest" | "toll_free" | "scenic"
+  final String key;
+  final String label;
+  final double distanceKm;
+  final double freeFlowMinutes;
+  final double tollCostEur;
+
+  factory RouteVariant.fromJson(Map<String, dynamic> j) => RouteVariant(
+        key: j['key'] as String,
+        label: j['label'] as String,
+        distanceKm: (j['distance_km'] as num).toDouble(),
+        freeFlowMinutes: (j['free_flow_minutes'] as num).toDouble(),
+        tollCostEur: (j['toll_cost_eur'] as num).toDouble(),
+      );
+}
+
+@immutable
+class TripSavings {
+  const TripSavings({
+    required this.timeSavedMinutesVsDesired,
+    required this.moneySavedEurVsTolls,
+  });
+
+  /// Minutes the recommendation saves vs the sample closest to the
+  /// user's desired departure. Positive when the recommendation is
+  /// faster. Zero when there's no better option.
+  final double timeSavedMinutesVsDesired;
+
+  /// EUR the driver would save if they took the toll-free alternative
+  /// (only populated when the heuristic flags it as worth it).
+  final double moneySavedEurVsTolls;
+
+  factory TripSavings.fromJson(Map<String, dynamic> j) => TripSavings(
+        timeSavedMinutesVsDesired:
+            (j['time_saved_minutes_vs_desired'] as num).toDouble(),
+        moneySavedEurVsTolls:
+            (j['money_saved_eur_vs_tolls'] as num).toDouble(),
+      );
+
+  static const zero = TripSavings(
+    timeSavedMinutesVsDesired: 0,
+    moneySavedEurVsTolls: 0,
+  );
+}
+
+/// Server-derived rendering hints for a trip.
+///
+/// Null when the request had no [TripProfile] — the client then
+/// renders every section unconditionally (legacy behaviour). When
+/// present, the client should hide sections whose corresponding flag
+/// is false so long trips don't drown the user in noise.
+@immutable
+class RecommendationScope {
+  const RecommendationScope({
+    required this.showRestStops,
+    required this.showHotels,
+    required this.showRestaurants,
+    required this.requiresOvernight,
+    required this.restStopsCountTarget,
+    required this.arrivalAfterBedtime,
+    required this.arrivalLocalHour,
+    required this.reason,
+  });
+
+  final bool showRestStops;
+  final bool showHotels;
+  final bool showRestaurants;
+  final bool requiresOvernight;
+  final int restStopsCountTarget;
+  final bool arrivalAfterBedtime;
+  final int arrivalLocalHour;
+  final String reason;
+
+  factory RecommendationScope.fromJson(Map<String, dynamic> j) =>
+      RecommendationScope(
+        showRestStops: j['show_rest_stops'] as bool? ?? true,
+        showHotels: j['show_hotels'] as bool? ?? true,
+        showRestaurants: j['show_restaurants'] as bool? ?? true,
+        requiresOvernight: j['requires_overnight'] as bool? ?? false,
+        restStopsCountTarget: (j['rest_stops_count_target'] as num?)?.toInt() ?? 0,
+        arrivalAfterBedtime: j['arrival_after_bedtime'] as bool? ?? false,
+        arrivalLocalHour: (j['arrival_local_hour'] as num?)?.toInt() ?? 0,
+        reason: j['reason'] as String? ?? '',
+      );
+}
+
+@immutable
 class TripPlanResponse {
   const TripPlanResponse({
     required this.route,
@@ -711,8 +979,12 @@ class TripPlanResponse {
     required this.restStops,
     required this.adverseEvents,
     this.tollAlternative,
+    this.partialTollSkips = const [],
     this.optimizations,
     this.hourlyTollReport,
+    this.savings = TripSavings.zero,
+    this.routeVariants = const [],
+    this.recommendationScope,
   });
 
   final RouteInfo route;
@@ -723,8 +995,12 @@ class TripPlanResponse {
   final List<RestStop> restStops;
   final List<AdverseEvent> adverseEvents;
   final TollAlternative? tollAlternative;
+  final List<PartialTollSkip> partialTollSkips;
   final Optimizations? optimizations;
   final HourlyTollReport? hourlyTollReport;
+  final TripSavings savings;
+  final List<RouteVariant> routeVariants;
+  final RecommendationScope? recommendationScope;
 
   factory TripPlanResponse.fromJson(Map<String, dynamic> json) =>
       TripPlanResponse(
@@ -754,6 +1030,10 @@ class TripPlanResponse {
             : TollAlternative.fromJson(
                 json['toll_alternative'] as Map<String, dynamic>,
               ),
+        partialTollSkips:
+            (json['partial_toll_skips'] as List<dynamic>? ?? const [])
+                .map((s) => PartialTollSkip.fromJson(s as Map<String, dynamic>))
+                .toList(growable: false),
         optimizations: json['optimizations'] == null
             ? null
             : Optimizations.fromJson(
@@ -763,6 +1043,18 @@ class TripPlanResponse {
             ? null
             : HourlyTollReport.fromJson(
                 json['hourly_toll_report'] as Map<String, dynamic>,
+              ),
+        savings: json['savings'] == null
+            ? TripSavings.zero
+            : TripSavings.fromJson(json['savings'] as Map<String, dynamic>),
+        routeVariants:
+            (json['route_variants'] as List<dynamic>? ?? const [])
+                .map((v) => RouteVariant.fromJson(v as Map<String, dynamic>))
+                .toList(growable: false),
+        recommendationScope: json['recommendation_scope'] == null
+            ? null
+            : RecommendationScope.fromJson(
+                json['recommendation_scope'] as Map<String, dynamic>,
               ),
       );
 }

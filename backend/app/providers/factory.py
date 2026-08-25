@@ -2,12 +2,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import os
+
 from app.providers.adverse_events import (
     AdverseEventsProvider,
     CompositeAdverseEventsProvider,
     MockAdverseEventsProvider,
     UserMarkedAdverseEventsProvider,
 )
+from app.providers.firms import FirmsFireProvider
+from app.providers.national_weather import (
+    AemetWeatherProvider,
+    DwdWeatherProvider,
+    MetOfficeWeatherProvider,
+    MeteoFranceWeatherProvider,
+)
+from app.providers.overpass import (
+    FallbackFuelProvider,
+    FallbackHotelsProvider,
+    FallbackRestaurantsProvider,
+    OverpassFuelProvider,
+    OverpassHotelsProvider,
+    OverpassRestaurantsProvider,
+)
+from app.providers.tollguru import TollGuruProvider, TollProvider
+from app.providers.weather import OpenMeteoWeatherProvider
 from app.providers.fuel import FuelProvider, MockFuelProvider
 from app.providers.geocoding import (
     GeocodingProvider,
@@ -35,6 +54,7 @@ class Providers:
     adverse_events: AdverseEventsProvider
     user_marked_events: UserMarkedAdverseEventsProvider
     llm: LlmProvider
+    tollguru: TollProvider | None
 
 
 def get_providers() -> Providers:
@@ -49,16 +69,52 @@ def get_providers() -> Providers:
         routing=_ROUTING,
         traffic=MockTrafficProvider(),
         tolls=MockTollsProvider(),
-        fuel=MockFuelProvider(),
+        fuel=_fuel_provider(),
         geocoding=HybridGeocodingProvider(
             primary=MockGeocodingProvider(),
             fallback=NominatimGeocodingProvider(),
         ),
-        hotels=MockHotelsProvider(),
-        restaurants=MockRestaurantsProvider(),
+        hotels=_hotels_provider(),
+        restaurants=_restaurants_provider(),
         adverse_events=_ADVERSE,
         user_marked_events=_USER_MARKED,
         llm=_LLM,
+        tollguru=_tollguru_provider(),
+    )
+
+
+def _tollguru_provider() -> TollProvider | None:
+    # Only expose a live client when a key is present — otherwise the
+    # endpoint continues on with its heuristic pricing.
+    if os.environ.get("TOLLGURU_API_KEY"):
+        return TollGuruProvider()
+    return None
+
+
+def _hotels_provider():
+    # Default: try Overpass first (real OSM data), fall back to mock
+    # on empty response or timeout. Opt-out with
+    # `MYTRAVELPAL_HOTELS=mock` to skip the outbound call (CI, tests).
+    if os.environ.get("MYTRAVELPAL_HOTELS", "overpass").lower() == "mock":
+        return MockHotelsProvider()
+    return FallbackHotelsProvider(
+        OverpassHotelsProvider(), MockHotelsProvider(),
+    )
+
+
+def _fuel_provider():
+    if os.environ.get("MYTRAVELPAL_FUEL", "overpass").lower() == "mock":
+        return MockFuelProvider()
+    return FallbackFuelProvider(
+        OverpassFuelProvider(), MockFuelProvider(),
+    )
+
+
+def _restaurants_provider():
+    if os.environ.get("MYTRAVELPAL_RESTAURANTS", "overpass").lower() == "mock":
+        return MockRestaurantsProvider()
+    return FallbackRestaurantsProvider(
+        OverpassRestaurantsProvider(), MockRestaurantsProvider(),
     )
 
 
@@ -66,7 +122,31 @@ def get_providers() -> Providers:
 # the composite must reference the same in-memory registry every call.
 _ROUTING = default_routing_provider()
 _USER_MARKED = UserMarkedAdverseEventsProvider()
-_ADVERSE = CompositeAdverseEventsProvider(
-    providers=(MockAdverseEventsProvider(), _USER_MARKED),
-)
+
+
+def _adverse_providers() -> tuple[AdverseEventsProvider, ...]:
+    # Every external provider is opt-in via env var. Off by default in
+    # tests and CI (avoids network); production docker-compose enables
+    # the ones we've integrated.
+    providers: list[AdverseEventsProvider] = [
+        MockAdverseEventsProvider(),
+        _USER_MARKED,
+    ]
+    if os.environ.get("MYTRAVELPAL_WEATHER", "").lower() == "openmeteo":
+        providers.append(OpenMeteoWeatherProvider())
+    # Fires: default-on now that we're wired to a stable service
+    # (NASA FIRMS via ArcGIS Living Atlas). Opt-out with
+    # `MYTRAVELPAL_FIRES=off` to suppress the outbound call (CI, tests).
+    if os.environ.get("MYTRAVELPAL_FIRES", "firms").lower() not in {"off", "0", "false"}:
+        providers.append(FirmsFireProvider())
+    # National advisory feeds — only add when their key is set.
+    for cls in (AemetWeatherProvider, MeteoFranceWeatherProvider,
+                DwdWeatherProvider, MetOfficeWeatherProvider):
+        instance = cls()
+        if instance.configured:
+            providers.append(instance)
+    return tuple(providers)
+
+
+_ADVERSE = CompositeAdverseEventsProvider(providers=_adverse_providers())
 _LLM: LlmProvider = default_llm_provider()

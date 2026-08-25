@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.api.premium import require_premium
 from app.api.v1.trips import TripPlanRequest, plan_trip
 from app.domain import Coordinate
 from app.providers import get_providers
@@ -45,6 +46,7 @@ def _providers() -> Providers:
 async def trip_narrative(
     payload: NarrativeRequest,
     providers: Providers = Depends(_providers),
+    _premium: bool = Depends(require_premium),
 ) -> NarrativeResponse:
     # Plan first (uses the same DI, so hotels/restaurants/adverse events
     # honor the flags the client passed in the plan_request).

@@ -147,10 +147,47 @@ class TestMockNarrative:
 
 
 class TestNarrativeEndpoint:
+    _PREMIUM_HEADER = {"X-MyTravelPal-Premium": "true"}
+
     def test_returns_narrative_when_mock_provider_active(
         self, monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        response = client.post(
+            "/v1/trips/narrative",
+            headers=self._PREMIUM_HEADER,
+            json={
+                "plan_request": {
+                    "origin": {"lat": 48.8566, "lon": 2.3522},
+                    "destination": {"lat": 40.4168, "lon": -3.7038},
+                    "desired_departure_at": "2026-08-24T08:00:00",
+                },
+                "origin_name": "Paris",
+                "destination_name": "Madrid",
+            },
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["origin_name"] == "Paris"
+        assert body["destination_name"] == "Madrid"
+        assert "narrative" in body
+        assert body["narrative"]
+
+    def test_rejects_invalid_plan_request(self) -> None:
+        response = client.post(
+            "/v1/trips/narrative",
+            headers=self._PREMIUM_HEADER,
+            json={
+                "plan_request": {
+                    "origin": {"lat": 999, "lon": 0},
+                    "destination": {"lat": 40, "lon": -3},
+                    "desired_departure_at": "2026-08-24T08:00:00",
+                },
+            },
+        )
+        assert response.status_code == 422
+
+    def test_rejects_without_premium_header(self) -> None:
         response = client.post("/v1/trips/narrative", json={
             "plan_request": {
                 "origin": {"lat": 48.8566, "lon": 2.3522},
@@ -160,19 +197,5 @@ class TestNarrativeEndpoint:
             "origin_name": "Paris",
             "destination_name": "Madrid",
         })
-        assert response.status_code == 200, response.text
-        body = response.json()
-        assert body["origin_name"] == "Paris"
-        assert body["destination_name"] == "Madrid"
-        assert "narrative" in body
-        assert body["narrative"]
-
-    def test_rejects_invalid_plan_request(self) -> None:
-        response = client.post("/v1/trips/narrative", json={
-            "plan_request": {
-                "origin": {"lat": 999, "lon": 0},
-                "destination": {"lat": 40, "lon": -3},
-                "desired_departure_at": "2026-08-24T08:00:00",
-            },
-        })
-        assert response.status_code == 422
+        assert response.status_code == 402
+        assert response.json()["detail"]["error"] == "premium_required"

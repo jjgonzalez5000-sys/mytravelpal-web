@@ -262,14 +262,15 @@ class TestHourlyTollAnalysis:
 # --- Endpoint integration ---
 
 class TestPlanEndpointSprint10:
-    def _plan(self, **extra):
+    def _plan(self, *, premium: bool = False, **extra):
         payload = {
             'origin': {'lat': 48.8566, 'lon': 2.3522},
             'destination': {'lat': 40.4168, 'lon': -3.7038},
             'desired_departure_at': '2026-08-24T08:00:00',
             **extra,
         }
-        response = client.post('/v1/trips/plan', json=payload)
+        headers = {'X-MyTravelPal-Premium': 'true'} if premium else {}
+        response = client.post('/v1/trips/plan', json=payload, headers=headers)
         assert response.status_code == 200, response.text
         return response.json()
 
@@ -298,7 +299,7 @@ class TestPlanEndpointSprint10:
         assert alt['route']['distance_km'] > base['route']['distance_km']
 
     def test_hourly_toll_analysis_returns_verdicts(self) -> None:
-        body = self._plan(include_hourly_toll_analysis=True)
+        body = self._plan(include_hourly_toll_analysis=True, premium=True)
         assert body['hourly_toll_report'] is not None
         assert len(body['hourly_toll_report']['verdicts']) == 24
 
