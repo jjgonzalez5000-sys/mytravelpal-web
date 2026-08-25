@@ -95,6 +95,9 @@ String composeTripShare({
   required RouteInfo route,
   TimeWindow? recommended,
   TollAlternative? tollAlt,
+  List<Hotel> hotels = const [],
+  List<Restaurant> restaurants = const [],
+  FuelArbitrage? fuelArbitrage,
 }) {
   final dateFmt = DateFormat('EEE d MMM · HH:mm');
   final buf = StringBuffer('MyTravelPal — road trip plan\n\n');
@@ -123,6 +126,35 @@ String composeTripShare({
       'for +${tollAlt.timePenaltyMinutes.toStringAsFixed(0)} min',
     );
   }
+  if (fuelArbitrage != null) {
+    buf.writeln();
+    buf.writeln(
+      '⛽ Refuel in ${fuelArbitrage.cheaperCountry.displayName} '
+      '(~${fuelArbitrage.cheaperMedianEurPerL.toStringAsFixed(2)}€/L) '
+      'before ${fuelArbitrage.pricierCountry.displayName} — '
+      'save ~${fuelArbitrage.estimatedTankSavingEur.toStringAsFixed(0)}€/tank',
+    );
+  }
+  if (hotels.isNotEmpty) {
+    buf.writeln();
+    buf.writeln('🏨 Top hotels considered:');
+    for (final h in hotels.take(3)) {
+      buf.writeln(
+        '  · ${h.name} — ${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
+        '${h.distanceFromRouteKm.toStringAsFixed(1)} km off route',
+      );
+    }
+  }
+  if (restaurants.isNotEmpty) {
+    buf.writeln();
+    buf.writeln('🍽️ Top restaurants considered:');
+    for (final r in restaurants.take(3)) {
+      buf.writeln(
+        '  · ${r.name} — ${r.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
+        '${r.distanceFromRouteKm.toStringAsFixed(1)} km off route',
+      );
+    }
+  }
   return buf.toString();
 }
 
@@ -135,6 +167,9 @@ Future<void> shareTrip({
   required DateTime departureAt,
   TimeWindow? recommended,
   TollAlternative? tollAlt,
+  List<Hotel> hotels = const [],
+  List<Restaurant> restaurants = const [],
+  FuelArbitrage? fuelArbitrage,
 }) async {
   final text = composeTripShare(
     originName: originName,
@@ -142,6 +177,9 @@ Future<void> shareTrip({
     route: route,
     recommended: recommended,
     tollAlt: tollAlt,
+    hotels: hotels,
+    restaurants: restaurants,
+    fuelArbitrage: fuelArbitrage,
   );
   final link = encodeTripLink(
     origin: origin,

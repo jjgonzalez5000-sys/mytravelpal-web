@@ -1,35 +1,60 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
+import '../l10n/app_localizations.dart';
+import 'price_band_multiselect.dart';
 
 /// Immutable snapshot of the user's hotel-search preferences.
+///
+/// `priceBands` is a set: users can pick any combination of Budget /
+/// Mid / Luxury. Empty set OR all three selected → treated as ANY
+/// (the backend applies no filter). Exposing the raw `priceBand`
+/// getter keeps a few legacy callers happy — it collapses the set
+/// to a single value.
 @immutable
 class HotelPreferences {
   const HotelPreferences({
     required this.enabled,
     required this.maxDetourMinutes,
-    required this.priceBand,
+    required this.priceBands,
   });
 
   final bool enabled;
   final int maxDetourMinutes;
-  final PriceBand priceBand;
+  final Set<PriceBand> priceBands;
+
+  /// Legacy single-band view. Returns the sole selected band, or
+  /// `any` when the set is empty or represents "everything".
+  PriceBand get priceBand {
+    if (priceBands.length == 1) return priceBands.first;
+    return PriceBand.any;
+  }
 
   static const HotelPreferences disabled = HotelPreferences(
     enabled: false,
     maxDetourMinutes: 30,
-    priceBand: PriceBand.any,
+    priceBands: {PriceBand.any},
+  );
+
+  /// Sensible on-by-default. Chosen 30 min detour so overnight
+  /// candidates surface without the user having to opt in first —
+  /// multi-day trips are useless without hotel context. Users who
+  /// want to hide the section can toggle it off.
+  static const HotelPreferences enabledDefault = HotelPreferences(
+    enabled: true,
+    maxDetourMinutes: 30,
+    priceBands: {PriceBand.any},
   );
 
   HotelPreferences copyWith({
     bool? enabled,
     int? maxDetourMinutes,
-    PriceBand? priceBand,
+    Set<PriceBand>? priceBands,
   }) =>
       HotelPreferences(
         enabled: enabled ?? this.enabled,
         maxDetourMinutes: maxDetourMinutes ?? this.maxDetourMinutes,
-        priceBand: priceBand ?? this.priceBand,
+        priceBands: priceBands ?? this.priceBands,
       );
 }
 
@@ -49,26 +74,39 @@ class HotelPreferencesSection extends StatelessWidget {
   static const _detourMin = 15;
   static const _detourMax = 120;
 
+  String _bandsLabel(AppLocalizations l, Set<PriceBand> bands) {
+    if (bands.isEmpty || bands.contains(PriceBand.any)) {
+      return l.prefBandAny;
+    }
+    // Preserve visual order Budget → Mid → Luxury.
+    const order = [PriceBand.budget, PriceBand.mid, PriceBand.lux];
+    return order
+        .where(bands.contains)
+        .map((b) => b.symbol)
+        .join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Add hotels along the route'),
+          title: Text(l.hotelPrefTitle),
           subtitle: value.enabled
-              ? Text(
-                  'Up to ${value.maxDetourMinutes} min detour · '
-                  '${value.priceBand.displayName} (${value.priceBand.symbol})',
-                )
-              : const Text('Off. Turn on to see hotels near your route.'),
+              ? Text(l.hotelPrefSubEnabled(
+                  value.maxDetourMinutes,
+                  _bandsLabel(l, value.priceBands),
+                ))
+              : Text(l.hotelPrefSubOff),
           value: value.enabled,
           onChanged: (v) => onChanged(value.copyWith(enabled: v)),
         ),
         if (value.enabled) ...[
           const SizedBox(height: 8),
-          Text('Max detour: ${value.maxDetourMinutes} min',
+          Text(l.prefMaxDetour(value.maxDetourMinutes),
               style: Theme.of(context).textTheme.bodyMedium),
           Slider(
             value: value.maxDetourMinutes.toDouble(),
@@ -81,32 +119,12 @@ class HotelPreferencesSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          SegmentedButton<PriceBand>(
-            segments: const [
-              ButtonSegment(
-                value: PriceBand.budget,
-                label: Text('Budget'),
-                icon: Text('€'),
-              ),
-              ButtonSegment(
-                value: PriceBand.mid,
-                label: Text('Mid'),
-                icon: Text('€€'),
-              ),
-              ButtonSegment(
-                value: PriceBand.lux,
-                label: Text('Luxury'),
-                icon: Text('€€€'),
-              ),
-              ButtonSegment(
-                value: PriceBand.any,
-                label: Text('Any'),
-                icon: Icon(Icons.all_inclusive, size: 16),
-              ),
-            ],
-            selected: {value.priceBand},
-            onSelectionChanged: (s) =>
-                onChanged(value.copyWith(priceBand: s.first)),
+          // Multi-select. Picking 2 filters by both; picking all 3
+          // collapses to "any" (the backend treats it the same).
+          PriceBandMultiSelect(
+            selected: value.priceBands,
+            onChanged: (bands) =>
+                onChanged(value.copyWith(priceBands: bands)),
           ),
         ],
       ],

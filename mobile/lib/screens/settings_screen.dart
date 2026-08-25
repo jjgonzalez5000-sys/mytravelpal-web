@@ -5,6 +5,7 @@ import '../design/tokens.dart';
 import '../domain/units.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import 'attributions_screen.dart';
 import 'profile_screen.dart';
 
 /// Single home for all persistent user preferences.
@@ -84,6 +85,17 @@ class SettingsScreen extends ConsumerWidget {
             leading: const Icon(Icons.info_outline),
             title: Text(l.settingsVersion),
             subtitle: const Text('0.1.0 · MVP'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.balance),
+            title: Text(l.settingsLicensesAndData),
+            subtitle: Text(l.settingsLicensesAndDataSub),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const AttributionsScreen(),
+              ),
+            ),
           ),
         ],
       ),

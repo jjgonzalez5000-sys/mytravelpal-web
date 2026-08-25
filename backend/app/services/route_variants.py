@@ -58,4 +58,39 @@ async def compute_variants(
     for key, label, kwargs in _VARIANTS:
         alt = await provider.route(origin, destination, countries, **kwargs)
         out.append(RouteVariant(key=key, label=label, route=alt))
-    return tuple(out)
+    return _dedupe_variants(out)
+
+
+# Public OSRM ignores `avoid_tolls` and `prefer_scenic` — every
+# variant collapses to the same distance/duration. Rather than show
+# three identical rows in the UI (which is misleading — the driver
+# assumes real alternatives exist), collapse duplicates so we only
+# advertise variants that materially differ from the primary.
+_DEDUPE_KM_TOLERANCE = 1.0
+_DEDUPE_DURATION_TOLERANCE_S = 60.0
+
+
+def _dedupe_variants(
+    variants: list[RouteVariant],
+) -> tuple[RouteVariant, ...]:
+    kept: list[RouteVariant] = []
+    for v in variants:
+        redundant = False
+        for existing in kept:
+            same_distance = (
+                abs(v.route.distance_km - existing.route.distance_km)
+                <= _DEDUPE_KM_TOLERANCE
+            )
+            same_duration = (
+                abs(
+                    v.route.free_flow_duration.total_seconds()
+                    - existing.route.free_flow_duration.total_seconds()
+                )
+                <= _DEDUPE_DURATION_TOLERANCE_S
+            )
+            if same_distance and same_duration:
+                redundant = True
+                break
+        if not redundant:
+            kept.append(v)
+    return tuple(kept)

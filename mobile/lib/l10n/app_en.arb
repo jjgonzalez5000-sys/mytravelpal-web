@@ -91,7 +91,7 @@
     "profileHasKids": "Travelling with kids",
     "profileHasPets": "Travelling with pets",
     "profileVehicle": "Vehicle",
-    "profileMealTimes": "Meal times",
+    "profileMealTimes": "Meal schedule",
     "profileReminders": "Reminders",
     "profilePremiumSection": "Premium (demo)",
     "profileClearProfile": "Clear profile",
@@ -364,5 +364,212 @@
     "fuelTypeDiesel": "Diesel",
     "fuelTypeHybrid": "Hybrid",
     "fuelTypeElectric": "Electric",
-    "fuelTypeLpg": "LPG"
+    "fuelTypeLpg": "LPG",
+
+    "routeVariantFastest": "Fastest",
+    "routeVariantTollFree": "Toll-free",
+    "routeVariantScenic": "Scenic",
+
+    "eventTypeFire": "Fire",
+    "eventTypeStrike": "Strike",
+    "eventTypeWeather": "Adverse weather",
+    "eventTypeAccident": "Accident",
+    "eventTypeRoadwork": "Roadwork",
+    "eventTypeFlood": "Flood",
+    "eventTypeSnow": "Snow",
+    "eventTypeProtest": "Protest",
+    "eventTypeOther": "Other",
+    "eventSeverityCritical": "Critical",
+    "eventSeverityWarning": "Warning",
+    "eventSeverityInfo": "Info",
+
+    "tollStretchLabel": "Toll stretch {index} / {total}",
+    "@tollStretchLabel": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}}},
+    "tollBoothLabel": "Toll booth {index}",
+    "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
+
+    "addToRouteTooltip": "Add to route",
+    "removeFromRouteTooltip": "Remove from route",
+    "addedStopsChip": "{count, plural, =1{1 stop added · +{minutes} min} other{{count} stops added · +{minutes} min}}",
+    "@addedStopsChip": {"placeholders": {"count": {"type": "int"}, "minutes": {"type": "String"}}},
+    "addedStopsClear": "Clear",
+
+    "settingsLicensesAndData": "Licenses & data sources",
+    "settingsLicensesAndDataSub": "Attributions for open data and libraries",
+    "attributionsTitle": "Licenses & data",
+    "attributionsIntro": "MyTravelPal is built on open data feeds and open-source libraries. This screen credits every source we use, links to the underlying licences, and covers our legal attribution obligations.",
+    "attributionsSectionMap": "Map & geodata",
+    "attributionsSectionFuel": "Fuel prices",
+    "attributionsSectionHazards": "Adverse events",
+    "attributionsSectionWeather": "Weather",
+    "attributionsSectionSoftware": "Software libraries",
+    "attributionsShowLicenses": "Show package licences",
+    "attributionsFailed": "Couldn't load attributions. Please try again.",
+
+    "fuelPriceUnavailable": "Price not available",
+    "fuelPriceUnavailableHint": "No public price feed for this country yet",
+
+    "planSectionOptionalEyebrow": "Optional",
+    "planOptAlertsTitle": "Alert me about adverse events",
+    "planOptAlertsSub": "Fires, strikes, weather, roadworks, and more within 25 km of the route.",
+    "planOptTollFreeTitle": "Show toll-free alternative",
+    "planOptTollFreeSub": "Compare a route that skips tolls — money saved vs. minutes added.",
+    "planOptHourlyTollTitle": "Hourly toll analysis",
+    "planOptHourlyTollSub": "When during the day skipping tolls actually beats keeping them (traffic-aware).",
+    "planOptRouteVariantsTitle": "Compare route variants",
+    "planOptRouteVariantsSub": "Fastest vs. toll-free vs. scenic — see all three side by side on the results.",
+    "planOptAvoidMotorwaysTitle": "Avoid motorways",
+    "planOptAvoidMotorwaysSub": "Slower and longer, but no tolls and quieter.",
+    "planOptPreferScenicTitle": "Prefer scenic",
+    "planOptPreferScenicSub": "Bias to more interesting roads. A little slower.",
+    "planPremiumBadge": "Premium",
+
+    "planProfileTravellers": "{count, plural, =1{1 traveller} other{{count} travellers}}",
+    "@planProfileTravellers": {"placeholders": {"count": {"type": "int"}}},
+    "planProfileWithKids": "kids",
+    "planProfileWithPets": "pets",
+    "planProfileOverrideActive": "OVERRIDE ACTIVE",
+    "planProfileOverride": "Override for this trip",
+    "planProfileOverriding": "Overriding for this trip",
+    "profilePromptSetup": "Set up your trip profile",
+
+    "hotelPrefTitle": "Add hotels along the route",
+    "hotelPrefSubEnabled": "Up to {minutes} min detour · {band}",
+    "@hotelPrefSubEnabled": {"placeholders": {"minutes": {"type": "int"}, "band": {"type": "String"}}},
+    "hotelPrefSubOff": "Off. Turn on to see hotels near your route.",
+    "restaurantPrefTitle": "Add restaurants along the route",
+    "restaurantPrefSubEnabled": "Up to {minutes} min detour · {band}",
+    "@restaurantPrefSubEnabled": {"placeholders": {"minutes": {"type": "int"}, "band": {"type": "String"}}},
+    "restaurantPrefSubOff": "Off. Turn on to see restaurants near your route.",
+    "prefMaxDetour": "Max detour: {minutes} min",
+    "@prefMaxDetour": {"placeholders": {"minutes": {"type": "int"}}},
+    "prefBandBudget": "Budget",
+    "prefBandMid": "Mid",
+    "prefBandLuxury": "Luxury",
+    "prefBandAny": "Any",
+
+    "mealSlotBreakfast": "Suggested for breakfast",
+    "mealSlotLunch": "Suggested for lunch",
+    "mealSlotDinner": "Suggested for dinner",
+    "mealSlotOther": "Other restaurants",
+    "poiDistanceKm": "{km} km · +{minutes} min detour",
+    "@poiDistanceKm": {"placeholders": {"km": {"type": "String"}, "minutes": {"type": "String"}}},
+
+    "fuelSavingsChipCheap": "-{amount}€/L vs country avg",
+    "@fuelSavingsChipCheap": {"placeholders": {"amount": {"type": "String"}}},
+    "fuelSavingsChipDear": "+{amount}€/L vs country avg",
+    "@fuelSavingsChipDear": {"placeholders": {"amount": {"type": "String"}}},
+
+    "fuelArbitrageTitle": "Refuel smart on this route",
+    "fuelArbitrageBody": "Fuel in {cheap} is around {cheapPrice}€/L. In {dear} it's ~{dearPrice}€/L. Filling the tank in {cheap} before crossing saves ~{savings}€.",
+    "@fuelArbitrageBody": {"placeholders": {"cheap": {"type": "String"}, "cheapPrice": {"type": "String"}, "dear": {"type": "String"}, "dearPrice": {"type": "String"}, "savings": {"type": "String"}}},
+
+    "dayTabLabel": "Day {index}",
+    "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
+    "dayHeaderRange": "Day {index} · km {fromKm} → {toKm}",
+    "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
+    "daySleepMarker": "Overnight around {time}",
+    "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
+
+    "nextStopHeroLabel": "Next suggested stop",
+    "nextStopHeroBody": "{slot} in {name} · around {time}",
+    "@nextStopHeroBody": {"placeholders": {"slot": {"type": "String"}, "name": {"type": "String"}, "time": {"type": "String"}}},
+
+    "daySleepHotelsLabel": "Hotels near your overnight stop",
+    "daySleepHotelsEmpty": "Enable hotels in the plan preferences to see overnight options here.",
+
+    "restaurantPrefCuisinesLabel": "Cuisine",
+    "cuisineItalian": "Italian",
+    "cuisineSpanish": "Spanish",
+    "cuisineTapas": "Tapas",
+    "cuisineFrench": "French",
+    "cuisineMediterranean": "Mediterranean",
+    "cuisineAsian": "Asian",
+    "cuisineIndian": "Indian",
+    "cuisineBurger": "Burgers",
+    "cuisineSeafood": "Seafood",
+    "cuisineVegetarian": "Vegetarian",
+    "cuisineBbq": "BBQ / grill",
+    "cuisineRegional": "Regional",
+
+    "timeWindowSpanLabel": "Show ±{hours}h",
+    "@timeWindowSpanLabel": {"placeholders": {"hours": {"type": "int"}}},
+    "timeWindowSpanHelper": "Drag to widen the window and see if leaving earlier or later saves more time.",
+
+    "planLoadingTitle": "Building your road trip",
+    "planLoadingStepRouting": "Computing the fastest route…",
+    "planLoadingStepTraffic": "Sampling traffic to pick the best departure hour…",
+    "planLoadingStepFuel": "Fetching live fuel prices along the corridor…",
+    "planLoadingStepHotels": "Looking for hotels around any overnight stops…",
+    "planLoadingStepRestaurants": "Sorting restaurants by meal slot and cuisine…",
+    "planLoadingStepAlerts": "Scanning for fires, roadworks, weather, protests…",
+    "planLoadingStepTolls": "Comparing toll routes with toll-free alternatives…",
+    "planLoadingStepAlmost": "Almost there — assembling everything for you…",
+    "planLoadingHelper": "This usually takes 5-15 seconds. Feel free to keep the phone in your pocket.",
+
+    "resultStartTrip": "Start trip",
+    "navPickerTitle": "Continue in…",
+    "tripDashboardTitle": "On the road",
+    "tripDashboardCenterOnMe": "Centre on my location",
+    "tripDashboardOpenNav": "Open navigation",
+    "tripDashboardNextStopLabel": "NEXT {slot}",
+    "@tripDashboardNextStopLabel": {
+      "placeholders": {"slot": {"type": "String"}}
+    },
+    "tripDashboardInMinutes": "in {n} min",
+    "@tripDashboardInMinutes": {
+      "placeholders": {"n": {"type": "int"}}
+    },
+    "tripDashboardPermissionDenied": "Location denied. Grant the permission to see your position on the route.",
+    "tripDashboardServiceDisabled": "GPS is off. Enable it to follow your progress on the route.",
+
+    "tripDashboardProgressLine": "{done} / {total} km",
+    "@tripDashboardProgressLine": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"}
+      }
+    },
+    "tripDashboardEta": "ETA {time}",
+    "@tripDashboardEta": {
+      "placeholders": {"time": {"type": "String"}}
+    },
+    "tripDashboardActiveNotifTitle": "Trip in progress",
+    "tripDashboardActiveNotifBody": "MyTravelPal is following your route in the background.",
+    "tripDashboardSleepStopLabel": "hotel",
+    "alertApproachingStopTitle": "Stop coming up",
+    "alertApproachingStopBody": "{slot} at {name} in about {mins} min. Get ready for the exit.",
+    "@alertApproachingStopBody": {
+      "placeholders": {
+        "slot": {"type": "String"},
+        "name": {"type": "String"},
+        "mins": {"type": "int"}
+      }
+    },
+    "alertNewAdverseAheadTitle": "New alert on your route",
+    "alertNewAdverseAheadBody": "{type} reported {km} km ahead.",
+    "@alertNewAdverseAheadBody": {
+      "placeholders": {
+        "type": {"type": "String"},
+        "km": {"type": "String"}
+      }
+    },
+    "alertDriftDetectedTitle": "You've left the route",
+    "alertDriftDetectedBody": "You're {off} m off the planned track. Recalculate?",
+    "@alertDriftDetectedBody": {
+      "placeholders": {"off": {"type": "String"}}
+    },
+    "alertBehindScheduleTitle": "Running behind",
+    "alertBehindScheduleBody": "You'll arrive {mins} min later than planned.",
+    "@alertBehindScheduleBody": {
+      "placeholders": {"mins": {"type": "int"}}
+    },
+    "tripDashboardCheaperFuel": "{brand} in {km} km · save {cts} ct/L",
+    "@tripDashboardCheaperFuel": {
+      "placeholders": {
+        "brand": {"type": "String"},
+        "km": {"type": "String"},
+        "cts": {"type": "String"}
+      }
+    }
 }

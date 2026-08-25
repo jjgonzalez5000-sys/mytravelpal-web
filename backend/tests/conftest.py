@@ -12,5 +12,6 @@ os.environ.setdefault("MYTRAVELPAL_HOTELS", "mock")
 os.environ.setdefault("MYTRAVELPAL_FUEL", "mock")
 os.environ.setdefault("MYTRAVELPAL_RESTAURANTS", "mock")
 os.environ.setdefault("MYTRAVELPAL_FIRES", "off")
+os.environ.setdefault("MYTRAVELPAL_SKIP_PREWARM", "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))

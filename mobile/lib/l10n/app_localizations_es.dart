@@ -268,7 +268,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get profileVehicle => 'Vehículo';
 
   @override
-  String get profileMealTimes => 'Horas de comida';
+  String get profileMealTimes => 'Horario de comidas';
 
   @override
   String get profileReminders => 'Recordatorios';
@@ -727,13 +727,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get eventWhatHappenedEyebrow => 'Tipo';
 
   @override
-  String get eventSeverityInfo => 'Info';
+  String get eventSeverityInfo => 'Información';
 
   @override
   String get eventSeverityWarning => 'Aviso';
 
   @override
-  String get eventSeverityCritical => 'Crítico';
+  String get eventSeverityCritical => 'Crítica';
 
   @override
   String get eventWhere => 'Dónde';
@@ -1025,4 +1025,472 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get fuelTypeLpg => 'GLP';
+
+  @override
+  String get routeVariantFastest => 'Más rápida';
+
+  @override
+  String get routeVariantTollFree => 'Sin peajes';
+
+  @override
+  String get routeVariantScenic => 'Escénica';
+
+  @override
+  String get eventTypeFire => 'Incendio';
+
+  @override
+  String get eventTypeStrike => 'Huelga';
+
+  @override
+  String get eventTypeWeather => 'Meteorología adversa';
+
+  @override
+  String get eventTypeAccident => 'Accidente';
+
+  @override
+  String get eventTypeRoadwork => 'Obras';
+
+  @override
+  String get eventTypeFlood => 'Inundación';
+
+  @override
+  String get eventTypeSnow => 'Nieve';
+
+  @override
+  String get eventTypeProtest => 'Manifestación';
+
+  @override
+  String get eventTypeOther => 'Otros';
+
+  @override
+  String tollStretchLabel(int index, int total) {
+    return 'Tramo con peaje $index / $total';
+  }
+
+  @override
+  String tollBoothLabel(int index) {
+    return 'Peaje $index';
+  }
+
+  @override
+  String get addToRouteTooltip => 'Añadir a la ruta';
+
+  @override
+  String get removeFromRouteTooltip => 'Quitar de la ruta';
+
+  @override
+  String addedStopsChip(int count, String minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paradas añadidas · +$minutes min',
+      one: '1 parada añadida · +$minutes min',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get addedStopsClear => 'Limpiar';
+
+  @override
+  String get settingsLicensesAndData => 'Licencias y fuentes de datos';
+
+  @override
+  String get settingsLicensesAndDataSub =>
+      'Atribución de datos abiertos y librerías';
+
+  @override
+  String get attributionsTitle => 'Licencias y datos';
+
+  @override
+  String get attributionsIntro =>
+      'MyTravelPal se apoya en fuentes de datos abiertas y librerías open-source. Esta pantalla acredita cada fuente, enlaza con sus licencias y cubre nuestras obligaciones legales de atribución.';
+
+  @override
+  String get attributionsSectionMap => 'Mapa y geodatos';
+
+  @override
+  String get attributionsSectionFuel => 'Precios de combustible';
+
+  @override
+  String get attributionsSectionHazards => 'Eventos adversos';
+
+  @override
+  String get attributionsSectionWeather => 'Meteorología';
+
+  @override
+  String get attributionsSectionSoftware => 'Librerías de software';
+
+  @override
+  String get attributionsShowLicenses => 'Ver licencias de paquetes';
+
+  @override
+  String get attributionsFailed =>
+      'No se pudieron cargar las atribuciones. Inténtalo de nuevo.';
+
+  @override
+  String get fuelPriceUnavailable => 'Precio no disponible';
+
+  @override
+  String get fuelPriceUnavailableHint =>
+      'No hay feed público de precios en este país todavía';
+
+  @override
+  String get planSectionOptionalEyebrow => 'Opcional';
+
+  @override
+  String get planOptAlertsTitle => 'Avisarme de eventos adversos';
+
+  @override
+  String get planOptAlertsSub =>
+      'Incendios, huelgas, meteorología, obras y más a menos de 25 km de la ruta.';
+
+  @override
+  String get planOptTollFreeTitle => 'Mostrar alternativa sin peajes';
+
+  @override
+  String get planOptTollFreeSub =>
+      'Compara una ruta que evita peajes — dinero ahorrado vs. minutos añadidos.';
+
+  @override
+  String get planOptHourlyTollTitle => 'Análisis de peajes por hora';
+
+  @override
+  String get planOptHourlyTollSub =>
+      'A qué horas del día evitar peajes realmente compensa (según el tráfico).';
+
+  @override
+  String get planOptRouteVariantsTitle => 'Comparar variantes de ruta';
+
+  @override
+  String get planOptRouteVariantsSub =>
+      'Más rápida vs. sin peajes vs. escénica — las tres en paralelo en los resultados.';
+
+  @override
+  String get planOptAvoidMotorwaysTitle => 'Evitar autopistas';
+
+  @override
+  String get planOptAvoidMotorwaysSub =>
+      'Más lento y más largo, pero sin peajes y más tranquilo.';
+
+  @override
+  String get planOptPreferScenicTitle => 'Preferir escénica';
+
+  @override
+  String get planOptPreferScenicSub =>
+      'Prioriza carreteras más interesantes. Algo más lento.';
+
+  @override
+  String get planPremiumBadge => 'Premium';
+
+  @override
+  String planProfileTravellers(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count viajeros',
+      one: '1 viajero',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get planProfileWithKids => 'niños';
+
+  @override
+  String get planProfileWithPets => 'mascotas';
+
+  @override
+  String get planProfileOverrideActive => 'SUSTITUCIÓN ACTIVA';
+
+  @override
+  String get planProfileOverride => 'Sustituir para este viaje';
+
+  @override
+  String get planProfileOverriding => 'Sustituyendo para este viaje';
+
+  @override
+  String get profilePromptSetup => 'Configura tu perfil de viaje';
+
+  @override
+  String get hotelPrefTitle => 'Añadir hoteles en la ruta';
+
+  @override
+  String hotelPrefSubEnabled(int minutes, String band) {
+    return 'Hasta $minutes min de desvío · $band';
+  }
+
+  @override
+  String get hotelPrefSubOff =>
+      'Desactivado. Actívalo para ver hoteles cerca de la ruta.';
+
+  @override
+  String get restaurantPrefTitle => 'Añadir restaurantes en la ruta';
+
+  @override
+  String restaurantPrefSubEnabled(int minutes, String band) {
+    return 'Hasta $minutes min de desvío · $band';
+  }
+
+  @override
+  String get restaurantPrefSubOff =>
+      'Desactivado. Actívalo para ver restaurantes cerca de la ruta.';
+
+  @override
+  String prefMaxDetour(int minutes) {
+    return 'Desvío máx: $minutes min';
+  }
+
+  @override
+  String get prefBandBudget => 'Económico';
+
+  @override
+  String get prefBandMid => 'Medio';
+
+  @override
+  String get prefBandLuxury => 'Lujo';
+
+  @override
+  String get prefBandAny => 'Cualquiera';
+
+  @override
+  String get mealSlotBreakfast => 'Sugeridos para desayuno';
+
+  @override
+  String get mealSlotLunch => 'Sugeridos para comida';
+
+  @override
+  String get mealSlotDinner => 'Sugeridos para cena';
+
+  @override
+  String get mealSlotOther => 'Otros restaurantes';
+
+  @override
+  String poiDistanceKm(String km, String minutes) {
+    return '$km km · +$minutes min de desvío';
+  }
+
+  @override
+  String fuelSavingsChipCheap(String amount) {
+    return '-$amount€/L vs media país';
+  }
+
+  @override
+  String fuelSavingsChipDear(String amount) {
+    return '+$amount€/L vs media país';
+  }
+
+  @override
+  String get fuelArbitrageTitle => 'Reposta con cabeza en esta ruta';
+
+  @override
+  String fuelArbitrageBody(String cheap, String cheapPrice, String dear,
+      String dearPrice, String savings) {
+    return 'El combustible en $cheap está a ~$cheapPrice€/L. En $dear sube a ~$dearPrice€/L. Llenar el depósito en $cheap antes de cruzar ahorra ~$savings€.';
+  }
+
+  @override
+  String dayTabLabel(int index) {
+    return 'Día $index';
+  }
+
+  @override
+  String dayHeaderRange(int index, String fromKm, String toKm) {
+    return 'Día $index · km $fromKm → $toKm';
+  }
+
+  @override
+  String daySleepMarker(String time) {
+    return 'Pernocta hacia las $time';
+  }
+
+  @override
+  String get nextStopHeroLabel => 'Próxima parada sugerida';
+
+  @override
+  String nextStopHeroBody(String slot, String name, String time) {
+    return '$slot en $name · hacia las $time';
+  }
+
+  @override
+  String get daySleepHotelsLabel => 'Hoteles cerca del punto de pernocta';
+
+  @override
+  String get daySleepHotelsEmpty =>
+      'Activa hoteles en las preferencias del plan para ver opciones de pernocta.';
+
+  @override
+  String get restaurantPrefCuisinesLabel => 'Tipo de cocina';
+
+  @override
+  String get cuisineItalian => 'Italiana';
+
+  @override
+  String get cuisineSpanish => 'Española';
+
+  @override
+  String get cuisineTapas => 'Tapas';
+
+  @override
+  String get cuisineFrench => 'Francesa';
+
+  @override
+  String get cuisineMediterranean => 'Mediterránea';
+
+  @override
+  String get cuisineAsian => 'Asiática';
+
+  @override
+  String get cuisineIndian => 'India';
+
+  @override
+  String get cuisineBurger => 'Hamburguesas';
+
+  @override
+  String get cuisineSeafood => 'Pescado / mariscos';
+
+  @override
+  String get cuisineVegetarian => 'Vegetariana';
+
+  @override
+  String get cuisineBbq => 'Parrilla / BBQ';
+
+  @override
+  String get cuisineRegional => 'Regional';
+
+  @override
+  String timeWindowSpanLabel(int hours) {
+    return 'Mostrar ±${hours}h';
+  }
+
+  @override
+  String get timeWindowSpanHelper =>
+      'Arrastra para ampliar la ventana y ver si salir antes o después ahorra más tiempo.';
+
+  @override
+  String get planLoadingTitle => 'Preparando tu viaje';
+
+  @override
+  String get planLoadingStepRouting => 'Calculando la ruta más rápida…';
+
+  @override
+  String get planLoadingStepTraffic =>
+      'Muestreando tráfico para elegir la mejor hora de salida…';
+
+  @override
+  String get planLoadingStepFuel =>
+      'Obteniendo precios reales de combustible del corredor…';
+
+  @override
+  String get planLoadingStepHotels =>
+      'Buscando hoteles cerca de las paradas para pernoctar…';
+
+  @override
+  String get planLoadingStepRestaurants =>
+      'Ordenando restaurantes por horario y tipo de cocina…';
+
+  @override
+  String get planLoadingStepAlerts =>
+      'Escaneando incendios, obras, meteorología, protestas…';
+
+  @override
+  String get planLoadingStepTolls =>
+      'Comparando rutas con peaje y alternativas sin peaje…';
+
+  @override
+  String get planLoadingStepAlmost => 'Casi listo — juntando todo para ti…';
+
+  @override
+  String get planLoadingHelper =>
+      'Suele tardar entre 5 y 15 segundos. Puedes guardar el móvil un momento.';
+
+  @override
+  String get resultStartTrip => 'Iniciar viaje';
+
+  @override
+  String get navPickerTitle => 'Continuar en…';
+
+  @override
+  String get tripDashboardTitle => 'En ruta';
+
+  @override
+  String get tripDashboardCenterOnMe => 'Centrar en mi posición';
+
+  @override
+  String get tripDashboardOpenNav => 'Abrir navegación';
+
+  @override
+  String tripDashboardNextStopLabel(String slot) {
+    return 'PRÓXIMA $slot';
+  }
+
+  @override
+  String tripDashboardInMinutes(int n) {
+    return 'en $n min';
+  }
+
+  @override
+  String get tripDashboardPermissionDenied =>
+      'Ubicación denegada. Activa el permiso para ver tu posición en la ruta.';
+
+  @override
+  String get tripDashboardServiceDisabled =>
+      'GPS desactivado. Enciéndelo para seguir tu progreso en la ruta.';
+
+  @override
+  String tripDashboardProgressLine(String done, String total) {
+    return '$done / $total km';
+  }
+
+  @override
+  String tripDashboardEta(String time) {
+    return 'ETA $time';
+  }
+
+  @override
+  String get tripDashboardActiveNotifTitle => 'Viaje activo';
+
+  @override
+  String get tripDashboardActiveNotifBody =>
+      'MyTravelPal sigue tu ruta en segundo plano.';
+
+  @override
+  String get tripDashboardSleepStopLabel => 'hotel';
+
+  @override
+  String get alertApproachingStopTitle => 'Parada cerca';
+
+  @override
+  String alertApproachingStopBody(String slot, String name, int mins) {
+    return '$slot en $name en unos $mins min. Prepara la salida.';
+  }
+
+  @override
+  String get alertNewAdverseAheadTitle => 'Nueva alerta en la ruta';
+
+  @override
+  String alertNewAdverseAheadBody(String type, String km) {
+    return '$type detectado a $km km por delante.';
+  }
+
+  @override
+  String get alertDriftDetectedTitle => 'Te desviaste de la ruta';
+
+  @override
+  String alertDriftDetectedBody(String off) {
+    return 'Estás a $off m del trazado planificado. ¿Recalcular?';
+  }
+
+  @override
+  String get alertBehindScheduleTitle => 'Vas con retraso';
+
+  @override
+  String alertBehindScheduleBody(int mins) {
+    return 'Llegarás $mins min más tarde de lo previsto.';
+  }
+
+  @override
+  String tripDashboardCheaperFuel(String brand, String km, String cts) {
+    return '$brand en $km km · ahorras $cts ct/L';
+  }
 }

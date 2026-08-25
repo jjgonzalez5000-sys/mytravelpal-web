@@ -27,17 +27,28 @@ from app.domain import (
 from app.providers import get_providers
 from app.providers.factory import Providers
 from app.services.adverse_events_filter import filter_events_near_route
+from app.services.day_plan import compute as compute_day_plan
 from app.services.fuel_cost import FuelCostEstimate, estimate as estimate_fuel
+from app.services.fuel_savings import (
+    cross_country_arbitrage as compute_fuel_arbitrage,
+    curate_stations as curate_fuel_stations,
+    stamp_savings as stamp_fuel_savings,
+)
 from app.services.hotel_search import filter_hotels
 from app.services.hourly_toll_analysis import analyze as hourly_toll_analyze
 from app.services.polyline_simplify import simplify as simplify_polyline
 from app.services.rest_stops import compute_rest_stops
 from app.services.restaurant_search import filter_restaurants
-from app.services.time_window import compute_time_windows, minutes_saved_vs_desired
+from app.services.time_window import (
+    TimeWindowConfig,
+    compute_time_windows,
+    minutes_saved_vs_desired,
+)
 from app.services.partial_toll_skips import compute as compute_partial_skips
 from app.services.route_variants import compute_variants
 from app.services.toll_savings import compare as compare_toll
 from dataclasses import replace as _dc_replace
+from app.services.consistency import check_trip as check_trip_consistency
 from app.services.trip_optimizations import compute as compute_optimizations
 from app.services.trip_style import derive_scope as derive_style_scope
 
@@ -60,8 +71,11 @@ class VehicleIn(BaseModel):
 
 class MealPreferencesIn(BaseModel):
     breakfast_hour: int = Field(default=8, ge=4, le=12)
+    breakfast_minute: int = Field(default=0, ge=0, le=59)
     lunch_hour: int = Field(default=13, ge=11, le=16)
+    lunch_minute: int = Field(default=0, ge=0, le=59)
     dinner_hour: int = Field(default=20, ge=17, le=23)
+    dinner_minute: int = Field(default=0, ge=0, le=59)
     typical_stop_minutes: int = Field(default=45, ge=15, le=180)
 
 
@@ -95,8 +109,11 @@ class TripProfileIn(BaseModel):
             ),
             meals=MealPreferences(
                 breakfast_hour=self.meals.breakfast_hour,
+                breakfast_minute=self.meals.breakfast_minute,
                 lunch_hour=self.meals.lunch_hour,
+                lunch_minute=self.meals.lunch_minute,
                 dinner_hour=self.meals.dinner_hour,
+                dinner_minute=self.meals.dinner_minute,
                 typical_stop_minutes=self.meals.typical_stop_minutes,
             ),
             travel_pace=self.travel_pace,
@@ -133,7 +150,16 @@ class TripPlanRequest(BaseModel):
         default=None,
         description=(
             "Filter hotels by price band. Only applied when "
-            "hotel_max_detour_minutes > 0."
+            "hotel_max_detour_minutes > 0. Legacy single-band field; "
+            "prefer `hotel_price_bands` for multi-select."
+        ),
+    )
+    hotel_price_bands: list[PriceBand] | None = Field(
+        default=None,
+        description=(
+            "Multi-band price filter for hotels. If the list contains "
+            "PriceBand.ANY or is empty, no filter is applied. Wins over "
+            "`hotel_price_band` when set."
         ),
     )
     restaurant_max_detour_minutes: int | None = Field(
@@ -148,8 +174,32 @@ class TripPlanRequest(BaseModel):
     restaurant_price_band: PriceBand | None = Field(
         default=None,
         description=(
-            "Filter restaurants by price band (per person, per meal). "
-            "Only applied when restaurant_max_detour_minutes > 0."
+            "Legacy single-band; prefer `restaurant_price_bands`."
+        ),
+    )
+    restaurant_price_bands: list[PriceBand] | None = Field(
+        default=None,
+        description=(
+            "Multi-band price filter for restaurants. `[ANY]` or empty "
+            "means no filter."
+        ),
+    )
+    restaurant_cuisines: list[str] | None = Field(
+        default=None,
+        description=(
+            "Optional OSM `cuisine` tag whitelist (e.g. ['italian', "
+            "'spanish', 'tapas']). Only restaurants tagged with at least "
+            "one match are kept."
+        ),
+    )
+    restaurant_exclude_origin_radius_km: float = Field(
+        default=15.0,
+        ge=0.0,
+        le=100.0,
+        description=(
+            "Skip restaurants within this straight-line distance of the "
+            "origin — a driver planning a trip doesn't need dining tips "
+            "next door to their departure point."
         ),
     )
     include_adverse_events: bool = Field(
@@ -161,12 +211,14 @@ class TripPlanRequest(BaseModel):
         ),
     )
     adverse_events_max_distance_km: float = Field(
-        default=25.0,
+        default=12.0,
         gt=0.0,
         le=200.0,
         description=(
             "Maximum great-circle distance from the route for an event to "
-            "be included. Only meaningful when include_adverse_events=true."
+            "be included. Only meaningful when include_adverse_events=true. "
+            "Default (12 km) tuned for FIRMS fires — beyond that the smoke "
+            "plume rarely affects the highway."
         ),
     )
     include_route_comparison: bool = Field(
@@ -194,6 +246,26 @@ class TripPlanRequest(BaseModel):
     )
     avoid_motorways: bool = Field(default=False)
     prefer_scenic: bool = Field(default=False)
+    time_window_span_hours: int = Field(
+        default=3,
+        ge=1,
+        le=12,
+        description=(
+            "Half-width in hours of the departure window to sample "
+            "around the desired departure time. Default ±3h; the "
+            "client can expand up to ±12h when the driver wants to "
+            "see whether leaving much earlier / later saves more time."
+        ),
+    )
+    time_window_top_n: int = Field(
+        default=5,
+        ge=3,
+        le=24,
+        description=(
+            "How many candidate departure times to return, sorted by "
+            "estimated duration ascending."
+        ),
+    )
     trip_profile: TripProfileIn | None = None
 
 
@@ -227,6 +299,9 @@ class TollAlternativeOut(BaseModel):
 
 class PartialTollSkipOut(BaseModel):
     label: str
+    kind: str = "named"
+    index: int = 1
+    total: int | None = None
     distance_from_origin_km: float
     savings_eur: float
     time_penalty_minutes: float
@@ -296,10 +371,41 @@ class FuelPriceOut(BaseModel):
     station_name: str
     country: Country
     price_eur_per_l: float
+    price_available: bool = True
+    # +€/L below the country median (cheap deal); -€/L means over
+    # median. Absent when the median can't be computed (mock data,
+    # single-station country). Mobile renders a green savings chip
+    # when this is meaningfully positive.
+    savings_vs_country_median_eur_per_l: float | None = None
     distance_from_origin_km: float
     lat: float | None = None
     lon: float | None = None
     attributes: dict[str, str] = Field(default_factory=dict)
+
+
+class FuelArbitrageOut(BaseModel):
+    cheaper_country: Country
+    cheaper_median_eur_per_l: float
+    pricier_country: Country
+    pricier_median_eur_per_l: float
+    delta_eur_per_l: float
+    estimated_tank_saving_eur: float
+
+
+class DayPlanOut(BaseModel):
+    day_index: int
+    start_at: datetime
+    end_at: datetime
+    from_km: float
+    to_km: float
+    # Forward-declared: RestStopOut is defined below in the file.
+    meal_stops: list["MealStopOut"] = Field(default_factory=list)
+    rest_stops: list["RestStopOut"] = Field(default_factory=list)
+    sleep_at: datetime | None = None
+    # Approximate coord where the overnight stop lands. Clients use
+    # this to rank hotels for the day's "sleep options" card.
+    sleep_lat: float | None = None
+    sleep_lon: float | None = None
 
 
 class HotelOut(BaseModel):
@@ -324,6 +430,10 @@ class RestaurantOut(BaseModel):
     lat: float
     lon: float
     attributes: dict[str, str] = Field(default_factory=dict)
+    # Which meal slot(s) this place typically covers. Mobile groups
+    # restaurants under "Suggested for breakfast/lunch/dinner"
+    # sections based on the intersection with the trip's clock window.
+    open_meal_slots: list[MealSlot] = Field(default_factory=list)
 
 
 class RestStopOut(BaseModel):
@@ -396,6 +506,12 @@ class RecommendationScopeOut(BaseModel):
     reason: str
 
 
+class ConsistencyIssueOut(BaseModel):
+    code: str
+    severity: str
+    message: str
+
+
 class TripPlanResponse(BaseModel):
     route: RouteOut
     time_windows: list[TimeWindowOut]
@@ -413,6 +529,9 @@ class TripPlanResponse(BaseModel):
     ))
     route_variants: list[RouteVariantOut] = Field(default_factory=list)
     recommendation_scope: RecommendationScopeOut | None = None
+    consistency_issues: list[ConsistencyIssueOut] = Field(default_factory=list)
+    fuel_arbitrage: FuelArbitrageOut | None = None
+    days: list[DayPlanOut] = Field(default_factory=list)
 
 
 def _providers() -> Providers:
@@ -487,6 +606,10 @@ async def plan_trip(
         route=route,
         desired_departure_at=trip.desired_departure_at,
         traffic=providers.traffic,
+        config=TimeWindowConfig(
+            window_span=timedelta(hours=payload.time_window_span_hours),
+            top_n=payload.time_window_top_n,
+        ),
     )
     fuel = await providers.fuel.prices_along(route)
 
@@ -507,6 +630,7 @@ async def plan_trip(
             all_hotels_cache,
             max_detour_minutes=float(effective_hotel_detour),
             price_band=payload.hotel_price_band or PriceBand.ANY,
+            price_bands=payload.hotel_price_bands,
             profile=profile,
         )
         hotels_out = [
@@ -535,6 +659,10 @@ async def plan_trip(
             all_restaurants_cache,
             max_detour_minutes=float(payload.restaurant_max_detour_minutes),
             price_band=payload.restaurant_price_band or PriceBand.ANY,
+            price_bands=payload.restaurant_price_bands,
+            cuisines=payload.restaurant_cuisines,
+            origin=origin,
+            exclude_origin_radius_km=payload.restaurant_exclude_origin_radius_km,
             profile=profile,
         )
         restaurants_out = [
@@ -548,6 +676,7 @@ async def plan_trip(
                 lat=r.coordinate.lat,
                 lon=r.coordinate.lon,
                 attributes=dict(r.attributes),
+                open_meal_slots=list(r.open_meal_slots),
             )
             for r in filtered_r
         ]
@@ -577,6 +706,9 @@ async def plan_trip(
             partial_skips_out.append(
                 PartialTollSkipOut(
                     label=skip.label,
+                    kind=skip.kind,
+                    index=skip.index,
+                    total=skip.total,
                     distance_from_origin_km=skip.distance_from_origin_km,
                     savings_eur=skip.savings_eur,
                     time_penalty_minutes=skip.time_penalty_minutes,
@@ -629,6 +761,9 @@ async def plan_trip(
     # Trip optimizations — always computed when a profile is provided (the
     # user opted-in by sharing the profile). Cheap; no external calls.
     optimizations_out: OptimizationsOut | None = None
+    opt_domain = None
+    fuel_cost_domain = None
+    fuel_prices_domain: tuple = ()
     if profile is not None:
         # Ensure we have hotels + restaurants to draw from.
         opti_hotels = all_hotels_cache or await providers.hotels.hotels_along(route)
@@ -662,8 +797,11 @@ async def plan_trip(
             hotels=filtered_hotels_for_sleep,
             profile=profile,
         )
+        opt_domain = opt
         fuel = await providers.fuel.prices_along(route)
         cost = estimate_fuel(route, profile.vehicle, fuel)
+        fuel_cost_domain = cost
+        fuel_prices_domain = fuel
         optimizations_out = OptimizationsOut(
             meal_stops=[
                 MealStopOut(
@@ -767,6 +905,105 @@ async def plan_trip(
             else 0.0
         ),
     )
+    consistency_out = [
+        ConsistencyIssueOut(
+            code=i.code, severity=i.severity.value, message=i.message,
+        )
+        for i in check_trip_consistency(
+            departure_at=payload.desired_departure_at,
+            arrival_at=payload.desired_departure_at + route.free_flow_duration,
+            optimizations=opt_domain,
+            route=route,
+            fuel_cost=fuel_cost_domain,
+            fuel_prices=fuel_prices_domain,
+        )
+    ]
+
+    # --- Fuel savings analysis ---
+    # Stamp per-station savings on the FuelPrice objects, then curate
+    # the list (dedupe near-duplicates, keep at-or-below median only,
+    # cap per country + overall). Arbitrage looks at the ORIGINAL raw
+    # list so per-country medians aren't skewed by our filter.
+    vehicle_for_savings = profile.vehicle if profile is not None else None
+    arbitrage_domain = compute_fuel_arbitrage(
+        fuel, vehicle=vehicle_for_savings,
+    )
+    fuel = curate_fuel_stations(
+        stamp_fuel_savings(fuel, vehicle=vehicle_for_savings),
+    )
+    arbitrage_out = None if arbitrage_domain is None else FuelArbitrageOut(
+        cheaper_country=arbitrage_domain.cheaper_country,
+        cheaper_median_eur_per_l=arbitrage_domain.cheaper_median_eur_per_l,
+        pricier_country=arbitrage_domain.pricier_country,
+        pricier_median_eur_per_l=arbitrage_domain.pricier_median_eur_per_l,
+        delta_eur_per_l=arbitrage_domain.delta_eur_per_l,
+        estimated_tank_saving_eur=arbitrage_domain.estimated_tank_saving_eur,
+    )
+
+    # --- Multi-day breakdown ---
+    days_out: list[DayPlanOut] = []
+    if profile is not None:
+        multiday = compute_day_plan(
+            departure_at=payload.desired_departure_at,
+            trip_duration_hours=(
+                route.free_flow_duration.total_seconds() / 3600.0
+            ),
+            profile=profile,
+            optimizations=opt_domain,
+            rest_stops=compute_rest_stops(route),
+            route_distance_km=route.distance_km,
+            route=route,
+        )
+        if multiday is not None:
+            for d in multiday.days:
+                days_out.append(
+                    DayPlanOut(
+                        day_index=d.day_index,
+                        start_at=d.start_at,
+                        end_at=d.end_at,
+                        from_km=d.from_km,
+                        to_km=d.to_km,
+                        meal_stops=[
+                            MealStopOut(
+                                slot=m.slot,
+                                at=m.at,
+                                distance_from_origin_km=(
+                                    m.rest_stop.distance_from_origin_km
+                                ),
+                                restaurant_name=(
+                                    m.restaurant.name if m.restaurant else None
+                                ),
+                                restaurant_price_eur_per_meal=(
+                                    m.restaurant.price_eur_per_meal
+                                    if m.restaurant else None
+                                ),
+                                restaurant_lat=(
+                                    m.restaurant.coordinate.lat
+                                    if m.restaurant else None
+                                ),
+                                restaurant_lon=(
+                                    m.restaurant.coordinate.lon
+                                    if m.restaurant else None
+                                ),
+                            )
+                            for m in d.meal_stops
+                        ],
+                        rest_stops=[
+                            RestStopOut(
+                                distance_from_origin_km=s.distance_from_origin_km,
+                                cumulative_driving_hours=s.cumulative_driving_hours,
+                                recommended_break_minutes=s.recommended_break_minutes,
+                                lat=s.coordinate.lat,
+                                lon=s.coordinate.lon,
+                            )
+                            for s in d.rest_stops
+                        ],
+                        sleep_at=d.sleep_at,
+                        sleep_lat=d.sleep_coord.lat if d.sleep_coord else None,
+                        sleep_lon=d.sleep_coord.lon if d.sleep_coord else None,
+                    )
+                )
+
     return TripPlanResponse(
         route=RouteOut(
             distance_km=route.distance_km,
@@ -790,6 +1027,10 @@ async def plan_trip(
                 station_name=fp.station_name,
                 country=fp.country,
                 price_eur_per_l=fp.price_eur_per_l,
+                price_available=fp.price_available,
+                savings_vs_country_median_eur_per_l=(
+                    fp.savings_vs_country_median_eur_per_l
+                ),
                 distance_from_origin_km=fp.distance_from_origin_km,
                 lat=fp.coordinate.lat if fp.coordinate is not None else None,
                 lon=fp.coordinate.lon if fp.coordinate is not None else None,
@@ -808,6 +1049,9 @@ async def plan_trip(
         savings=savings,
         route_variants=variants_out,
         recommendation_scope=scope_out,
+        consistency_issues=consistency_out,
+        fuel_arbitrage=arbitrage_out,
+        days=days_out,
     )
 
 

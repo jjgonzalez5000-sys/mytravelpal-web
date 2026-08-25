@@ -5,7 +5,12 @@ from __future__ import annotations
 from app.domain import AdverseEvent, Coordinate, Route
 from app.providers.routing import _haversine_km
 
-_DEFAULT_MAX_DISTANCE_KM = 25.0
+# Corridor width used when the caller doesn't override. 25 km was too
+# generous for FIRMS — it dragged in fires that were plainly outside
+# the driver's exposure envelope (smoke plume rarely reaches the
+# highway from > 15 km on a normal day). 12 km keeps the "affects
+# your trip" promise honest.
+_DEFAULT_MAX_DISTANCE_KM = 12.0
 
 
 def _min_distance_to_route(event_coord: Coordinate, route: Route) -> float:

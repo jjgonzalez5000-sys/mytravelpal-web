@@ -8,19 +8,18 @@ real POIs across the entire supported map without a paid contract.
 Strategy:
 - Query a corridor along the route (bounding box, buffered ±0.15°).
 - Parse OSM tags for kid/pet-friendly / parking / meal-slot hints.
-- Fall back to the mock provider on timeout or empty response so the
-  planner never returns nothing at all.
+- On timeout or empty response the provider returns `()`. The API
+  surfaces that as an empty section rather than substituting mock
+  data — the user is better served by "no results" than by fake ones.
 
-The two providers below can compose with their mock counterparts via
-the existing composite pattern:
-
-    hotels = FallbackHotelsProvider(
-        OverpassHotelsProvider(), MockHotelsProvider(),
-    )
+Fallback wrappers are kept in this module for test scenarios that
+opt-in via `MYTRAVELPAL_HOTELS=mock` etc., but the production factory
+no longer chains Overpass to mock.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any
 
@@ -40,22 +39,73 @@ from app.providers.restaurants import _classify_meal_price
 
 _log = logging.getLogger(__name__)
 
-_OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-_MAX_FEATURES = 40
-_ROUTE_BUFFER_DEG = 0.15  # ~16 km latitude buffer around the bbox
-_TIMEOUT_S = 10.0
+# Public Overpass mirrors we try in order. The main `.de` instance is
+# fastest when it works but goes 504 under load; kumi and the OSM Russia
+# mirror give us a second chance on the same request before we give
+# up. All three are free / fair-use — no keys needed.
+_OVERPASS_URLS = (
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.private.coffee/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+)
+
+# Overpass returns HTTP 406 for the default httpx User-Agent. Sending a
+# named UA is also the Overpass fair-use etiquette — it lets the ops
+# team throttle a specific misbehaving client instead of a whole
+# provider. This exact string caused every silent-empty response before
+# we added it.
+_USER_AGENT = "MyTravelPal/1.0 (+https://mytravelpal.app)"
 
 
-def _route_bbox(route: Route, buffer_deg: float = _ROUTE_BUFFER_DEG) -> tuple[float, float, float, float]:
-    points = [route.origin, route.destination, *route.waypoints]
-    if route.geometry:
-        step = max(1, len(route.geometry) // 32)
-        points.extend(route.geometry[::step])
-    min_lat = min(p.lat for p in points) - buffer_deg
-    max_lat = max(p.lat for p in points) + buffer_deg
-    min_lon = min(p.lon for p in points) - buffer_deg
-    max_lon = max(p.lon for p in points) + buffer_deg
-    return (min_lat, min_lon, max_lat, max_lon)
+def _new_overpass_client() -> httpx.AsyncClient:
+    return httpx.AsyncClient(
+        timeout=_TIMEOUT_S,
+        headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+    )
+_MAX_FEATURES = 60
+_TIMEOUT_S = 25.0
+
+# We used to query a single bbox covering the whole route. For a
+# Madrid-Paris trip that bbox is ~5° × 9° — Overpass either times out
+# scanning tens of thousands of POIs or refuses with 429. The `around:`
+# predicate scans a narrow corridor instead, so we sample the route
+# geometry every ~80 km and let Overpass filter server-side. Radius +
+# sample cap are tuned so a Madrid→Paris query returns under 10 s on
+# the public mirrors — earlier 5 km × 40 points overloaded the server
+# and produced silent 504s.
+_CORRIDOR_METERS = 3000
+_TARGET_SAMPLE_SPACING_KM = 80.0
+_MAX_SAMPLE_POINTS = 20
+
+
+def _sample_corridor_points(route: Route) -> tuple[Coordinate, ...]:
+    """Sample route.geometry so `around:` covers the drive without
+    blowing up query cost. Always includes origin and destination as
+    anchors so short intra-city routes still work.
+    """
+    dense = list(route.geometry) or list(route.waypoints)
+    if not dense:
+        return (route.origin, route.destination)
+    # target N samples but cap at _MAX_SAMPLE_POINTS so `around` payload
+    # stays manageable even on long trips.
+    if route.distance_km > 0:
+        target = int(route.distance_km / _TARGET_SAMPLE_SPACING_KM) + 2
+    else:
+        target = 2
+    target = min(_MAX_SAMPLE_POINTS, max(2, target))
+    step = max(1, len(dense) // target)
+    picks: list[Coordinate] = [route.origin]
+    for i in range(0, len(dense), step):
+        picks.append(dense[i])
+    if picks[-1] is not route.destination:
+        picks.append(route.destination)
+    return tuple(picks)
+
+
+def _around_clause(points: tuple[Coordinate, ...]) -> str:
+    """Render an Overpass `around:radius,lat1,lon1,lat2,lon2,...` string."""
+    coords = ",".join(f"{p.lat:.5f},{p.lon:.5f}" for p in points)
+    return f"around:{_CORRIDOR_METERS},{coords}"
 
 
 def _yes(value: str | None) -> bool:
@@ -75,8 +125,17 @@ def _haversine_km(a: Coordinate, b: Coordinate) -> float:
 
 
 def _distance_from_route_km(point: Coordinate, route: Route) -> float:
-    points = [route.origin, *route.waypoints, route.destination]
-    return min(_haversine_km(point, p) for p in points)
+    """Approximate distance from a POI to the route corridor.
+
+    Prefer the dense OSRM geometry when available (hundreds of samples)
+    over the sparse `waypoints` field (a handful of interpolated
+    coordinates). Using only waypoints caused POIs sitting right on the
+    road to look 30+ km off-route because the nearest waypoint was that
+    far — which then failed the `max_detour_minutes` filter and hid
+    every result.
+    """
+    dense = route.geometry or (route.origin, *route.waypoints, route.destination)
+    return min(_haversine_km(point, p) for p in dense)
 
 
 _HOTEL_TAG_WHITELIST = (
@@ -129,15 +188,15 @@ class OverpassHotelsProvider:
     _AVG_DETOUR_SPEED_KMH = 60.0
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
-        self._client = http_client or httpx.AsyncClient(timeout=_TIMEOUT_S)
+        self._client = http_client or _new_overpass_client()
 
     async def hotels_along(self, route: Route) -> tuple[Hotel, ...]:
-        bbox = _route_bbox(route)
+        around = _around_clause(_sample_corridor_points(route))
         query = f"""
-[out:json][timeout:8][bbox:{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}];
+[out:json][timeout:20];
 (
-  node["tourism"~"hotel|guest_house|motel"];
-  way["tourism"~"hotel|guest_house|motel"];
+  node["tourism"~"hotel|guest_house|motel"]({around});
+  way["tourism"~"hotel|guest_house|motel"]({around});
 );
 out center {_MAX_FEATURES};
 """
@@ -182,15 +241,15 @@ class OverpassRestaurantsProvider:
     _AVG_DETOUR_SPEED_KMH = 60.0
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
-        self._client = http_client or httpx.AsyncClient(timeout=_TIMEOUT_S)
+        self._client = http_client or _new_overpass_client()
 
     async def restaurants_along(self, route: Route) -> tuple[Restaurant, ...]:
-        bbox = _route_bbox(route)
+        around = _around_clause(_sample_corridor_points(route))
         query = f"""
-[out:json][timeout:8][bbox:{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}];
+[out:json][timeout:20];
 (
-  node["amenity"~"restaurant|cafe|fast_food|pub|bar"];
-  way["amenity"~"restaurant|cafe|fast_food|pub|bar"];
+  node["amenity"~"restaurant|cafe|fast_food|pub|bar"]({around});
+  way["amenity"~"restaurant|cafe|fast_food|pub|bar"]({around});
 );
 out center {_MAX_FEATURES};
 """
@@ -254,17 +313,17 @@ class OverpassFuelProvider:
     """
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
-        self._client = http_client or httpx.AsyncClient(timeout=_TIMEOUT_S)
+        self._client = http_client or _new_overpass_client()
 
     async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
         from app.data.countries import COUNTRIES
 
-        bbox = _route_bbox(route, buffer_deg=0.08)
+        around = _around_clause(_sample_corridor_points(route))
         query = f"""
-[out:json][timeout:8][bbox:{bbox[0]},{bbox[1]},{bbox[2]},{bbox[3]}];
+[out:json][timeout:20];
 (
-  node["amenity"="fuel"];
-  way["amenity"="fuel"];
+  node["amenity"="fuel"]({around});
+  way["amenity"="fuel"]({around});
 );
 out center {_MAX_FEATURES};
 """
@@ -300,16 +359,84 @@ out center {_MAX_FEATURES};
 
 
 async def _query(client: httpx.AsyncClient, query: str) -> list[dict]:
+    """Fan the query out to every Overpass mirror in parallel and
+    return the first 200 that comes back.
+
+    Sequential mirror probing meant every failure added ~20 s of wall
+    time before we tried the next one, so a bad day at overpass-api.de
+    left the whole planner blocked. Firing 3 requests at once is
+    tolerable — Overpass fair-use is per-IP not per-query and the
+    losing branches are cancelled the moment we have a winner.
+
+    Return semantics:
+    - Any mirror returning HTTP 200 with a JSON body wins. Its
+      `elements` list is returned even if empty (that's a legitimate
+      "no POIs here" answer).
+    - HTTP 400/403 from ANY mirror is treated as a query-side problem
+      (malformed query, banned client) and short-circuits — retrying
+      won't help.
+    - When every branch loses (5xx, 429, network error), we log the
+      per-mirror outcome and return `()`.
+    """
+    async def _hit(url: str) -> tuple[str, int | str | Exception, list[dict] | None]:
+        try:
+            response = await client.post(url, data={"data": query})
+        except httpx.HTTPError as exc:
+            return (url, exc, None)
+        status = response.status_code
+        if status == 200:
+            try:
+                body = response.json()
+            except ValueError:
+                return (url, "non-JSON", None)
+            return (url, 200, body.get("elements") or [])
+        return (url, status, None)
+
+    tasks = [asyncio.create_task(_hit(url)) for url in _OVERPASS_URLS]
+    remaining = set(tasks)
+    outcomes: list[tuple[str, int | str | Exception]] = []
     try:
-        response = await client.post(_OVERPASS_URL, data={"data": query})
-        response.raise_for_status()
-        body = response.json()
-    except httpx.HTTPError as exc:
-        _log.warning("Overpass request failed: %s", exc)
-        return []
-    except ValueError:
-        return []
-    return body.get("elements") or []
+        while remaining:
+            done, remaining = await asyncio.wait(
+                remaining, return_when=asyncio.FIRST_COMPLETED,
+            )
+            for task in done:
+                url, result, elements = task.result()
+                if elements is not None:
+                    # Winning branch — cancel the losers so we don't
+                    # keep the sockets open behind us.
+                    for other in remaining:
+                        other.cancel()
+                    _log.info(
+                        "Overpass %s returned %d elements",
+                        url, len(elements),
+                    )
+                    return elements
+                if isinstance(result, int) and 400 <= result < 500 and \
+                        result != 429:
+                    # Any 4xx-that-isn't-rate-limit is a query problem
+                    # — other mirrors will fail identically. Bail out
+                    # rather than waste the remaining branches.
+                    for other in remaining:
+                        other.cancel()
+                    return []
+                outcomes.append((url, result))
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+    for url, result in outcomes:
+        # `repr` because bare `str(exc)` on httpx.ReadTimeout et al.
+        # renders as an empty string — the earlier logs said "network
+        # error:" with no context, which was useless in fly logs.
+        detail = f"HTTP {result}" if isinstance(result, int) else repr(result)
+        _log.warning("Overpass %s failed: %s", url, detail)
+    _log.warning(
+        "Overpass: all %d mirrors failed for a %d-char query",
+        len(outcomes), len(query),
+    )
+    return []
 
 
 def _element_coord(el: dict) -> Coordinate | None:
@@ -347,7 +474,11 @@ def _hotel_price_from_stars(stars: int | None, country: Country) -> float:
 
 
 class FallbackHotelsProvider:
-    """Try `primary` first; on empty result fall back to `secondary`."""
+    """Try `primary` first; on empty result fall back to `secondary`.
+
+    A warning log is emitted whenever the fallback fires so operators
+    can spot silently-mocked responses in production log tails.
+    """
 
     def __init__(self, primary, secondary) -> None:
         self._primary = primary
@@ -355,7 +486,14 @@ class FallbackHotelsProvider:
 
     async def hotels_along(self, route: Route) -> tuple[Hotel, ...]:
         results = await self._primary.hotels_along(route)
-        return results or await self._secondary.hotels_along(route)
+        if results:
+            return results
+        _log.warning(
+            "hotels: primary provider returned 0 results (%d km route); "
+            "falling back to mock",
+            int(route.distance_km),
+        )
+        return await self._secondary.hotels_along(route)
 
 
 class FallbackFuelProvider:
@@ -365,7 +503,14 @@ class FallbackFuelProvider:
 
     async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
         results = await self._primary.prices_along(route)
-        return results or await self._secondary.prices_along(route)
+        if results:
+            return results
+        _log.warning(
+            "fuel: primary provider returned 0 results (%d km route); "
+            "falling back to mock",
+            int(route.distance_km),
+        )
+        return await self._secondary.prices_along(route)
 
 
 class FallbackRestaurantsProvider:
@@ -375,4 +520,11 @@ class FallbackRestaurantsProvider:
 
     async def restaurants_along(self, route: Route) -> tuple[Restaurant, ...]:
         results = await self._primary.restaurants_along(route)
-        return results or await self._secondary.restaurants_along(route)
+        if results:
+            return results
+        _log.warning(
+            "restaurants: primary provider returned 0 results (%d km "
+            "route); falling back to mock",
+            int(route.distance_km),
+        )
+        return await self._secondary.restaurants_along(route)

@@ -56,6 +56,14 @@ def _slot_hour(prefs: MealPreferences, slot: MealSlot) -> int:
     }[slot]
 
 
+def _slot_minute(prefs: MealPreferences, slot: MealSlot) -> int:
+    return {
+        MealSlot.BREAKFAST: prefs.breakfast_minute,
+        MealSlot.LUNCH: prefs.lunch_minute,
+        MealSlot.DINNER: prefs.dinner_minute,
+    }[slot]
+
+
 def _nearest_rest_stop(
     stops: tuple[RestStop, ...],
     departure: datetime,
@@ -141,7 +149,11 @@ def compute(
     meal_stops: list[MealStop] = []
 
     for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER):
-        target = _next_at_hour(departure_at, _slot_hour(prefs, slot))
+        target = _next_at_hour_minute(
+            departure_at,
+            _slot_hour(prefs, slot),
+            _slot_minute(prefs, slot),
+        )
         if target > arrival or target < departure_at:
             continue
         rest = _nearest_rest_stop(rest_stops, departure_at, target)
@@ -181,8 +193,15 @@ def compute(
 
 def _next_at_hour(base: datetime, hour: int) -> datetime:
     """First moment at :00 of `hour` at or after `base`."""
+    return _next_at_hour_minute(base, hour, 0)
+
+
+def _next_at_hour_minute(base: datetime, hour: int, minute: int) -> datetime:
+    """First moment at `hour:minute` at or after `base`. Wraps to
+    tomorrow if the time has already passed today.
+    """
     candidate = base.replace(
-        hour=hour, minute=0, second=0, microsecond=0,
+        hour=hour, minute=minute, second=0, microsecond=0,
     )
     if candidate < base:
         candidate += timedelta(days=1)

@@ -42,9 +42,13 @@ class FuelCostEstimate:
 
 
 def _avg_price(prices: tuple[FuelPrice, ...]) -> float:
-    if not prices:
+    # Skip stations whose price is a placeholder (Nominatim fallback for
+    # countries without a real-price feed). Averaging in a zero would
+    # under-quote the trip cost by a lot.
+    real = [p for p in prices if p.price_available and p.price_eur_per_l > 0]
+    if not real:
         return 1.75  # fall-back EU average
-    return sum(p.price_eur_per_l for p in prices) / len(prices)
+    return sum(p.price_eur_per_l for p in real) / len(real)
 
 
 def estimate(

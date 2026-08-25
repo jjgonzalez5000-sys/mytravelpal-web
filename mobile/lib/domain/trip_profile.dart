@@ -139,15 +139,21 @@ class Vehicle {
 class MealPreferences {
   const MealPreferences({
     this.breakfastHour = 8,
+    this.breakfastMinute = 0,
     this.lunchHour = 13,
+    this.lunchMinute = 0,
     this.dinnerHour = 20,
+    this.dinnerMinute = 0,
     this.typicalStopMinutes = 45,
     this.reminderMinutesBefore = 30,
   });
 
   final int breakfastHour;
+  final int breakfastMinute;
   final int lunchHour;
+  final int lunchMinute;
   final int dinnerHour;
+  final int dinnerMinute;
   final int typicalStopMinutes;
 
   /// How many minutes before the recommended departure to fire a local
@@ -156,15 +162,21 @@ class MealPreferences {
 
   MealPreferences copyWith({
     int? breakfastHour,
+    int? breakfastMinute,
     int? lunchHour,
+    int? lunchMinute,
     int? dinnerHour,
+    int? dinnerMinute,
     int? typicalStopMinutes,
     int? reminderMinutesBefore,
   }) =>
       MealPreferences(
         breakfastHour: breakfastHour ?? this.breakfastHour,
+        breakfastMinute: breakfastMinute ?? this.breakfastMinute,
         lunchHour: lunchHour ?? this.lunchHour,
+        lunchMinute: lunchMinute ?? this.lunchMinute,
         dinnerHour: dinnerHour ?? this.dinnerHour,
+        dinnerMinute: dinnerMinute ?? this.dinnerMinute,
         typicalStopMinutes: typicalStopMinutes ?? this.typicalStopMinutes,
         reminderMinutesBefore:
             reminderMinutesBefore ?? this.reminderMinutesBefore,
@@ -172,16 +184,22 @@ class MealPreferences {
 
   Map<String, dynamic> toJson() => {
         'breakfast_hour': breakfastHour,
+        'breakfast_minute': breakfastMinute,
         'lunch_hour': lunchHour,
+        'lunch_minute': lunchMinute,
         'dinner_hour': dinnerHour,
+        'dinner_minute': dinnerMinute,
         'typical_stop_minutes': typicalStopMinutes,
         'reminder_minutes_before': reminderMinutesBefore,
       };
 
   factory MealPreferences.fromJson(Map<String, dynamic> j) => MealPreferences(
         breakfastHour: (j['breakfast_hour'] as num?)?.toInt() ?? 8,
+        breakfastMinute: (j['breakfast_minute'] as num?)?.toInt() ?? 0,
         lunchHour: (j['lunch_hour'] as num?)?.toInt() ?? 13,
+        lunchMinute: (j['lunch_minute'] as num?)?.toInt() ?? 0,
         dinnerHour: (j['dinner_hour'] as num?)?.toInt() ?? 20,
+        dinnerMinute: (j['dinner_minute'] as num?)?.toInt() ?? 0,
         typicalStopMinutes: (j['typical_stop_minutes'] as num?)?.toInt() ?? 45,
         reminderMinutesBefore:
             (j['reminder_minutes_before'] as num?)?.toInt() ?? 30,

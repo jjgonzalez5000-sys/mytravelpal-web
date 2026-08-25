@@ -62,17 +62,50 @@ class ApiClient {
 
   Future<TripPlanResponse> planTrip(TripPlanRequest request) async {
     final uri = Uri.parse('$_baseUrl/v1/trips/plan');
-    final response = await _http.post(
-      uri,
-      headers: _headers(),
-      body: jsonEncode(request.toJson()),
-    );
-    if (response.statusCode != 200) {
-      throw ApiException(response.statusCode, response.body);
+    final body = jsonEncode(request.toJson());
+    // /plan fans out to routing, weather, POI providers and gov fuel
+    // feeds — worst case ~15 s warm, more on cold-start. The default
+    // Dart `http.Client` timeout is aggressive enough to abort those
+    // legitimate slow calls as "Software caused connection abort",
+    // so we override with a generous cap here.
+    //
+    // Retry chain: transient 5xx errors (Fly proxy blips, worker
+    // restart mid-request) and network aborts should be invisible
+    // to the user. We reissue the POST up to 3 total attempts with a
+    // short backoff. 4xx responses short-circuit — they're deterministic
+    // client-side problems (400 malformed, 401 no key, 402 premium,
+    // 429 rate-limit) so retrying wastes the user's time.
+    const attempts = 3;
+    Object? lastError;
+    for (var i = 0; i < attempts; i++) {
+      try {
+        final response = await _http
+            .post(uri, headers: _headers(), body: body)
+            .timeout(const Duration(seconds: 60));
+        if (response.statusCode == 200) {
+          return TripPlanResponse.fromJson(
+            jsonDecode(response.body) as Map<String, dynamic>,
+          );
+        }
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          throw ApiException(response.statusCode, response.body);
+        }
+        // 5xx: transient — remember and retry.
+        lastError = ApiException(response.statusCode, response.body);
+      } on ApiException {
+        // Deterministic 4xx re-raised above — propagate.
+        rethrow;
+      } catch (e) {
+        // Network / timeout / socket abort — retry.
+        lastError = e;
+      }
+      if (i < attempts - 1) {
+        await Future<void>.delayed(Duration(seconds: 2 * (i + 1)));
+      }
     }
-    return TripPlanResponse.fromJson(
-      jsonDecode(response.body) as Map<String, dynamic>,
-    );
+    // Exhausted retries: surface the last thing that went wrong.
+    if (lastError is Exception) throw lastError;
+    throw Exception(lastError?.toString() ?? 'planTrip failed');
   }
 
   /// Exchange a provider ID token for an app JWT.
@@ -193,6 +226,23 @@ class ApiClient {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Fetch the attribution catalogue served by the backend at
+  /// `/v1/attributions`. Returns raw items so the UI can group them —
+  /// we don't try to model each field in a strong type because new
+  /// entries land server-side without a client rebuild.
+  Future<List<Map<String, dynamic>>> attributions() async {
+    final uri = Uri.parse('$_baseUrl/v1/attributions');
+    final response = await _http.get(uri, headers: _headers());
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final raw = (body['items'] as List<dynamic>?) ?? const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
   }
 
   void dispose() => _http.close();

@@ -20,6 +20,20 @@ class FuelPrice:
     fuel:diesel/octane_95/lpg availability, car_wash, shop. Empty for
     mock entries.
     """
+    price_available: bool = True
+    """False when we know the station exists (OSM / Nominatim) but have
+    no live price feed for its country. Downstream: `estimate_fuel`
+    skips it in the average; the mobile tile shows "no price" chip
+    instead of a number. The station still appears so drivers see WHERE
+    to refuel, they just can't compare €/L between them.
+    """
+    savings_vs_country_median_eur_per_l: float | None = None
+    """€/L delta vs the country's median price. Positive → cheaper
+    than the median (a deal); negative → pricier. `None` until the
+    savings service stamps it. Kept on the domain object so the
+    curation + serialization layers can read a single source of
+    truth instead of shuffling side-dicts around.
+    """
 
 
 class FuelProvider(Protocol):

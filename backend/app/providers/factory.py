@@ -17,10 +17,14 @@ from app.providers.national_weather import (
     MetOfficeWeatherProvider,
     MeteoFranceWeatherProvider,
 )
+from app.providers.fuel_gov import GovFuelProvider
+from app.providers.fuel_hybrid import HybridFuelProvider
+from app.providers.nominatim_poi import (
+    NominatimFuelProvider,
+    NominatimHotelsProvider,
+    NominatimRestaurantsProvider,
+)
 from app.providers.overpass import (
-    FallbackFuelProvider,
-    FallbackHotelsProvider,
-    FallbackRestaurantsProvider,
     OverpassFuelProvider,
     OverpassHotelsProvider,
     OverpassRestaurantsProvider,
@@ -58,29 +62,16 @@ class Providers:
 
 
 def get_providers() -> Providers:
-    """DI factory. Returns mock implementations for the MVP.
+    """DI factory. Returns the shared singleton bundle so every request
+    reuses the same `httpx.AsyncClient` pools.
 
-    Geocoding is hybrid: the small in-memory city catalogue handles the
-    well-known launch cities instantly; anything else falls through to
-    the real Nominatim service so the user can find e.g. small Swiss
-    villages without us having to hand-curate every place name.
+    Previous versions instantiated a fresh set of clients per call —
+    that was a socket / connection-pool leak: after ~100 /plan
+    requests the process had thousands of half-open connections and
+    the event loop stopped answering (Fly health checks then killed
+    the machine as "unresponsive").
     """
-    return Providers(
-        routing=_ROUTING,
-        traffic=MockTrafficProvider(),
-        tolls=MockTollsProvider(),
-        fuel=_fuel_provider(),
-        geocoding=HybridGeocodingProvider(
-            primary=MockGeocodingProvider(),
-            fallback=NominatimGeocodingProvider(),
-        ),
-        hotels=_hotels_provider(),
-        restaurants=_restaurants_provider(),
-        adverse_events=_ADVERSE,
-        user_marked_events=_USER_MARKED,
-        llm=_LLM,
-        tollguru=_tollguru_provider(),
-    )
+    return _PROVIDERS_SINGLETON
 
 
 def _tollguru_provider() -> TollProvider | None:
@@ -92,30 +83,45 @@ def _tollguru_provider() -> TollProvider | None:
 
 
 def _hotels_provider():
-    # Default: try Overpass first (real OSM data), fall back to mock
-    # on empty response or timeout. Opt-out with
-    # `MYTRAVELPAL_HOTELS=mock` to skip the outbound call (CI, tests).
-    if os.environ.get("MYTRAVELPAL_HOTELS", "overpass").lower() == "mock":
+    # Default: Nominatim POI search. Overpass proved unreachable from
+    # Fly (ConnectError / ReadTimeout on every public mirror) and
+    # Nominatim reuses the same OSM upstream via an endpoint that IS
+    # reachable from the same Fly machine. Opt-outs:
+    # - `MYTRAVELPAL_HOTELS=mock` for CI / offline tests.
+    # - `MYTRAVELPAL_HOTELS=overpass` if you're running against a
+    #   private Overpass instance where the network path works.
+    mode = os.environ.get("MYTRAVELPAL_HOTELS", "nominatim").lower()
+    if mode == "mock":
         return MockHotelsProvider()
-    return FallbackHotelsProvider(
-        OverpassHotelsProvider(), MockHotelsProvider(),
-    )
+    if mode == "overpass":
+        return OverpassHotelsProvider()
+    return NominatimHotelsProvider()
 
 
 def _fuel_provider():
-    if os.environ.get("MYTRAVELPAL_FUEL", "overpass").lower() == "mock":
+    # Default: `hybrid` = government feeds for ES/FR/IT with real
+    # prices, Nominatim OSM stations tagged `price_available=False` for
+    # every other country the route crosses. Same behaviour on the
+    # covered slice as pure `gov`.
+    mode = os.environ.get("MYTRAVELPAL_FUEL", "hybrid").lower()
+    if mode == "mock":
         return MockFuelProvider()
-    return FallbackFuelProvider(
-        OverpassFuelProvider(), MockFuelProvider(),
-    )
+    if mode == "overpass":
+        return OverpassFuelProvider()
+    if mode == "nominatim":
+        return NominatimFuelProvider()
+    if mode == "gov":
+        return GovFuelProvider()
+    return HybridFuelProvider()
 
 
 def _restaurants_provider():
-    if os.environ.get("MYTRAVELPAL_RESTAURANTS", "overpass").lower() == "mock":
+    mode = os.environ.get("MYTRAVELPAL_RESTAURANTS", "nominatim").lower()
+    if mode == "mock":
         return MockRestaurantsProvider()
-    return FallbackRestaurantsProvider(
-        OverpassRestaurantsProvider(), MockRestaurantsProvider(),
-    )
+    if mode == "overpass":
+        return OverpassRestaurantsProvider()
+    return NominatimRestaurantsProvider()
 
 
 # Shared singletons — user-marked events must persist across requests, and
@@ -150,3 +156,24 @@ def _adverse_providers() -> tuple[AdverseEventsProvider, ...]:
 
 _ADVERSE = CompositeAdverseEventsProvider(providers=_adverse_providers())
 _LLM: LlmProvider = default_llm_provider()
+
+
+# Build the whole Providers bundle exactly once at import time so
+# every request reuses the same httpx connection pools. See
+# `get_providers()` for why this matters.
+_PROVIDERS_SINGLETON: Providers = Providers(
+    routing=_ROUTING,
+    traffic=MockTrafficProvider(),
+    tolls=MockTollsProvider(),
+    fuel=_fuel_provider(),
+    geocoding=HybridGeocodingProvider(
+        primary=MockGeocodingProvider(),
+        fallback=NominatimGeocodingProvider(),
+    ),
+    hotels=_hotels_provider(),
+    restaurants=_restaurants_provider(),
+    adverse_events=_ADVERSE,
+    user_marked_events=_USER_MARKED,
+    llm=_LLM,
+    tollguru=_tollguru_provider(),
+)

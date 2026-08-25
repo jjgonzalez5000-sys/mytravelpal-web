@@ -9,6 +9,61 @@ from app.domain import Coordinate, Country, MealSlot, PriceBand, Restaurant, Rou
 _ALL_SLOTS = (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
 
 
+# Country-specific plausible-sounding restaurant name pools. Used by
+# the mock provider so drivers see "Mesón El Camino" instead of "ES
+# Restaurant 1-1" when the real Overpass source has no coverage for a
+# given bbox. Names are generic on purpose — a mock should look like
+# what a driver might see on a road sign, not impersonate a specific
+# real business.
+_MOCK_NAME_POOL: dict[str, tuple[str, ...]] = {
+    "ES": (
+        "Mesón El Camino", "Restaurante La Parada", "Casa Manolo",
+        "Venta del Puerto", "Bar Antojo", "Asador Los Robles",
+    ),
+    "FR": (
+        "Auberge du Chemin", "Chez Marie", "Le Relais du Village",
+        "La Table du Terroir", "Café des Voyageurs", "Bistrot du Coin",
+    ),
+    "IT": (
+        "Trattoria del Sole", "Osteria del Ponte", "Ristorante La Vigna",
+        "Locanda Vecchia", "Pizzeria da Marco", "Enoteca del Borgo",
+    ),
+    "DE": (
+        "Gasthof zur Post", "Landgasthaus Am Berg", "Ratskeller",
+        "Zum Alten Wirt", "Waldschänke", "Brauhaus am Markt",
+    ),
+    "CH": (
+        "Auberge du Léman", "Ristorante Alpina", "Landgasthof Adler",
+        "Chez Gilbert", "Café de la Gare", "Osteria della Posta",
+    ),
+    "AT": (
+        "Gasthof Alpenblick", "Wirtshaus zum Hirsch", "Landhaus Alt-Wien",
+        "Beisl am Markt", "Zur Sonne", "Berghof",
+    ),
+    "PT": (
+        "Tasca do Zé", "Casa da Avó", "Restaurante O Farol",
+        "Adega Regional", "Petisqueira do Largo", "Marisqueira",
+    ),
+    "BE": (
+        "Café des Ardennes", "Estaminet du Marché", "Le Cheval Blanc",
+        "'t Oude Huis", "Brasserie Centrale", "De Zwarte Kat",
+    ),
+    "NL": (
+        "Eetcafé de Molen", "'t Pannenkoekenhuis", "Herberg de Dorpel",
+        "Restaurant De Haven", "Brasserie Vondel", "Café Oude Kerk",
+    ),
+    "LU": (
+        "Auberge des Ardennes", "Restaurant du Château",
+        "Brasserie Nationale", "Café de la Place", "Gasthaus zur Post",
+        "Le Bouquet Garni",
+    ),
+}
+_MOCK_FALLBACK_POOL: tuple[str, ...] = (
+    "Roadside Kitchen", "Family Restaurant", "Highway Cafe",
+    "Traveler's Table", "The Corner Bistro", "Motorway Grill",
+)
+
+
 def _restaurant_anchor(country: Country) -> float:
     data = COUNTRIES.get(country.value)
     return data.restaurant_anchor_eur if data else 25.0
@@ -78,9 +133,13 @@ class MockRestaurantsProvider:
                 slots = tuple(
                     s for i, s in enumerate(_ALL_SLOTS) if (slot_mask >> i) & 1
                 ) or (MealSlot.LUNCH,)
+                pool = _MOCK_NAME_POOL.get(
+                    country.value, _MOCK_FALLBACK_POOL,
+                )
+                name = pool[seed[(wi * 23 + ri) % len(seed)] % len(pool)]
                 restaurants.append(
                     Restaurant(
-                        name=f"{country.value} Restaurant {wi + 1}-{ri + 1}",
+                        name=name,
                         coordinate=Coordinate(lat=lat, lon=lon),
                         country=country,
                         price_eur_per_meal=price,

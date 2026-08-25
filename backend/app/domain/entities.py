@@ -258,8 +258,11 @@ class Vehicle:
 @dataclass(frozen=True, slots=True)
 class MealPreferences:
     breakfast_hour: int = 8
+    breakfast_minute: int = 0
     lunch_hour: int = 13
+    lunch_minute: int = 0
     dinner_hour: int = 20
+    dinner_minute: int = 0
     typical_stop_minutes: int = 45
 
 

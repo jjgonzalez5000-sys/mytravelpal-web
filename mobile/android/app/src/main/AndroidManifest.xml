@@ -1,4 +1,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Location — powers the "Use my location" button on the search
+         screen. Coarse is enough for city-level reverse geocoding;
+         fine is declared so Android grants the more useful accuracy
+         tier when the user picks "Precise" in the runtime dialog. -->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <!-- Background location — required for tracking to keep flowing
+         when the driver Alt-Tabs to Google Maps for turn-by-turn.
+         Android 10+ prompts a separate "Allow all the time" dialog
+         AFTER the fine-location grant. The user can leave it at
+         "only while app is open" and the dashboard will still work
+         in the foreground; the wake-lock keeps the screen on. -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <!-- Foreground service permissions for the "trip in progress"
+         ongoing notification and, in Phase 4b, the actual
+         background-location foreground service. Declared here now
+         so integrating `flutter_background_service` later doesn't
+         need a manifest-only rebuild. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- WakeLock is required by wakelock_plus to keep the screen on
+         while the trip dashboard is foregrounded. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- POST_NOTIFICATIONS is required on Android 13+ to show
+         approaching-stop / new-alert push notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="mytravelpal"
         android:name="${applicationName}"
@@ -38,6 +65,47 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Android Auto integration: MyTravelPal is registered in
+             the POI (Point of Interest) category so it appears in
+             the head unit alongside Google Maps / Waze without
+             competing with them for turn-by-turn navigation. See
+             `project_android_auto` memory for the full strategy.
+
+             Category is set via the automotive_app_desc.xml
+             resource file — Google Auto reads that at review time
+             to route the app to the correct category reviewer. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
+        <!-- Home-screen widget with countdown to the next saved
+             trip. See `widget/NextTripWidgetProvider.kt`. -->
+        <receiver
+            android:name="com.mytravelpal.mytravelpal.widget.NextTripWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/next_trip_widget_info" />
+        </receiver>
+
+        <service
+            android:name="com.mytravelpal.mytravelpal.car.MyTravelPalCarAppService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.POI" />
+            </intent-filter>
+            <!-- Minimum Car App API level. 3 is the entry point that
+                 supports PaneTemplate / PlaceListTemplate. Bump when
+                 we adopt newer templates. -->
+            <meta-data
+                android:name="androidx.car.app.minCarApiLevel"
+                android:value="3" />
+        </service>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

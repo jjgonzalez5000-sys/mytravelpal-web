@@ -76,7 +76,12 @@ class TestOsrmProvider:
         assert route.geometry[0] == Coordinate(lat=48.85, lon=2.35)
 
     @pytest.mark.asyncio
-    async def test_avoid_tolls_appends_exclude_param(self) -> None:
+    async def test_avoid_tolls_does_not_send_exclude_toll(self) -> None:
+        # Public OSRM's driving profile rejects `exclude=toll` with
+        # HTTP 400. We honour the flag via our own per-country pricing
+        # instead of asking OSRM to route around tolls — this test
+        # locks that behaviour so a future "helpful" tweak doesn't
+        # re-break Berlin→Zurich planning.
         captured: dict = {}
 
         async def handler(request: httpx.Request) -> httpx.Response:
@@ -96,7 +101,8 @@ class TestOsrmProvider:
         client_ = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         provider = OsrmRoutingProvider(http_client=client_)
         await provider.route(_PARIS, _MADRID, avoid_tolls=True)
-        assert 'exclude=toll' in captured['url']
+        assert 'exclude=toll' not in captured['url']
+        assert 'exclude=motorway' not in captured['url']
 
     @pytest.mark.asyncio
     async def test_raises_on_no_route(self) -> None:

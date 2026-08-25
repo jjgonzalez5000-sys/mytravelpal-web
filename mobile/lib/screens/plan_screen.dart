@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,11 +10,13 @@ import '../api/models.dart';
 import '../design/components.dart';
 import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
+import '../domain/vehicle_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/trip_sharing.dart';
 import '../widgets/hotel_preferences.dart';
 import '../widgets/location_search_field.dart';
+import '../widgets/plan_loading_dialog.dart';
 import '../widgets/restaurant_preferences.dart';
 import '../widgets/travel_style_chip.dart';
 import 'dashboard_screen.dart';
@@ -38,14 +42,20 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   GeocodeResult? _origin;
   GeocodeResult? _destination;
   late DateTime _departure = _defaultDeparture();
-  HotelPreferences _hotelPrefs = HotelPreferences.disabled;
+  // On-by-default so multi-day / overnight trips have hotel context
+  // without asking the user to toggle first. The section still hides
+  // when the toggle is off.
+  HotelPreferences _hotelPrefs = HotelPreferences.enabledDefault;
   RestaurantPreferences _restaurantPrefs = RestaurantPreferences.disabled;
   bool _alertsEnabled = false;
   bool _tollAlternativeEnabled = false;
   bool _hourlyTollEnabled = false;
   bool _routeComparisonEnabled = false;
-  bool _avoidMotorways = false;
-  bool _preferScenic = false;
+  // Kept as fields (not consts) so the request builder keeps its
+  // shape; a future iteration will re-expose the toggles or wire them
+  // to the trip profile. Init default: don't alter routing.
+  final bool _avoidMotorways = false;
+  final bool _preferScenic = false;
   TripProfile? _overrideProfile;
   bool _loading = false;
   String? _error;
@@ -112,6 +122,36 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       _loading = true;
       _error = null;
     });
+    // Show the rotating "we're working" modal while the request is in
+    // flight. It's non-dismissable so the user can't accidentally kill
+    // the flow — the plan endpoint runs regardless. We pop it in the
+    // `finally` so it disappears whether the plan succeeds, fails,
+    // or the widget is disposed mid-request.
+    var dialogOpen = false;
+    if (mounted) {
+      dialogOpen = true;
+      // Build the step list from the ACTUAL request the user just
+      // submitted so we never claim to be "searching hotels" on a
+      // trip that isn't asking for any. Routing + traffic + fuel
+      // always run server-side; the rest are gated.
+      final steps = <PlanStep>[
+        PlanStep.routing,
+        PlanStep.traffic,
+        PlanStep.fuel,
+        if (_hotelPrefs.enabled) PlanStep.hotels,
+        if (_restaurantPrefs.enabled) PlanStep.restaurants,
+        if (_alertsEnabled) PlanStep.alerts,
+        if (_tollAlternativeEnabled || _hourlyTollEnabled)
+          PlanStep.tolls,
+      ];
+      // Fire-and-forget: `showDialog` returns a Future that resolves
+      // when the dialog closes; we don't await it.
+      unawaited(showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => PlanLoadingDialog(steps: steps),
+      ));
+    }
     try {
       final api = ref.read(apiClientWithPremiumProvider);
       final request = TripPlanRequest(
@@ -120,12 +160,23 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         desiredDepartureAt: _departure,
         hotelMaxDetourMinutes:
             _hotelPrefs.enabled ? _hotelPrefs.maxDetourMinutes : null,
+        // Send both legacy single-band (for compat) and the multi-band
+        // list. Backend prefers the list when present.
         hotelPriceBand: _hotelPrefs.enabled ? _hotelPrefs.priceBand : null,
+        hotelPriceBands: _hotelPrefs.enabled
+            ? _hotelPrefs.priceBands.toList()
+            : null,
         restaurantMaxDetourMinutes: _restaurantPrefs.enabled
             ? _restaurantPrefs.maxDetourMinutes
             : null,
         restaurantPriceBand:
             _restaurantPrefs.enabled ? _restaurantPrefs.priceBand : null,
+        restaurantPriceBands: _restaurantPrefs.enabled
+            ? _restaurantPrefs.priceBands.toList()
+            : null,
+        restaurantCuisines: _restaurantPrefs.enabled
+            ? cuisineOsmTagsFor(_restaurantPrefs.cuisines).toList()
+            : null,
         includeAdverseEvents: _alertsEnabled,
         includeTollAlternative: _tollAlternativeEnabled,
         includeRouteComparison: _routeComparisonEnabled,
@@ -136,6 +187,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       );
       final response = await api.planTrip(request);
       if (!mounted) return;
+      // Pop the loading dialog BEFORE pushing ResultScreen — otherwise
+      // the dialog stays underneath in the route stack and the later
+      // finally-pop would pop ResultScreen instead.
+      if (dialogOpen) {
+        Navigator.of(context).pop();
+        dialogOpen = false;
+      }
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
@@ -152,6 +210,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     } catch (e) {
       setState(() => _error = 'Network error: $e');
     } finally {
+      // Only pops here on the ERROR path — success already popped
+      // above before the ResultScreen push.
+      if (mounted && dialogOpen && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -283,8 +346,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         icon: const Icon(Icons.tune, size: 16),
                         label: Text(
                           _overrideProfile != null
-                              ? 'Overriding for this trip'
-                              : 'Override for this trip',
+                              ? l.planProfileOverriding
+                              : l.planProfileOverride,
                         ),
                         onPressed: () async {
                           final base = _overrideProfile
@@ -379,9 +442,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   const SizedBox(height: Tokens.space24),
 
                   // Preferences group
-                  const SectionHeader(
-                    title: 'Along the route',
-                    eyebrow: 'Optional',
+                  SectionHeader(
+                    title: l.planSectionOptional,
+                    eyebrow: l.planSectionOptionalEyebrow,
                   ),
                   SoftCard(
                     padding: const EdgeInsets.symmetric(
@@ -403,16 +466,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
-                            'Alert me about adverse events',
+                            l.planOptAlertsTitle,
                             style: t.titleMedium,
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Fires, strikes, weather, roadworks, and more '
-                              'within 25 km of the route.',
-                              style: t.bodySmall,
-                            ),
+                            child: Text(l.planOptAlertsSub, style: t.bodySmall),
                           ),
                           value: _alertsEnabled,
                           onChanged: (v) => setState(() => _alertsEnabled = v),
@@ -421,16 +480,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
-                            'Show toll-free alternative',
+                            l.planOptTollFreeTitle,
                             style: t.titleMedium,
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Compare a route that skips tolls — money '
-                              'saved vs. minutes added.',
-                              style: t.bodySmall,
-                            ),
+                            child: Text(l.planOptTollFreeSub, style: t.bodySmall),
                           ),
                           value: _tollAlternativeEnabled,
                           onChanged: (v) => setState(() {
@@ -446,12 +501,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    'Hourly toll analysis',
+                                    l.planOptHourlyTollTitle,
                                     style: t.titleMedium,
                                   ),
                                 ),
                                 SoftBadge(
-                                  label: 'Premium',
+                                  label: l.planPremiumBadge,
                                   color: scheme.tertiary,
                                   background: scheme.tertiaryContainer,
                                   borderColor:
@@ -462,9 +517,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             subtitle: Padding(
                               padding: const EdgeInsets.only(top: 4),
                               child: Text(
-                                'When during the day skipping tolls actually '
-                                'beats keeping them (traffic-aware).',
-                                style: t.bodySmall,
+                                l.planOptHourlyTollSub, style: t.bodySmall,
                               ),
                             ),
                             value: _hourlyTollEnabled,
@@ -476,48 +529,25 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,
                           title: Text(
-                            'Compare route variants', style: t.titleMedium,
+                            l.planOptRouteVariantsTitle, style: t.titleMedium,
                           ),
                           subtitle: Padding(
                             padding: const EdgeInsets.only(top: 4),
                             child: Text(
-                              'Fastest vs. toll-free vs. scenic — see all '
-                              'three side by side on the results.',
-                              style: t.bodySmall,
+                              l.planOptRouteVariantsSub, style: t.bodySmall,
                             ),
                           ),
                           value: _routeComparisonEnabled,
                           onChanged: (v) =>
                               setState(() => _routeComparisonEnabled = v),
                         ),
-                        const Divider(height: Tokens.space16),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Avoid motorways', style: t.titleMedium),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Slower and longer, but no tolls and quieter.',
-                              style: t.bodySmall,
-                            ),
-                          ),
-                          value: _avoidMotorways,
-                          onChanged: (v) => setState(() => _avoidMotorways = v),
-                        ),
-                        const Divider(height: Tokens.space16),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text('Prefer scenic', style: t.titleMedium),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              'Bias to more interesting roads. A little slower.',
-                              style: t.bodySmall,
-                            ),
-                          ),
-                          value: _preferScenic,
-                          onChanged: (v) => setState(() => _preferScenic = v),
-                        ),
+                        // "Avoid motorways" + "Prefer scenic" toggles
+                        // hidden for the beta — routing quality on
+                        // those variants isn't consistent yet and
+                        // exposing the switches confused testers.
+                        // They stay on the model side (flags default
+                        // false in _submit) so we can re-enable via
+                        // the trip profile in a later iteration.
                       ],
                     ),
                   ).animate().fadeIn(delay: 120.ms, duration: Tokens.motionBase),
@@ -595,9 +625,9 @@ class _ProfileChip extends StatelessWidget {
       const SizedBox(width: Tokens.space8),
       Expanded(
         child: hasProfile
-            ? _profileSummary(profile!, t, scheme, isOverride)
+            ? _profileSummary(context, profile!, t, scheme, isOverride)
             : Text(
-                'Set up your trip profile',
+                AppLocalizations.of(context).profilePromptSetup,
                 style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
               ),
       ),
@@ -614,21 +644,23 @@ class _ProfileChip extends StatelessWidget {
   }
 
   Widget _profileSummary(
+    BuildContext context,
     TripProfile p, TextTheme t, ColorScheme scheme, bool isOverride,
   ) {
+    final l = AppLocalizations.of(context);
     final bits = <String>[
-      p.vehicle.type.label,
-      p.vehicle.fuelType.label,
-      if (p.travellers > 1) '${p.travellers} travellers',
-      if (p.hasKids) 'kids',
-      if (p.hasPets) 'pets',
+      vehicleTypeLabel(context, p.vehicle.type),
+      fuelTypeLabel(context, p.vehicle.fuelType),
+      if (p.travellers > 1) l.planProfileTravellers(p.travellers),
+      if (p.hasKids) l.planProfileWithKids,
+      if (p.hasPets) l.planProfileWithPets,
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (isOverride)
           Text(
-            'OVERRIDE ACTIVE',
+            l.planProfileOverrideActive,
             style: t.labelSmall
                 ?.copyWith(color: scheme.tertiary, letterSpacing: 1.2),
           ),

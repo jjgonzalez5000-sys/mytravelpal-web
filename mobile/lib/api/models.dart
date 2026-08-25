@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../domain/trip_profile.dart';
+import '../l10n/app_localizations.dart';
 
 enum AdverseEventType {
   fire,
@@ -15,6 +16,8 @@ enum AdverseEventType {
 
   String get code => name;
 
+  /// English fallback — prefer `localized(l)` in UI code so the label
+  /// follows the app locale.
   String get displayName => switch (this) {
         AdverseEventType.fire => 'Fire',
         AdverseEventType.strike => 'Strike',
@@ -25,6 +28,18 @@ enum AdverseEventType {
         AdverseEventType.snow => 'Snow',
         AdverseEventType.protest => 'Protest',
         AdverseEventType.other => 'Other',
+      };
+
+  String localized(AppLocalizations l) => switch (this) {
+        AdverseEventType.fire => l.eventTypeFire,
+        AdverseEventType.strike => l.eventTypeStrike,
+        AdverseEventType.weather => l.eventTypeWeather,
+        AdverseEventType.accident => l.eventTypeAccident,
+        AdverseEventType.roadwork => l.eventTypeRoadwork,
+        AdverseEventType.flood => l.eventTypeFlood,
+        AdverseEventType.snow => l.eventTypeSnow,
+        AdverseEventType.protest => l.eventTypeProtest,
+        AdverseEventType.other => l.eventTypeOther,
       };
 
   IconData get icon => switch (this) {
@@ -56,6 +71,12 @@ enum AdverseEventSeverity {
         AdverseEventSeverity.info => 'Info',
         AdverseEventSeverity.warning => 'Warning',
         AdverseEventSeverity.critical => 'Critical',
+      };
+
+  String localized(AppLocalizations l) => switch (this) {
+        AdverseEventSeverity.info => l.eventSeverityInfo,
+        AdverseEventSeverity.warning => l.eventSeverityWarning,
+        AdverseEventSeverity.critical => l.eventSeverityCritical,
       };
 
   static AdverseEventSeverity fromCode(String code) => values.firstWhere(
@@ -176,8 +197,11 @@ class TripPlanRequest {
     this.countries,
     this.hotelMaxDetourMinutes,
     this.hotelPriceBand,
+    this.hotelPriceBands,
     this.restaurantMaxDetourMinutes,
     this.restaurantPriceBand,
+    this.restaurantPriceBands,
+    this.restaurantCuisines,
     this.includeAdverseEvents = false,
     this.adverseEventsMaxDistanceKm = 25.0,
     this.includeTollAlternative = false,
@@ -185,6 +209,8 @@ class TripPlanRequest {
     this.includeHourlyTollAnalysis = false,
     this.avoidMotorways = false,
     this.preferScenic = false,
+    this.timeWindowSpanHours = 3,
+    this.timeWindowTopN = 5,
     this.tripProfile,
   });
 
@@ -199,15 +225,26 @@ class TripPlanRequest {
   /// detour off the route. Null or 0 disables the hotel search.
   final int? hotelMaxDetourMinutes;
 
-  /// Only applied when `hotelMaxDetourMinutes` is > 0.
+  /// Legacy single-band. Prefer `hotelPriceBands` when the user has
+  /// multi-select preferences.
   final PriceBand? hotelPriceBand;
+
+  /// Multi-band filter. Wins over `hotelPriceBand` when set. An empty
+  /// list or one containing `PriceBand.any` disables filtering.
+  final List<PriceBand>? hotelPriceBands;
 
   /// When > 0, the backend searches for restaurants within this
   /// round-trip detour off the route. Null or 0 disables.
   final int? restaurantMaxDetourMinutes;
 
-  /// Only applied when `restaurantMaxDetourMinutes` is > 0.
+  /// Legacy single-band. Prefer `restaurantPriceBands`.
   final PriceBand? restaurantPriceBand;
+
+  /// Multi-band filter for restaurants.
+  final List<PriceBand>? restaurantPriceBands;
+
+  /// OSM `cuisine` whitelist. Empty / null = no cuisine filter.
+  final List<String>? restaurantCuisines;
 
   /// If true, include known adverse events (fires, strikes, weather,
   /// accidents, roadworks, floods, snow, protests) along the route.
@@ -233,6 +270,14 @@ class TripPlanRequest {
   final bool avoidMotorways;
   final bool preferScenic;
 
+  /// Half-width of the departure-time window in hours (±). Default 3.
+  /// The result screen slider lets the user push it up to 12.
+  final int timeWindowSpanHours;
+
+  /// Number of candidate departure times to show. Default 5, up to
+  /// 24 when the user expands the window.
+  final int timeWindowTopN;
+
   /// Trip profile (vehicle + travellers + meals). When present the
   /// backend applies profile-aware ranking to POIs and computes trip
   /// optimizations (meal stops, sleep stop, fuel cost).
@@ -247,10 +292,19 @@ class TripPlanRequest {
         if (hotelMaxDetourMinutes != null)
           'hotel_max_detour_minutes': hotelMaxDetourMinutes,
         if (hotelPriceBand != null) 'hotel_price_band': hotelPriceBand!.code,
+        if (hotelPriceBands != null && hotelPriceBands!.isNotEmpty)
+          'hotel_price_bands':
+              hotelPriceBands!.map((b) => b.code).toList(),
         if (restaurantMaxDetourMinutes != null)
           'restaurant_max_detour_minutes': restaurantMaxDetourMinutes,
         if (restaurantPriceBand != null)
           'restaurant_price_band': restaurantPriceBand!.code,
+        if (restaurantPriceBands != null &&
+            restaurantPriceBands!.isNotEmpty)
+          'restaurant_price_bands':
+              restaurantPriceBands!.map((b) => b.code).toList(),
+        if (restaurantCuisines != null && restaurantCuisines!.isNotEmpty)
+          'restaurant_cuisines': restaurantCuisines,
         if (includeAdverseEvents) 'include_adverse_events': true,
         if (includeAdverseEvents)
           'adverse_events_max_distance_km': adverseEventsMaxDistanceKm,
@@ -259,6 +313,9 @@ class TripPlanRequest {
         if (includeHourlyTollAnalysis) 'include_hourly_toll_analysis': true,
         if (avoidMotorways) 'avoid_motorways': true,
         if (preferScenic) 'prefer_scenic': true,
+        if (timeWindowSpanHours != 3)
+          'time_window_span_hours': timeWindowSpanHours,
+        if (timeWindowTopN != 5) 'time_window_top_n': timeWindowTopN,
         if (tripProfile != null) 'trip_profile': tripProfile!.toJson(),
       };
 }
@@ -410,6 +467,9 @@ class RouteInfo {
 class PartialTollSkip {
   const PartialTollSkip({
     required this.label,
+    this.kind = 'named',
+    this.index = 1,
+    this.total,
     required this.distanceFromOriginKm,
     required this.savingsEur,
     required this.timePenaltyMinutes,
@@ -419,6 +479,15 @@ class PartialTollSkip {
   });
 
   final String label;
+
+  /// Machine-readable label class the client localises against:
+  /// - `stretch` — heuristic segment split (uses [index] / [total]).
+  /// - `booth`   — real toll booth without a proper name (uses [index]).
+  /// - `named`   — real toll booth whose [label] is a proper place name;
+  ///               render [label] unchanged.
+  final String kind;
+  final int index;
+  final int? total;
   final double distanceFromOriginKm;
   final double savingsEur;
   final double timePenaltyMinutes;
@@ -426,8 +495,21 @@ class PartialTollSkip {
   final bool worthIt;
   final LatLon coordinate;
 
+  String localizedLabel(AppLocalizations l) {
+    if (kind == 'stretch' && total != null) {
+      return l.tollStretchLabel(index, total!);
+    }
+    if (kind == 'booth') {
+      return l.tollBoothLabel(index);
+    }
+    return label;
+  }
+
   factory PartialTollSkip.fromJson(Map<String, dynamic> j) => PartialTollSkip(
         label: j['label'] as String,
+        kind: j['kind'] as String? ?? 'named',
+        index: (j['index'] as num?)?.toInt() ?? 1,
+        total: (j['total'] as num?)?.toInt(),
         distanceFromOriginKm:
             (j['distance_from_origin_km'] as num).toDouble(),
         savingsEur: (j['savings_eur'] as num).toDouble(),
@@ -519,6 +601,8 @@ class FuelPrice {
     required this.stationName,
     required this.country,
     required this.priceEurPerL,
+    this.priceAvailable = true,
+    this.savingsVsCountryMedianEurPerL,
     required this.distanceFromOriginKm,
     this.coordinate,
     this.attributes = const {},
@@ -527,6 +611,18 @@ class FuelPrice {
   final String stationName;
   final Country country;
   final double priceEurPerL;
+
+  /// False when the backend knows the station exists (via OSM /
+  /// Nominatim) but has no price feed for that country. In that case
+  /// [priceEurPerL] is a placeholder — render "no price" instead.
+  final bool priceAvailable;
+
+  /// €/L below the country median. Positive = cheaper than median
+  /// (a deal); negative = pricier. Null when the backend can't
+  /// compute one (single-country trip with too few stations, or
+  /// unavailable price). Rendered as a small chip on the tile.
+  final double? savingsVsCountryMedianEurPerL;
+
   final double distanceFromOriginKm;
 
   /// Present only when the backend was able to attach one. Mock fuel
@@ -542,6 +638,9 @@ class FuelPrice {
         stationName: json['station_name'] as String,
         country: Country.fromCode(json['country'] as String),
         priceEurPerL: (json['price_eur_per_l'] as num).toDouble(),
+        priceAvailable: (json['price_available'] as bool?) ?? true,
+        savingsVsCountryMedianEurPerL:
+            (json['savings_vs_country_median_eur_per_l'] as num?)?.toDouble(),
         distanceFromOriginKm:
             (json['distance_from_origin_km'] as num).toDouble(),
         coordinate: (json['lat'] == null || json['lon'] == null)
@@ -615,6 +714,20 @@ class Hotel {
       };
 }
 
+/// Which meal slot(s) a restaurant is typically open for. Mirrors the
+/// backend `MealSlot` enum. Kept as strings so an unknown value from a
+/// future backend degrades to `other` instead of crashing.
+enum MealSlot { breakfast, lunch, dinner }
+
+MealSlot? _mealSlotFromCode(String code) {
+  return switch (code.toLowerCase()) {
+    'breakfast' => MealSlot.breakfast,
+    'lunch' => MealSlot.lunch,
+    'dinner' => MealSlot.dinner,
+    _ => null,
+  };
+}
+
 @immutable
 class Restaurant {
   const Restaurant({
@@ -626,6 +739,7 @@ class Restaurant {
     required this.distanceFromRouteKm,
     required this.coordinate,
     this.attributes = const {},
+    this.openMealSlots = const [],
   });
 
   final String name;
@@ -641,6 +755,11 @@ class Restaurant {
   /// Empty for mock restaurants.
   final Map<String, String> attributes;
 
+  /// Meal slots this place typically covers (from OSM `cuisine` /
+  /// `opening_hours` heuristics). Used by result screen to group
+  /// restaurants under "Suggested for lunch/dinner" sections.
+  final List<MealSlot> openMealSlots;
+
   factory Restaurant.fromJson(Map<String, dynamic> json) => Restaurant(
         name: json['name'] as String,
         country: Country.fromCode(json['country'] as String),
@@ -654,6 +773,10 @@ class Restaurant {
           lon: (json['lon'] as num).toDouble(),
         ),
         attributes: _readAttrs(json['attributes']),
+        openMealSlots: (json['open_meal_slots'] as List<dynamic>? ?? const [])
+            .map((s) => _mealSlotFromCode(s as String))
+            .whereType<MealSlot>()
+            .toList(growable: false),
       );
 
   String get favoriteId => 'restaurant:${country.code}:'
@@ -985,6 +1108,9 @@ class TripPlanResponse {
     this.savings = TripSavings.zero,
     this.routeVariants = const [],
     this.recommendationScope,
+    this.consistencyIssues = const [],
+    this.fuelArbitrage,
+    this.days = const [],
   });
 
   final RouteInfo route;
@@ -1001,6 +1127,9 @@ class TripPlanResponse {
   final TripSavings savings;
   final List<RouteVariant> routeVariants;
   final RecommendationScope? recommendationScope;
+  final List<ConsistencyIssue> consistencyIssues;
+  final FuelArbitrage? fuelArbitrage;
+  final List<DayPlan> days;
 
   factory TripPlanResponse.fromJson(Map<String, dynamic> json) =>
       TripPlanResponse(
@@ -1055,6 +1184,139 @@ class TripPlanResponse {
             ? null
             : RecommendationScope.fromJson(
                 json['recommendation_scope'] as Map<String, dynamic>,
+              ),
+        consistencyIssues:
+            (json['consistency_issues'] as List<dynamic>? ?? const [])
+                .map((i) =>
+                    ConsistencyIssue.fromJson(i as Map<String, dynamic>))
+                .toList(growable: false),
+        fuelArbitrage: json['fuel_arbitrage'] == null
+            ? null
+            : FuelArbitrage.fromJson(
+                json['fuel_arbitrage'] as Map<String, dynamic>,
+              ),
+        days: (json['days'] as List<dynamic>? ?? const [])
+            .map((d) => DayPlan.fromJson(d as Map<String, dynamic>))
+            .toList(growable: false),
+      );
+}
+
+/// Advisory issue emitted by the backend consistency service. The
+/// server ranks these most-severe first, so callers can pop
+/// `consistencyIssues.first` into a banner and trust the priority.
+@immutable
+class ConsistencyIssue {
+  const ConsistencyIssue({
+    required this.code,
+    required this.severity,
+    required this.message,
+  });
+
+  /// Machine-readable code (e.g. `meal.impossible_speed`,
+  /// `fuel.range_exceeded`). Namespaced by subject.
+  final String code;
+
+  /// One of `error`, `warning`, `info` — kept as string to survive new
+  /// severities added on the backend without breaking parsing.
+  final String severity;
+  final String message;
+
+  bool get isError => severity == 'error';
+  bool get isWarning => severity == 'warning';
+
+  factory ConsistencyIssue.fromJson(Map<String, dynamic> json) =>
+      ConsistencyIssue(
+        code: json['code'] as String,
+        severity: json['severity'] as String,
+        message: json['message'] as String,
+      );
+}
+
+/// Backend hint that fuel is materially cheaper in one country the
+/// trip crosses vs another — user can save real money by refuelling
+/// in the cheaper country before crossing.
+@immutable
+class FuelArbitrage {
+  const FuelArbitrage({
+    required this.cheaperCountry,
+    required this.cheaperMedianEurPerL,
+    required this.pricierCountry,
+    required this.pricierMedianEurPerL,
+    required this.deltaEurPerL,
+    required this.estimatedTankSavingEur,
+  });
+
+  final Country cheaperCountry;
+  final double cheaperMedianEurPerL;
+  final Country pricierCountry;
+  final double pricierMedianEurPerL;
+  final double deltaEurPerL;
+  final double estimatedTankSavingEur;
+
+  factory FuelArbitrage.fromJson(Map<String, dynamic> j) => FuelArbitrage(
+        cheaperCountry: Country.fromCode(j['cheaper_country'] as String),
+        cheaperMedianEurPerL:
+            (j['cheaper_median_eur_per_l'] as num).toDouble(),
+        pricierCountry: Country.fromCode(j['pricier_country'] as String),
+        pricierMedianEurPerL:
+            (j['pricier_median_eur_per_l'] as num).toDouble(),
+        deltaEurPerL: (j['delta_eur_per_l'] as num).toDouble(),
+        estimatedTankSavingEur:
+            (j['estimated_tank_saving_eur'] as num).toDouble(),
+      );
+}
+
+/// One day of a multi-day trip. Emitted by the backend when the total
+/// duration exceeds the driver's daily driving cap or the arrival
+/// crosses their bedtime.
+@immutable
+class DayPlan {
+  const DayPlan({
+    required this.dayIndex,
+    required this.startAt,
+    required this.endAt,
+    required this.fromKm,
+    required this.toKm,
+    required this.mealStops,
+    required this.restStops,
+    this.sleepAt,
+    this.sleepCoord,
+  });
+
+  final int dayIndex;
+  final DateTime startAt;
+  final DateTime endAt;
+  final double fromKm;
+  final double toKm;
+  final List<MealStopOpt> mealStops;
+  final List<RestStop> restStops;
+  final DateTime? sleepAt;
+
+  /// Approximate coord where the driver would spend the night. Used
+  /// to rank hotels for the day's "sleep nearby" card. `null` for
+  /// the trip's final day.
+  final LatLon? sleepCoord;
+
+  factory DayPlan.fromJson(Map<String, dynamic> j) => DayPlan(
+        dayIndex: (j['day_index'] as num).toInt(),
+        startAt: DateTime.parse(j['start_at'] as String),
+        endAt: DateTime.parse(j['end_at'] as String),
+        fromKm: (j['from_km'] as num).toDouble(),
+        toKm: (j['to_km'] as num).toDouble(),
+        mealStops: (j['meal_stops'] as List<dynamic>? ?? const [])
+            .map((m) => MealStopOpt.fromJson(m as Map<String, dynamic>))
+            .toList(growable: false),
+        restStops: (j['rest_stops'] as List<dynamic>? ?? const [])
+            .map((s) => RestStop.fromJson(s as Map<String, dynamic>))
+            .toList(growable: false),
+        sleepAt: j['sleep_at'] == null
+            ? null
+            : DateTime.parse(j['sleep_at'] as String),
+        sleepCoord: (j['sleep_lat'] == null || j['sleep_lon'] == null)
+            ? null
+            : LatLon(
+                lat: (j['sleep_lat'] as num).toDouble(),
+                lon: (j['sleep_lon'] as num).toDouble(),
               ),
       );
 }

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Home-screen widget for MyTravelPal. Renders a dark rounded card
+    with the next upcoming saved trip's origin → destination, the
+    scheduled departure time, and a big countdown label.
+
+    Kept simple / no images / no ImageView to sidestep AppWidget's
+    strict allow-list of widget-safe widgets. Fits from the smallest
+    2×1 slot up to 4×2 without asset regeneration.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/next_trip_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp">
+
+    <TextView
+        android:id="@+id/next_trip_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textColor="#FFFFFFFF"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="Origin → Destination" />
+
+    <TextView
+        android:id="@+id/next_trip_subtitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="2dp"
+        android:textColor="#CCFFFFFF"
+        android:textSize="12sp"
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:text="—" />
+
+    <TextView
+        android:id="@+id/next_trip_countdown"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:textColor="#FFFFFFFF"
+        android:textSize="22sp"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:text="" />
+</LinearLayout>

@@ -126,6 +126,14 @@ class FirmsFireProvider:
             except (TypeError, ValueError):
                 continue
             props = feature.get("properties") or {}
+            # Reliability + relevance gate. FIRMS ships every VIIRS
+            # thermal pixel above ~300 K; without filtering, a single
+            # /plan surfaces dozens of tiny gas-flare / power-plant
+            # hotspots that don't affect a driver at all. Real
+            # wildfires (Iberia 2022/2023 fires that motivated this
+            # feature) all sat comfortably above these thresholds.
+            if not _is_reliable_wildfire(props, now):
+                continue
             severity = _severity_for(props)
             fid = (
                 props.get("OBJECTID")
@@ -166,6 +174,31 @@ def _route_bbox(
     min_lon = min(p.lon for p in points) - buffer_lon
     max_lon = max(p.lon for p in points) + buffer_lon
     return (min_lon, min_lat, max_lon, max_lat)
+
+
+# Wildfire filter tuning — thresholds picked so that the Iberia summer
+# 2022/2023 mega-fires (Sierra de la Culebra, Losacio, Rhodes) all
+# survive while typical false positives (industrial flares, sunlit
+# rocks, small farm burns) are dropped.
+_MIN_FRP_MW = 5.0            # smaller than this ≈ chimney / flare
+_MAX_HOURS_OLD = 24.0        # older than a day is stale for a driver
+_ALLOWED_CONFIDENCE = {"nominal", "high", "h", "n", "medium", "m"}
+# Empty confidence means the dataset didn't carry it; we treat that as
+# "acceptable" so we don't accidentally drop good hotspots from feeds
+# that omit the field.
+
+
+def _is_reliable_wildfire(properties: dict, now: datetime) -> bool:
+    confidence = str(properties.get("confidence") or "").strip().lower()
+    if confidence and confidence not in _ALLOWED_CONFIDENCE:
+        return False
+    frp = _try_float(properties.get("frp"))
+    if frp is None or frp < _MIN_FRP_MW:
+        return False
+    hours_old = _try_float(properties.get("hours_old"))
+    if hours_old is not None and hours_old > _MAX_HOURS_OLD:
+        return False
+    return True
 
 
 def _severity_for(properties: dict) -> AdverseEventSeverity:

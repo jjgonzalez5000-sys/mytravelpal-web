@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
+import 'osm_attribution.dart';
 
 /// Kind of POI the sheet is describing. Governs which external CTAs
 /// appear (a hotel gets Booking + Google Maps; a restaurant gets
@@ -163,6 +164,7 @@ class _PoiDetailSheet extends StatelessWidget {
                           ),
                         ],
                       ),
+                      const OsmAttribution(),
                     ],
                   ),
                 ),

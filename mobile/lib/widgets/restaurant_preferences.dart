@@ -1,39 +1,53 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
+import '../l10n/app_localizations.dart';
+import 'price_band_multiselect.dart';
 
 /// Immutable snapshot of the user's restaurant-search preferences.
 ///
-/// Kept separate from `HotelPreferences` because bands mean different
-/// things (per-night vs. per-meal); different filter defaults will drift
-/// over time.
+/// Multi-select bands like hotels. Also carries an OSM `cuisine`
+/// whitelist so the driver can filter by "italian / spanish / tapas
+/// / etc." — otherwise the raw list can be huge and dominated by
+/// nearby fast food.
 @immutable
 class RestaurantPreferences {
   const RestaurantPreferences({
     required this.enabled,
     required this.maxDetourMinutes,
-    required this.priceBand,
+    required this.priceBands,
+    this.cuisines = const {},
   });
 
   final bool enabled;
   final int maxDetourMinutes;
-  final PriceBand priceBand;
+  final Set<PriceBand> priceBands;
+
+  /// OSM `cuisine` values to keep. Empty = no cuisine filter.
+  final Set<String> cuisines;
+
+  PriceBand get priceBand {
+    if (priceBands.length == 1) return priceBands.first;
+    return PriceBand.any;
+  }
 
   static const RestaurantPreferences disabled = RestaurantPreferences(
     enabled: false,
     maxDetourMinutes: 20,
-    priceBand: PriceBand.any,
+    priceBands: {PriceBand.any},
   );
 
   RestaurantPreferences copyWith({
     bool? enabled,
     int? maxDetourMinutes,
-    PriceBand? priceBand,
+    Set<PriceBand>? priceBands,
+    Set<String>? cuisines,
   }) =>
       RestaurantPreferences(
         enabled: enabled ?? this.enabled,
         maxDetourMinutes: maxDetourMinutes ?? this.maxDetourMinutes,
-        priceBand: priceBand ?? this.priceBand,
+        priceBands: priceBands ?? this.priceBands,
+        cuisines: cuisines ?? this.cuisines,
       );
 }
 
@@ -51,26 +65,73 @@ class RestaurantPreferencesSection extends StatelessWidget {
   static const _detourMin = 5;
   static const _detourMax = 60;
 
+  /// OSM `cuisine` values we surface to the user. Each option carries
+  /// its own set of raw OSM tags because a "asian" chip should match
+  /// stations tagged `chinese`, `japanese`, `thai`, etc. Label lookup
+  /// is delegated to `_cuisineLabel(l, id)` so it localises.
+  static const _cuisineOptions = <_CuisineOption>[
+    _CuisineOption('italian', {'italian', 'pizza'}),
+    _CuisineOption('spanish', {'spanish'}),
+    _CuisineOption('tapas', {'tapas'}),
+    _CuisineOption('french', {'french'}),
+    _CuisineOption('mediterranean', {'mediterranean'}),
+    _CuisineOption('asian', {'asian', 'chinese', 'japanese', 'thai'}),
+    _CuisineOption('indian', {'indian'}),
+    _CuisineOption('burger', {'burger'}),
+    _CuisineOption('seafood', {'seafood', 'fish'}),
+    _CuisineOption('vegetarian', {'vegetarian', 'vegan'}),
+    _CuisineOption('bbq', {'barbecue', 'steak_house'}),
+    _CuisineOption('regional', {'regional'}),
+  ];
+
+  static String _cuisineLabel(AppLocalizations l, String id) => switch (id) {
+        'italian' => l.cuisineItalian,
+        'spanish' => l.cuisineSpanish,
+        'tapas' => l.cuisineTapas,
+        'french' => l.cuisineFrench,
+        'mediterranean' => l.cuisineMediterranean,
+        'asian' => l.cuisineAsian,
+        'indian' => l.cuisineIndian,
+        'burger' => l.cuisineBurger,
+        'seafood' => l.cuisineSeafood,
+        'vegetarian' => l.cuisineVegetarian,
+        'bbq' => l.cuisineBbq,
+        'regional' => l.cuisineRegional,
+        _ => id,
+      };
+
+  String _bandsLabel(AppLocalizations l, Set<PriceBand> bands) {
+    if (bands.isEmpty || bands.contains(PriceBand.any)) {
+      return l.prefBandAny;
+    }
+    const order = [PriceBand.budget, PriceBand.mid, PriceBand.lux];
+    return order
+        .where(bands.contains)
+        .map((b) => b.symbol)
+        .join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Add restaurants along the route'),
+          title: Text(l.restaurantPrefTitle),
           subtitle: value.enabled
-              ? Text(
-                  'Up to ${value.maxDetourMinutes} min detour · '
-                  '${value.priceBand.displayName} (${value.priceBand.symbol})',
-                )
-              : const Text('Off. Turn on to see restaurants near your route.'),
+              ? Text(l.restaurantPrefSubEnabled(
+                  value.maxDetourMinutes,
+                  _bandsLabel(l, value.priceBands),
+                ))
+              : Text(l.restaurantPrefSubOff),
           value: value.enabled,
           onChanged: (v) => onChanged(value.copyWith(enabled: v)),
         ),
         if (value.enabled) ...[
           const SizedBox(height: 8),
-          Text('Max detour: ${value.maxDetourMinutes} min',
+          Text(l.prefMaxDetour(value.maxDetourMinutes),
               style: Theme.of(context).textTheme.bodyMedium),
           Slider(
             value: value.maxDetourMinutes.toDouble(),
@@ -83,35 +144,58 @@ class RestaurantPreferencesSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          SegmentedButton<PriceBand>(
-            segments: const [
-              ButtonSegment(
-                value: PriceBand.budget,
-                label: Text('Budget'),
-                icon: Text('€'),
-              ),
-              ButtonSegment(
-                value: PriceBand.mid,
-                label: Text('Mid'),
-                icon: Text('€€'),
-              ),
-              ButtonSegment(
-                value: PriceBand.lux,
-                label: Text('Luxury'),
-                icon: Text('€€€'),
-              ),
-              ButtonSegment(
-                value: PriceBand.any,
-                label: Text('Any'),
-                icon: Icon(Icons.all_inclusive, size: 16),
-              ),
+          PriceBandMultiSelect(
+            selected: value.priceBands,
+            onChanged: (bands) =>
+                onChanged(value.copyWith(priceBands: bands)),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            l.restaurantPrefCuisinesLabel,
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+          const SizedBox(height: 4),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final opt in _cuisineOptions)
+                FilterChip(
+                  selected: value.cuisines.contains(opt.id),
+                  label: Text(_cuisineLabel(l, opt.id)),
+                  onSelected: (sel) {
+                    final next = {...value.cuisines};
+                    if (sel) {
+                      next.add(opt.id);
+                    } else {
+                      next.remove(opt.id);
+                    }
+                    onChanged(value.copyWith(cuisines: next));
+                  },
+                ),
             ],
-            selected: {value.priceBand},
-            onSelectionChanged: (s) =>
-                onChanged(value.copyWith(priceBand: s.first)),
           ),
         ],
       ],
     );
   }
+}
+
+class _CuisineOption {
+  const _CuisineOption(this.id, this.osmTags);
+  final String id;
+  final Set<String> osmTags;
+}
+
+/// Collapse the visible cuisine IDs into the raw OSM tags the
+/// backend expects. Exposed as a top-level helper so `plan_screen`
+/// can build the payload without importing internals.
+Set<String> cuisineOsmTagsFor(Set<String> selectedIds) {
+  final out = <String>{};
+  for (final opt in RestaurantPreferencesSection._cuisineOptions) {
+    if (selectedIds.contains(opt.id)) {
+      out.addAll(opt.osmTags);
+    }
+  }
+  return out;
 }

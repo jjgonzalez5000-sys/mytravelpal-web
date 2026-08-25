@@ -244,9 +244,14 @@ class OsrmRoutingProvider:
             "steps": "false",
             "annotations": "false",
         }
+        # The public OSRM demo server only supports `exclude=motorway`
+        # for the driving profile — `exclude=toll` requires a custom
+        # OSRM build with the toll-tagged profile. Sending toll
+        # returned HTTP 400 in production. We still overlay per-country
+        # toll-avoidance on top of the returned route via our own
+        # pricing model, so dropping the OSRM flag here has no user
+        # impact beyond avoiding a hard 400.
         excludes: list[str] = []
-        if avoid_tolls:
-            excludes.append("toll")
         if avoid_motorways:
             excludes.append("motorway")
         if excludes:

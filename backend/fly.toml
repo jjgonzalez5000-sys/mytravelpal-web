@@ -13,22 +13,46 @@ primary_region = 'cdg'
   MYTRAVELPAL_FIRES = 'effis'
   MYTRAVELPAL_ROUTING = 'osrm'
   MYTRAVELPAL_WEATHER = 'openmeteo'
+  # Skip the parallel fuel dataset download at boot — with 3 concurrent
+  # httpx clients pulling ~15 MB + parsing CSVs, the 512 MB VM OOM'd
+  # and got killed mid-warmup. Datasets now load lazily on the first
+  # /plan that needs them; that request is one-off slow (10–20 s cold)
+  # but the machine stays alive.
+  MYTRAVELPAL_SKIP_PREWARM = '1'
 
 [http_service]
   internal_port = 8000
   force_https = true
-  auto_stop_machines = 'stop'
-  auto_start_machines = true
-  min_machines_running = 0
+  # Never auto-stop / auto-suspend. Fly's resume-from-suspend takes
+  # >8 s and the proxy gives up after ~8 s ("failed to connect to
+  # machine: gave up after 15 attempts"), returning 503 to the
+  # client. Keeping both machines permanently on trades a bit of
+  # idle cost for zero resume-race 503s.
+  auto_stop_machines = 'off'
+  auto_start_machines = false
+  min_machines_running = 1
 
   [[http_service.checks]]
+    # Generous windows: /health is trivial but the same event loop
+    # can be briefly starved by a large gov fuel dataset first-load.
+    # `grace_period` covers uvicorn boot + the first /health warm-up;
+    # `timeout` swallows short parse-time hiccups without killing the
+    # machine.
     interval = '30s'
-    timeout = '5s'
-    grace_period = '10s'
+    timeout = '15s'
+    grace_period = '30s'
     method = 'get'
     path = '/health'
 
 [[vm]]
   cpu_kind = 'shared'
-  cpus = 1
-  memory_mb = 512
+  # 2 shared vCPUs so the event loop, dataset parsing thread and
+  # concurrent httpx requests stop starving each other on a single
+  # core (Nominatim POI + gov fuel + routing all fire from /plan and
+  # can pile up behind one another → health check misses the window).
+  cpus = 2
+  # 2 GB gives generous headroom for the fuel datasets (Spain ~15 MB
+  # JSON, Italy 22 k CSV rows expanded, France ZIP) while multiple
+  # /plan requests are inflight. Previous 1 GB was surviving idle but
+  # OOM-adjacent under load.
+  memory_mb = 2048

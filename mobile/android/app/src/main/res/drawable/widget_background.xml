@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Rounded card background for the home-screen widget. Colour
+    matches the app's primary tint so a user with theming enabled
+    sees a coherent surface without importing the full theme.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#0F5FA5" />
+    <corners android:radius="16dp" />
+</shape>

@@ -42,7 +42,16 @@ _WORTH_IT_MAX_PENALTY_MINUTES = 10.0
 
 @dataclass(frozen=True, slots=True)
 class PartialTollSkip:
-    label: str                     # human label ("Segment 2: south of Lyon")
+    label: str                     # English fallback / real booth name
+    # Structured labelling so the client can localise instead of showing
+    # the English `label` verbatim. `kind` values:
+    # - `stretch` — heuristic per-segment split (uses index / total).
+    # - `booth`   — real toll booth without a named label (uses index).
+    # - `named`   — real toll booth carrying a proper name; the client
+    #               should render `label` unchanged.
+    kind: str
+    index: int
+    total: int | None
     distance_from_origin_km: float
     savings_eur: float
     time_penalty_minutes: float
@@ -99,6 +108,9 @@ def compute(
         skips.append(
             PartialTollSkip(
                 label=f"Toll stretch {i + 1} / {len(anchors)}",
+                kind="stretch",
+                index=i + 1,
+                total=len(anchors),
                 distance_from_origin_km=round(
                     rel * route.distance_km, 1,
                 ),
@@ -146,9 +158,13 @@ def _compute_from_real_tolls(
         # costs ~5 min on average — much less than the whole-route
         # avoid-tolls detour.
         penalty = 5.0 + max(0.0, (booth.cost_eur - 5.0)) * 0.05
+        has_name = bool(booth.name)
         skips.append(
             PartialTollSkip(
                 label=booth.name or f"Toll booth {i + 1}",
+                kind="named" if has_name else "booth",
+                index=i + 1,
+                total=None,
                 distance_from_origin_km=distance_from_origin,
                 savings_eur=savings,
                 time_penalty_minutes=round(penalty, 1),

@@ -135,13 +135,17 @@ void main() {
   });
 
   group('AppPrefs.isPremium', () {
-    test('persists across opens', () async {
+    test('defaults to true during the beta and persists explicit toggles',
+        () async {
+      // Beta default is Premium ON so testers get every feature
+      // unlocked without hunting for a toggle. Real receipt validation
+      // will replace this default when the paywall lands.
       SharedPreferences.setMockInitialValues(<String, Object>{});
       final prefs = await AppPrefs.open();
-      expect(prefs.isPremium, isFalse);
-      await prefs.setPremium(true);
+      expect(prefs.isPremium, isTrue);
+      await prefs.setPremium(false);
       final prefs2 = await AppPrefs.open();
-      expect(prefs2.isPremium, isTrue);
+      expect(prefs2.isPremium, isFalse);
     });
   });
 }

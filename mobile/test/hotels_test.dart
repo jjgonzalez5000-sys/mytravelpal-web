@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/l10n/app_localizations.dart';
 import 'package:mytravelpal/widgets/hotel_preferences.dart';
+import 'package:mytravelpal/widgets/price_band_multiselect.dart';
 
 void main() {
   group('PriceBand', () {
@@ -103,6 +105,8 @@ void main() {
         (tester) async {
       var prefs = HotelPreferences.disabled;
       await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: HotelPreferencesSection(
             value: prefs,
@@ -110,9 +114,10 @@ void main() {
           ),
         ),
       ));
+      // Localized to English by default in tests.
       expect(find.text('Add hotels along the route'), findsOneWidget);
       expect(find.byType(Slider), findsNothing);
-      expect(find.byType(SegmentedButton<PriceBand>), findsNothing);
+      expect(find.byType(PriceBandMultiSelect), findsNothing);
     });
 
     testWidgets('flipping switch reveals slider and price picker',
@@ -120,6 +125,8 @@ void main() {
       var prefs = HotelPreferences.disabled;
 
       await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: StatefulBuilder(
             builder: (context, setState) => HotelPreferencesSection(
@@ -135,7 +142,7 @@ void main() {
 
       expect(prefs.enabled, isTrue);
       expect(find.byType(Slider), findsOneWidget);
-      expect(find.byType(SegmentedButton<PriceBand>), findsOneWidget);
+      expect(find.byType(PriceBandMultiSelect), findsOneWidget);
     });
   });
 }

@@ -3,6 +3,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api/models.dart';
+import 'osm_attribution.dart';
 
 const _tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const _userAgent = 'com.mytravelpal.app';
@@ -96,6 +97,7 @@ class RouteMap extends StatelessWidget {
             _endpoint(d, 'B', scheme),
           ],
         ),
+        const OsmAttribution(),
       ],
     );
   }

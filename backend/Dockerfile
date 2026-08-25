@@ -2,7 +2,11 @@ FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+    PIP_NO_CACHE_DIR=1 \
+    # PYTHONFAULTHANDLER prints a native traceback on segfaults / bus
+    # errors — the Fly machine keeps hanging silently, this dumps a
+    # trace to stderr so we can see whether it's a C-level crash.
+    PYTHONFAULTHANDLER=1
 
 WORKDIR /app
 

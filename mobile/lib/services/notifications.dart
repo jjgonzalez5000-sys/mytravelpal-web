@@ -92,6 +92,41 @@ class NotificationService {
     }
   }
 
+  /// Fire an immediate (non-scheduled) heads-up notification. Used by
+  /// the trip dashboard for proactive alerts — "approaching your
+  /// lunch stop", "new road closure in 15 km", "you're 20 min late",
+  /// "you may have left the route". Deduping is the caller's job (see
+  /// `TripAlertsEvaluator._firedIds`); this method just shows.
+  Future<void> showTripAlert({
+    required String stableId,
+    required String title,
+    required String body,
+  }) async {
+    if (!_available) return;
+    try {
+      await _plugin.show(
+        _idFor('trip_alert:$stableId'),
+        title,
+        body,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'trip_alerts', 'Trip alerts',
+            channelDescription:
+                'Live alerts while you\'re on the road: approaching '
+                'planned stops, new roadblocks ahead, drift from route.',
+            importance: Importance.high,
+            priority: Priority.high,
+            // Foreground / heads-up but not a sound spam vector.
+            playSound: false,
+          ),
+          iOS: DarwinNotificationDetails(),
+        ),
+      );
+    } catch (e) {
+      debugPrint('showTripAlert failed: $e');
+    }
+  }
+
   Future<void> cancel(int? notificationId) async {
     if (!_available || notificationId == null) return;
     try {
@@ -102,4 +137,9 @@ class NotificationService {
   }
 
   static int _idFor(String tripId) => tripId.hashCode & 0x7fffffff;
+
+  /// Public helper so callers with an already-scoped id (trip alerts,
+  /// departure reminders) can produce the same integer the plugin
+  /// stores under.
+  static int notificationIdFor(String tripId) => _idFor(tripId);
 }

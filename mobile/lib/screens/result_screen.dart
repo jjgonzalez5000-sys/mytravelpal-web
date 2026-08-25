@@ -12,14 +12,19 @@ import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../utils/duration_format.dart';
 import '../services/notifications.dart';
+import '../services/review_prompter.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
+import '../widgets/added_stops_map_sheet.dart';
 import '../widgets/adverse_event_sheet.dart';
+import '../widgets/consistency_banner.dart';
+import '../widgets/trip_insights.dart';
 import '../widgets/favorite_star_button.dart';
 import '../widgets/poi_detail_sheet.dart';
 import '../widgets/route_map.dart';
 import '../widgets/time_window_chart.dart';
 import 'narrative_screen.dart';
+import 'trip_dashboard_screen.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   const ResultScreen({
@@ -44,6 +49,254 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _saved = false;
   bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Reaching the result screen means the user just got value:
+    // a full plan. That's when Play tells us to ask for a review.
+    // Fire-and-forget; the prompter throttles internally and only
+    // fires the native sheet a fraction of the times it's called.
+    Future.microtask(() {
+      ReviewPrompter.instance.onPlanCompleted();
+    });
+  }
+
+  /// User-added POI stops keyed by a stable id (name+coord for hotels
+  /// and restaurants, station+coord for fuel). Value is the minutes we
+  /// add to the trip total when the stop is selected — the physical
+  /// detour for restaurants/hotels (round-trip off the corridor plus a
+  /// small dwell) and a fixed refuel budget for fuel stops (no per-stop
+  /// detour field on the backend yet).
+  final Map<String, double> _addedStops = <String, double>{};
+
+  static const double _fuelStopMinutes = 8.0;
+
+  double get _addedMinutesTotal =>
+      _addedStops.values.fold(0.0, (sum, v) => sum + v);
+
+  bool _isAdded(String key) => _addedStops.containsKey(key);
+
+  void _toggleStop(String key, double minutes) {
+    setState(() {
+      if (_addedStops.containsKey(key)) {
+        _addedStops.remove(key);
+      } else {
+        _addedStops[key] = minutes;
+      }
+    });
+  }
+
+  void _clearAddedStops() {
+    if (_addedStops.isEmpty) return;
+    setState(_addedStops.clear);
+  }
+
+  /// Resolve the flat `_addedStops` map (keyed by string ids) into
+  /// full `AddedStop` records with coord + label so the map sheet can
+  /// plot markers. Order preserved from the API response so nearby
+  /// tiles stay adjacent in the legend list.
+  List<AddedStop> _resolveAddedStops() {
+    if (_addedStops.isEmpty) return const [];
+    final out = <AddedStop>[];
+    for (final h in widget.response.hotels) {
+      final key = 'hotel:${h.name}:'
+          '${h.coordinate.lat.toStringAsFixed(4)},'
+          '${h.coordinate.lon.toStringAsFixed(4)}';
+      if (_addedStops.containsKey(key)) {
+        out.add(AddedStop(
+          kind: AddedStopKind.hotel,
+          label: h.name,
+          subtitle: '+${h.detourMinutes.toStringAsFixed(0)} min · '
+              '${h.priceEurPerNight.toStringAsFixed(0)} €',
+          coordinate: h.coordinate,
+        ));
+      }
+    }
+    for (final r in widget.response.restaurants) {
+      final key = 'restaurant:${r.name}:'
+          '${r.coordinate.lat.toStringAsFixed(4)},'
+          '${r.coordinate.lon.toStringAsFixed(4)}';
+      if (_addedStops.containsKey(key)) {
+        out.add(AddedStop(
+          kind: AddedStopKind.restaurant,
+          label: r.name,
+          subtitle: '+${r.detourMinutes.toStringAsFixed(0)} min · '
+              '${r.priceEurPerMeal.toStringAsFixed(0)} €',
+          coordinate: r.coordinate,
+        ));
+      }
+    }
+    for (final p in widget.response.fuelPrices) {
+      final coordSuffix = p.coordinate == null
+          ? ':nocoord'
+          : ':${p.coordinate!.lat.toStringAsFixed(4)},'
+              '${p.coordinate!.lon.toStringAsFixed(4)}';
+      final key = 'fuel:${p.stationName}$coordSuffix';
+      if (_addedStops.containsKey(key) && p.coordinate != null) {
+        out.add(AddedStop(
+          kind: AddedStopKind.fuel,
+          label: p.stationName,
+          subtitle: p.priceAvailable
+              ? '${p.priceEurPerL.toStringAsFixed(3)} €/L · '
+                  '${p.distanceFromOriginKm.toStringAsFixed(0)} km'
+              : '${p.distanceFromOriginKm.toStringAsFixed(0)} km',
+          coordinate: p.coordinate!,
+        ));
+      }
+    }
+    return out;
+  }
+
+  void _openAddedStopsMap() {
+    final stops = _resolveAddedStops();
+    if (stops.isEmpty) return;
+    showAddedStopsMapSheet(
+      context,
+      stops: stops,
+      origin: widget.request.origin,
+      destination: widget.request.destination,
+      routeGeometry: widget.response.route.geometry,
+    );
+  }
+
+  /// Refetch the time-window slice with a wider ±span (bound to
+  /// the slider in the departure-window card). Only re-hits /plan for
+  /// the fresh windows; the rest of the response we already have
+  /// keeps working. Number of candidates scales roughly with span so
+  /// the chart gets denser as the driver widens it.
+  Future<List<TimeWindow>> _refetchWindows(int spanHours) async {
+    final api = ref.read(apiClientWithPremiumProvider);
+    // 5 slots at ±3h, up to ~16 at ±12h (one every ~1.5h).
+    final topN = (spanHours * 2 + 4).clamp(5, 24);
+    final tuned = TripPlanRequest(
+      origin: widget.request.origin,
+      destination: widget.request.destination,
+      desiredDepartureAt: widget.request.desiredDepartureAt,
+      countries: widget.request.countries,
+      // No POI expansion here — we only care about time windows.
+      hotelMaxDetourMinutes: null,
+      restaurantMaxDetourMinutes: null,
+      includeAdverseEvents: false,
+      includeTollAlternative: false,
+      includeRouteComparison: false,
+      includeHourlyTollAnalysis: false,
+      avoidMotorways: widget.request.avoidMotorways,
+      preferScenic: widget.request.preferScenic,
+      timeWindowSpanHours: spanHours,
+      timeWindowTopN: topN,
+      tripProfile: widget.request.tripProfile,
+    );
+    final response = await api.planTrip(tuned);
+    return response.timeWindows;
+  }
+
+  /// Which meal slots does the trip actually cross? A 10 AM → 2 PM
+  /// weekend hop only crosses lunch; a Madrid→Paris overnight covers
+  /// all three. We use the user's profile hours as the meal-clock and
+  /// simply check whether each hour falls inside the departure→arrival
+  /// window (with day-wrap for overnight trips).
+  Set<MealSlot> _slotsCoveredByTrip() {
+    final route = widget.response.route;
+    final start = widget.desiredDepartureAt;
+    final end = start.add(Duration(minutes: route.freeFlowMinutes.round()));
+    final prefs = widget.request.tripProfile?.meals;
+    final breakfastH = prefs?.breakfastHour ?? 8;
+    final lunchH = prefs?.lunchHour ?? 13;
+    final dinnerH = prefs?.dinnerHour ?? 20;
+    final crossed = <MealSlot>{};
+    for (final (slot, hour) in [
+      (MealSlot.breakfast, breakfastH),
+      (MealSlot.lunch, lunchH),
+      (MealSlot.dinner, dinnerH),
+    ]) {
+      final candidate = DateTime(
+        start.year, start.month, start.day, hour, 0,
+      ).toUtc();
+      // Walk one day at a time until we pass arrival — covers
+      // multi-day trips where lunch repeats across days.
+      var probe = candidate;
+      while (probe.isBefore(end.add(const Duration(days: 1)))) {
+        if (!probe.isBefore(start) && !probe.isAfter(end)) {
+          crossed.add(slot);
+          break;
+        }
+        probe = probe.add(const Duration(days: 1));
+      }
+    }
+    return crossed;
+  }
+
+  List<Widget> _restaurantSectionsBySlot(AppLocalizations l) {
+    final restaurants = widget.response.restaurants;
+    final crossed = _slotsCoveredByTrip();
+    // Bucket each restaurant into the first slot that (a) it advertises
+    // AND (b) the trip actually crosses. Falls through to "other" if it
+    // matches nothing useful.
+    final buckets = <MealSlot?, List<Restaurant>>{
+      MealSlot.breakfast: [],
+      MealSlot.lunch: [],
+      MealSlot.dinner: [],
+      null: [],  // "other"
+    };
+    for (final r in restaurants) {
+      MealSlot? placed;
+      for (final s in [MealSlot.breakfast, MealSlot.lunch, MealSlot.dinner]) {
+        if (crossed.contains(s) && r.openMealSlots.contains(s)) {
+          placed = s;
+          break;
+        }
+      }
+      buckets[placed]!.add(r);
+    }
+    final out = <Widget>[];
+    void addSection(String title, List<Restaurant> rows) {
+      if (rows.isEmpty) return;
+      out.add(Padding(
+        padding: const EdgeInsets.only(top: Tokens.space16, bottom: 4),
+        child: Text(
+          title.toUpperCase(),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                letterSpacing: 1.1,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+        ),
+      ));
+      out.addAll(_separated(rows.map(_restaurantTileFor).toList()));
+    }
+
+    addSection(l.mealSlotBreakfast, buckets[MealSlot.breakfast]!);
+    addSection(l.mealSlotLunch, buckets[MealSlot.lunch]!);
+    addSection(l.mealSlotDinner, buckets[MealSlot.dinner]!);
+    addSection(l.mealSlotOther, buckets[null]!);
+    return out;
+  }
+
+  Widget _restaurantTileFor(Restaurant r) {
+    final key = 'restaurant:${r.name}:'
+        '${r.coordinate.lat.toStringAsFixed(4)},'
+        '${r.coordinate.lon.toStringAsFixed(4)}';
+    return _RestaurantTile(
+      restaurant: r,
+      isAdded: _isAdded(key),
+      onToggleAdd: () => _toggleStop(key, r.detourMinutes),
+      onTap: () => showPoiDetailSheet(
+        context,
+        kind: PoiKind.restaurant,
+        name: r.name,
+        subtitle: '${r.country.displayName} · '
+            '${r.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
+            '+${r.detourMinutes.toStringAsFixed(0)} min',
+        poi: r.coordinate,
+        origin: widget.request.origin,
+        destination: widget.request.destination,
+        routeGeometry: widget.response.route.geometry,
+        attributes: r.attributes,
+        icon: Icons.restaurant_outlined,
+        accent: Theme.of(context).colorScheme.tertiary,
+      ),
+    );
+  }
 
   TimeWindow? get _recommended {
     for (final w in widget.response.timeWindows) {
@@ -139,6 +392,44 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             widget.response.tollAlternative?.geometry ?? const [],
       ),
       const SizedBox(height: Tokens.space24),
+      if (widget.response.consistencyIssues.isNotEmpty)
+        ConsistencyBanner(issues: widget.response.consistencyIssues),
+      // Next-stop hero: pulls the first meal stop of the trip so the
+      // driver always sees "next planned stop" up top without hunting
+      // through the Optimizations section.
+      if (widget.response.optimizations != null &&
+          widget.response.optimizations!.mealStops.isNotEmpty) ...[
+        Builder(builder: (context) {
+          final meal = widget.response.optimizations!.mealStops.first;
+          return NextStopHero(
+            mealStop: meal,
+            timeFormat: DateFormat.Hm(),
+            onTap: meal.restaurantCoordinate == null
+                ? null
+                : () => showPoiDetailSheet(
+                      context,
+                      kind: PoiKind.restaurant,
+                      name: meal.restaurantName ?? '—',
+                      subtitle: [
+                        DateFormat.Hm().format(meal.at.toLocal()),
+                        if (meal.restaurantPriceEurPerMeal != null)
+                          '${meal.restaurantPriceEurPerMeal!
+                                  .toStringAsFixed(0)} €/meal',
+                        '${meal.distanceFromOriginKm
+                                .toStringAsFixed(0)} km from origin',
+                      ].join(' · '),
+                      poi: meal.restaurantCoordinate!,
+                      origin: widget.request.origin,
+                      destination: widget.request.destination,
+                      routeGeometry: widget.response.route.geometry,
+                      attributes: const {},
+                      icon: Icons.restaurant_menu,
+                      accent: Theme.of(context).colorScheme.primary,
+                    ),
+          );
+        }),
+        const SizedBox(height: Tokens.space16),
+      ],
       if (scope != null && scope.arrivalAfterBedtime) ...[
         _ArrivalHintCard(
           arrivalHour: scope.arrivalLocalHour,
@@ -162,29 +453,53 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space24),
       ],
-      SoftCard(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Tokens.space20, vertical: Tokens.space20,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Builder(builder: (context) {
-              final fmt = ref.watch(unitFormatterProvider);
-              return StatTile(
-                label: l.resultStatDistance,
-                value: fmt.distance(route.distanceKm),
-              );
-            }),
-            StatTile(
-              label: l.resultStatFreeFlow,
-              value: _hhmm(route.freeFlowMinutes),
-            ),
-            StatTile(
-              label: l.resultStatTolls,
-              value: '€${route.tollCostEur.toStringAsFixed(0)}',
-            ),
-          ],
+      // Tap-through: when any stops have been added, tapping this card
+      // opens a bottom sheet with a map showing the route plus a pin
+      // per added stop, so the driver can identify which POI they
+      // toggled without scrolling back through the sections list.
+      InkWell(
+        onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        child: SoftCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space20, vertical: Tokens.space20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Builder(builder: (context) {
+                    final fmt = ref.watch(unitFormatterProvider);
+                    return StatTile(
+                      label: l.resultStatDistance,
+                      value: fmt.distance(route.distanceKm),
+                    );
+                  }),
+                  StatTile(
+                    label: l.resultStatFreeFlow,
+                    value: _hhmm(
+                      route.freeFlowMinutes + _addedMinutesTotal,
+                    ),
+                  ),
+                  StatTile(
+                    label: l.resultStatTolls,
+                    value: '€${route.tollCostEur.toStringAsFixed(0)}',
+                  ),
+                ],
+              ),
+              if (_addedStops.isNotEmpty) ...[
+                const SizedBox(height: Tokens.space12),
+                _AddedStopsChip(
+                  count: _addedStops.length,
+                  minutes: _addedMinutesTotal,
+                  onClear: _clearAddedStops,
+                  onTap: _openAddedStopsMap,
+                ),
+              ],
+            ],
+          ),
         ),
       ),
       const SizedBox(height: Tokens.space24),
@@ -193,14 +508,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         eyebrow: l.onboardEyebrowKiller,
         description: l.resultDepartureWindowDesc,
       ),
-      SoftCard(
-        padding: const EdgeInsets.fromLTRB(
-          Tokens.space8, Tokens.space16, Tokens.space16, Tokens.space16,
-        ),
-        child: TimeWindowChart(
-          windows: widget.response.timeWindows,
-          desiredDepartureAt: widget.desiredDepartureAt,
-        ),
+      _TimeWindowExpandableCard(
+        initialWindows: widget.response.timeWindows,
+        desiredDepartureAt: widget.desiredDepartureAt,
+        initialSpanHours: widget.request.timeWindowSpanHours,
+        onFetch: _refetchWindows,
       ),
       if (widget.response.routeVariants.length >= 2) ...[
         const SizedBox(height: Tokens.space24),
@@ -209,6 +521,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (widget.response.optimizations != null) ...[
         const SizedBox(height: Tokens.space24),
         _OptimizationsSection(opts: widget.response.optimizations!),
+      ],
+      // Multi-day breakdown — only emitted by the backend for trips
+      // that exceed the driver's daily cap or cross their bedtime.
+      // Slotted between Optimisations and the Toll cards so the day
+      // structure stays visible above the details.
+      if (widget.response.days.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space24),
+        DayPlanSection(
+          days: widget.response.days,
+          timeFormat: DateFormat.Hm(),
+          hotels: widget.response.hotels,
+        ),
       ],
       if (widget.response.tollAlternative != null) ...[
         const SizedBox(height: Tokens.space24),
@@ -294,38 +618,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         SectionHeader(
           title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
         ),
-        ..._separated(
-          widget.response.restaurants
-              .map((r) => _RestaurantTile(
-                    restaurant: r,
-                    onTap: () => showPoiDetailSheet(
-                      context,
-                      kind: PoiKind.restaurant,
-                      name: r.name,
-                      subtitle: '${r.country.displayName} · '
-                          '${r.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
-                          '+${r.detourMinutes.toStringAsFixed(0)} min',
-                      poi: r.coordinate,
-                      origin: widget.request.origin,
-                      destination: widget.request.destination,
-                      routeGeometry: widget.response.route.geometry,
-                      attributes: r.attributes,
-                      icon: Icons.restaurant_outlined,
-                      accent: Theme.of(context).colorScheme.tertiary,
-                    ),
-                  ))
-              .toList(),
-        ),
+        ..._restaurantSectionsBySlot(l),
       ],
       if (widget.response.fuelPrices.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
+        if (widget.response.fuelArbitrage != null) ...[
+          FuelArbitrageBanner(hint: widget.response.fuelArbitrage!),
+          const SizedBox(height: Tokens.space12),
+        ],
         SectionHeader(
           title: l.resultFuel, eyebrow: l.resultEyebrowAlongRoute,
         ),
         ..._separated(
-          widget.response.fuelPrices
-              .map((p) => _FuelTile(
+          widget.response.fuelPrices.map((p) {
+            final coordSuffix = p.coordinate == null
+                ? ':nocoord'
+                : ':${p.coordinate!.lat.toStringAsFixed(4)},'
+                    '${p.coordinate!.lon.toStringAsFixed(4)}';
+            final key = 'fuel:${p.stationName}$coordSuffix';
+            return _FuelTile(
                     price: p,
+                    isAdded: _isAdded(key),
+                    onToggleAdd: () => _toggleStop(key, _fuelStopMinutes),
                     onTap: p.coordinate == null
                         ? null
                         : () => showPoiDetailSheet(
@@ -345,8 +659,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               accent:
                                   Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
-                  ))
-              .toList(),
+                  );
+          }).toList(),
         ),
       ],
       const SizedBox(height: Tokens.space32),
@@ -383,6 +697,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               departureAt: widget.desiredDepartureAt,
               recommended: _recommended,
               tollAlt: widget.response.tollAlternative,
+              hotels: widget.response.hotels,
+              restaurants: widget.response.restaurants,
+              fuelArbitrage: widget.response.fuelArbitrage,
             ),
           ),
           IconButton(
@@ -400,7 +717,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(
-          Tokens.space20, Tokens.space16, Tokens.space20, Tokens.space16,
+          Tokens.space20,
+          Tokens.space16,
+          Tokens.space20,
+          // Extra bottom padding so the "Start trip" FAB doesn't
+          // cover the last card in the section list.
+          Tokens.space64 + Tokens.space16,
         ),
         children: [
           for (var i = 0; i < sections.length; i++)
@@ -413,6 +735,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 .moveY(begin: 4, end: 0, curve: Tokens.curveOut),
         ],
       ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: ref.watch(premiumProvider)
+          ? FloatingActionButton.extended(
+              icon: const Icon(Icons.play_arrow),
+              label: Text(l.resultStartTrip),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => TripDashboardScreen(
+                      request: widget.request,
+                      response: widget.response,
+                      origin: widget.origin,
+                      destination: widget.destination,
+                    ),
+                  ),
+                );
+              },
+            )
+          : null,
     );
   }
 
@@ -654,10 +995,20 @@ class _RouteVariantRow extends StatelessWidget {
         _ => Icons.alt_route,
       };
 
+  String _label(AppLocalizations l) => switch (variant.key) {
+        'fastest' => l.routeVariantFastest,
+        'toll_free' => l.routeVariantTollFree,
+        'scenic' => l.routeVariantScenic,
+        // Unknown key from a future backend: keep the server label so
+        // we degrade gracefully instead of showing an empty string.
+        _ => variant.label,
+      };
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final accent = isPrimary ? scheme.primary : scheme.onSurfaceVariant;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Tokens.space12),
@@ -677,7 +1028,7 @@ class _RouteVariantRow extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(variant.label, style: t.titleSmall),
+                    Text(_label(l), style: t.titleSmall),
                     if (isPrimary) ...[
                       const SizedBox(width: 6),
                       Text(
@@ -1403,7 +1754,10 @@ class _PartialTollSkipRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(skip.label, style: t.titleSmall),
+                Text(
+                  skip.localizedLabel(AppLocalizations.of(context)),
+                  style: t.titleSmall,
+                ),
                 Text(
                   'km ${skip.distanceFromOriginKm.toStringAsFixed(0)} · '
                   '€${skip.savingsEur.toStringAsFixed(0)} saved · '
@@ -1452,11 +1806,11 @@ class _AdverseEventTile extends StatelessWidget {
         backgroundColor: color.withValues(alpha: 0.14),
         child: Icon(event.type.icon, color: color, size: 18),
       ),
-      title: Text(event.type.displayName),
+      title: Text(event.type.localized(AppLocalizations.of(context))),
       subtitle: Text(event.description),
       isThreeLine: event.description.length > 60,
       trailing: SoftBadge(
-        label: event.severity.displayName,
+        label: event.severity.localized(AppLocalizations.of(context)),
         color: color,
         background: color.withValues(alpha: 0.10),
         borderColor: color.withValues(alpha: 0.3),
@@ -1486,7 +1840,10 @@ class _HotelTile extends StatelessWidget {
       subtitle: Text(
         '${hotel.country.displayName} · '
         '${hotel.priceEurPerNight.toStringAsFixed(0)} €/night · '
-        '+${hotel.detourMinutes.toStringAsFixed(0)} min detour',
+        '${AppLocalizations.of(context).poiDistanceKm(
+          hotel.distanceFromRouteKm.toStringAsFixed(1),
+          hotel.detourMinutes.toStringAsFixed(0),
+        )}',
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1506,9 +1863,16 @@ class _HotelTile extends StatelessWidget {
 }
 
 class _RestaurantTile extends StatelessWidget {
-  const _RestaurantTile({required this.restaurant, this.onTap});
+  const _RestaurantTile({
+    required this.restaurant,
+    this.onTap,
+    this.isAdded = false,
+    this.onToggleAdd,
+  });
   final Restaurant restaurant;
   final VoidCallback? onTap;
+  final bool isAdded;
+  final VoidCallback? onToggleAdd;
 
   @override
   Widget build(BuildContext context) {
@@ -1525,13 +1889,20 @@ class _RestaurantTile extends StatelessWidget {
       subtitle: Text(
         '${restaurant.country.displayName} · '
         '${restaurant.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
-        '+${restaurant.detourMinutes.toStringAsFixed(0)} min detour',
+        '${AppLocalizations.of(context).poiDistanceKm(
+          restaurant.distanceFromRouteKm.toStringAsFixed(1),
+          restaurant.detourMinutes.toStringAsFixed(0),
+        )}',
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           SoftBadge(label: restaurant.priceBand.symbol),
           const SizedBox(width: 4),
+          if (onToggleAdd != null)
+            _AddToRouteButton(
+              isAdded: isAdded, onPressed: onToggleAdd!,
+            ),
           FavoriteStarButton(
             id: restaurant.favoriteId,
             isRestaurant: true,
@@ -1545,13 +1916,33 @@ class _RestaurantTile extends StatelessWidget {
 }
 
 class _FuelTile extends StatelessWidget {
-  const _FuelTile({required this.price, this.onTap});
+  const _FuelTile({
+    required this.price,
+    this.onTap,
+    this.isAdded = false,
+    this.onToggleAdd,
+  });
   final FuelPrice price;
   final VoidCallback? onTap;
+  final bool isAdded;
+  final VoidCallback? onToggleAdd;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+    final subtitle = price.priceAvailable
+        ? '${price.priceEurPerL.toStringAsFixed(3)} €/L · '
+              '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin'
+        : '${l.fuelPriceUnavailable} · '
+              '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin';
+    // Show a small green (cheap) / red (dear) chip when the backend
+    // computed a per-country delta. Threshold of 2 cents avoids
+    // shouting about noise-level differences.
+    final savings = price.savingsVsCountryMedianEurPerL;
+    final Widget? savingsChip = (savings != null && savings.abs() >= 0.02)
+        ? _SavingsChip(deltaEurPerL: savings)
+        : null;
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
@@ -1561,11 +1952,287 @@ class _FuelTile extends StatelessWidget {
             color: scheme.onSurface, size: 18),
       ),
       title: Text('${price.stationName} · ${price.country.code}'),
-      subtitle: Text(
-        '${price.priceEurPerL.toStringAsFixed(3)} €/L · '
-        '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin',
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            subtitle,
+            style: price.priceAvailable
+                ? null
+                : TextStyle(color: scheme.onSurfaceVariant),
+          ),
+          if (savingsChip != null) ...[
+            const SizedBox(height: 4),
+            savingsChip,
+          ],
+        ],
       ),
+      isThreeLine: savingsChip != null,
+      trailing: onToggleAdd == null
+          ? null
+          : _AddToRouteButton(
+              isAdded: isAdded, onPressed: onToggleAdd!,
+            ),
       onTap: onTap,
+    );
+  }
+}
+
+/// Departure-window card with an inline slider that lets the driver
+/// widen the sampled range beyond the default ±3h up to ±12h. On
+/// slider release we refetch the plan's `time_windows` slice (nothing
+/// else is re-computed) so the chart updates in ~1-2 s. The current
+/// slots are kept visible during the fetch with a subtle progress
+/// overlay — no flashing empty state.
+class _TimeWindowExpandableCard extends StatefulWidget {
+  const _TimeWindowExpandableCard({
+    required this.initialWindows,
+    required this.desiredDepartureAt,
+    required this.initialSpanHours,
+    required this.onFetch,
+  });
+
+  final List<TimeWindow> initialWindows;
+  final DateTime desiredDepartureAt;
+  final int initialSpanHours;
+  final Future<List<TimeWindow>> Function(int spanHours) onFetch;
+
+  @override
+  State<_TimeWindowExpandableCard> createState() =>
+      _TimeWindowExpandableCardState();
+}
+
+class _TimeWindowExpandableCardState
+    extends State<_TimeWindowExpandableCard> {
+  late int _span;
+  late List<TimeWindow> _windows;
+  bool _loading = false;
+  int _lastFetchedSpan = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _span = widget.initialSpanHours.clamp(1, 12);
+    _windows = widget.initialWindows;
+    _lastFetchedSpan = _span;
+  }
+
+  Future<void> _applySpan(int newSpan) async {
+    if (newSpan == _lastFetchedSpan || _loading) return;
+    setState(() => _loading = true);
+    try {
+      final fresh = await widget.onFetch(newSpan);
+      if (!mounted) return;
+      setState(() {
+        _windows = fresh;
+        _lastFetchedSpan = newSpan;
+      });
+    } catch (_) {
+      // Silent — keep the last known windows on network error.
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    return SoftCard(
+      padding: const EdgeInsets.fromLTRB(
+        Tokens.space8, Tokens.space16, Tokens.space16, Tokens.space16,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Stack(
+            children: [
+              TimeWindowChart(
+                windows: _windows,
+                desiredDepartureAt: widget.desiredDepartureAt,
+              ),
+              if (_loading)
+                const Positioned(
+                  top: 0, right: 0,
+                  child: SizedBox(
+                    width: 18, height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.space8),
+            child: Row(
+              children: [
+                Icon(Icons.access_time, size: 16,
+                    color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  l.timeWindowSpanLabel(_span),
+                  style: t.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Slider(
+            value: _span.toDouble(),
+            min: 1, max: 12,
+            divisions: 11,
+            label: '±${_span}h',
+            onChanged: (v) => setState(() => _span = v.round()),
+            onChangeEnd: (v) => _applySpan(v.round()),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.space8),
+            child: Text(
+              l.timeWindowSpanHelper,
+              style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact chip rendered under a fuel tile when the backend produced
+/// a per-country savings signal. Green + minus sign when this station
+/// is cheaper than the country median, orange + plus sign when pricier.
+class _SavingsChip extends StatelessWidget {
+  const _SavingsChip({required this.deltaEurPerL});
+  final double deltaEurPerL;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final isCheap = deltaEurPerL > 0;
+    final color = isCheap
+        ? const Color(0xFF16A34A)
+        : scheme.tertiary;
+    final text = isCheap
+        ? l.fuelSavingsChipCheap(deltaEurPerL.abs().toStringAsFixed(2))
+        : l.fuelSavingsChipDear(deltaEurPerL.abs().toStringAsFixed(2));
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+      ),
+    );
+  }
+}
+
+/// Round icon button on the right of an add-to-route-capable tile.
+/// Filled when the POI is already added so state is obvious at a glance.
+class _AddToRouteButton extends StatelessWidget {
+  const _AddToRouteButton({required this.isAdded, required this.onPressed});
+  final bool isAdded;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+    return IconButton(
+      tooltip: isAdded ? l.removeFromRouteTooltip : l.addToRouteTooltip,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(
+        isAdded ? Icons.check_circle : Icons.add_circle_outline,
+        color: isAdded ? scheme.primary : scheme.onSurfaceVariant,
+      ),
+      onPressed: onPressed,
+    );
+  }
+}
+
+/// Compact summary of the stops the user has added, rendered under the
+/// stats row. Explains where the "+X min" delta on the free-flow tile
+/// comes from and offers a one-tap reset.
+class _AddedStopsChip extends StatelessWidget {
+  const _AddedStopsChip({
+    required this.count,
+    required this.minutes,
+    required this.onClear,
+    this.onTap,
+  });
+  final int count;
+  final double minutes;
+  final VoidCallback onClear;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    // The whole chip is tappable when a handler is provided so
+    // hitting either the label or the small map icon opens the sheet
+    // — small chip, small target, big value.
+    final chip = Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space12, vertical: 6,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.add_road, size: 16, color: scheme.onPrimaryContainer),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              l.addedStopsChip(count, minutes.toStringAsFixed(0)),
+              style: t.labelMedium?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+          ),
+          if (onTap != null) ...[
+            const SizedBox(width: 6),
+            Icon(Icons.map_outlined,
+                size: 14, color: scheme.onPrimaryContainer),
+          ],
+          const SizedBox(width: 4),
+          InkWell(
+            onTap: onClear,
+            borderRadius: BorderRadius.circular(999),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 6, vertical: 2,
+              ),
+              child: Text(
+                l.addedStopsClear,
+                style: t.labelSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+    // Wrap in InkWell only when a tap handler is provided so the ripple
+    // stays contained to the rounded chip shape.
+    if (onTap == null) return chip;
+    return Material(
+      color: Colors.transparent,
+      shape: const StadiumBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(onTap: onTap, child: chip),
     );
   }
 }

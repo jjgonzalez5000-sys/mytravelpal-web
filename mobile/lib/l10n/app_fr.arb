@@ -91,7 +91,7 @@
     "profileHasKids": "Voyage avec enfants",
     "profileHasPets": "Voyage avec animaux",
     "profileVehicle": "Véhicule",
-    "profileMealTimes": "Heures des repas",
+    "profileMealTimes": "Horaires des repas",
     "profileReminders": "Rappels",
     "profilePremiumSection": "Premium (démo)",
     "profileClearProfile": "Effacer le profil",
@@ -364,5 +364,212 @@
     "fuelTypeDiesel": "Diesel",
     "fuelTypeHybrid": "Hybride",
     "fuelTypeElectric": "Électrique",
-    "fuelTypeLpg": "GPL"
+    "fuelTypeLpg": "GPL",
+
+    "routeVariantFastest": "Plus rapide",
+    "routeVariantTollFree": "Sans péage",
+    "routeVariantScenic": "Panoramique",
+
+    "eventTypeFire": "Incendie",
+    "eventTypeStrike": "Grève",
+    "eventTypeWeather": "Météo défavorable",
+    "eventTypeAccident": "Accident",
+    "eventTypeRoadwork": "Travaux",
+    "eventTypeFlood": "Inondation",
+    "eventTypeSnow": "Neige",
+    "eventTypeProtest": "Manifestation",
+    "eventTypeOther": "Autre",
+    "eventSeverityCritical": "Critique",
+    "eventSeverityWarning": "Alerte",
+    "eventSeverityInfo": "Info",
+
+    "tollStretchLabel": "Section à péage {index} / {total}",
+    "@tollStretchLabel": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}}},
+    "tollBoothLabel": "Péage {index}",
+    "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
+
+    "addToRouteTooltip": "Ajouter à l'itinéraire",
+    "removeFromRouteTooltip": "Retirer de l'itinéraire",
+    "addedStopsChip": "{count, plural, =1{1 arrêt ajouté · +{minutes} min} other{{count} arrêts ajoutés · +{minutes} min}}",
+    "@addedStopsChip": {"placeholders": {"count": {"type": "int"}, "minutes": {"type": "String"}}},
+    "addedStopsClear": "Effacer",
+
+    "settingsLicensesAndData": "Licences et sources de données",
+    "settingsLicensesAndDataSub": "Attributions des données ouvertes et bibliothèques",
+    "attributionsTitle": "Licences et données",
+    "attributionsIntro": "MyTravelPal s'appuie sur des données ouvertes et des bibliothèques open-source. Cet écran crédite chaque source, renvoie vers les licences sous-jacentes et couvre nos obligations d'attribution.",
+    "attributionsSectionMap": "Carte et géodonnées",
+    "attributionsSectionFuel": "Prix des carburants",
+    "attributionsSectionHazards": "Événements",
+    "attributionsSectionWeather": "Météo",
+    "attributionsSectionSoftware": "Bibliothèques logicielles",
+    "attributionsShowLicenses": "Voir les licences des paquets",
+    "attributionsFailed": "Impossible de charger les attributions. Réessayez.",
+
+    "fuelPriceUnavailable": "Prix non disponible",
+    "fuelPriceUnavailableHint": "Aucun flux public de prix pour ce pays pour l'instant",
+
+    "planSectionOptionalEyebrow": "Optionnel",
+    "planOptAlertsTitle": "M'alerter sur les événements",
+    "planOptAlertsSub": "Incendies, grèves, météo, travaux et plus dans un rayon de 25 km.",
+    "planOptTollFreeTitle": "Afficher l'alternative sans péage",
+    "planOptTollFreeSub": "Compare un itinéraire sans péage — argent économisé vs. minutes ajoutées.",
+    "planOptHourlyTollTitle": "Analyse horaire des péages",
+    "planOptHourlyTollSub": "Quand éviter les péages vaut vraiment le coup (selon le trafic).",
+    "planOptRouteVariantsTitle": "Comparer les variantes",
+    "planOptRouteVariantsSub": "Rapide vs. sans péage vs. panoramique — les trois côte à côte.",
+    "planOptAvoidMotorwaysTitle": "Éviter les autoroutes",
+    "planOptAvoidMotorwaysSub": "Plus long et plus lent, mais sans péage et plus calme.",
+    "planOptPreferScenicTitle": "Préférer panoramique",
+    "planOptPreferScenicSub": "Favorise les routes plus intéressantes. Un peu plus lent.",
+    "planPremiumBadge": "Premium",
+
+    "planProfileTravellers": "{count, plural, =1{1 voyageur} other{{count} voyageurs}}",
+    "@planProfileTravellers": {"placeholders": {"count": {"type": "int"}}},
+    "planProfileWithKids": "enfants",
+    "planProfileWithPets": "animaux",
+    "planProfileOverrideActive": "REMPLACEMENT ACTIF",
+    "planProfileOverride": "Remplacer pour ce trajet",
+    "planProfileOverriding": "Remplacé pour ce trajet",
+    "profilePromptSetup": "Configurez votre profil de voyage",
+
+    "hotelPrefTitle": "Ajouter des hôtels sur l'itinéraire",
+    "hotelPrefSubEnabled": "Jusqu'à {minutes} min de détour · {band}",
+    "@hotelPrefSubEnabled": {"placeholders": {"minutes": {"type": "int"}, "band": {"type": "String"}}},
+    "hotelPrefSubOff": "Désactivé. Activez pour voir les hôtels près de l'itinéraire.",
+    "restaurantPrefTitle": "Ajouter des restaurants sur l'itinéraire",
+    "restaurantPrefSubEnabled": "Jusqu'à {minutes} min de détour · {band}",
+    "@restaurantPrefSubEnabled": {"placeholders": {"minutes": {"type": "int"}, "band": {"type": "String"}}},
+    "restaurantPrefSubOff": "Désactivé. Activez pour voir les restaurants près de l'itinéraire.",
+    "prefMaxDetour": "Détour max : {minutes} min",
+    "@prefMaxDetour": {"placeholders": {"minutes": {"type": "int"}}},
+    "prefBandBudget": "Économique",
+    "prefBandMid": "Moyen",
+    "prefBandLuxury": "Luxe",
+    "prefBandAny": "Tous",
+
+    "mealSlotBreakfast": "Suggérés pour le petit-déjeuner",
+    "mealSlotLunch": "Suggérés pour le déjeuner",
+    "mealSlotDinner": "Suggérés pour le dîner",
+    "mealSlotOther": "Autres restaurants",
+    "poiDistanceKm": "{km} km · +{minutes} min de détour",
+    "@poiDistanceKm": {"placeholders": {"km": {"type": "String"}, "minutes": {"type": "String"}}},
+
+    "fuelSavingsChipCheap": "-{amount}€/L vs moyenne pays",
+    "@fuelSavingsChipCheap": {"placeholders": {"amount": {"type": "String"}}},
+    "fuelSavingsChipDear": "+{amount}€/L vs moyenne pays",
+    "@fuelSavingsChipDear": {"placeholders": {"amount": {"type": "String"}}},
+
+    "fuelArbitrageTitle": "Faites le plein malin sur ce trajet",
+    "fuelArbitrageBody": "Le carburant en {cheap} est à ~{cheapPrice}€/L. En {dear} il monte à ~{dearPrice}€/L. Faire le plein en {cheap} avant de traverser fait économiser ~{savings}€.",
+    "@fuelArbitrageBody": {"placeholders": {"cheap": {"type": "String"}, "cheapPrice": {"type": "String"}, "dear": {"type": "String"}, "dearPrice": {"type": "String"}, "savings": {"type": "String"}}},
+
+    "dayTabLabel": "Jour {index}",
+    "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
+    "dayHeaderRange": "Jour {index} · km {fromKm} → {toKm}",
+    "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
+    "daySleepMarker": "Nuit vers {time}",
+    "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
+
+    "nextStopHeroLabel": "Prochain arrêt suggéré",
+    "nextStopHeroBody": "{slot} à {name} · vers {time}",
+    "@nextStopHeroBody": {"placeholders": {"slot": {"type": "String"}, "name": {"type": "String"}, "time": {"type": "String"}}},
+
+    "daySleepHotelsLabel": "Hôtels près de votre nuit",
+    "daySleepHotelsEmpty": "Activez les hôtels dans les préférences pour voir les options de nuit.",
+
+    "restaurantPrefCuisinesLabel": "Type de cuisine",
+    "cuisineItalian": "Italienne",
+    "cuisineSpanish": "Espagnole",
+    "cuisineTapas": "Tapas",
+    "cuisineFrench": "Française",
+    "cuisineMediterranean": "Méditerranéenne",
+    "cuisineAsian": "Asiatique",
+    "cuisineIndian": "Indienne",
+    "cuisineBurger": "Burgers",
+    "cuisineSeafood": "Poissons / fruits de mer",
+    "cuisineVegetarian": "Végétarienne",
+    "cuisineBbq": "Grillades / BBQ",
+    "cuisineRegional": "Régionale",
+
+    "timeWindowSpanLabel": "Afficher ±{hours}h",
+    "@timeWindowSpanLabel": {"placeholders": {"hours": {"type": "int"}}},
+    "timeWindowSpanHelper": "Faites glisser pour élargir la fenêtre et voir si partir plus tôt ou plus tard fait gagner plus de temps.",
+
+    "planLoadingTitle": "Préparation de votre trajet",
+    "planLoadingStepRouting": "Calcul de l'itinéraire le plus rapide…",
+    "planLoadingStepTraffic": "Analyse du trafic pour choisir la meilleure heure de départ…",
+    "planLoadingStepFuel": "Récupération des prix réels des carburants…",
+    "planLoadingStepHotels": "Recherche d'hôtels près des étapes de nuit…",
+    "planLoadingStepRestaurants": "Tri des restaurants par créneau et type de cuisine…",
+    "planLoadingStepAlerts": "Détection des incendies, travaux, météo, manifestations…",
+    "planLoadingStepTolls": "Comparaison itinéraires péage vs. sans péage…",
+    "planLoadingStepAlmost": "Presque terminé — assemblage en cours…",
+    "planLoadingHelper": "Généralement 5 à 15 secondes. Vous pouvez ranger le téléphone.",
+
+    "resultStartTrip": "Démarrer le trajet",
+    "navPickerTitle": "Continuer dans…",
+    "tripDashboardTitle": "En route",
+    "tripDashboardCenterOnMe": "Centrer sur ma position",
+    "tripDashboardOpenNav": "Ouvrir la navigation",
+    "tripDashboardNextStopLabel": "PROCHAIN {slot}",
+    "@tripDashboardNextStopLabel": {
+      "placeholders": {"slot": {"type": "String"}}
+    },
+    "tripDashboardInMinutes": "dans {n} min",
+    "@tripDashboardInMinutes": {
+      "placeholders": {"n": {"type": "int"}}
+    },
+    "tripDashboardPermissionDenied": "Localisation refusée. Autorisez-la pour voir votre position sur l'itinéraire.",
+    "tripDashboardServiceDisabled": "GPS désactivé. Activez-le pour suivre votre progression.",
+
+    "tripDashboardProgressLine": "{done} / {total} km",
+    "@tripDashboardProgressLine": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"}
+      }
+    },
+    "tripDashboardEta": "Arrivée {time}",
+    "@tripDashboardEta": {
+      "placeholders": {"time": {"type": "String"}}
+    },
+    "tripDashboardActiveNotifTitle": "Trajet en cours",
+    "tripDashboardActiveNotifBody": "MyTravelPal suit votre itinéraire en arrière-plan.",
+    "tripDashboardSleepStopLabel": "hôtel",
+    "alertApproachingStopTitle": "Arrêt proche",
+    "alertApproachingStopBody": "{slot} à {name} dans environ {mins} min. Préparez la sortie.",
+    "@alertApproachingStopBody": {
+      "placeholders": {
+        "slot": {"type": "String"},
+        "name": {"type": "String"},
+        "mins": {"type": "int"}
+      }
+    },
+    "alertNewAdverseAheadTitle": "Nouvelle alerte sur la route",
+    "alertNewAdverseAheadBody": "{type} signalé à {km} km devant.",
+    "@alertNewAdverseAheadBody": {
+      "placeholders": {
+        "type": {"type": "String"},
+        "km": {"type": "String"}
+      }
+    },
+    "alertDriftDetectedTitle": "Vous avez quitté l'itinéraire",
+    "alertDriftDetectedBody": "Vous êtes à {off} m du tracé prévu. Recalculer ?",
+    "@alertDriftDetectedBody": {
+      "placeholders": {"off": {"type": "String"}}
+    },
+    "alertBehindScheduleTitle": "En retard",
+    "alertBehindScheduleBody": "Vous arriverez avec {mins} min de retard.",
+    "@alertBehindScheduleBody": {
+      "placeholders": {"mins": {"type": "int"}}
+    },
+    "tripDashboardCheaperFuel": "{brand} dans {km} km · économisez {cts} ct/L",
+    "@tripDashboardCheaperFuel": {
+      "placeholders": {
+        "brand": {"type": "String"},
+        "km": {"type": "String"},
+        "cts": {"type": "String"}
+      }
+    }
 }

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Strings shown on the Android Auto head unit. Kept separate from
+  Flutter's ARB localisation because AA renders native templates on
+  a different process context and can't read Flutter locale files.
+  Localised via standard `values-es/`, `values-fr/` etc. res folders
+  when we ship translations for the car surface.
+
+  Keep the phrasing SHORT — head unit rows truncate around 40 chars
+  and driver-safety review flags anything wordy. Values here are the
+  default English fallback.
+-->
+<resources>
+    <string name="aa_app_title">MyTravelPal</string>
+    <string name="aa_idle_message">Plan a trip on your phone. Alerts, stops and fuel prices will show here while you drive.</string>
+    <string name="aa_starting_message">Preparing your trip…</string>
+    <string name="aa_next_stop_title">Next stop</string>
+    <!-- 1: restaurant / stop name, 2: hh:mm, 3: minutes away -->
+    <string name="aa_next_stop_body">%1$s · %2$s · in %3$d min</string>
+    <string name="aa_cheaper_fuel_title">Cheaper fuel ahead</string>
+    <!-- 1: brand, 2: km ahead, 3: cents per litre saved -->
+    <string name="aa_cheaper_fuel_body">%1$s in %2$d km · save %3$d ct/L</string>
+    <string name="aa_eta_title">Arriving</string>
+    <!-- 1: hh:mm ETA, 2: km remaining -->
+    <string name="aa_eta_body">%1$s · %2$d km to go</string>
+
+    <!-- Sub-screens: full fuel / restaurants lists. -->
+    <string name="aa_fuel_list_row">All fuel stations</string>
+    <string name="aa_restaurants_list_row">All restaurants</string>
+    <string name="aa_fuel_list_title">Fuel along the route</string>
+    <string name="aa_restaurants_list_title">Restaurants along the route</string>
+    <string name="aa_list_empty">Nothing to show yet.</string>
+
+    <!-- 1: price EUR/L -->
+    <string name="aa_fuel_row_price">%1$.3f €/L</string>
+    <string name="aa_fuel_row_no_price">Price unavailable</string>
+    <!-- 1: km from origin -->
+    <string name="aa_km_from_origin">km %1$d</string>
+
+    <!-- 1: price band symbol, 2: EUR/meal, 3: detour minutes -->
+    <string name="aa_restaurant_row_body">%1$s · %2$.0f €/meal · +%3$d min</string>
+
+    <!-- Notification channel labels (car-extended). -->
+    <string name="aa_notif_channel_alerts_name">Road trip alerts</string>
+    <string name="aa_notif_channel_alerts_desc">Approaching stops, cheaper fuel ahead, new alerts on your route.</string>
+
+    <!-- Home-screen widget. -->
+    <string name="widget_description">Countdown to your next saved trip.</string>
+    <string name="widget_no_trip_title">No upcoming trip</string>
+    <string name="widget_no_saved">Plan and save a trip to see it here.</string>
+    <!-- 1: total saved count -->
+    <string name="widget_no_upcoming">%1$d saved trip(s) · none upcoming</string>
+</resources>

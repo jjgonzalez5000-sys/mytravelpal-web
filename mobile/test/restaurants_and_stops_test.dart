@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/l10n/app_localizations.dart';
+import 'package:mytravelpal/widgets/price_band_multiselect.dart';
 import 'package:mytravelpal/widgets/restaurant_preferences.dart';
 
 void main() {
@@ -105,6 +107,8 @@ void main() {
       var prefs = RestaurantPreferences.disabled;
 
       await tester.pumpWidget(MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
         home: Scaffold(
           body: StatefulBuilder(
             builder: (context, setState) => RestaurantPreferencesSection(
@@ -121,7 +125,7 @@ void main() {
 
       expect(prefs.enabled, isTrue);
       expect(find.byType(Slider), findsOneWidget);
-      expect(find.byType(SegmentedButton<PriceBand>), findsOneWidget);
+      expect(find.byType(PriceBandMultiSelect), findsOneWidget);
     });
   });
 }

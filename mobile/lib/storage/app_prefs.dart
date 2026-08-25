@@ -98,7 +98,11 @@ class AppPrefs {
     }
   }
 
-  bool get isPremium => _prefs.getBool(_premiumKey) ?? false;
+  // Premium defaults ON until we wire real receipt validation
+  // (App Store / Play Billing). During the closed beta every feature
+  // is unlocked so users can exercise the full planner. Flip the
+  // default when the paywall lands.
+  bool get isPremium => _prefs.getBool(_premiumKey) ?? true;
   Future<void> setPremium(bool value) => _prefs.setBool(_premiumKey, value);
 
   String? get authToken => _prefs.getString(_authTokenKey);

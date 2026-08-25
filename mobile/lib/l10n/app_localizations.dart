@@ -605,7 +605,7 @@ abstract class AppLocalizations {
   /// No description provided for @profileMealTimes.
   ///
   /// In en, this message translates to:
-  /// **'Meal times'**
+  /// **'Meal schedule'**
   String get profileMealTimes;
 
   /// No description provided for @profileReminders.
@@ -1993,6 +1993,769 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'LPG'**
   String get fuelTypeLpg;
+
+  /// No description provided for @routeVariantFastest.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest'**
+  String get routeVariantFastest;
+
+  /// No description provided for @routeVariantTollFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll-free'**
+  String get routeVariantTollFree;
+
+  /// No description provided for @routeVariantScenic.
+  ///
+  /// In en, this message translates to:
+  /// **'Scenic'**
+  String get routeVariantScenic;
+
+  /// No description provided for @eventTypeFire.
+  ///
+  /// In en, this message translates to:
+  /// **'Fire'**
+  String get eventTypeFire;
+
+  /// No description provided for @eventTypeStrike.
+  ///
+  /// In en, this message translates to:
+  /// **'Strike'**
+  String get eventTypeStrike;
+
+  /// No description provided for @eventTypeWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Adverse weather'**
+  String get eventTypeWeather;
+
+  /// No description provided for @eventTypeAccident.
+  ///
+  /// In en, this message translates to:
+  /// **'Accident'**
+  String get eventTypeAccident;
+
+  /// No description provided for @eventTypeRoadwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Roadwork'**
+  String get eventTypeRoadwork;
+
+  /// No description provided for @eventTypeFlood.
+  ///
+  /// In en, this message translates to:
+  /// **'Flood'**
+  String get eventTypeFlood;
+
+  /// No description provided for @eventTypeSnow.
+  ///
+  /// In en, this message translates to:
+  /// **'Snow'**
+  String get eventTypeSnow;
+
+  /// No description provided for @eventTypeProtest.
+  ///
+  /// In en, this message translates to:
+  /// **'Protest'**
+  String get eventTypeProtest;
+
+  /// No description provided for @eventTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get eventTypeOther;
+
+  /// No description provided for @tollStretchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll stretch {index} / {total}'**
+  String tollStretchLabel(int index, int total);
+
+  /// No description provided for @tollBoothLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll booth {index}'**
+  String tollBoothLabel(int index);
+
+  /// No description provided for @addToRouteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to route'**
+  String get addToRouteTooltip;
+
+  /// No description provided for @removeFromRouteTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from route'**
+  String get removeFromRouteTooltip;
+
+  /// No description provided for @addedStopsChip.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 stop added · +{minutes} min} other{{count} stops added · +{minutes} min}}'**
+  String addedStopsChip(int count, String minutes);
+
+  /// No description provided for @addedStopsClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get addedStopsClear;
+
+  /// No description provided for @settingsLicensesAndData.
+  ///
+  /// In en, this message translates to:
+  /// **'Licenses & data sources'**
+  String get settingsLicensesAndData;
+
+  /// No description provided for @settingsLicensesAndDataSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Attributions for open data and libraries'**
+  String get settingsLicensesAndDataSub;
+
+  /// No description provided for @attributionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Licenses & data'**
+  String get attributionsTitle;
+
+  /// No description provided for @attributionsIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'MyTravelPal is built on open data feeds and open-source libraries. This screen credits every source we use, links to the underlying licences, and covers our legal attribution obligations.'**
+  String get attributionsIntro;
+
+  /// No description provided for @attributionsSectionMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Map & geodata'**
+  String get attributionsSectionMap;
+
+  /// No description provided for @attributionsSectionFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel prices'**
+  String get attributionsSectionFuel;
+
+  /// No description provided for @attributionsSectionHazards.
+  ///
+  /// In en, this message translates to:
+  /// **'Adverse events'**
+  String get attributionsSectionHazards;
+
+  /// No description provided for @attributionsSectionWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather'**
+  String get attributionsSectionWeather;
+
+  /// No description provided for @attributionsSectionSoftware.
+  ///
+  /// In en, this message translates to:
+  /// **'Software libraries'**
+  String get attributionsSectionSoftware;
+
+  /// No description provided for @attributionsShowLicenses.
+  ///
+  /// In en, this message translates to:
+  /// **'Show package licences'**
+  String get attributionsShowLicenses;
+
+  /// No description provided for @attributionsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load attributions. Please try again.'**
+  String get attributionsFailed;
+
+  /// No description provided for @fuelPriceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Price not available'**
+  String get fuelPriceUnavailable;
+
+  /// No description provided for @fuelPriceUnavailableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No public price feed for this country yet'**
+  String get fuelPriceUnavailableHint;
+
+  /// No description provided for @planSectionOptionalEyebrow.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get planSectionOptionalEyebrow;
+
+  /// No description provided for @planOptAlertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert me about adverse events'**
+  String get planOptAlertsTitle;
+
+  /// No description provided for @planOptAlertsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Fires, strikes, weather, roadworks, and more within 25 km of the route.'**
+  String get planOptAlertsSub;
+
+  /// No description provided for @planOptTollFreeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Show toll-free alternative'**
+  String get planOptTollFreeTitle;
+
+  /// No description provided for @planOptTollFreeSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare a route that skips tolls — money saved vs. minutes added.'**
+  String get planOptTollFreeSub;
+
+  /// No description provided for @planOptHourlyTollTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Hourly toll analysis'**
+  String get planOptHourlyTollTitle;
+
+  /// No description provided for @planOptHourlyTollSub.
+  ///
+  /// In en, this message translates to:
+  /// **'When during the day skipping tolls actually beats keeping them (traffic-aware).'**
+  String get planOptHourlyTollSub;
+
+  /// No description provided for @planOptRouteVariantsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare route variants'**
+  String get planOptRouteVariantsTitle;
+
+  /// No description provided for @planOptRouteVariantsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Fastest vs. toll-free vs. scenic — see all three side by side on the results.'**
+  String get planOptRouteVariantsSub;
+
+  /// No description provided for @planOptAvoidMotorwaysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Avoid motorways'**
+  String get planOptAvoidMotorwaysTitle;
+
+  /// No description provided for @planOptAvoidMotorwaysSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Slower and longer, but no tolls and quieter.'**
+  String get planOptAvoidMotorwaysSub;
+
+  /// No description provided for @planOptPreferScenicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefer scenic'**
+  String get planOptPreferScenicTitle;
+
+  /// No description provided for @planOptPreferScenicSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Bias to more interesting roads. A little slower.'**
+  String get planOptPreferScenicSub;
+
+  /// No description provided for @planPremiumBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium'**
+  String get planPremiumBadge;
+
+  /// No description provided for @planProfileTravellers.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 traveller} other{{count} travellers}}'**
+  String planProfileTravellers(int count);
+
+  /// No description provided for @planProfileWithKids.
+  ///
+  /// In en, this message translates to:
+  /// **'kids'**
+  String get planProfileWithKids;
+
+  /// No description provided for @planProfileWithPets.
+  ///
+  /// In en, this message translates to:
+  /// **'pets'**
+  String get planProfileWithPets;
+
+  /// No description provided for @planProfileOverrideActive.
+  ///
+  /// In en, this message translates to:
+  /// **'OVERRIDE ACTIVE'**
+  String get planProfileOverrideActive;
+
+  /// No description provided for @planProfileOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Override for this trip'**
+  String get planProfileOverride;
+
+  /// No description provided for @planProfileOverriding.
+  ///
+  /// In en, this message translates to:
+  /// **'Overriding for this trip'**
+  String get planProfileOverriding;
+
+  /// No description provided for @profilePromptSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up your trip profile'**
+  String get profilePromptSetup;
+
+  /// No description provided for @hotelPrefTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add hotels along the route'**
+  String get hotelPrefTitle;
+
+  /// No description provided for @hotelPrefSubEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {minutes} min detour · {band}'**
+  String hotelPrefSubEnabled(int minutes, String band);
+
+  /// No description provided for @hotelPrefSubOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off. Turn on to see hotels near your route.'**
+  String get hotelPrefSubOff;
+
+  /// No description provided for @restaurantPrefTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add restaurants along the route'**
+  String get restaurantPrefTitle;
+
+  /// No description provided for @restaurantPrefSubEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to {minutes} min detour · {band}'**
+  String restaurantPrefSubEnabled(int minutes, String band);
+
+  /// No description provided for @restaurantPrefSubOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off. Turn on to see restaurants near your route.'**
+  String get restaurantPrefSubOff;
+
+  /// No description provided for @prefMaxDetour.
+  ///
+  /// In en, this message translates to:
+  /// **'Max detour: {minutes} min'**
+  String prefMaxDetour(int minutes);
+
+  /// No description provided for @prefBandBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get prefBandBudget;
+
+  /// No description provided for @prefBandMid.
+  ///
+  /// In en, this message translates to:
+  /// **'Mid'**
+  String get prefBandMid;
+
+  /// No description provided for @prefBandLuxury.
+  ///
+  /// In en, this message translates to:
+  /// **'Luxury'**
+  String get prefBandLuxury;
+
+  /// No description provided for @prefBandAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get prefBandAny;
+
+  /// No description provided for @mealSlotBreakfast.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested for breakfast'**
+  String get mealSlotBreakfast;
+
+  /// No description provided for @mealSlotLunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested for lunch'**
+  String get mealSlotLunch;
+
+  /// No description provided for @mealSlotDinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested for dinner'**
+  String get mealSlotDinner;
+
+  /// No description provided for @mealSlotOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other restaurants'**
+  String get mealSlotOther;
+
+  /// No description provided for @poiDistanceKm.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km · +{minutes} min detour'**
+  String poiDistanceKm(String km, String minutes);
+
+  /// No description provided for @fuelSavingsChipCheap.
+  ///
+  /// In en, this message translates to:
+  /// **'-{amount}€/L vs country avg'**
+  String fuelSavingsChipCheap(String amount);
+
+  /// No description provided for @fuelSavingsChipDear.
+  ///
+  /// In en, this message translates to:
+  /// **'+{amount}€/L vs country avg'**
+  String fuelSavingsChipDear(String amount);
+
+  /// No description provided for @fuelArbitrageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuel smart on this route'**
+  String get fuelArbitrageTitle;
+
+  /// No description provided for @fuelArbitrageBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel in {cheap} is around {cheapPrice}€/L. In {dear} it\'s ~{dearPrice}€/L. Filling the tank in {cheap} before crossing saves ~{savings}€.'**
+  String fuelArbitrageBody(String cheap, String cheapPrice, String dear,
+      String dearPrice, String savings);
+
+  /// No description provided for @dayTabLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {index}'**
+  String dayTabLabel(int index);
+
+  /// No description provided for @dayHeaderRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {index} · km {fromKm} → {toKm}'**
+  String dayHeaderRange(int index, String fromKm, String toKm);
+
+  /// No description provided for @daySleepMarker.
+  ///
+  /// In en, this message translates to:
+  /// **'Overnight around {time}'**
+  String daySleepMarker(String time);
+
+  /// No description provided for @nextStopHeroLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Next suggested stop'**
+  String get nextStopHeroLabel;
+
+  /// No description provided for @nextStopHeroBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{slot} in {name} · around {time}'**
+  String nextStopHeroBody(String slot, String name, String time);
+
+  /// No description provided for @daySleepHotelsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotels near your overnight stop'**
+  String get daySleepHotelsLabel;
+
+  /// No description provided for @daySleepHotelsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable hotels in the plan preferences to see overnight options here.'**
+  String get daySleepHotelsEmpty;
+
+  /// No description provided for @restaurantPrefCuisinesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cuisine'**
+  String get restaurantPrefCuisinesLabel;
+
+  /// No description provided for @cuisineItalian.
+  ///
+  /// In en, this message translates to:
+  /// **'Italian'**
+  String get cuisineItalian;
+
+  /// No description provided for @cuisineSpanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish'**
+  String get cuisineSpanish;
+
+  /// No description provided for @cuisineTapas.
+  ///
+  /// In en, this message translates to:
+  /// **'Tapas'**
+  String get cuisineTapas;
+
+  /// No description provided for @cuisineFrench.
+  ///
+  /// In en, this message translates to:
+  /// **'French'**
+  String get cuisineFrench;
+
+  /// No description provided for @cuisineMediterranean.
+  ///
+  /// In en, this message translates to:
+  /// **'Mediterranean'**
+  String get cuisineMediterranean;
+
+  /// No description provided for @cuisineAsian.
+  ///
+  /// In en, this message translates to:
+  /// **'Asian'**
+  String get cuisineAsian;
+
+  /// No description provided for @cuisineIndian.
+  ///
+  /// In en, this message translates to:
+  /// **'Indian'**
+  String get cuisineIndian;
+
+  /// No description provided for @cuisineBurger.
+  ///
+  /// In en, this message translates to:
+  /// **'Burgers'**
+  String get cuisineBurger;
+
+  /// No description provided for @cuisineSeafood.
+  ///
+  /// In en, this message translates to:
+  /// **'Seafood'**
+  String get cuisineSeafood;
+
+  /// No description provided for @cuisineVegetarian.
+  ///
+  /// In en, this message translates to:
+  /// **'Vegetarian'**
+  String get cuisineVegetarian;
+
+  /// No description provided for @cuisineBbq.
+  ///
+  /// In en, this message translates to:
+  /// **'BBQ / grill'**
+  String get cuisineBbq;
+
+  /// No description provided for @cuisineRegional.
+  ///
+  /// In en, this message translates to:
+  /// **'Regional'**
+  String get cuisineRegional;
+
+  /// No description provided for @timeWindowSpanLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show ±{hours}h'**
+  String timeWindowSpanLabel(int hours);
+
+  /// No description provided for @timeWindowSpanHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Drag to widen the window and see if leaving earlier or later saves more time.'**
+  String get timeWindowSpanHelper;
+
+  /// No description provided for @planLoadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Building your road trip'**
+  String get planLoadingTitle;
+
+  /// No description provided for @planLoadingStepRouting.
+  ///
+  /// In en, this message translates to:
+  /// **'Computing the fastest route…'**
+  String get planLoadingStepRouting;
+
+  /// No description provided for @planLoadingStepTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'Sampling traffic to pick the best departure hour…'**
+  String get planLoadingStepTraffic;
+
+  /// No description provided for @planLoadingStepFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching live fuel prices along the corridor…'**
+  String get planLoadingStepFuel;
+
+  /// No description provided for @planLoadingStepHotels.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for hotels around any overnight stops…'**
+  String get planLoadingStepHotels;
+
+  /// No description provided for @planLoadingStepRestaurants.
+  ///
+  /// In en, this message translates to:
+  /// **'Sorting restaurants by meal slot and cuisine…'**
+  String get planLoadingStepRestaurants;
+
+  /// No description provided for @planLoadingStepAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning for fires, roadworks, weather, protests…'**
+  String get planLoadingStepAlerts;
+
+  /// No description provided for @planLoadingStepTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'Comparing toll routes with toll-free alternatives…'**
+  String get planLoadingStepTolls;
+
+  /// No description provided for @planLoadingStepAlmost.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost there — assembling everything for you…'**
+  String get planLoadingStepAlmost;
+
+  /// No description provided for @planLoadingHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'This usually takes 5-15 seconds. Feel free to keep the phone in your pocket.'**
+  String get planLoadingHelper;
+
+  /// No description provided for @resultStartTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Start trip'**
+  String get resultStartTrip;
+
+  /// No description provided for @navPickerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue in…'**
+  String get navPickerTitle;
+
+  /// No description provided for @tripDashboardTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'On the road'**
+  String get tripDashboardTitle;
+
+  /// No description provided for @tripDashboardCenterOnMe.
+  ///
+  /// In en, this message translates to:
+  /// **'Centre on my location'**
+  String get tripDashboardCenterOnMe;
+
+  /// No description provided for @tripDashboardOpenNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Open navigation'**
+  String get tripDashboardOpenNav;
+
+  /// No description provided for @tripDashboardNextStopLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NEXT {slot}'**
+  String tripDashboardNextStopLabel(String slot);
+
+  /// No description provided for @tripDashboardInMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'in {n} min'**
+  String tripDashboardInMinutes(int n);
+
+  /// No description provided for @tripDashboardPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location denied. Grant the permission to see your position on the route.'**
+  String get tripDashboardPermissionDenied;
+
+  /// No description provided for @tripDashboardServiceDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'GPS is off. Enable it to follow your progress on the route.'**
+  String get tripDashboardServiceDisabled;
+
+  /// No description provided for @tripDashboardProgressLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} km'**
+  String tripDashboardProgressLine(String done, String total);
+
+  /// No description provided for @tripDashboardEta.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA {time}'**
+  String tripDashboardEta(String time);
+
+  /// No description provided for @tripDashboardActiveNotifTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip in progress'**
+  String get tripDashboardActiveNotifTitle;
+
+  /// No description provided for @tripDashboardActiveNotifBody.
+  ///
+  /// In en, this message translates to:
+  /// **'MyTravelPal is following your route in the background.'**
+  String get tripDashboardActiveNotifBody;
+
+  /// No description provided for @tripDashboardSleepStopLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'hotel'**
+  String get tripDashboardSleepStopLabel;
+
+  /// No description provided for @alertApproachingStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop coming up'**
+  String get alertApproachingStopTitle;
+
+  /// No description provided for @alertApproachingStopBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{slot} at {name} in about {mins} min. Get ready for the exit.'**
+  String alertApproachingStopBody(String slot, String name, int mins);
+
+  /// No description provided for @alertNewAdverseAheadTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New alert on your route'**
+  String get alertNewAdverseAheadTitle;
+
+  /// No description provided for @alertNewAdverseAheadBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{type} reported {km} km ahead.'**
+  String alertNewAdverseAheadBody(String type, String km);
+
+  /// No description provided for @alertDriftDetectedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ve left the route'**
+  String get alertDriftDetectedTitle;
+
+  /// No description provided for @alertDriftDetectedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re {off} m off the planned track. Recalculate?'**
+  String alertDriftDetectedBody(String off);
+
+  /// No description provided for @alertBehindScheduleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Running behind'**
+  String get alertBehindScheduleTitle;
+
+  /// No description provided for @alertBehindScheduleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll arrive {mins} min later than planned.'**
+  String alertBehindScheduleBody(int mins);
+
+  /// No description provided for @tripDashboardCheaperFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'{brand} in {km} km · save {cts} ct/L'**
+  String tripDashboardCheaperFuel(String brand, String km, String cts);
 }
 
 class _AppLocalizationsDelegate

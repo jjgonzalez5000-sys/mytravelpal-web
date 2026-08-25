@@ -4,6 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../api/models.dart';
+import '../l10n/app_localizations.dart';
+import 'osm_attribution.dart';
 
 /// Show a bottom sheet with the event details and a mini-map plotting
 /// the incident inside the trip's route so the user sees at a glance
@@ -80,9 +82,12 @@ class _AdverseEventSheet extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(event.type.displayName, style: t.titleLarge),
                       Text(
-                        event.severity.displayName,
+                        event.type.localized(AppLocalizations.of(context)),
+                        style: t.titleLarge,
+                      ),
+                      Text(
+                        event.severity.localized(AppLocalizations.of(context)),
                         style: t.labelSmall
                             ?.copyWith(color: color, letterSpacing: 1.1),
                       ),
@@ -157,6 +162,7 @@ class _AdverseEventSheet extends StatelessWidget {
                         ),
                       ],
                     ),
+                    const OsmAttribution(),
                   ],
                 ),
               ),

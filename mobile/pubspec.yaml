@@ -30,6 +30,15 @@ dependencies:
   sign_in_with_apple: ^6.1.4
   app_links: ^6.3.2
   flutter_local_notifications: ^18.0.1
+  # Keeps the screen on while the trip dashboard is foregrounded so
+  # the driver can glance at the countdown / next-stop card without
+  # the phone dimming to sleep every minute. Released on dispose.
+  wakelock_plus: ^1.2.8
+  # In-app review — surfaces the native Play Store rating dialog
+  # without leaving the app. Google throttles quotas at the OS level
+  # so calling it is safe; the sheet only appears on a subset of
+  # sessions the Play policy allows.
+  in_app_review: ^2.0.9
   timezone: ^0.9.4
 
 dev_dependencies:

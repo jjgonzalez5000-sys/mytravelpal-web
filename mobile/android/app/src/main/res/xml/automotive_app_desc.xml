@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android Auto category descriptor. MyTravelPal ships as a
+  Point of Interest / Companion app — it complements Google Maps
+  turn-by-turn with the pre-planned "next stop" countdown, cheaper
+  fuel ahead, and adverse-event alerts. It does NOT provide
+  turn-by-turn navigation itself; the "template" declaration here
+  reserves the ability to draw a lightweight overview map for the
+  user's plan, but Google Maps stays the primary navigator.
+
+  Adding `template` alongside `poi` requires the app to be
+  reviewed under Google Auto's stricter rules. If review rejects
+  the template usage we can drop that <uses/> and keep the
+  Companion behaviour only — see [[project_android_auto]] for the
+  Option C fallback.
+-->
+<automotiveApp>
+    <uses name="template"/>
+</automotiveApp>

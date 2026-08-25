@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -47,18 +50,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         ?? const TripProfile();
   }
 
-  Future<void> _save() async {
-    final l = AppLocalizations.of(context);
-    if (widget.mode == ProfileScreenMode.override_) {
-      Navigator.of(context).pop(_profile);
-      return;
+  /// Called on every edit. In `persist` mode we quietly write to the
+  /// global prefs so the user doesn't need to tap "Save" before backing
+  /// out — behaviour they asked for on 2026-08-24. In `override_` mode
+  /// we only mutate local state; `Use for this trip` remains the
+  /// commit point since that flow returns the profile to the caller.
+  void _update(TripProfile p) {
+    setState(() {
+      _profile = p;
+    });
+    if (widget.mode == ProfileScreenMode.persist) {
+      // fire-and-forget; SharedPreferences writes are fast and any
+      // in-flight write is superseded by the next call.
+      unawaited(ref.read(tripProfileProvider.notifier).set(p));
     }
-    await ref.read(tripProfileProvider.notifier).set(_profile);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(l.profileSaved)),
-    );
-    Navigator.of(context).pop();
+  }
+
+  Future<void> _useForTrip() async {
+    Navigator.of(context).pop(_profile);
   }
 
   @override
@@ -73,10 +82,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       appBar: AppBar(
         title: Text(overrideMode ? l.profileOverrideTitle : l.profileTitle),
         actions: [
-          TextButton(
-            onPressed: _save,
-            child: Text(overrideMode ? l.profileUse : l.profileSave),
-          ),
+          // Only override mode keeps the explicit commit button — persist
+          // mode saves on every change and pops normally.
+          if (overrideMode)
+            TextButton(
+              onPressed: _useForTrip,
+              child: Text(l.profileUse),
+            ),
           const SizedBox(width: Tokens.space8),
         ],
       ),
@@ -97,7 +109,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           _TravelStyleCard(
             profile: _profile,
-            onChanged: (p) => setState(() => _profile = p),
+            onChanged: _update,
           ),
           const SizedBox(height: Tokens.space24),
 
@@ -117,9 +129,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   trailing: _Stepper(
                     value: _profile.travellers,
                     min: 1, max: 9,
-                    onChanged: (n) => setState(
-                      () => _profile = _profile.copyWith(travellers: n),
-                    ),
+                    onChanged: (n) => _update(_profile.copyWith(travellers: n)),
                   ),
                 ),
                 const Divider(height: 1),
@@ -128,9 +138,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   title: Text(l.profileHasKids),
                   subtitle: Text(l.profileKidsSubtitle),
                   value: _profile.hasKids,
-                  onChanged: (v) => setState(
-                    () => _profile = _profile.copyWith(hasKids: v),
-                  ),
+                  onChanged: (v) => _update(_profile.copyWith(hasKids: v)),
                 ),
                 const Divider(height: 1),
                 SwitchListTile.adaptive(
@@ -138,9 +146,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   title: Text(l.profileHasPets),
                   subtitle: Text(l.profilePetsSubtitle),
                   value: _profile.hasPets,
-                  onChanged: (v) => setState(
-                    () => _profile = _profile.copyWith(hasPets: v),
-                  ),
+                  onChanged: (v) => _update(_profile.copyWith(hasPets: v)),
                 ),
               ],
             ),
@@ -162,10 +168,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   options: VehicleType.values,
                   optionLabel: (t) => vehicleTypeLabel(context, t),
                   optionIcon: (t) => t.icon,
-                  onChanged: (t) => setState(
-                    () => _profile = _profile.copyWith(
-                      vehicle: v.copyWith(type: t),
-                    ),
+                  onChanged: (t) => _update(_profile.copyWith(
+                      vehicle: v.copyWith(type: t)),
                   ),
                 ),
                 const SizedBox(height: Tokens.space16),
@@ -174,10 +178,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   value: v.fuelType,
                   options: FuelType.values,
                   optionLabel: (f) => fuelTypeLabel(context, f),
-                  onChanged: (f) => setState(
-                    () => _profile = _profile.copyWith(
-                      vehicle: v.copyWith(fuelType: f),
-                    ),
+                  onChanged: (f) => _update(_profile.copyWith(
+                      vehicle: v.copyWith(fuelType: f)),
                   ),
                 ),
                 const SizedBox(height: Tokens.space16),
@@ -187,10 +189,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     suffix: 'kWh / 100 km',
                     value: v.consumptionKwhPer100km,
                     min: 8, max: 40, divisions: 32,
-                    onChanged: (x) => setState(
-                      () => _profile = _profile.copyWith(
-                        vehicle: v.copyWith(consumptionKwhPer100km: x),
-                      ),
+                    onChanged: (x) => _update(_profile.copyWith(
+                        vehicle: v.copyWith(consumptionKwhPer100km: x)),
                     ),
                   ),
                   const SizedBox(height: Tokens.space16),
@@ -199,10 +199,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     suffix: 'km',
                     value: v.evRangeKm,
                     min: 100, max: 800, divisions: 70,
-                    onChanged: (x) => setState(
-                      () => _profile = _profile.copyWith(
-                        vehicle: v.copyWith(evRangeKm: x),
-                      ),
+                    onChanged: (x) => _update(_profile.copyWith(
+                        vehicle: v.copyWith(evRangeKm: x)),
                     ),
                   ),
                 ] else ...[
@@ -211,10 +209,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     suffix: 'L / 100 km',
                     value: v.consumptionLPer100km,
                     min: 2, max: 20, divisions: 36,
-                    onChanged: (x) => setState(
-                      () => _profile = _profile.copyWith(
-                        vehicle: v.copyWith(consumptionLPer100km: x),
-                      ),
+                    onChanged: (x) => _update(_profile.copyWith(
+                        vehicle: v.copyWith(consumptionLPer100km: x)),
                     ),
                   ),
                 ],
@@ -231,34 +227,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             padding: const EdgeInsets.all(Tokens.space16),
             child: Column(
               children: [
-                _HourPicker(
+                _MealTimeTile(
                   label: l.profileBreakfast,
-                  value: _profile.meals.breakfastHour,
-                  min: 4, max: 12,
-                  onChanged: (h) => setState(
-                    () => _profile = _profile.copyWith(
-                      meals: _profile.meals.copyWith(breakfastHour: h),
-                    ),
+                  hour: _profile.meals.breakfastHour,
+                  minute: _profile.meals.breakfastMinute,
+                  minHour: 4, maxHour: 12,
+                  onChanged: (h, m) => _update(_profile.copyWith(
+                      meals: _profile.meals.copyWith(
+                        breakfastHour: h, breakfastMinute: m,
+                      )),
                   ),
                 ),
-                _HourPicker(
+                const Divider(height: 1),
+                _MealTimeTile(
                   label: l.profileLunch,
-                  value: _profile.meals.lunchHour,
-                  min: 11, max: 16,
-                  onChanged: (h) => setState(
-                    () => _profile = _profile.copyWith(
-                      meals: _profile.meals.copyWith(lunchHour: h),
-                    ),
+                  hour: _profile.meals.lunchHour,
+                  minute: _profile.meals.lunchMinute,
+                  minHour: 11, maxHour: 16,
+                  onChanged: (h, m) => _update(_profile.copyWith(
+                      meals: _profile.meals.copyWith(
+                        lunchHour: h, lunchMinute: m,
+                      )),
                   ),
                 ),
-                _HourPicker(
+                const Divider(height: 1),
+                _MealTimeTile(
                   label: l.profileDinner,
-                  value: _profile.meals.dinnerHour,
-                  min: 17, max: 23,
-                  onChanged: (h) => setState(
-                    () => _profile = _profile.copyWith(
-                      meals: _profile.meals.copyWith(dinnerHour: h),
-                    ),
+                  hour: _profile.meals.dinnerHour,
+                  minute: _profile.meals.dinnerMinute,
+                  minHour: 17, maxHour: 23,
+                  onChanged: (h, m) => _update(_profile.copyWith(
+                      meals: _profile.meals.copyWith(
+                        dinnerHour: h, dinnerMinute: m,
+                      )),
                   ),
                 ),
               ],
@@ -286,37 +287,20 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 trailing: _Stepper(
                   value: _profile.meals.reminderMinutesBefore,
                   min: 0, max: 120,
-                  onChanged: (v) => setState(
-                    () => _profile = _profile.copyWith(
+                  onChanged: (v) => _update(_profile.copyWith(
                       meals: _profile.meals.copyWith(
                         reminderMinutesBefore: v,
-                      ),
-                    ),
+                      )),
                   ),
                 ),
               ),
             ),
           ],
           if (!overrideMode) ...[
-            const SizedBox(height: Tokens.space32),
-            SectionHeader(
-              title: l.profilePremiumSection,
-              eyebrow: l.profilePremiumEyebrow,
-              description: l.profilePremiumBody,
-            ),
-            SoftCard(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Tokens.space16, vertical: Tokens.space4,
-              ),
-              child: SwitchListTile.adaptive(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l.profileSimulatePremium),
-                subtitle: Text(l.profileSimulatePremiumSubtitle),
-                value: ref.watch(premiumProvider),
-                onChanged: (v) =>
-                    ref.read(premiumProvider.notifier).set(v),
-              ),
-            ),
+            // Simulate-Premium toggle removed for the beta — Premium
+            // is ON by default until real receipt validation lands
+            // (Play Billing / StoreKit). Re-add the section here when
+            // the paywall is wired.
             const SizedBox(height: Tokens.space24),
             if (ref.watch(tripProfileProvider) != null)
               OutlinedButton.icon(
@@ -702,4 +686,134 @@ class _LabelText extends StatelessWidget {
           style: Theme.of(context).textTheme.labelMedium,
         ),
       );
+}
+
+/// Row that shows `Breakfast   08:30 ›` and opens a two-column
+/// Cupertino-style wheel picker (hour + minute at 5-min steps).
+///
+/// Rationale: hardcore users (siesta lovers, night-owls, athletes)
+/// asked for minute-level control. A stepper for hours + a second
+/// stepper for minutes would work but feel clunky; a spinning wheel is
+/// what most consumer apps use for time and fits Android's Material 3
+/// theme when embedded in a modal bottom sheet.
+class _MealTimeTile extends StatelessWidget {
+  const _MealTimeTile({
+    required this.label,
+    required this.hour,
+    required this.minute,
+    required this.minHour,
+    required this.maxHour,
+    required this.onChanged,
+  });
+
+  final String label;
+  final int hour;
+  final int minute;
+  final int minHour;
+  final int maxHour;
+  final void Function(int hour, int minute) onChanged;
+
+  String _fmt(int h, int m) =>
+      '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+
+  Future<void> _open(BuildContext context) async {
+    // Snap current value into an allowed step. Minutes advance by 5;
+    // hours are clamped to the slot's window.
+    int selHour = hour.clamp(minHour, maxHour);
+    int selMinute = ((minute ~/ 5) * 5).clamp(0, 55);
+
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (ctx) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Tokens.space16, vertical: Tokens.space8,
+                ),
+                child: Text(
+                  label,
+                  style: Theme.of(ctx).textTheme.titleMedium,
+                ),
+              ),
+              SizedBox(
+                height: 180,
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CupertinoPicker(
+                        itemExtent: 36,
+                        scrollController: FixedExtentScrollController(
+                          initialItem: selHour - minHour,
+                        ),
+                        onSelectedItemChanged: (i) =>
+                            selHour = minHour + i,
+                        children: [
+                          for (int h = minHour; h <= maxHour; h++)
+                            Center(
+                              child: Text(
+                                h.toString().padLeft(2, '0'),
+                                style: Theme.of(ctx).textTheme.headlineSmall,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    Text(':',
+                        style: Theme.of(ctx).textTheme.headlineSmall),
+                    Expanded(
+                      child: CupertinoPicker(
+                        itemExtent: 36,
+                        scrollController: FixedExtentScrollController(
+                          initialItem: selMinute ~/ 5,
+                        ),
+                        onSelectedItemChanged: (i) => selMinute = i * 5,
+                        children: [
+                          for (int m = 0; m < 60; m += 5)
+                            Center(
+                              child: Text(
+                                m.toString().padLeft(2, '0'),
+                                style: Theme.of(ctx).textTheme.headlineSmall,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Tokens.space8),
+            ],
+          ),
+        );
+      },
+    );
+    onChanged(selHour, selMinute);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: Text(label),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _fmt(hour, minute),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: scheme.primary,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+          ),
+          Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+        ],
+      ),
+      onTap: () => _open(context),
+    );
+  }
 }

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/widget_bridge.dart';
 import 'saved_trip.dart';
 
 /// Local storage for the user's saved trips. Newest first.
@@ -53,5 +54,11 @@ class TripStorage {
       _key,
       jsonEncode(trips.map((t) => t.toJson()).toList(growable: false)),
     );
+    // Refresh the home-screen widget with the new "next upcoming".
+    // Fire-and-forget so a widget-less device (widget not pinned)
+    // doesn't slow the save call — the bridge's SharedPreferences
+    // write is cheap and idempotent.
+    // ignore: unawaited_futures
+    WidgetBridge.instance.refresh(trips);
   }
 }

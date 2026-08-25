@@ -50,4 +50,12 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Android Auto (Car App Library). MyTravelPal ships as a POI
+    // Companion — see `project_android_auto` memory. The `-projected`
+    // variant is required at runtime to actually connect to the head
+    // unit; without it the CarAppService registers but never receives
+    // sessions. Version pinned to 1.4.0 — the current stable LTS
+    // that supports Android Auto API level 5+.
+    implementation("androidx.car.app:app:1.4.0")
+    implementation("androidx.car.app:app-projected:1.4.0")
 }

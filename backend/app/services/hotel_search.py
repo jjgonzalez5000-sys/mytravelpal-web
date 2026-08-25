@@ -5,11 +5,25 @@ from __future__ import annotations
 from app.domain import Hotel, PriceBand, TripProfile
 
 
+def _normalize_bands(
+    bands: tuple[PriceBand, ...] | list[PriceBand] | None,
+) -> tuple[PriceBand, ...] | None:
+    if not bands:
+        return None
+    specific = tuple(b for b in bands if b is not PriceBand.ANY)
+    if not specific:
+        return None
+    if {PriceBand.BUDGET, PriceBand.MID, PriceBand.LUX}.issubset(set(specific)):
+        return None
+    return specific
+
+
 def filter_hotels(
     hotels: tuple[Hotel, ...],
     *,
     max_detour_minutes: float,
-    price_band: PriceBand,
+    price_band: PriceBand = PriceBand.ANY,
+    price_bands: tuple[PriceBand, ...] | list[PriceBand] | None = None,
     profile: TripProfile | None = None,
     limit: int = 10,
 ) -> tuple[Hotel, ...]:
@@ -24,8 +38,12 @@ def filter_hotels(
     catalogue is small.
     """
     kept = [h for h in hotels if h.detour_minutes <= max_detour_minutes]
-    if price_band is not PriceBand.ANY:
-        kept = [h for h in kept if h.price_band is price_band]
+    # Multi-band wins over the legacy single-band parameter.
+    bands = _normalize_bands(price_bands)
+    if bands is None and price_band is not PriceBand.ANY:
+        bands = (price_band,)
+    if bands is not None:
+        kept = [h for h in kept if h.price_band in bands]
 
     def _key(h: Hotel) -> tuple:
         # Penalty applied when the profile asks for something the hotel
