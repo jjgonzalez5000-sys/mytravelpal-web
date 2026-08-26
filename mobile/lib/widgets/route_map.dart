@@ -8,15 +8,6 @@ import 'osm_attribution.dart';
 const _tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const _userAgent = 'com.mytravelpal.app';
 
-/// Map showing the planned route.
-///
-/// - When `geometry` has points, we draw the real road-following polyline
-///   (OSRM / HERE / TomTom output).
-/// - Otherwise we fall back to a dashed straight line between origin and
-///   destination so the user still gets a visual — the mock backend is
-///   honest about being an approximation.
-/// - An optional `alternativeGeometry` is drawn dimmed for comparison
-///   (used by the toll-savings preview).
 class RouteMap extends StatelessWidget {
   const RouteMap({
     super.key,
@@ -24,12 +15,18 @@ class RouteMap extends StatelessWidget {
     required this.destination,
     this.geometry = const [],
     this.alternativeGeometry = const [],
+    this.hotelMarkers = const [],
+    this.restaurantMarkers = const [],
+    this.tollMarkers = const [],
   });
 
   final LatLon origin;
   final LatLon destination;
   final List<LatLon> geometry;
   final List<LatLon> alternativeGeometry;
+  final List<Hotel> hotelMarkers;
+  final List<Restaurant> restaurantMarkers;
+  final List<PartialTollSkip> tollMarkers;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +47,27 @@ class RouteMap extends StatelessWidget {
       ...alt,
       if (main.isEmpty) o,
       if (main.isEmpty) d,
+    ];
+
+    final poiMarkers = <Marker>[
+      for (final h in hotelMarkers)
+        _poiMarker(
+          LatLng(h.coordinate.lat, h.coordinate.lon),
+          Icons.hotel_outlined,
+          scheme.tertiary,
+        ),
+      for (final r in restaurantMarkers)
+        _poiMarker(
+          LatLng(r.coordinate.lat, r.coordinate.lon),
+          Icons.restaurant_outlined,
+          scheme.primary,
+        ),
+      for (final t in tollMarkers)
+        _poiMarker(
+          LatLng(t.coordinate.lat, t.coordinate.lon),
+          Icons.alt_route,
+          scheme.error,
+        ),
     ];
 
     return FlutterMap(
@@ -91,6 +109,7 @@ class RouteMap extends StatelessWidget {
             ),
           ],
         ),
+        if (poiMarkers.isNotEmpty) MarkerLayer(markers: poiMarkers),
         MarkerLayer(
           markers: [
             _endpoint(o, 'A', scheme),
@@ -109,6 +128,15 @@ class RouteMap extends StatelessWidget {
       height: 36,
       alignment: Alignment.topCenter,
       child: _EndpointPin(label: label, color: scheme.primary),
+    );
+  }
+
+  Marker _poiMarker(LatLng at, IconData icon, Color color) {
+    return Marker(
+      point: at,
+      width: 28,
+      height: 28,
+      child: _PoiPin(icon: icon, color: color),
     );
   }
 }
@@ -139,6 +167,29 @@ class _EndpointPin extends StatelessWidget {
           fontWeight: FontWeight.w700,
         ),
       ),
+    );
+  }
+}
+
+class _PoiPin extends StatelessWidget {
+  const _PoiPin({required this.icon, required this.color});
+  final IconData icon;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.85),
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x33000000), blurRadius: 3, offset: Offset(0, 1)),
+        ],
+      ),
+      child: Icon(icon, color: Colors.white, size: 14),
     );
   }
 }

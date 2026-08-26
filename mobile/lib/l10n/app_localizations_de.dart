@@ -1602,6 +1602,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tollSkipSelectAll => 'Alle auswählen';
 
   @override
+  String get mapShowLabel => 'Karte anzeigen';
+
+  @override
+  String get mapHideLabel => 'Karte ausblenden';
+
+  @override
+  String get tutorialSkip => 'Überspringen';
+
+  @override
   String get tutorialOriginTitle => 'Wo starten Sie?';
 
   @override

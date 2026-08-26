@@ -1597,6 +1597,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tollSkipSelectAll => 'Select all';
 
   @override
+  String get mapShowLabel => 'Show map';
+
+  @override
+  String get mapHideLabel => 'Hide map';
+
+  @override
+  String get tutorialSkip => 'Skip';
+
+  @override
   String get tutorialOriginTitle => 'Where are you starting?';
 
   @override

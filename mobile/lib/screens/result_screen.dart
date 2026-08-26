@@ -130,6 +130,31 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   final _timeWindowKey = GlobalKey();
   final _tollKey = GlobalKey();
 
+  _MapMode _mapMode = _MapMode.normal;
+
+  List<(Hotel, double)> _topDestinationHotels(int count) {
+    final dest = widget.request.destination;
+    final scored = <(Hotel, double)>[];
+    for (final h in _filteredHotels) {
+      final km = _haversineStatic(dest, h.coordinate);
+      if (km <= 60) scored.add((h, km));
+    }
+    scored.sort((a, b) => a.$2.compareTo(b.$2));
+    return scored.take(count).toList();
+  }
+
+  static double _haversineStatic(LatLon a, LatLon b) {
+    const r = 6371.0;
+    final dLat = (b.lat - a.lat) * math.pi / 180;
+    final dLon = (b.lon - a.lon) * math.pi / 180;
+    final aLat = a.lat * math.pi / 180;
+    final bLat = b.lat * math.pi / 180;
+    final x = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(aLat) * math.cos(bLat) *
+            math.sin(dLon / 2) * math.sin(dLon / 2);
+    return r * 2 * math.atan2(math.sqrt(x), math.sqrt(1 - x));
+  }
+
   double get _tollSkipSavingsEur {
     final skips = widget.response.partialTollSkips;
     return _tollSkipEnabled.fold(
@@ -626,12 +651,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final bedtimeHour = widget.request.tripProfile?.bedtimeHour ?? 22;
 
     final sections = <Widget>[
-      _MapCard(
+      _InteractiveMapCard(
         origin: widget.request.origin,
         destination: widget.request.destination,
         route: route,
         alternativeGeometry:
             widget.response.tollAlternative?.geometry ?? const [],
+        hotels: _filteredHotels,
+        restaurants: widget.response.restaurants,
+        tollSkips: widget.response.partialTollSkips,
+        mode: _mapMode,
+        onModeChange: (m) => setState(() => _mapMode = m),
       ),
       const SizedBox(height: Tokens.space24),
       if (widget.response.consistencyIssues.isNotEmpty)
@@ -710,15 +740,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space16),
       ],
-      if (recommended != null) ...[
-        _RecommendationHero(
-          recommended: recommended,
-          desired: widget.desiredDepartureAt,
-          freeFlowMinutes: route.freeFlowMinutes,
-          savedMinutesVsDesired:
-              widget.response.savings.timeSavedMinutesVsDesired,
+      // Toll skips right after savings — the two are directly
+      // related (skipping tolls changes the savings number above).
+      if (widget.response.partialTollSkips.isNotEmpty) ...[
+        Container(
+          key: _tollKey,
+          child: _PartialTollSkipsCard(
+            skips: widget.response.partialTollSkips,
+            origin: widget.request.origin,
+            destination: widget.request.destination,
+            routeGeometry: widget.response.route.geometry,
+            enabledIndices: _tollSkipEnabled,
+            hourlyReport: widget.response.hourlyTollReport,
+            onToggle: (i, v) => setState(() {
+              if (v) {
+                _tollSkipEnabled.add(i);
+              } else {
+                _tollSkipEnabled.remove(i);
+              }
+            }),
+            onToggleAll: (v) => setState(() {
+              if (v) {
+                _tollSkipEnabled = {
+                  for (var i = 0;
+                      i < widget.response.partialTollSkips.length; i++)
+                    i,
+                };
+              } else {
+                _tollSkipEnabled = {};
+              }
+            }),
+          ),
         ),
-        const SizedBox(height: Tokens.space24),
+        const SizedBox(height: Tokens.space16),
       ],
       // Tap-through: when any stops have been added, tapping this card
       // opens a bottom sheet with a map showing the route plus a pin
@@ -769,12 +823,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ),
-      const SizedBox(height: Tokens.space24),
-      SectionHeader(
-        title: l.resultDepartureWindowTitle,
-        eyebrow: l.onboardEyebrowKiller,
-        description: l.resultDepartureWindowDesc,
-      ),
+      // Departure section: recommendation hero + time window chart
+      // merged into one visual block. The user sees "best time to
+      // leave" + the chart rows they can tap to replan, all in one
+      // place without a separate section header.
+      if (recommended != null) ...[
+        const SizedBox(height: Tokens.space24),
+        _RecommendationHero(
+          recommended: recommended,
+          desired: widget.desiredDepartureAt,
+          freeFlowMinutes: route.freeFlowMinutes,
+          savedMinutesVsDesired:
+              widget.response.savings.timeSavedMinutesVsDesired,
+        ),
+      ],
+      const SizedBox(height: Tokens.space12),
       Container(
         key: _timeWindowKey,
         child: _TimeWindowExpandableCard(
@@ -785,49 +848,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           onWindowSelect: _replanWithDeparture,
         ),
       ),
-      // Partial toll skips with select-all / deselect-all.
-      // State is held here (in _ResultScreenState) so scroll
-      // recycling doesn't reset the user's picks.
-      if (widget.response.partialTollSkips.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space16),
-        Container(
-          key: _tollKey,
-          child: _PartialTollSkipsCard(
-            skips: widget.response.partialTollSkips,
-            origin: widget.request.origin,
-            destination: widget.request.destination,
-            routeGeometry: widget.response.route.geometry,
-            enabledIndices: _tollSkipEnabled,
-            hourlyReport: widget.response.hourlyTollReport,
-            onToggle: (i, v) => setState(() {
-              if (v) {
-                _tollSkipEnabled.add(i);
-              } else {
-                _tollSkipEnabled.remove(i);
-              }
-            }),
-            onToggleAll: (v) => setState(() {
-              if (v) {
-                _tollSkipEnabled = {
-                  for (var i = 0;
-                      i < widget.response.partialTollSkips.length; i++)
-                    i,
-                };
-              } else {
-                _tollSkipEnabled = {};
-              }
-            }),
-          ),
-        ),
-      ],
-      // Hourly toll report now integrated inside the toll skip card.
       if (widget.response.routeVariants.length >= 2) ...[
         const SizedBox(height: Tokens.space24),
         _RouteVariantsSection(variants: widget.response.routeVariants),
       ],
       if (widget.response.optimizations != null) ...[
         const SizedBox(height: Tokens.space24),
-        _OptimizationsSection(opts: widget.response.optimizations!),
+        _OptimizationsSection(
+          opts: widget.response.optimizations!,
+          topHotels: _topDestinationHotels(2),
+          origin: widget.request.origin,
+          destination: widget.request.destination,
+          routeGeometry: widget.response.route.geometry,
+        ),
       ],
       // Multi-day breakdown — only emitted by the backend for trips
       // that exceed the driver's daily cap or cross their bedtime.
@@ -1148,26 +1181,37 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 // Sub-widgets
 // ---------------------------------------------------------------------------
 
-class _MapCard extends StatelessWidget {
-  const _MapCard({
+enum _MapMode { collapsed, normal, fullscreen }
+
+class _InteractiveMapCard extends StatelessWidget {
+  const _InteractiveMapCard({
     required this.origin,
     required this.destination,
     required this.route,
     this.alternativeGeometry = const [],
+    this.hotels = const [],
+    this.restaurants = const [],
+    this.tollSkips = const [],
+    required this.mode,
+    required this.onModeChange,
   });
 
   final LatLon origin;
   final LatLon destination;
   final RouteInfo route;
   final List<LatLon> alternativeGeometry;
+  final List<Hotel> hotels;
+  final List<Restaurant> restaurants;
+  final List<PartialTollSkip> tollSkips;
+  final _MapMode mode;
+  final ValueChanged<_MapMode> onModeChange;
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMap(BuildContext context, {double? height}) {
     final scheme = Theme.of(context).colorScheme;
     return Stack(
       children: [
         Container(
-          height: 260,
+          height: height,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(Tokens.radiusLg),
             border: Border.all(color: scheme.outlineVariant),
@@ -1178,6 +1222,9 @@ class _MapCard extends StatelessWidget {
             destination: destination,
             geometry: route.geometry,
             alternativeGeometry: alternativeGeometry,
+            hotelMarkers: hotels,
+            restaurantMarkers: restaurants,
+            tollMarkers: tollSkips,
           ),
         ),
         Positioned(
@@ -1195,6 +1242,26 @@ class _MapCard extends StatelessWidget {
             ],
           ),
         ),
+        Positioned(
+          right: Tokens.space8,
+          top: Tokens.space8,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (mode == _MapMode.normal) ...[
+                _MapControlButton(
+                  icon: Icons.fullscreen,
+                  onTap: () => _openFullscreen(context),
+                ),
+                const SizedBox(height: 4),
+                _MapControlButton(
+                  icon: Icons.keyboard_arrow_up,
+                  onTap: () => onModeChange(_MapMode.collapsed),
+                ),
+              ],
+            ],
+          ),
+        ),
         if (route.geometry.isEmpty)
           Positioned(
             right: Tokens.space12,
@@ -1207,6 +1274,88 @@ class _MapCard extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  void _openFullscreen(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => Scaffold(
+          appBar: AppBar(
+            title: Text(
+              '${route.distanceKm.toStringAsFixed(0)} km',
+            ),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ),
+          body: _buildMap(context),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    if (mode == _MapMode.collapsed) {
+      return InkWell(
+        onTap: () => onModeChange(_MapMode.normal),
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space16, vertical: Tokens.space12,
+          ),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Tokens.radiusLg),
+            border: Border.all(color: scheme.outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.map_outlined, size: 18,
+                  color: scheme.onSurfaceVariant),
+              const SizedBox(width: Tokens.space8),
+              Text(l.mapShowLabel,
+                  style: Theme.of(context).textTheme.labelMedium),
+              const Spacer(),
+              Icon(Icons.keyboard_arrow_down, size: 18,
+                  color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      );
+    }
+    return _buildMap(context, height: 260);
+  }
+}
+
+class _MapControlButton extends StatelessWidget {
+  const _MapControlButton({required this.icon, required this.onTap});
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: scheme.surface.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x22000000), blurRadius: 4, offset: Offset(0, 1),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 18, color: scheme.onSurface),
+      ),
     );
   }
 }
@@ -1755,8 +1904,18 @@ class _HeroChip extends StatelessWidget {
 }
 
 class _OptimizationsSection extends StatelessWidget {
-  const _OptimizationsSection({required this.opts});
+  const _OptimizationsSection({
+    required this.opts,
+    this.topHotels = const [],
+    this.origin,
+    this.destination,
+    this.routeGeometry = const [],
+  });
   final Optimizations opts;
+  final List<(Hotel, double)> topHotels;
+  final LatLon? origin;
+  final LatLon? destination;
+  final List<LatLon> routeGeometry;
 
   @override
   Widget build(BuildContext context) {
@@ -1823,11 +1982,81 @@ class _OptimizationsSection extends StatelessWidget {
                     ),
                   ),
               ],
+              if (topHotels.isNotEmpty) ...[
+                const SizedBox(height: Tokens.space4),
+                Divider(color: scheme.outlineVariant),
+                const SizedBox(height: Tokens.space12),
+                Builder(builder: (context) {
+                  final l = AppLocalizations.of(context);
+                  return Text(
+                    l.daySleepHotelsLabelDestination.toUpperCase(),
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      letterSpacing: 1.1,
+                    ),
+                  );
+                }),
+                const SizedBox(height: Tokens.space8),
+                for (final (h, km) in topHotels)
+                  InkWell(
+                    onTap: () => showPoiDetailSheet(
+                      context,
+                      kind: PoiKind.hotel,
+                      name: h.name,
+                      subtitle: _hotelSubtitle(h),
+                      poi: h.coordinate,
+                      origin: origin ?? h.coordinate,
+                      destination: destination ?? h.coordinate,
+                      routeGeometry: routeGeometry,
+                      attributes: h.attributes,
+                      icon: Icons.hotel_outlined,
+                      accent: scheme.tertiary,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.hotel_outlined, size: 14,
+                              color: scheme.tertiary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${h.name}  ·  '
+                              '${h.priceEurPerNight.toStringAsFixed(0)} €  ·  '
+                              '${km.toStringAsFixed(1)} km',
+                              style: t.bodySmall,
+                            ),
+                          ),
+                          Icon(Icons.chevron_right, size: 16,
+                              color: scheme.onSurfaceVariant),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),
       ],
     );
+  }
+
+  static String _hotelSubtitle(Hotel h) {
+    final parts = <String>[
+      '${h.priceEurPerNight.toStringAsFixed(0)} €/night',
+    ];
+    final stars = h.attributes['stars'];
+    if (stars != null && stars.isNotEmpty) parts.add('$stars★');
+    if (h.attributes['internet_access'] == 'yes' ||
+        h.attributes['internet_access'] == 'wlan') {
+      parts.add('WiFi');
+    }
+    if (h.attributes['parking'] != null &&
+        h.attributes['parking'] != 'no') {
+      parts.add('Parking');
+    }
+    if (h.attributes['wheelchair'] == 'yes') parts.add('♿');
+    return parts.join(' · ');
   }
 }
 

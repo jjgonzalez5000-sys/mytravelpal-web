@@ -1100,6 +1100,44 @@ async def plan_trip(
             ),
         )
 
+    # Destination densification for trips WITHOUT a profile — the
+    # profile-gated block above already does this, but users who
+    # skip profile creation and just toggle "hotels" on still need
+    # hotels near their destination. Without this the corridor pass
+    # clusters results near the origin and the destination section
+    # renders empty.
+    if (
+        profile is None
+        and effective_hotel_detour
+        and effective_hotel_detour > 0
+    ):
+        near_hotels_fn = getattr(providers.hotels, "hotels_near", None)
+        if near_hotels_fn is not None:
+            dest_coord = Coordinate(
+                lat=payload.destination.lat,
+                lon=payload.destination.lon,
+            )
+            dest_hits = await near_hotels_fn(dest_coord, 40.0)
+            _seen = {(h.name, round(h.lat, 4), round(h.lon, 4))
+                     for h in hotels_out}
+            for h in dest_hits:
+                key = (h.name, round(h.coordinate.lat, 4),
+                       round(h.coordinate.lon, 4))
+                if key in _seen:
+                    continue
+                _seen.add(key)
+                hotels_out.append(HotelOut(
+                    name=h.name,
+                    country=h.country,
+                    price_eur_per_night=h.price_eur_per_night,
+                    price_band=h.price_band,
+                    detour_minutes=h.detour_minutes,
+                    distance_from_route_km=h.distance_from_route_km,
+                    lat=h.coordinate.lat,
+                    lon=h.coordinate.lon,
+                    attributes=dict(h.attributes),
+                ))
+
     adverse_events_out: list[AdverseEventOut] = []
     if payload.include_adverse_events:
         now = datetime.now(timezone.utc)

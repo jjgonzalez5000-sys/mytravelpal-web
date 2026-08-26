@@ -1600,6 +1600,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tollSkipSelectAll => 'Seleccionar todos';
 
   @override
+  String get mapShowLabel => 'Mostrar mapa';
+
+  @override
+  String get mapHideLabel => 'Ocultar mapa';
+
+  @override
+  String get tutorialSkip => 'Saltar';
+
+  @override
   String get tutorialOriginTitle => '¿Desde dónde sales?';
 
   @override

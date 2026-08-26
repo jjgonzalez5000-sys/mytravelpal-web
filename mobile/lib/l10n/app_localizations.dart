@@ -2950,6 +2950,24 @@ abstract class AppLocalizations {
   /// **'Select all'**
   String get tollSkipSelectAll;
 
+  /// No description provided for @mapShowLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Show map'**
+  String get mapShowLabel;
+
+  /// No description provided for @mapHideLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide map'**
+  String get mapHideLabel;
+
+  /// No description provided for @tutorialSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get tutorialSkip;
+
   /// No description provided for @tutorialOriginTitle.
   ///
   /// In en, this message translates to:

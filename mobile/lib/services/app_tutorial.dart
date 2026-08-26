@@ -86,7 +86,11 @@ void showPlanTutorial(
     targets: targets,
     colorShadow: Colors.black,
     opacityShadow: 0.7,
-    hideSkip: true,
+    hideSkip: false,
+    textSkip: l.tutorialSkip,
+    textStyleSkip: const TextStyle(
+      color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500,
+    ),
     onFinish: () => _markSeen(_kPlanTutorialSeen),
     onSkip: () {
       _markSeen(_kPlanTutorialSeen);
@@ -125,12 +129,12 @@ void showResultTutorial(
     TargetFocus(
       identify: 'tolls',
       keyTarget: tollKey,
-      alignSkip: Alignment.bottomRight,
+      alignSkip: Alignment.topRight,
       shape: ShapeLightFocus.RRect,
       radius: 12,
       contents: [
         TargetContent(
-          align: ContentAlign.top,
+          align: ContentAlign.bottom,
           builder: (context, controller) => _CoachContent(
             title: l.tutorialTollTitle,
             body: l.tutorialTollBody,
@@ -146,7 +150,11 @@ void showResultTutorial(
     targets: targets,
     colorShadow: Colors.black,
     opacityShadow: 0.7,
-    hideSkip: true,
+    hideSkip: false,
+    textSkip: l.tutorialSkip,
+    textStyleSkip: const TextStyle(
+      color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500,
+    ),
     onFinish: () => _markSeen(_kResultTutorialSeen),
     onSkip: () {
       _markSeen(_kResultTutorialSeen);

@@ -244,7 +244,11 @@ class _AttributeGrid extends StatelessWidget {
     'outdoor_seating': Icons.deck,
     'takeaway': Icons.takeout_dining,
     'delivery': Icons.delivery_dining,
+    'parking': Icons.local_parking,
+    'pool': Icons.pool,
+    'swimming_pool': Icons.pool,
     'dog': Icons.pets,
+    'pets': Icons.pets,
     'capacity': Icons.people_outline,
     'reservation': Icons.event_seat,
     'payment:contactless': Icons.contactless,
@@ -427,22 +431,23 @@ class _ExternalCtaRow extends StatelessWidget {
     }
   }
 
+  // Booking.com Affiliate tracking ID. Register at
+  // affiliate.booking.com to get your own `aid`.
+  static const _bookingAid = '2418471';
+
+  // TheFork / TripAdvisor affiliate ref tag.
+  static const _theForkRef = 'mytravelpal';
+
   Uri _theFork() {
-    // TheFork's public site has no stable deep-link that resolves
-    // "restaurant name + city" without their API key. The old
-    // `/search?cityId=&searchText=<name>` collapsed to the
-    // generic Paris results page (their default city fallback).
-    // Route through a Google search scoped to thefork.com — the
-    // top hit is almost always the exact restaurant page, and
-    // for the handful that aren't listed the user at least sees
-    // the correct search results instead of Paris restaurants.
     return Uri.https('www.google.com', '/search', {
-      'q': '$name site:thefork.com',
+      'q': '$name site:thefork.com ref=$_theForkRef',
     });
   }
 
   Uri _booking() => Uri.https('www.booking.com', '/searchresults.html', {
         'ss': name,
+        'aid': _bookingAid,
+        'label': 'mytravelpal-hotel-deeplink',
       });
 
   Uri _officialWebsite() {

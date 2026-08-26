@@ -1603,6 +1603,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tollSkipSelectAll => 'Tout sélectionner';
 
   @override
+  String get mapShowLabel => 'Afficher la carte';
+
+  @override
+  String get mapHideLabel => 'Masquer la carte';
+
+  @override
+  String get tutorialSkip => 'Passer';
+
+  @override
   String get tutorialOriginTitle => 'D\'où partez-vous ?';
 
   @override
