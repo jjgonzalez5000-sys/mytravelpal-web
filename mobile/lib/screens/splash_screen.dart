@@ -5,10 +5,13 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/tokens.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/trip_session_persistence.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
 import 'plan_screen.dart';
+import 'result_screen.dart';
 
 /// Splash — animated brand mark, then routes to onboarding (first launch)
 /// or straight to the planner.
@@ -46,6 +49,61 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         transitionsBuilder: (_, animation, __, child) =>
             FadeTransition(opacity: animation, child: child),
         transitionDuration: Tokens.motionBase,
+      ),
+    );
+    // After the initial route lands, check for a persisted trip
+    // session and offer to resume. Doing this AFTER the transition
+    // so the user always sees Plan first (their mental home) — the
+    // resume dialog then floats on top instead of hijacking startup.
+    if (!mounted) return;
+    await _maybeOfferResume();
+  }
+
+  Future<void> _maybeOfferResume() async {
+    final session = await TripSessionPersistence.instance.read();
+    if (session == null || !mounted) return;
+    final l = AppLocalizations.of(context);
+    final resume = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l.resumeTripTitle),
+        content: Text(
+          l.resumeTripBody(
+            session.origin.displayName.split(',').first,
+            session.destination.displayName.split(',').first,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(l.resumeTripDismiss),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(l.resumeTripResume),
+          ),
+        ],
+      ),
+    );
+    if (resume != true) {
+      // "No" → discard the snapshot so we don't nag again on the
+      // next launch.
+      await TripSessionPersistence.instance.clear();
+      return;
+    }
+    if (!mounted) return;
+    // Push the ResultScreen with the restored request/response, then
+    // let the driver tap "Iniciar viaje" again to reopen the
+    // dashboard — the FAB there will re-persist a fresh session.
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ResultScreen(
+          request: session.request,
+          origin: session.origin,
+          destination: session.destination,
+          response: session.response,
+          desiredDepartureAt: session.desiredDepartureAt,
+        ),
       ),
     );
   }

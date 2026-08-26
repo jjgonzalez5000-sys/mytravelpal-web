@@ -1,9 +1,25 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
+
+const double _earthRadiusKm = 6371.0088;
+
+double _haversineKm(LatLon a, LatLon b) {
+  final lat1 = a.lat * math.pi / 180.0;
+  final lat2 = b.lat * math.pi / 180.0;
+  final dLat = (b.lat - a.lat) * math.pi / 180.0;
+  final dLon = (b.lon - a.lon) * math.pi / 180.0;
+  final s = math.sin(dLat / 2) * math.sin(dLat / 2) +
+      math.cos(lat1) * math.cos(lat2) *
+          math.sin(dLon / 2) * math.sin(dLon / 2);
+  return _earthRadiusKm *
+      2 * math.atan2(math.sqrt(s), math.sqrt(1 - s));
+}
 
 /// Amber-tinted advisory shown above the fuel section when the backend
 /// found a materially cheaper country to refuel in before crossing.
@@ -82,17 +98,28 @@ class DayPlanSection extends StatelessWidget {
 
   static const int _maxSleepHotels = 3;
 
-  List<Hotel> _hotelsNear(LatLon coord) {
-    final scored = hotels.map((h) {
-      final dLat = h.coordinate.lat - coord.lat;
-      final dLon = h.coordinate.lon - coord.lon;
-      // L2 in degrees is fine for ranking; distance is only used to
-      // sort, not to display.
-      return (h, dLat * dLat + dLon * dLon);
-    }).toList()
-      ..sort((a, b) => a.$2.compareTo(b.$2));
-    return scored.take(_maxSleepHotels).map((e) => e.$1).toList();
+  /// Rank hotels by real great-circle distance to `coord` and drop
+  /// anything past `_maxHotelKmFromSleep`. Testers reported day-1
+  /// showing Bucarest hotels (destination) for a Zurich→Bucarest
+  /// sleep stop near Munich — the old L2-in-degrees ranking was
+  /// fine, but with a corridor-wide hotel pool skewed to big
+  /// cities the top-3 could still be 1000 km away. Cap + haversine
+  /// makes "cerca del punto de pernocta" mean what it says.
+  ///
+  /// Returned pairs carry the km distance so the UI can render it
+  /// next to each row.
+  List<(Hotel, double)> _hotelsNear(LatLon coord) {
+    final scored = <(Hotel, double)>[];
+    for (final h in hotels) {
+      final km = _haversineKm(coord, h.coordinate);
+      if (km > _maxHotelKmFromSleep) continue;
+      scored.add((h, km));
+    }
+    scored.sort((a, b) => a.$2.compareTo(b.$2));
+    return scored.take(_maxSleepHotels).toList();
   }
+
+  static const double _maxHotelKmFromSleep = 60.0;
 
   String _slotLabel(AppLocalizations l, String slot) => switch (slot) {
         'breakfast' => l.profileBreakfast,
@@ -146,8 +173,14 @@ class DayPlanSection extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
+                              // Km from origin gives the user a
+                              // spatial sense of where the meal
+                              // lands along the route — testers
+                              // asked for it after seeing the hero
+                              // hide it.
                               '${_slotLabel(l, m.slot)}  ·  '
-                              '${timeFormat.format(m.at.toLocal())}'
+                              '${timeFormat.format(m.at.toLocal())}  ·  '
+                              'km ${m.distanceFromOriginKm.toStringAsFixed(0)}'
                               '${m.restaurantName != null ? "  ·  ${m.restaurantName}" : ""}',
                               style: t.bodySmall,
                             ),
@@ -175,7 +208,7 @@ class DayPlanSection extends StatelessWidget {
                   if (d.sleepCoord != null) ...[
                     const SizedBox(height: Tokens.space8),
                     _SleepHotelsBlock(
-                      hotels: hotels.isEmpty
+                      entries: hotels.isEmpty
                           ? const []
                           : _hotelsNear(d.sleepCoord!),
                       hotelsPresent: hotels.isNotEmpty,
@@ -194,10 +227,10 @@ class DayPlanSection extends StatelessWidget {
 
 class _SleepHotelsBlock extends StatelessWidget {
   const _SleepHotelsBlock({
-    required this.hotels,
+    required this.entries,
     required this.hotelsPresent,
   });
-  final List<Hotel> hotels;
+  final List<(Hotel, double)> entries;  // (hotel, km_from_sleep_point)
   final bool hotelsPresent;  // whether the plan itself has any hotels
 
   @override
@@ -217,7 +250,7 @@ class _SleepHotelsBlock extends StatelessWidget {
         ),
       );
     }
-    if (hotels.isEmpty) {
+    if (entries.isEmpty) {
       return const SizedBox.shrink();
     }
     return Column(
@@ -230,7 +263,7 @@ class _SleepHotelsBlock extends StatelessWidget {
             letterSpacing: 1.1,
           ),
         ),
-        for (final h in hotels)
+        for (final (h, km) in entries)
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Row(
@@ -241,9 +274,14 @@ class _SleepHotelsBlock extends StatelessWidget {
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
+                    // Real distance from the sleep point so the
+                    // user sees "the closest hotel is 6 km away"
+                    // rather than a generic "off route" number
+                    // that lumps hotels 1000 km down the road
+                    // together with ones on the corner.
                     '${h.name}  ·  '
                     '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
-                    '${h.distanceFromRouteKm.toStringAsFixed(1)} km off route',
+                    'a ${km.toStringAsFixed(0)} km',
                     style: t.bodySmall,
                   ),
                 ),

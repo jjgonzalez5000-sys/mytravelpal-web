@@ -27,6 +27,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           body: l.onboardBodyKiller,
         ),
         _OnboardingSlide(
+          icon: Icons.local_gas_station,
+          eyebrow: l.onboardEyebrowFuel,
+          title: l.onboardTitleFuel,
+          body: l.onboardBodyFuel,
+        ),
+        _OnboardingSlide(
           icon: Icons.route_outlined,
           eyebrow: l.onboardEyebrowHonest,
           title: l.onboardTitleHonest,
@@ -37,6 +43,18 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           eyebrow: l.onboardEyebrowAlerts,
           title: l.onboardTitleAlerts,
           body: l.onboardBodyAlerts,
+        ),
+        _OnboardingSlide(
+          icon: Icons.directions_car,
+          eyebrow: l.onboardEyebrowDriving,
+          title: l.onboardTitleDriving,
+          body: l.onboardBodyDriving,
+        ),
+        _OnboardingSlide(
+          icon: Icons.person_outline,
+          eyebrow: l.onboardEyebrowProfile,
+          title: l.onboardTitleProfile,
+          body: l.onboardBodyProfile,
         ),
       ];
 

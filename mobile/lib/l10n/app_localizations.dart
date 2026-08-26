@@ -911,7 +911,7 @@ abstract class AppLocalizations {
   /// No description provided for @resultRestStops.
   ///
   /// In en, this message translates to:
-  /// **'Rest stops'**
+  /// **'Recommended stops'**
   String get resultRestStops;
 
   /// No description provided for @resultHotels.
@@ -2442,7 +2442,7 @@ abstract class AppLocalizations {
   /// No description provided for @daySleepMarker.
   ///
   /// In en, this message translates to:
-  /// **'Overnight around {time}'**
+  /// **'Finish driving around {time}'**
   String daySleepMarker(String time);
 
   /// No description provided for @nextStopHeroLabel.
@@ -2619,6 +2619,306 @@ abstract class AppLocalizations {
   /// **'This usually takes 5-15 seconds. Feel free to keep the phone in your pocket.'**
   String get planLoadingHelper;
 
+  /// No description provided for @planErrorAuth.
+  ///
+  /// In en, this message translates to:
+  /// **'Session expired. Sign in again and try once more.'**
+  String get planErrorAuth;
+
+  /// No description provided for @planErrorPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'This route needs Premium. Enable it to include hourly toll analysis.'**
+  String get planErrorPremium;
+
+  /// No description provided for @planErrorRateLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Too many requests in a short time. Wait a few seconds and retry.'**
+  String get planErrorRateLimit;
+
+  /// No description provided for @planErrorGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong while planning (code {code}). Retry or change your inputs.'**
+  String planErrorGeneric(int code);
+
+  /// No description provided for @planErrorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t reach the server. Check your connection and retry.'**
+  String get planErrorNetwork;
+
+  /// No description provided for @planErrorRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get planErrorRetry;
+
+  /// No description provided for @emptyAlertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Route is clear'**
+  String get emptyAlertsTitle;
+
+  /// No description provided for @emptyAlertsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'No fires, roadworks or adverse events reported on your corridor. Safe travels.'**
+  String get emptyAlertsBody;
+
+  /// No description provided for @emptyHotelsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No hotels close to the route'**
+  String get emptyHotelsTitle;
+
+  /// No description provided for @emptyHotelsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Try widening the max detour or changing the price band to see more options.'**
+  String get emptyHotelsBody;
+
+  /// No description provided for @emptyRestaurantsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No restaurants match'**
+  String get emptyRestaurantsTitle;
+
+  /// No description provided for @emptyRestaurantsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Widen the max detour or clear cuisine filters to see more options.'**
+  String get emptyRestaurantsBody;
+
+  /// No description provided for @onboardEyebrowFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'REAL PRICES'**
+  String get onboardEyebrowFuel;
+
+  /// No description provided for @onboardTitleFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Save on every refuel'**
+  String get onboardTitleFuel;
+
+  /// No description provided for @onboardBodyFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Official per-station prices in Spain, France and Italy. Premium brands mixed in with the low-cost independents.'**
+  String get onboardBodyFuel;
+
+  /// No description provided for @onboardEyebrowDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'ON THE ROAD'**
+  String get onboardEyebrowDriving;
+
+  /// No description provided for @onboardTitleDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'Your smart copilot'**
+  String get onboardTitleDriving;
+
+  /// No description provided for @onboardBodyDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'Live dashboard with next stop, dynamic ETA and new alerts. Android Auto ready.'**
+  String get onboardBodyDriving;
+
+  /// No description provided for @onboardEyebrowProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'PERSONALISED'**
+  String get onboardEyebrowProfile;
+
+  /// No description provided for @onboardTitleProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill your profile'**
+  String get onboardTitleProfile;
+
+  /// No description provided for @onboardBodyProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.'**
+  String get onboardBodyProfile;
+
+  /// No description provided for @multiDaySleepLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll sleep at'**
+  String get multiDaySleepLabel;
+
+  /// No description provided for @multiDaySleepNoHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'Overnight stop — no hotel available'**
+  String get multiDaySleepNoHotel;
+
+  /// No description provided for @resumeTripTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume your trip?'**
+  String get resumeTripTitle;
+
+  /// No description provided for @resumeTripBody.
+  ///
+  /// In en, this message translates to:
+  /// **'We detected a {origin} → {destination} trip in progress. Continue where you left off?'**
+  String resumeTripBody(String origin, String destination);
+
+  /// No description provided for @resumeTripResume.
+  ///
+  /// In en, this message translates to:
+  /// **'Resume'**
+  String get resumeTripResume;
+
+  /// No description provided for @resumeTripDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get resumeTripDismiss;
+
+  /// No description provided for @hotelPrefStarsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stars'**
+  String get hotelPrefStarsLabel;
+
+  /// No description provided for @hotelPrefStarsAny.
+  ///
+  /// In en, this message translates to:
+  /// **'Any'**
+  String get hotelPrefStarsAny;
+
+  /// No description provided for @hotelPrefParkingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'With parking'**
+  String get hotelPrefParkingTitle;
+
+  /// No description provided for @hotelPrefParkingSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Only hotels tagged with parking. Ones missing the tag pass through.'**
+  String get hotelPrefParkingSub;
+
+  /// No description provided for @styleDailyCapRecommendedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'For this pace we suggest {hours} h/day.'**
+  String styleDailyCapRecommendedHint(int hours);
+
+  /// No description provided for @aaCoachTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How to open it on Android Auto'**
+  String get aaCoachTitle;
+
+  /// No description provided for @aaCoachStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect the phone to the car by USB (or wireless if your head unit supports it).'**
+  String get aaCoachStep1;
+
+  /// No description provided for @aaCoachStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'In the car\'s launcher, switch to the \'Point of Interest\' or \'Apps\' category. It does NOT appear next to Google Maps.'**
+  String get aaCoachStep2;
+
+  /// No description provided for @aaCoachStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap MyTravelPal. The companion shows next stop, cheaper fuel and ETA.'**
+  String get aaCoachStep3;
+
+  /// No description provided for @aaCoachHint.
+  ///
+  /// In en, this message translates to:
+  /// **'First launch takes a few seconds. Park with clear sky to get a GPS fix before starting.'**
+  String get aaCoachHint;
+
+  /// No description provided for @aaCoachDontShowAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t show again'**
+  String get aaCoachDontShowAgain;
+
+  /// No description provided for @aaCoachDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get aaCoachDone;
+
+  /// No description provided for @batteryWhitelistTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Android from closing us'**
+  String get batteryWhitelistTitle;
+
+  /// No description provided for @batteryWhitelistBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Xiaomi/MIUI, Samsung and other vendors kill backgrounded apps after a few minutes. If you\'re navigating with Google Maps and MyTravelPal dies, you lose the live alerts.'**
+  String get batteryWhitelistBody;
+
+  /// No description provided for @batteryWhitelistSteps.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings → Apps → MyTravelPal → Battery → No restrictions\n(or \'Don\'t optimize\' depending on your model)'**
+  String get batteryWhitelistSteps;
+
+  /// No description provided for @batteryWhitelistDontShowAgain.
+  ///
+  /// In en, this message translates to:
+  /// **'Don\'t show again'**
+  String get batteryWhitelistDontShowAgain;
+
+  /// No description provided for @batteryWhitelistLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get batteryWhitelistLater;
+
+  /// No description provided for @batteryWhitelistOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open help'**
+  String get batteryWhitelistOpen;
+
+  /// No description provided for @planRoundTripTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Round trip'**
+  String get planRoundTripTitle;
+
+  /// No description provided for @planRoundTripSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'We plan the return leg at the same time with the same preferences.'**
+  String get planRoundTripSubtitle;
+
+  /// No description provided for @roundTripLegOutbound.
+  ///
+  /// In en, this message translates to:
+  /// **'OUTBOUND'**
+  String get roundTripLegOutbound;
+
+  /// No description provided for @roundTripLegReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'RETURN'**
+  String get roundTripLegReturn;
+
+  /// No description provided for @roundTripSwapTo.
+  ///
+  /// In en, this message translates to:
+  /// **'View {leg}'**
+  String roundTripSwapTo(String leg);
+
   /// No description provided for @resultStartTrip.
   ///
   /// In en, this message translates to:
@@ -2696,6 +2996,19 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'MyTravelPal is following your route in the background.'**
   String get tripDashboardActiveNotifBody;
+
+  /// No description provided for @tripDashboardForegroundBodyBare.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} km covered'**
+  String tripDashboardForegroundBodyBare(String done, String total);
+
+  /// No description provided for @tripDashboardForegroundBodyWithStop.
+  ///
+  /// In en, this message translates to:
+  /// **'{done} / {total} km · next stop: {name}'**
+  String tripDashboardForegroundBodyWithStop(
+      String done, String total, String name);
 
   /// No description provided for @tripDashboardSleepStopLabel.
   ///

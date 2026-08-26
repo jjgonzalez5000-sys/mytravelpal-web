@@ -464,8 +464,8 @@ class ItalyMimitFuelDataset:
             self._stations = tuple(stations)
             self._loaded_at = time.monotonic()
             _log.info(
-                "Italy fuel dataset loaded: %d stations (from %d registered)",
-                len(self._stations), len(registry),
+                "Italy fuel dataset loaded: %d stations",
+                len(self._stations),
             )
             return self._stations
 

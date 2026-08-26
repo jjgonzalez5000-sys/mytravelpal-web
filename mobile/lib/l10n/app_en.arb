@@ -149,7 +149,7 @@
     "resultEyebrowNearRoute": "Near your route",
     "resultEyebrowAlongRoute": "Along the route",
     "resultAlerts": "Alerts",
-    "resultRestStops": "Rest stops",
+    "resultRestStops": "Recommended stops",
     "resultHotels": "Hotels",
     "resultRestaurants": "Restaurants",
     "resultFuel": "Fuel",
@@ -468,7 +468,7 @@
     "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
     "dayHeaderRange": "Day {index} · km {fromKm} → {toKm}",
     "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
-    "daySleepMarker": "Overnight around {time}",
+    "daySleepMarker": "Finish driving around {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
 
     "nextStopHeroLabel": "Next suggested stop",
@@ -506,6 +506,71 @@
     "planLoadingStepTolls": "Comparing toll routes with toll-free alternatives…",
     "planLoadingStepAlmost": "Almost there — assembling everything for you…",
     "planLoadingHelper": "This usually takes 5-15 seconds. Feel free to keep the phone in your pocket.",
+    "planErrorAuth": "Session expired. Sign in again and try once more.",
+    "planErrorPremium": "This route needs Premium. Enable it to include hourly toll analysis.",
+    "planErrorRateLimit": "Too many requests in a short time. Wait a few seconds and retry.",
+    "planErrorGeneric": "Something went wrong while planning (code {code}). Retry or change your inputs.",
+    "@planErrorGeneric": {
+      "placeholders": {"code": {"type": "int"}}
+    },
+    "planErrorNetwork": "We couldn't reach the server. Check your connection and retry.",
+    "planErrorRetry": "Retry",
+    "emptyAlertsTitle": "Route is clear",
+    "emptyAlertsBody": "No fires, roadworks or adverse events reported on your corridor. Safe travels.",
+    "emptyHotelsTitle": "No hotels close to the route",
+    "emptyHotelsBody": "Try widening the max detour or changing the price band to see more options.",
+    "emptyRestaurantsTitle": "No restaurants match",
+    "emptyRestaurantsBody": "Widen the max detour or clear cuisine filters to see more options.",
+    "onboardEyebrowFuel": "REAL PRICES",
+    "onboardTitleFuel": "Save on every refuel",
+    "onboardBodyFuel": "Official per-station prices in Spain, France and Italy. Premium brands mixed in with the low-cost independents.",
+    "onboardEyebrowDriving": "ON THE ROAD",
+    "onboardTitleDriving": "Your smart copilot",
+    "onboardBodyDriving": "Live dashboard with next stop, dynamic ETA and new alerts. Android Auto ready.",
+    "onboardEyebrowProfile": "PERSONALISED",
+    "onboardTitleProfile": "Fill your profile",
+    "onboardBodyProfile": "Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.",
+    "multiDaySleepLabel": "You'll sleep at",
+    "multiDaySleepNoHotel": "Overnight stop — no hotel available",
+    "resumeTripTitle": "Resume your trip?",
+    "resumeTripBody": "We detected a {origin} → {destination} trip in progress. Continue where you left off?",
+    "@resumeTripBody": {
+      "placeholders": {
+        "origin": {"type": "String"},
+        "destination": {"type": "String"}
+      }
+    },
+    "resumeTripResume": "Resume",
+    "resumeTripDismiss": "Dismiss",
+    "hotelPrefStarsLabel": "Stars",
+    "hotelPrefStarsAny": "Any",
+    "hotelPrefParkingTitle": "With parking",
+    "hotelPrefParkingSub": "Only hotels tagged with parking. Ones missing the tag pass through.",
+    "styleDailyCapRecommendedHint": "For this pace we suggest {hours} h/day.",
+    "@styleDailyCapRecommendedHint": {
+      "placeholders": {"hours": {"type": "int"}}
+    },
+    "aaCoachTitle": "How to open it on Android Auto",
+    "aaCoachStep1": "Connect the phone to the car by USB (or wireless if your head unit supports it).",
+    "aaCoachStep2": "In the car's launcher, switch to the 'Point of Interest' or 'Apps' category. It does NOT appear next to Google Maps.",
+    "aaCoachStep3": "Tap MyTravelPal. The companion shows next stop, cheaper fuel and ETA.",
+    "aaCoachHint": "First launch takes a few seconds. Park with clear sky to get a GPS fix before starting.",
+    "aaCoachDontShowAgain": "Don't show again",
+    "aaCoachDone": "Got it",
+    "batteryWhitelistTitle": "Stop Android from closing us",
+    "batteryWhitelistBody": "Xiaomi/MIUI, Samsung and other vendors kill backgrounded apps after a few minutes. If you're navigating with Google Maps and MyTravelPal dies, you lose the live alerts.",
+    "batteryWhitelistSteps": "Settings → Apps → MyTravelPal → Battery → No restrictions\n(or 'Don't optimize' depending on your model)",
+    "batteryWhitelistDontShowAgain": "Don't show again",
+    "batteryWhitelistLater": "Not now",
+    "batteryWhitelistOpen": "Open help",
+    "planRoundTripTitle": "Round trip",
+    "planRoundTripSubtitle": "We plan the return leg at the same time with the same preferences.",
+    "roundTripLegOutbound": "OUTBOUND",
+    "roundTripLegReturn": "RETURN",
+    "roundTripSwapTo": "View {leg}",
+    "@roundTripSwapTo": {
+      "placeholders": {"leg": {"type": "String"}}
+    },
 
     "resultStartTrip": "Start trip",
     "navPickerTitle": "Continue in…",
@@ -536,6 +601,21 @@
     },
     "tripDashboardActiveNotifTitle": "Trip in progress",
     "tripDashboardActiveNotifBody": "MyTravelPal is following your route in the background.",
+    "tripDashboardForegroundBodyBare": "{done} / {total} km covered",
+    "@tripDashboardForegroundBodyBare": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"}
+      }
+    },
+    "tripDashboardForegroundBodyWithStop": "{done} / {total} km · next stop: {name}",
+    "@tripDashboardForegroundBodyWithStop": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"},
+        "name": {"type": "String"}
+      }
+    },
     "tripDashboardSleepStopLabel": "hotel",
     "alertApproachingStopTitle": "Stop coming up",
     "alertApproachingStopBody": "{slot} at {name} in about {mins} min. Get ready for the exit.",

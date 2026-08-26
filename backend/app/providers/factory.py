@@ -24,6 +24,11 @@ from app.providers.nominatim_poi import (
     NominatimHotelsProvider,
     NominatimRestaurantsProvider,
 )
+from app.providers.geoapify_poi import (
+    GeoapifyFuelProvider,
+    GeoapifyHotelsProvider,
+    GeoapifyRestaurantsProvider,
+)
 from app.providers.overpass import (
     OverpassFuelProvider,
     OverpassHotelsProvider,
@@ -83,18 +88,23 @@ def _tollguru_provider() -> TollProvider | None:
 
 
 def _hotels_provider():
-    # Default: Nominatim POI search. Overpass proved unreachable from
-    # Fly (ConnectError / ReadTimeout on every public mirror) and
-    # Nominatim reuses the same OSM upstream via an endpoint that IS
-    # reachable from the same Fly machine. Opt-outs:
+    # Default: Geoapify when `MYTRAVELPAL_GEOAPIFY_KEY` is set,
+    # else Nominatim. Nominatim's public demo started banning our
+    # Fly IP under normal load; Geoapify's free tier (3 000 req/day,
+    # 5 req/s) covers a beta cohort without ops fires.
+    # Opt-outs:
     # - `MYTRAVELPAL_HOTELS=mock` for CI / offline tests.
-    # - `MYTRAVELPAL_HOTELS=overpass` if you're running against a
-    #   private Overpass instance where the network path works.
-    mode = os.environ.get("MYTRAVELPAL_HOTELS", "nominatim").lower()
+    # - `MYTRAVELPAL_HOTELS=overpass` for a private Overpass box.
+    # - `MYTRAVELPAL_HOTELS=nominatim` forces the old provider.
+    mode = os.environ.get("MYTRAVELPAL_HOTELS", "").lower()
     if mode == "mock":
         return MockHotelsProvider()
     if mode == "overpass":
         return OverpassHotelsProvider()
+    if mode == "nominatim":
+        return NominatimHotelsProvider()
+    if os.environ.get("MYTRAVELPAL_GEOAPIFY_KEY"):
+        return GeoapifyHotelsProvider()
     return NominatimHotelsProvider()
 
 
@@ -116,11 +126,15 @@ def _fuel_provider():
 
 
 def _restaurants_provider():
-    mode = os.environ.get("MYTRAVELPAL_RESTAURANTS", "nominatim").lower()
+    mode = os.environ.get("MYTRAVELPAL_RESTAURANTS", "").lower()
     if mode == "mock":
         return MockRestaurantsProvider()
     if mode == "overpass":
         return OverpassRestaurantsProvider()
+    if mode == "nominatim":
+        return NominatimRestaurantsProvider()
+    if os.environ.get("MYTRAVELPAL_GEOAPIFY_KEY"):
+        return GeoapifyRestaurantsProvider()
     return NominatimRestaurantsProvider()
 
 

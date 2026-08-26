@@ -39,6 +39,11 @@ dependencies:
   # so calling it is safe; the sheet only appears on a subset of
   # sessions the Play policy allows.
   in_app_review: ^2.0.9
+  # Foreground service so Android doesn't OOM-kill the app while it's
+  # backgrounded during a trip (typically while the driver flips to
+  # Google Maps for turn-by-turn). Without this the trip dashboard
+  # gets killed after ~30 s minimised on most Xiaomi/Samsung ROMs.
+  flutter_foreground_task: ^8.10.0
   timezone: ^0.9.4
 
 dev_dependencies:

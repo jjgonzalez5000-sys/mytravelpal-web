@@ -180,6 +180,11 @@ class LatLon {
 
   Map<String, double> toJson() => {'lat': lat, 'lon': lon};
 
+  factory LatLon.fromJson(Map<String, dynamic> j) => LatLon(
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+      );
+
   @override
   bool operator ==(Object other) =>
       other is LatLon && other.lat == lat && other.lon == lon;
@@ -1111,7 +1116,15 @@ class TripPlanResponse {
     this.consistencyIssues = const [],
     this.fuelArbitrage,
     this.days = const [],
+    this.rawJson,
   });
+
+  /// Untouched decoded JSON from the API. Retained by
+  /// `TripPlanResponse.fromJson` so `TripSessionPersistence` can
+  /// re-serialise the exact response bytes without needing every
+  /// nested type to gain its own `toJson`. Null when constructed
+  /// synthetically (tests, session restore fallback).
+  final Map<String, dynamic>? rawJson;
 
   final RouteInfo route;
   final List<TimeWindow> timeWindows;
@@ -1198,6 +1211,10 @@ class TripPlanResponse {
         days: (json['days'] as List<dynamic>? ?? const [])
             .map((d) => DayPlan.fromJson(d as Map<String, dynamic>))
             .toList(growable: false),
+        // Retain the whole envelope so the session-persistence layer
+        // can re-serialise the exact plan without a per-field
+        // `toJson` on every nested type.
+        rawJson: json,
       );
 }
 

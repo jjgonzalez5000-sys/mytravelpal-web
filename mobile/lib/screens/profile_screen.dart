@@ -78,7 +78,25 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final l = AppLocalizations.of(context);
 
     final overrideMode = widget.mode == ProfileScreenMode.override_;
-    return Scaffold(
+    return PopScope(
+      // Intercept the back gesture so we can guarantee the final
+      // profile state is flushed to SharedPreferences BEFORE the
+      // route pops. Fire-and-forget `_update` writes lose races
+      // with fast back-taps otherwise, and users legitimately
+      // reported edits vanishing after backing out.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        // Capture Navigator BEFORE the await so we don't hold a
+        // BuildContext across the async gap (analyzer flags it).
+        final nav = Navigator.of(context);
+        if (widget.mode == ProfileScreenMode.persist) {
+          await ref.read(tripProfileProvider.notifier).set(_profile);
+        }
+        if (!mounted) return;
+        nav.pop();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(overrideMode ? l.profileOverrideTitle : l.profileTitle),
         actions: [
@@ -315,6 +333,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ],
         ],
       ),
+      ),  // PopScope child close
     );
   }
 }
@@ -624,20 +643,51 @@ class _AdvancedStyleControls extends StatelessWidget {
               onChanged(profile.copyWith(overnightPolicy: s.first)),
         ),
         const SizedBox(height: Tokens.space16),
-        Row(
-          children: [
-            Expanded(child: Text(
-              '${l.styleDailyCapLabel}: ${profile.dailyDrivingCapHours} h',
-            )),
-            _Stepper(
-              value: profile.dailyDrivingCapHours,
-              min: 4, max: 14,
-              onChanged: (v) => onChanged(
-                profile.copyWith(dailyDrivingCapHours: v),
+        Builder(builder: (_) {
+          // Daily-driving cap: always 4-14 h, no hard limit by pace.
+          // Pace only drives a "recommended" hint — the user has the
+          // final say. Previously we hard-clamped steady to 6 h and
+          // silently corrected higher values; users pushed back
+          // because 6 h wasn't a suggestion, it was a wall.
+          const capMin = 4;
+          const capMax = 14;
+          final recommended = switch (profile.travelPace) {
+            TravelPace.push => null,        // no advice — the user picked "push".
+            TravelPace.steady => 6,
+            TravelPace.savour => 8,
+          };
+          final value = profile.dailyDrivingCapHours;
+          final showHint =
+              recommended != null && value > recommended;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(
+                    '${l.styleDailyCapLabel}: $value h',
+                  )),
+                  _Stepper(
+                    value: value,
+                    min: capMin, max: capMax,
+                    onChanged: (v) => onChanged(
+                      profile.copyWith(dailyDrivingCapHours: v),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ],
-        ),
+              if (showHint) ...[
+                const SizedBox(height: 4),
+                Text(
+                  l.styleDailyCapRecommendedHint(recommended),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                ),
+              ],
+            ],
+          );
+        }),
         const SizedBox(height: Tokens.space8),
         _HourPicker(
           label: l.styleBedtimeLabel,
@@ -651,24 +701,13 @@ class _AdvancedStyleControls extends StatelessWidget {
           min: 5, max: 11,
           onChanged: (h) => onChanged(profile.copyWith(wakeHour: h)),
         ),
-        const SizedBox(height: Tokens.space16),
-        _LabelText(l.styleBreakLabel),
-        SegmentedButton<BreakStyle>(
-          segments: [
-            ButtonSegment(
-              value: BreakStyle.minimal, label: Text(l.styleBreakMinimal),
-            ),
-            ButtonSegment(
-              value: BreakStyle.scenic, label: Text(l.styleBreakScenic),
-            ),
-            ButtonSegment(
-              value: BreakStyle.foodie, label: Text(l.styleBreakFoodie),
-            ),
-          ],
-          selected: {profile.breakStyle},
-          onSelectionChanged: (s) =>
-              onChanged(profile.copyWith(breakStyle: s.first)),
-        ),
+        // Break-style picker removed (2026-08-25). Users pointed out
+        // that scenic / foodie / minimal was redundant with the
+        // pace choice + the ability to add restaurants manually
+        // from the results screen. The enum stays in the domain
+        // model for backend compat — we always send whatever's
+        // stored (default `scenic`) but the UI no longer surfaces
+        // the choice.
       ],
     );
   }

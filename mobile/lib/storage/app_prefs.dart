@@ -16,7 +16,11 @@ import '../domain/units.dart';
 class AppPrefs {
   AppPrefs(this._prefs);
 
-  static const _onboardingKey = 'onboarding_shown.v1';
+  // Bumped to v2 (2026-08-25) when we expanded the tour with slides
+  // about real fuel prices, Android Auto integration and the live
+  // trip dashboard. Users who saw v1 will see v2 once so they're
+  // aware of the killer features shipped since their install.
+  static const _onboardingKey = 'onboarding_shown.v2';
   static const _themeModeKey = 'theme_mode.v1';
   static const _localeKey = 'locale.v1';
   static const _unitSystemKey = 'unit_system.v1';

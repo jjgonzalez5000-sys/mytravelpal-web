@@ -222,9 +222,17 @@ class TestTripOptimizations:
         )
         profile = TripProfile(meals=MealPreferences())
 
+        # Depart at 14:00 so bedtime (22:00) is 8 h away — within
+        # `daily_driving_cap_hours=8`. That lets the sleep-stop
+        # selector pick the rest at cumulative=8 h, arriving 22:00
+        # wall-clock, inside the night-window gate. An 08:00
+        # departure with the same rest-stop grid would (correctly)
+        # produce no sleep stop because the driving-cap fires at
+        # 16:00 — an unmanageable 1300 km "sleep at 16:00" that
+        # testers rejected in prod.
         opt = compute_optimizations(
-            departure_at=datetime(2026, 8, 24, 8),
-            trip_duration_hours=15.0,  # arrival at 23:00 → past our 22:00 sleep trigger
+            departure_at=datetime(2026, 8, 24, 14),
+            trip_duration_hours=15.0,
             rest_stops=rest_stops,
             restaurants_by_slot={
                 MealSlot.LUNCH: restaurants,
@@ -234,9 +242,42 @@ class TestTripOptimizations:
             profile=profile,
         )
         slots = {m.slot for m in opt.meal_stops}
-        assert MealSlot.LUNCH in slots
         assert MealSlot.DINNER in slots
         assert opt.sleep_stop is not None
+
+    async def test_sleep_stop_respects_daily_driving_cap(self) -> None:
+        # 10:00 departure, bedtime 22:00 (12 h wall). Without the
+        # driving cap the selector picked a rest stop at
+        # cumulative=12 h ≈ 1300 km — testers correctly rejected
+        # that as "unmanageable in a day". With cap=8 h the
+        # selector must land the sleep stop no later than 8 h of
+        # driving from departure.
+        rest_stops = tuple(
+            RestStop(
+                coordinate=Coordinate(45 - i, 0),
+                distance_from_origin_km=100 * i,
+                cumulative_driving_hours=2.0 * i,
+                recommended_break_minutes=15,
+            )
+            for i in range(1, 8)  # cumulative 2, 4, 6, 8, 10, 12, 14
+        )
+        hotels = (
+            _sample_hotel(kid=True, pet=True, parking=True, detour=20),
+        )
+        profile = TripProfile(
+            meals=MealPreferences(),
+            daily_driving_cap_hours=8,
+        )
+        opt = compute_optimizations(
+            departure_at=datetime(2026, 8, 24, 10),
+            trip_duration_hours=15.0,
+            rest_stops=rest_stops,
+            restaurants_by_slot={},
+            hotels=hotels,
+            profile=profile,
+        )
+        assert opt.sleep_stop is not None
+        assert opt.sleep_stop.rest_stop.cumulative_driving_hours <= 8.0
 
 
 # --- Hourly toll analysis ---

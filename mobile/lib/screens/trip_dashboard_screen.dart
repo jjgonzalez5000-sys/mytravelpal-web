@@ -16,7 +16,9 @@ import '../services/car_notification_bridge.dart';
 import '../services/nav_deep_link.dart';
 import '../services/notifications.dart';
 import '../services/trip_alerts.dart';
+import '../services/trip_foreground.dart';
 import '../services/trip_progress.dart';
+import '../services/trip_session_persistence.dart';
 import '../widgets/osm_attribution.dart';
 
 /// Phase-1 "trip execution" screen: the app-side copilot the driver
@@ -101,6 +103,16 @@ class _TripDashboardScreenState extends ConsumerState<TripDashboardScreen> {
     _startPositionStream();
     _acquireWakelock();
     _showActiveTripNotification();
+    // Persist the initial trip snapshot so that if Android reclaims
+    // the app before we ever get a GPS fix, the user can still
+    // resume where they left off with the plan we already have.
+    unawaited(TripSessionPersistence.instance.save(
+      request: widget.request,
+      response: widget.response,
+      origin: widget.origin,
+      destination: widget.destination,
+      desiredDepartureAt: widget.request.desiredDepartureAt,
+    ));
   }
 
   Future<void> _acquireWakelock() async {
@@ -112,13 +124,17 @@ class _TripDashboardScreenState extends ConsumerState<TripDashboardScreen> {
   }
 
   Future<void> _showActiveTripNotification() async {
-    // Ongoing (non-dismissable) heads-up so the driver knows the app
-    // is doing something even when the dashboard is behind Google
-    // Maps in the recents stack. Cleared on dispose.
-    await NotificationService.instance.showTripAlert(
-      stableId: 'active-trip:${widget.request.desiredDepartureAt.millisecondsSinceEpoch}',
-      title: AppLocalizations.of(context).tripDashboardActiveNotifTitle,
-      body: AppLocalizations.of(context).tripDashboardActiveNotifBody,
+    // Start the Android foreground service — this is what actually
+    // stops the OS from OOM-killing MyTravelPal when the driver
+    // switches to Google Maps for turn-by-turn. The persistent
+    // notification is a required side-effect (foreground services
+    // MUST show a notification) but it also carries the driver-
+    // facing "trip active" hint we used to fire via the local
+    // notifications plugin.
+    final l = AppLocalizations.of(context);
+    await TripForegroundService.instance.start(
+      title: l.tripDashboardActiveNotifTitle,
+      body: l.tripDashboardActiveNotifBody,
     );
   }
 
@@ -228,6 +244,28 @@ class _TripDashboardScreenState extends ConsumerState<TripDashboardScreen> {
     if (newAlerts.isNotEmpty) {
       _dispatchAlerts(newAlerts);
     }
+    // Refresh the foreground notification so a driver glancing at
+    // the shade sees current km driven / ETA — otherwise it just
+    // says "trip active" forever. `updateNotification` is cheap and
+    // safe to call every tick.
+    unawaited(_refreshForegroundNotif(progress, next));
+  }
+
+  Future<void> _refreshForegroundNotif(
+    TripProgress progress, MealStopOpt? next,
+  ) async {
+    final l = AppLocalizations.of(context);
+    final done = progress.progressKm.toStringAsFixed(0);
+    final total = progress.totalKm.toStringAsFixed(0);
+    final body = next?.restaurantName != null
+        ? l.tripDashboardForegroundBodyWithStop(
+            done, total, next!.restaurantName!,
+          )
+        : l.tripDashboardForegroundBodyBare(done, total);
+    await TripForegroundService.instance.updateNotification(
+      title: l.tripDashboardActiveNotifTitle,
+      body: body,
+    );
   }
 
   void _dispatchAlerts(List<TripAlert> alerts) {
@@ -321,14 +359,12 @@ class _TripDashboardScreenState extends ConsumerState<TripDashboardScreen> {
     // Release the wake lock so the phone can dim / sleep normally
     // once the driver leaves the dashboard.
     WakelockPlus.disable().catchError((_) => false);
-    // Clear the ongoing "active trip" notification so it doesn't
-    // hang around in the shade after the dashboard is closed.
-    NotificationService.instance.cancel(
-      NotificationService.notificationIdFor(
-        'trip_alert:active-trip:'
-        '${widget.request.desiredDepartureAt.millisecondsSinceEpoch}',
-      ),
-    );
+    // Tear down the foreground service — this dismisses the ongoing
+    // notification and lets Android reclaim MyTravelPal normally.
+    unawaited(TripForegroundService.instance.stop());
+    // Clear the persisted session — user explicitly left the
+    // dashboard so there's nothing to resume.
+    unawaited(TripSessionPersistence.instance.clear());
     super.dispose();
   }
 

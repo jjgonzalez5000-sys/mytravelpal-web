@@ -27,7 +27,12 @@ enum TravelStylePreset {
     icon: Icons.spa_outlined,
     pace: TravelPace.savour,
     overnight: OvernightPolicy.alwaysIfLong,
-    dailyCap: 6,
+    // Lowered from 6 h → 4 h (2026-08-25) after testers said
+    // 6 h × ~90 km/h averaged too many kilometres per day for
+    // "relajado". At 4 h the plan tops out around 350-400 km
+    // per day — closer to what a slow-travel driver actually
+    // wants to eat.
+    dailyCap: 4,
     breakStyle: BreakStyle.foodie,
   );
 

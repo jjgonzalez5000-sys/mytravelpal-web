@@ -9,6 +9,7 @@ import '../design/components.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../widgets/skeleton.dart';
 import '../services/notifications.dart';
 import '../storage/saved_trip.dart';
 import 'result_screen.dart';
@@ -93,7 +94,37 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            // Skeleton list instead of a bare spinner — the shape of
+            // the eventual list is preserved so nothing jumps when
+            // data lands.
+            return ListView.separated(
+              padding: const EdgeInsets.all(Tokens.space16),
+              itemCount: 4,
+              separatorBuilder: (_, __) =>
+                  const SizedBox(height: Tokens.space12),
+              itemBuilder: (_, __) => Row(
+                children: [
+                  const Skeleton(width: 44, height: 44),
+                  const SizedBox(width: Tokens.space12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Skeleton(
+                          width: 220, height: 14,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        const SizedBox(height: 6),
+                        Skeleton(
+                          width: 140, height: 12,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
           }
           final trips = snapshot.data ?? const <SavedTrip>[];
           if (trips.isEmpty) {

@@ -149,7 +149,7 @@
     "resultEyebrowNearRoute": "Nahe deiner Route",
     "resultEyebrowAlongRoute": "Entlang der Route",
     "resultAlerts": "Warnungen",
-    "resultRestStops": "Pausen",
+    "resultRestStops": "Empfohlene Pausen",
     "resultHotels": "Hotels",
     "resultRestaurants": "Restaurants",
     "resultFuel": "Kraftstoff",
@@ -468,7 +468,7 @@
     "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
     "dayHeaderRange": "Tag {index} · km {fromKm} → {toKm}",
     "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
-    "daySleepMarker": "Übernachtung gegen {time}",
+    "daySleepMarker": "Fahrtende gegen {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
 
     "nextStopHeroLabel": "Nächster empfohlener Stopp",
@@ -506,6 +506,71 @@
     "planLoadingStepTolls": "Mautrouten mit mautfreien Alternativen vergleichen…",
     "planLoadingStepAlmost": "Fast fertig — alles wird zusammengestellt…",
     "planLoadingHelper": "Dauert normalerweise 5-15 Sekunden. Handy kann in die Tasche.",
+    "planErrorAuth": "Sitzung abgelaufen. Melde dich erneut an und versuche es nochmal.",
+    "planErrorPremium": "Diese Route benötigt Premium. Aktiviere es für die stündliche Mautanalyse.",
+    "planErrorRateLimit": "Zu viele Anfragen in kurzer Zeit. Warte ein paar Sekunden und versuche es erneut.",
+    "planErrorGeneric": "Beim Planen ist etwas schiefgelaufen (Code {code}). Versuche es erneut oder ändere die Eingaben.",
+    "@planErrorGeneric": {
+      "placeholders": {"code": {"type": "int"}}
+    },
+    "planErrorNetwork": "Wir konnten den Server nicht erreichen. Prüfe deine Verbindung und versuche es erneut.",
+    "planErrorRetry": "Nochmal versuchen",
+    "emptyAlertsTitle": "Route frei",
+    "emptyAlertsBody": "Keine Brände, Baustellen oder Vorfälle auf deinem Korridor gemeldet. Gute Fahrt.",
+    "emptyHotelsTitle": "Keine Hotels in Routennähe",
+    "emptyHotelsBody": "Erweitere den maximalen Umweg oder ändere die Preisklasse.",
+    "emptyRestaurantsTitle": "Keine passenden Restaurants",
+    "emptyRestaurantsBody": "Erweitere den maximalen Umweg oder entferne Küchen-Filter.",
+    "onboardEyebrowFuel": "ECHTE PREISE",
+    "onboardTitleFuel": "Bei jedem Tanken sparen",
+    "onboardBodyFuel": "Offizielle Preise pro Tankstelle in Spanien, Frankreich und Italien. Premium-Marken zwischen den Discountern.",
+    "onboardEyebrowDriving": "UNTERWEGS",
+    "onboardTitleDriving": "Dein smarter Beifahrer",
+    "onboardBodyDriving": "Live-Dashboard mit nächstem Stopp, dynamischer Ankunft und neuen Warnungen. Android-Auto-tauglich.",
+    "onboardEyebrowProfile": "PERSÖNLICH",
+    "onboardTitleProfile": "Fülle dein Profil aus",
+    "onboardBodyProfile": "Ohne Profil optimieren wir nur die Zeit. Mit Profil berechnen wir echten Sprit, Hotels und Mahlzeiten für dich.",
+    "multiDaySleepLabel": "Du übernachtest in",
+    "multiDaySleepNoHotel": "Übernachtungsstopp — kein Hotel verfügbar",
+    "resumeTripTitle": "Fahrt fortsetzen?",
+    "resumeTripBody": "Wir haben eine laufende Fahrt {origin} → {destination} erkannt. Dort fortsetzen, wo du aufgehört hast?",
+    "@resumeTripBody": {
+      "placeholders": {
+        "origin": {"type": "String"},
+        "destination": {"type": "String"}
+      }
+    },
+    "resumeTripResume": "Fortsetzen",
+    "resumeTripDismiss": "Verwerfen",
+    "hotelPrefStarsLabel": "Sterne",
+    "hotelPrefStarsAny": "Alle",
+    "hotelPrefParkingTitle": "Mit Parkplatz",
+    "hotelPrefParkingSub": "Nur Hotels mit Parkplatz-Tag. Hotels ohne Tag werden ebenfalls angezeigt.",
+    "styleDailyCapRecommendedHint": "Für dieses Tempo empfehlen wir {hours} h/Tag.",
+    "@styleDailyCapRecommendedHint": {
+      "placeholders": {"hours": {"type": "int"}}
+    },
+    "aaCoachTitle": "So öffnest du sie in Android Auto",
+    "aaCoachStep1": "Verbinde das Handy per USB mit dem Auto (oder drahtlos, wenn das Autoradio es unterstützt).",
+    "aaCoachStep2": "Im Launcher wechsle zur Kategorie 'Point of Interest' oder 'Apps'. Sie erscheint NICHT neben Google Maps.",
+    "aaCoachStep3": "Tippe auf MyTravelPal. Der Companion zeigt nächsten Stopp, günstigeren Sprit und Ankunft.",
+    "aaCoachHint": "Beim ersten Start dauert es einige Sekunden. Parke mit freier Sicht zum Himmel für GPS-Empfang.",
+    "aaCoachDontShowAgain": "Nicht mehr zeigen",
+    "aaCoachDone": "Verstanden",
+    "batteryWhitelistTitle": "Verhindere dass Android uns schließt",
+    "batteryWhitelistBody": "Xiaomi/MIUI, Samsung und andere Hersteller schließen Hintergrund-Apps nach einigen Minuten. Wenn du mit Google Maps navigierst und MyTravelPal beendet wird, verlierst du die Live-Warnungen.",
+    "batteryWhitelistSteps": "Einstellungen → Apps → MyTravelPal → Akku → Keine Einschränkungen\n(oder 'Nicht optimieren' je nach Modell)",
+    "batteryWhitelistDontShowAgain": "Nicht mehr zeigen",
+    "batteryWhitelistLater": "Später",
+    "batteryWhitelistOpen": "Hilfe öffnen",
+    "planRoundTripTitle": "Hin- und Rückfahrt",
+    "planRoundTripSubtitle": "Wir planen die Rückfahrt gleichzeitig mit denselben Präferenzen.",
+    "roundTripLegOutbound": "HINFAHRT",
+    "roundTripLegReturn": "RÜCKFAHRT",
+    "roundTripSwapTo": "{leg} anzeigen",
+    "@roundTripSwapTo": {
+      "placeholders": {"leg": {"type": "String"}}
+    },
 
     "resultStartTrip": "Fahrt starten",
     "navPickerTitle": "Weiter mit…",
@@ -536,6 +601,21 @@
     },
     "tripDashboardActiveNotifTitle": "Fahrt läuft",
     "tripDashboardActiveNotifBody": "MyTravelPal verfolgt deine Route im Hintergrund.",
+    "tripDashboardForegroundBodyBare": "{done} / {total} km gefahren",
+    "@tripDashboardForegroundBodyBare": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"}
+      }
+    },
+    "tripDashboardForegroundBodyWithStop": "{done} / {total} km · nächster Stopp: {name}",
+    "@tripDashboardForegroundBodyWithStop": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"},
+        "name": {"type": "String"}
+      }
+    },
     "tripDashboardSleepStopLabel": "Hotel",
     "alertApproachingStopTitle": "Stopp naht",
     "alertApproachingStopBody": "{slot} bei {name} in etwa {mins} Min. Bereite die Ausfahrt vor.",

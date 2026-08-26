@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../api/models.dart';
+import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import 'price_band_multiselect.dart';
 
@@ -17,11 +18,25 @@ class HotelPreferences {
     required this.enabled,
     required this.maxDetourMinutes,
     required this.priceBands,
+    this.minStars = 0,
+    this.requireParking = false,
   });
 
   final bool enabled;
   final int maxDetourMinutes;
   final Set<PriceBand> priceBands;
+
+  /// Minimum star rating. 0 = no filter, 3-5 = filter by
+  /// `attributes['stars']` post-response. OSM data is spotty
+  /// on stars, so a "3+" filter with strict enforcement would
+  /// hide most hotels — see the tolerant client-side filter in
+  /// ResultScreen where hotels lacking the tag pass through.
+  final int minStars;
+
+  /// Only surface hotels tagged with parking. Falls back to
+  /// showing everything when the tag is missing (same tolerance
+  /// as [minStars]).
+  final bool requireParking;
 
   /// Legacy single-band view. Returns the sole selected band, or
   /// `any` when the set is empty or represents "everything".
@@ -50,11 +65,15 @@ class HotelPreferences {
     bool? enabled,
     int? maxDetourMinutes,
     Set<PriceBand>? priceBands,
+    int? minStars,
+    bool? requireParking,
   }) =>
       HotelPreferences(
         enabled: enabled ?? this.enabled,
         maxDetourMinutes: maxDetourMinutes ?? this.maxDetourMinutes,
         priceBands: priceBands ?? this.priceBands,
+        minStars: minStars ?? this.minStars,
+        requireParking: requireParking ?? this.requireParking,
       );
 }
 
@@ -125,6 +144,41 @@ class HotelPreferencesSection extends StatelessWidget {
             selected: value.priceBands,
             onChanged: (bands) =>
                 onChanged(value.copyWith(priceBands: bands)),
+          ),
+          const SizedBox(height: Tokens.space12),
+          // Star filter — 0 (any), 3+, 4+, 5. Kept as an inline
+          // segmented button rather than a slider so the driver
+          // reads it at a glance.
+          Row(
+            children: [
+              Text(l.hotelPrefStarsLabel,
+                  style: Theme.of(context).textTheme.bodyMedium),
+              const SizedBox(width: Tokens.space8),
+              Expanded(
+                child: SegmentedButton<int>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(value: 0, label: Text(l.hotelPrefStarsAny)),
+                    const ButtonSegment(value: 3, label: Text('3★+')),
+                    const ButtonSegment(value: 4, label: Text('4★+')),
+                    const ButtonSegment(value: 5, label: Text('5★')),
+                  ],
+                  selected: {value.minStars},
+                  onSelectionChanged: (s) =>
+                      onChanged(value.copyWith(minStars: s.first)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space4),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l.hotelPrefParkingTitle),
+            subtitle: Text(l.hotelPrefParkingSub,
+                style: Theme.of(context).textTheme.bodySmall),
+            value: value.requireParking,
+            onChanged: (v) =>
+                onChanged(value.copyWith(requireParking: v)),
           ),
         ],
       ],

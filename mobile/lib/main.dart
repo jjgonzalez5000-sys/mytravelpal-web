@@ -6,6 +6,7 @@ import 'providers.dart';
 import 'services/deep_link_handler.dart';
 import 'services/notifications.dart';
 import 'services/review_prompter.dart';
+import 'services/trip_foreground.dart';
 import 'services/widget_bridge.dart';
 import 'storage/app_prefs.dart';
 import 'storage/trip_storage.dart';
@@ -18,6 +19,9 @@ Future<void> main() async {
   // Notifications init before runApp so the schedule call from
   // ResultScreen's Save button doesn't race the init.
   await NotificationService.instance.init();
+  // Foreground service init — no-op on non-Android. Starts on demand
+  // when the driver enters TripDashboardScreen, stops on dispose.
+  await TripForegroundService.instance.init();
 
   // Stamp the first-launch marker as early as possible so the
   // in-app review prompter can compute a real "days since install"

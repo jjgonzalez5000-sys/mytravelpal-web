@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
 import '../domain/trip_profile.dart' show FuelType;
@@ -16,8 +17,12 @@ import '../services/review_prompter.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
 import '../widgets/added_stops_map_sheet.dart';
+import '../widgets/aa_coach_dialog.dart';
 import '../widgets/adverse_event_sheet.dart';
+import '../widgets/battery_whitelist_dialog.dart';
 import '../widgets/consistency_banner.dart';
+import '../widgets/empty_state_card.dart';
+import '../widgets/hotel_preferences.dart' show HotelPreferences;
 import '../widgets/trip_insights.dart';
 import '../widgets/favorite_star_button.dart';
 import '../widgets/poi_detail_sheet.dart';
@@ -25,6 +30,48 @@ import '../widgets/route_map.dart';
 import '../widgets/time_window_chart.dart';
 import 'narrative_screen.dart';
 import 'trip_dashboard_screen.dart';
+
+/// A trip leg the ResultScreen can jump to via an AppBar action —
+/// used only for round-trip plans. When present, the screen shows a
+/// swap-icon in the app bar that pushes a new ResultScreen with the
+/// legs flipped (this leg becomes the "other" and vice-versa) so the
+/// user can toggle between Ida and Vuelta with one tap and back
+/// button to return.
+///
+/// Deliberately client-only: the backend still gets two independent
+/// /plan requests. Keeping the state at this level avoids touching
+/// the API contract.
+class RoundTripLeg {
+  const RoundTripLeg({
+    required this.label,
+    required this.request,
+    required this.origin,
+    required this.destination,
+    required this.response,
+    required this.desiredDepartureAt,
+  });
+
+  /// Localised label rendered in the AppBar pill and the swap CTA
+  /// ("Ida" / "Vuelta" typically).
+  final String label;
+  final TripPlanRequest request;
+  final GeocodeResult origin;
+  final GeocodeResult destination;
+  final TripPlanResponse response;
+  final DateTime desiredDepartureAt;
+}
+
+/// A backend sleep-stop timestamp is only worth surfacing when it
+/// reads like night. Between 20:00 and 06:00 local the preview
+/// makes sense; outside that window the underlying algorithm has
+/// picked a rest stop at a time no driver would call "overnight",
+/// so we hide the card rather than display "sleep at 16:00"
+/// nonsense. Top-level so both the promoted card and the
+/// Optimizations-section row share the exact same gate.
+bool isPlausibleSleepTime(DateTime at) {
+  final localHour = at.toLocal().hour;
+  return localHour >= 20 || localHour <= 6;
+}
 
 class ResultScreen extends ConsumerStatefulWidget {
   const ResultScreen({
@@ -34,6 +81,9 @@ class ResultScreen extends ConsumerStatefulWidget {
     required this.destination,
     required this.response,
     required this.desiredDepartureAt,
+    this.currentLegLabel,
+    this.otherLeg,
+    this.hotelPrefs,
   });
 
   final TripPlanRequest request;
@@ -42,6 +92,22 @@ class ResultScreen extends ConsumerStatefulWidget {
   final TripPlanResponse response;
   final DateTime desiredDepartureAt;
 
+  /// Non-null when this screen is showing one leg of a round-trip.
+  /// Rendered as a small pill next to the app title so the driver
+  /// always knows which leg they're looking at.
+  final String? currentLegLabel;
+
+  /// The other leg of the round-trip, if any. Populated for both
+  /// legs so the swap action is symmetric.
+  final RoundTripLeg? otherLeg;
+
+  /// Client-side hotel filter (stars, parking). We apply it here
+  /// instead of the backend because OSM's tag coverage is spotty —
+  /// a strict backend filter would erase most results. The client
+  /// filter is tolerant: hotels missing the tag PASS through, only
+  /// hotels that explicitly fail the tag are dropped.
+  final HotelPreferences? hotelPrefs;
+
   @override
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
@@ -49,6 +115,30 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _saved = false;
   bool _saving = false;
+
+  bool _isPlausibleSleepTime(DateTime at) => isPlausibleSleepTime(at);
+
+  /// Response hotels with the client-side stars / parking filter
+  /// applied. Tolerant: hotels lacking the `stars` or `parking` tag
+  /// pass through even when the user requested a filter — OSM data
+  /// is patchy enough that strict enforcement would erase 80% of
+  /// otherwise good candidates.
+  List<Hotel> get _filteredHotels {
+    final prefs = widget.hotelPrefs;
+    if (prefs == null) return widget.response.hotels;
+    return widget.response.hotels.where((h) {
+      if (prefs.minStars > 0) {
+        final raw = h.attributes['stars'];
+        final stars = raw == null ? null : int.tryParse(raw);
+        if (stars != null && stars < prefs.minStars) return false;
+      }
+      if (prefs.requireParking) {
+        final p = h.attributes['parking']?.toLowerCase();
+        if (p == 'no' || p == 'none') return false;
+      }
+      return true;
+    }).toList(growable: false);
+  }
 
   @override
   void initState() {
@@ -438,6 +528,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space16),
       ],
+      // Multi-day hint: promote the sleep stop only when its time
+      // makes sense as a NIGHT stop. Backend occasionally emits a
+      // sleep-stop at 16:00 on very long trips (Zurich→Bucharest
+      // reported by a tester) because the nearest-rest-stop
+      // fallback can land far from the 22:00 target. Filtering
+      // client-side avoids showing garbage until the backend
+      // logic is tightened.
+      if (widget.response.optimizations?.sleepStop != null &&
+          _isPlausibleSleepTime(
+            widget.response.optimizations!.sleepStop!.at,
+          )) ...[
+        _MultiDaySleepPreview(
+          sleepStop: widget.response.optimizations!.sleepStop!,
+          hotels: widget.response.hotels,
+          origin: widget.request.origin,
+          destination: widget.request.destination,
+          routeGeometry: widget.response.route.geometry,
+        ),
+        const SizedBox(height: Tokens.space16),
+      ],
       if (widget.response.savings.timeSavedMinutesVsDesired > 0 ||
           widget.response.savings.moneySavedEurVsTolls > 0) ...[
         _SavingsSummaryCard(savings: widget.response.savings),
@@ -546,13 +656,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: Tokens.space16),
         _HourlyTollCard(report: widget.response.hourlyTollReport!),
       ],
-      if (widget.response.adverseEvents.isNotEmpty) ...[
+      // Alerts section: renders the "all clear" empty state when the
+      // user asked for alerts but the corridor has none — reassures
+      // the driver instead of silently hiding the section.
+      if (widget.request.includeAdverseEvents) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(
           title: l.resultAlerts,
           eyebrow: l.resultEyebrowAlongRoute,
           description: l.alertsAlongYourRouteDesc,
         ),
+        if (widget.response.adverseEvents.isEmpty)
+          EmptyStateCard(
+            icon: Icons.check_circle_outline,
+            title: l.emptyAlertsTitle,
+            body: l.emptyAlertsBody,
+            tint: scheme.tertiary,
+          ),
+      ],
+      if (widget.response.adverseEvents.isNotEmpty) ...[
         ..._separated(
           widget.response.adverseEvents
               .map((e) => _AdverseEventTile(
@@ -587,11 +709,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               .toList(),
         ),
       ],
-      if (showHotels && widget.response.hotels.isNotEmpty) ...[
+      // Hotels: show empty state only when the user actively asked
+      // for them (hotelMaxDetourMinutes set) but nothing came back.
+      // Free tier requests with no hotel prefs shouldn't see the
+      // "no hotels" chatter.
+      if (showHotels &&
+          widget.request.hotelMaxDetourMinutes != null &&
+          widget.request.hotelMaxDetourMinutes! > 0 &&
+          _filteredHotels.isEmpty) ...[
+        const SizedBox(height: Tokens.space24),
+        SectionHeader(title: l.resultHotels, eyebrow: l.resultEyebrowNearRoute),
+        EmptyStateCard(
+          icon: Icons.hotel_outlined,
+          title: l.emptyHotelsTitle,
+          body: l.emptyHotelsBody,
+        ),
+      ],
+      if (showHotels && _filteredHotels.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(title: l.resultHotels, eyebrow: l.resultEyebrowNearRoute),
         ..._separated(
-          widget.response.hotels
+          _filteredHotels
               .map((h) => _HotelTile(
                     hotel: h,
                     onTap: () => showPoiDetailSheet(
@@ -611,6 +749,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     ),
                   ))
               .toList(),
+        ),
+      ],
+      if (showRestaurants &&
+          widget.request.restaurantMaxDetourMinutes != null &&
+          widget.request.restaurantMaxDetourMinutes! > 0 &&
+          widget.response.restaurants.isEmpty) ...[
+        const SizedBox(height: Tokens.space24),
+        SectionHeader(
+          title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
+        ),
+        EmptyStateCard(
+          icon: Icons.restaurant_outlined,
+          title: l.emptyRestaurantsTitle,
+          body: l.emptyRestaurantsBody,
         ),
       ],
       if (showRestaurants && widget.response.restaurants.isNotEmpty) ...[
@@ -674,9 +826,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              _shortName(widget.origin),
-              style: t.bodySmall,
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_shortName(widget.origin), style: t.bodySmall),
+                if (widget.currentLegLabel != null) ...[
+                  const SizedBox(width: 6),
+                  _LegPill(label: widget.currentLegLabel!),
+                ],
+              ],
             ),
             Text(
               '→ ${_shortName(widget.destination)}',
@@ -685,6 +843,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ],
         ),
         actions: [
+          if (widget.otherLeg != null)
+            IconButton(
+              tooltip: l.roundTripSwapTo(widget.otherLeg!.label),
+              icon: const Icon(Icons.swap_horiz),
+              onPressed: () {
+                // Push (not replace) so the user can back-swipe to
+                // the previous leg. Each ResultScreen keeps its own
+                // state (added stops, share prefs) so toggling
+                // doesn't wipe interactions on either side.
+                final other = widget.otherLeg!;
+                final backLeg = RoundTripLeg(
+                  label: widget.currentLegLabel ?? '—',
+                  request: widget.request,
+                  origin: widget.origin,
+                  destination: widget.destination,
+                  response: widget.response,
+                  desiredDepartureAt: widget.desiredDepartureAt,
+                );
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => ResultScreen(
+                      request: other.request,
+                      origin: other.origin,
+                      destination: other.destination,
+                      response: other.response,
+                      desiredDepartureAt: other.desiredDepartureAt,
+                      currentLegLabel: other.label,
+                      otherLeg: backLeg,
+                    ),
+                  ),
+                );
+              },
+            ),
           IconButton(
             tooltip: l.resultShareTooltip,
             icon: const Icon(Icons.ios_share),
@@ -740,7 +931,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.play_arrow),
               label: Text(l.resultStartTrip),
-              onPressed: () {
+              onPressed: () async {
+                // Show the AA discoverability coach the first time
+                // the user starts a trip. Testers repeatedly missed
+                // that MyTravelPal lives in the POI category on AA,
+                // not next to Google Maps — one dialog saves the
+                // support ticket.
+                await AaCoachDialog.maybeShow(context);
+                if (!context.mounted) return;
+                // Second nag: battery-optimisation whitelist. Only
+                // fires once per install (own SharedPreferences
+                // flag) so we don't spam the driver every trip.
+                await BatteryWhitelistDialog.maybeShow(context);
+                if (!context.mounted) return;
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => TripDashboardScreen(
@@ -1406,7 +1609,13 @@ class _OptimizationsSection extends StatelessWidget {
                     child: _MealStopRow(stop: m),
                   ),
               ],
-              if (opts.sleepStop != null) ...[
+              // Only render the sleep row when the backend picked a
+              // plausible night time. Same gate the promoted card
+              // uses — a bogus "sleep at 16:00" from either the
+              // response or a resumed session gets suppressed at
+              // both surfaces.
+              if (opts.sleepStop != null &&
+                  isPlausibleSleepTime(opts.sleepStop!.at)) ...[
                 const SizedBox(height: Tokens.space4),
                 Divider(color: scheme.outlineVariant),
                 const SizedBox(height: Tokens.space16),
@@ -2244,6 +2453,31 @@ class _RestStopTile extends StatelessWidget {
   const _RestStopTile(this.stop);
   final RestStop stop;
 
+  Future<void> _openMaps() async {
+    // Same recipe as the POI sheet: prefer geo: for a labelled
+    // marker in the Maps app, fall back to https so browser-only
+    // devices still land somewhere sensible.
+    final geo = Uri.parse(
+      'geo:${stop.coordinate.lat},${stop.coordinate.lon}'
+      '?q=${stop.coordinate.lat},${stop.coordinate.lon}(Parada)',
+    );
+    var ok = false;
+    try {
+      ok = await launchUrl(geo, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok) {
+      final https = Uri.https('www.google.com', '/maps/search/', {
+        'api': '1',
+        'query': '${stop.coordinate.lat},${stop.coordinate.lon}',
+        'center': '${stop.coordinate.lat},${stop.coordinate.lon}',
+        'zoom': '15',
+      });
+      await launchUrl(https, mode: LaunchMode.platformDefault);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -2263,6 +2497,11 @@ class _RestStopTile extends StatelessWidget {
       subtitle: Text(
         '${stop.distanceFromOriginKm.toStringAsFixed(0)} km · '
         '${stop.recommendedBreakMinutes} min',
+      ),
+      trailing: IconButton(
+        tooltip: 'Google Maps',
+        icon: const Icon(Icons.map_outlined, size: 22),
+        onPressed: _openMaps,
       ),
     );
   }
@@ -2326,6 +2565,170 @@ class _ArrivalHintCard extends StatelessWidget {
             Icon(Icons.priority_high, color: scheme.error, size: 20),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Promoted "you'll be sleeping here" card shown near the top of the
+/// result screen when the plan requires an overnight stop. Answers the
+/// most anxious question a driver has on a long trip ("¿dónde
+/// duermo?") without making them scroll through fuel + restaurants
+/// first. Taps open the POI detail sheet with the recommended hotel
+/// pinned on a mini-map.
+class _MultiDaySleepPreview extends StatelessWidget {
+  const _MultiDaySleepPreview({
+    required this.sleepStop,
+    required this.hotels,
+    required this.origin,
+    required this.destination,
+    required this.routeGeometry,
+  });
+
+  final SleepStopOpt sleepStop;
+  final List<Hotel> hotels;
+  final LatLon origin;
+  final LatLon destination;
+  final List<LatLon> routeGeometry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    final name = sleepStop.hotelName;
+    final coord = sleepStop.hotelCoordinate;
+    final canOpen = name != null && coord != null;
+    final subtitle = [
+      // Include short date so day-2 sleep stops are unambiguous.
+      DateFormat('EEE d MMM · HH:mm').format(sleepStop.at.toLocal()),
+      if (sleepStop.hotelPriceEurPerNight != null)
+        '${sleepStop.hotelPriceEurPerNight!.toStringAsFixed(0)} €/night',
+      '${sleepStop.distanceFromOriginKm.toStringAsFixed(0)} km',
+    ].join(' · ');
+
+    final card = Container(
+      padding: const EdgeInsets.all(Tokens.space16),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.hotel_outlined, color: scheme.tertiary, size: 26),
+          const SizedBox(width: Tokens.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l.multiDaySleepLabel.toUpperCase(),
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.onTertiaryContainer, letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  name ?? l.multiDaySleepNoHotel,
+                  style: t.titleMedium?.copyWith(
+                    color: scheme.onTertiaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                Text(
+                  subtitle,
+                  style: t.bodySmall
+                      ?.copyWith(color: scheme.onTertiaryContainer),
+                ),
+              ],
+            ),
+          ),
+          if (canOpen)
+            Icon(Icons.chevron_right,
+                color: scheme.onTertiaryContainer, size: 22),
+        ],
+      ),
+    );
+
+    if (!canOpen) return card;
+    // Wrap in Material+InkWell so the tap ripple respects rounded
+    // corners and we can navigate to the POI detail sheet.
+    final decoration = BoxDecoration(
+      borderRadius: BorderRadius.circular(Tokens.radiusLg),
+    );
+    return Material(
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () {
+          // Prefer the exact Hotel object when we still have it in
+          // the response so attributes carry through the sheet;
+          // fall through to the sleep-stop scalar fields otherwise.
+          final matching = hotels.firstWhere(
+            (h) => h.name == name,
+            orElse: () => Hotel(
+              // `canOpen` guarantees non-null name / coord at this
+              // callsite (see check above where the InkWell is
+              // wired).
+              name: name,
+              country: Country.es,
+              priceEurPerNight: sleepStop.hotelPriceEurPerNight ?? 0,
+              priceBand: PriceBand.mid,
+              detourMinutes: 0,
+              distanceFromRouteKm: 0,
+              coordinate: coord,
+              attributes: const {},
+            ),
+          );
+          showPoiDetailSheet(
+            context,
+            kind: PoiKind.hotel,
+            name: matching.name,
+            subtitle: subtitle,
+            poi: matching.coordinate,
+            origin: origin,
+            destination: destination,
+            routeGeometry: routeGeometry,
+            attributes: matching.attributes,
+            icon: Icons.hotel_outlined,
+            accent: Theme.of(context).colorScheme.tertiary,
+          );
+        },
+        child: Ink(decoration: decoration, child: card),
+      ),
+    );
+  }
+}
+
+/// Tiny label pill for the AppBar showing which round-trip leg the
+/// user is currently on ("Ida" / "Vuelta"). Rendered next to the
+/// origin name so it doesn't crowd the small mobile header.
+class _LegPill extends StatelessWidget {
+  const _LegPill({required this.label});
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: scheme.onPrimaryContainer,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.6,
+            ),
       ),
     );
   }

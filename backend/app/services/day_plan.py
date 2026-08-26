@@ -89,6 +89,14 @@ def compute(
     # Build day boundaries as (start_at, end_at, start_km, end_km).
     # Day 1 starts at departure. Each day drives up to `cap_hours`
     # then sleeps until wake_hour of the next day.
+    #
+    # When `optimizations.sleep_stop` is set (the trip planner picked
+    # a real rest area for the night, with pause overhead folded in),
+    # we seed Day 1's boundary directly from it — otherwise a raw
+    # `dep + cap_hours` computation produces "sleep at 16:00" while
+    # the promoted sleep card correctly says "sleep at 17:01" (6 h
+    # driving × 1.17 pause overhead). Same source of truth on both
+    # surfaces or the two disagree by exactly the pause overhead.
     boundaries: list[tuple[datetime, datetime, float, float]] = []
     current_start = departure_at
     current_start_km = 0.0
@@ -101,11 +109,26 @@ def compute(
     )
     remaining_hours = trip_duration_hours
     day_index = 0
+    opt_sleep = (
+        optimizations.sleep_stop if optimizations is not None else None
+    )
+    opt_sleep_consumed = False
     while remaining_hours > 0:
         day_index += 1
-        driving_this_day = min(cap_hours, remaining_hours)
-        day_end_driving_at = current_start + timedelta(hours=driving_this_day)
-        end_km = current_start_km + driving_this_day * avg_kmh
+        # Day 1: honour the opt sleep-stop when present. It already
+        # respects `cap_hours` and pause overhead, and its `at` is
+        # what the promoted card shows.
+        if day_index == 1 and opt_sleep is not None:
+            driving_this_day = opt_sleep.rest_stop.cumulative_driving_hours
+            day_end_driving_at = opt_sleep.at
+            end_km = opt_sleep.rest_stop.distance_from_origin_km
+            opt_sleep_consumed = True
+        else:
+            driving_this_day = min(cap_hours, remaining_hours)
+            day_end_driving_at = current_start + timedelta(
+                hours=driving_this_day,
+            )
+            end_km = current_start_km + driving_this_day * avg_kmh
         boundaries.append(
             (current_start, day_end_driving_at, current_start_km, end_km),
         )
@@ -120,26 +143,39 @@ def compute(
     days: list[DayPlan] = []
     total = len(boundaries)
     for idx, (start_at, end_at, from_km, to_km) in enumerate(boundaries):
+        # Bucket meals by their wall-clock `at`, NOT by km — a
+        # multi-day trip has meals at the sleep spot (same km on
+        # both ends of the overnight break) that would otherwise
+        # get assigned to the wrong day. Day N owns any meal from
+        # its `start_at` up to (but not including) Day N+1's
+        # `start_at`; the last day owns everything after its
+        # `start_at`.
+        next_start = (
+            boundaries[idx + 1][0] if idx + 1 < len(boundaries) else None
+        )
         day_meals = tuple(
             m for m in meals
-            if from_km <= m.rest_stop.distance_from_origin_km <= to_km
+            if m.at >= start_at
+            and (next_start is None or m.at < next_start)
+        )
+        # Rest stops still make sense to bucket by km — they're
+        # geographic markers, not clock events.
+        lower_ok = (
+            (lambda km: km >= from_km) if idx == 0
+            else (lambda km: km > from_km)
         )
         day_rests = tuple(
             r for r in rests
-            if from_km <= r.distance_from_origin_km <= to_km
+            if lower_ok(r.distance_from_origin_km)
+            and r.distance_from_origin_km <= to_km
         )
         sleep_at = end_at if idx + 1 < total else None
         sleep_coord: Coordinate | None = None
-        # If the domain sleep_stop lands in this day, prefer its time
-        # AND coord — it targeted a real rest area.
-        if (
-            optimizations is not None
-            and optimizations.sleep_stop is not None
-            and sleep_at is not None
-            and from_km <= optimizations.sleep_stop.rest_stop.distance_from_origin_km <= to_km
-        ):
-            sleep_at = optimizations.sleep_stop.at
-            sleep_coord = optimizations.sleep_stop.rest_stop.coordinate
+        # Day 1: opt_sleep already seeded the boundary so end_at IS
+        # the sleep time and coord comes from the rest area. Later
+        # days: fall through to route-geometry interpolation.
+        if idx == 0 and opt_sleep_consumed and sleep_at is not None:
+            sleep_coord = opt_sleep.rest_stop.coordinate  # type: ignore[union-attr]
         elif sleep_at is not None and route is not None:
             # Otherwise interpolate a rough coord from the route
             # geometry at the day's ending km. Clients use this to

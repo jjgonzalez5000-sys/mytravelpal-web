@@ -60,6 +60,17 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   bool _loading = false;
   String? _error;
 
+  /// Round-trip toggle. When ON the plan screen shows a second
+  /// date+time picker for the return leg and the submit fires two
+  /// `/plan` calls in parallel with reversed origin/destination.
+  /// Defaults to the outbound date + 3 days so the picker has a
+  /// sensible seed.
+  bool _isRoundTrip = false;
+  late DateTime _returnDeparture = _defaultReturnDeparture();
+
+  DateTime _defaultReturnDeparture() =>
+      _departure.add(const Duration(days: 3));
+
   static DateTime _defaultDeparture() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day + 1, 8);
@@ -106,6 +117,32 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     if (time == null) return;
     setState(() {
       _departure =
+          DateTime(date.year, date.month, date.day, time.hour, time.minute);
+      // Keep the return default sensible when the outbound moves —
+      // only if the user hasn't already customised the return.
+      if (_returnDeparture.isBefore(_departure)) {
+        _returnDeparture = _defaultReturnDeparture();
+      }
+    });
+  }
+
+  Future<void> _pickReturnDeparture() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _returnDeparture,
+      // Return must be at least the same day as outbound; no round-trip
+      // that finishes before it starts.
+      firstDate: _departure,
+      lastDate: _departure.add(const Duration(days: 90)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_returnDeparture),
+    );
+    if (time == null) return;
+    setState(() {
+      _returnDeparture =
           DateTime(date.year, date.month, date.day, time.hour, time.minute);
     });
   }
@@ -185,7 +222,47 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         preferScenic: _preferScenic,
         tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
       );
+      // Round-trip: fire two /plan calls in parallel — outbound
+      // A→B on the chosen departure and return B→A on the return
+      // departure. Both use the same profile / preferences so the
+      // driver gets a consistent experience on either leg.
+      TripPlanRequest? returnRequest;
+      Future<TripPlanResponse>? returnFuture;
+      if (_isRoundTrip) {
+        returnRequest = TripPlanRequest(
+          origin: destination.coordinate,
+          destination: origin.coordinate,
+          desiredDepartureAt: _returnDeparture,
+          hotelMaxDetourMinutes:
+              _hotelPrefs.enabled ? _hotelPrefs.maxDetourMinutes : null,
+          hotelPriceBand: _hotelPrefs.enabled ? _hotelPrefs.priceBand : null,
+          hotelPriceBands: _hotelPrefs.enabled
+              ? _hotelPrefs.priceBands.toList()
+              : null,
+          restaurantMaxDetourMinutes: _restaurantPrefs.enabled
+              ? _restaurantPrefs.maxDetourMinutes
+              : null,
+          restaurantPriceBand: _restaurantPrefs.enabled
+              ? _restaurantPrefs.priceBand : null,
+          restaurantPriceBands: _restaurantPrefs.enabled
+              ? _restaurantPrefs.priceBands.toList()
+              : null,
+          restaurantCuisines: _restaurantPrefs.enabled
+              ? cuisineOsmTagsFor(_restaurantPrefs.cuisines).toList()
+              : null,
+          includeAdverseEvents: _alertsEnabled,
+          includeTollAlternative: _tollAlternativeEnabled,
+          includeRouteComparison: _routeComparisonEnabled,
+          includeHourlyTollAnalysis: _hourlyTollEnabled,
+          avoidMotorways: _avoidMotorways,
+          preferScenic: _preferScenic,
+          tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
+        );
+        returnFuture = api.planTrip(returnRequest);
+      }
       final response = await api.planTrip(request);
+      final returnResponse =
+          returnFuture == null ? null : await returnFuture;
       if (!mounted) return;
       // Pop the loading dialog BEFORE pushing ResultScreen — otherwise
       // the dialog stays underneath in the route stack and the later
@@ -194,6 +271,18 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         Navigator.of(context).pop();
         dialogOpen = false;
       }
+      final l = AppLocalizations.of(context);
+      final outboundLabel = _isRoundTrip ? l.roundTripLegOutbound : null;
+      final returnLeg = (returnRequest != null && returnResponse != null)
+          ? RoundTripLeg(
+              label: l.roundTripLegReturn,
+              request: returnRequest,
+              origin: destination,
+              destination: origin,
+              response: returnResponse,
+              desiredDepartureAt: _returnDeparture,
+            )
+          : null;
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
@@ -202,13 +291,30 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             destination: destination,
             response: response,
             desiredDepartureAt: _departure,
+            currentLegLabel: outboundLabel,
+            otherLeg: returnLeg,
+            hotelPrefs: _hotelPrefs.enabled ? _hotelPrefs : null,
           ),
         ),
       );
     } on ApiException catch (e) {
-      setState(() => _error = 'API error ${e.statusCode}');
+      // Deterministic 4xx bubbling up from the retry-aware client.
+      // Map the common ones to human-friendly copy; anything else
+      // falls through to a generic "algo fue mal" that still surfaces
+      // the code so support can diagnose from a user screenshot.
+      final l = AppLocalizations.of(context);
+      setState(() => _error = switch (e.statusCode) {
+        401 => l.planErrorAuth,
+        402 => l.planErrorPremium,
+        429 => l.planErrorRateLimit,
+        _ => l.planErrorGeneric(e.statusCode),
+      });
     } catch (e) {
-      setState(() => _error = 'Network error: $e');
+      // 5xx exhausted retries or true network failure. The client
+      // has already reintentado 3 veces silently, so at this point
+      // it IS worth telling the user with a plain-language message.
+      final l = AppLocalizations.of(context);
+      setState(() => _error = l.planErrorNetwork);
     } finally {
       // Only pops here on the ERROR path — success already popped
       // above before the ResultScreen push.
@@ -435,6 +541,25 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                           label: dateFmt.format(_departure),
                           onPressed: _pickDeparture,
                         ),
+                        const SizedBox(height: Tokens.space8),
+                        SwitchListTile.adaptive(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(l.planRoundTripTitle),
+                          subtitle: Text(
+                            l.planRoundTripSubtitle,
+                            style: t.bodySmall,
+                          ),
+                          value: _isRoundTrip,
+                          onChanged: (v) =>
+                              setState(() => _isRoundTrip = v),
+                        ),
+                        if (_isRoundTrip) ...[
+                          const SizedBox(height: Tokens.space4),
+                          _DepartureButton(
+                            label: '↩ ${dateFmt.format(_returnDeparture)}',
+                            onPressed: _pickReturnDeparture,
+                          ),
+                        ],
                       ],
                     ),
                   ).animate().fadeIn(delay: 60.ms, duration: Tokens.motionBase),
@@ -561,15 +686,33 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         background: scheme.errorContainer,
                         borderColor: scheme.error.withValues(alpha: 0.4),
                         padding: const EdgeInsets.all(Tokens.space16),
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Icon(Icons.error_outline, color: scheme.onErrorContainer),
-                            const SizedBox(width: Tokens.space12),
-                            Expanded(
-                              child: Text(
-                                _error!,
-                                style: t.bodyMedium?.copyWith(
-                                  color: scheme.onErrorContainer,
+                            Row(
+                              children: [
+                                Icon(Icons.error_outline,
+                                    color: scheme.onErrorContainer),
+                                const SizedBox(width: Tokens.space12),
+                                Expanded(
+                                  child: Text(
+                                    _error!,
+                                    style: t.bodyMedium?.copyWith(
+                                      color: scheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: Tokens.space8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton.icon(
+                                onPressed: _loading ? null : _submit,
+                                icon: const Icon(Icons.refresh, size: 18),
+                                label: Text(l.planErrorRetry),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: scheme.onErrorContainer,
                                 ),
                               ),
                             ),

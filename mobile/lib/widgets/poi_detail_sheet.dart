@@ -350,7 +350,30 @@ class _ExternalCtaRow extends StatelessWidget {
   final Map<String, String> attributes;
 
   Future<void> _launch(BuildContext context, Uri uri) async {
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    // Two-step launch:
+    // 1. `externalApplication` opens Google Maps / TheFork / Booking
+    //    apps when installed on the phone (best UX — deep-link into
+    //    the native app with search pre-filled).
+    // 2. If no dedicated app is registered as handler, fall back to
+    //    `platformDefault` which opens the URL in the system
+    //    browser (Chrome / whatever default). Without this fallback
+    //    users with no Google Maps app see the button do nothing
+    //    silently — the SnackBar recovery was a Band-Aid that never
+    //    actually shows because the modal sheet gates it.
+    var ok = false;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      // Fall through — some ROMs throw PlatformException instead
+      // of returning false when no handler is registered.
+    }
+    if (!ok) {
+      try {
+        ok = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (_) {
+        ok = false;
+      }
+    }
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not open $uri')),
@@ -358,15 +381,65 @@ class _ExternalCtaRow extends StatelessWidget {
     }
   }
 
-  Uri _googleMaps() => Uri.https('www.google.com', '/maps/search/', {
+  // Android's geo URI drops a *labeled* pin at exact coordinates
+  // and Google Maps opens it directly — no text search, no
+  // "just the coords" limbo the previous coord-only https link
+  // produced. Format: `geo:<lat>,<lon>?q=<lat>,<lon>(<Label>)`.
+  // Parens around the label are the standard way to attach a
+  // marker title. Fallback for devices without a geo handler
+  // uses the https URL scoped by both name AND coord bounds so
+  // Maps text-searches near the point, not globally.
+  Uri _geoUri() {
+    // Trim / normalize whitespace in the label — some Maps
+    // builds refuse geo URIs whose label contains newlines.
+    final label = Uri.encodeComponent(
+      name.replaceAll(RegExp(r'\s+'), ' ').trim(),
+    );
+    return Uri.parse(
+      'geo:${poi.lat},${poi.lon}?q=${poi.lat},${poi.lon}($label)',
+    );
+  }
+
+  Uri _googleMapsHttpsFallback() =>
+      Uri.https('www.google.com', '/maps/search/', {
         'api': '1',
-        'query': '$name ${poi.lat},${poi.lon}',
+        // Coordinates in the query text land the pin exactly;
+        // the `center`/`zoom` pair tightens the map viewport so
+        // when Maps' web UI decides to render a text search
+        // panel, results are bounded around the point instead
+        // of matching a same-named business elsewhere.
+        'query': '${poi.lat},${poi.lon}',
+        'center': '${poi.lat},${poi.lon}',
+        'zoom': '17',
       });
 
-  Uri _theFork() => Uri.https('www.thefork.com', '/search', {
-        'cityId': '',
-        'searchText': name,
-      });
+  Future<void> _openInMaps(BuildContext context) async {
+    var ok = false;
+    try {
+      ok = await launchUrl(_geoUri(),
+          mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok) {
+      if (!context.mounted) return;
+      await _launch(context, _googleMapsHttpsFallback());
+    }
+  }
+
+  Uri _theFork() {
+    // TheFork's public site has no stable deep-link that resolves
+    // "restaurant name + city" without their API key. The old
+    // `/search?cityId=&searchText=<name>` collapsed to the
+    // generic Paris results page (their default city fallback).
+    // Route through a Google search scoped to thefork.com — the
+    // top hit is almost always the exact restaurant page, and
+    // for the handful that aren't listed the user at least sees
+    // the correct search results instead of Paris restaurants.
+    return Uri.https('www.google.com', '/search', {
+      'q': '$name site:thefork.com',
+    });
+  }
 
   Uri _booking() => Uri.https('www.booking.com', '/searchresults.html', {
         'ss': name,
@@ -393,7 +466,7 @@ class _ExternalCtaRow extends StatelessWidget {
         _CtaButton(
           icon: Icons.map_outlined,
           label: 'Google Maps',
-          onPressed: () => _launch(context, _googleMaps()),
+          onPressed: () => _openInMaps(context),
         ),
         if (kind == PoiKind.restaurant)
           _CtaButton(

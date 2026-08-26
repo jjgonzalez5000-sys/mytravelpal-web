@@ -149,7 +149,7 @@
     "resultEyebrowNearRoute": "Vicino al percorso",
     "resultEyebrowAlongRoute": "Lungo il percorso",
     "resultAlerts": "Allerte",
-    "resultRestStops": "Soste",
+    "resultRestStops": "Soste consigliate",
     "resultHotels": "Hotel",
     "resultRestaurants": "Ristoranti",
     "resultFuel": "Carburante",
@@ -468,7 +468,7 @@
     "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
     "dayHeaderRange": "Giorno {index} · km {fromKm} → {toKm}",
     "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
-    "daySleepMarker": "Pernottamento verso le {time}",
+    "daySleepMarker": "Fine guida verso le {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
 
     "nextStopHeroLabel": "Prossima sosta suggerita",
@@ -506,6 +506,71 @@
     "planLoadingStepTolls": "Confronto percorsi con pedaggio e senza…",
     "planLoadingStepAlmost": "Quasi pronto — sto assemblando tutto…",
     "planLoadingHelper": "Di solito ci vogliono 5-15 secondi. Puoi mettere via il telefono.",
+    "planErrorAuth": "Sessione scaduta. Accedi di nuovo e riprova.",
+    "planErrorPremium": "Questo percorso richiede Premium. Attivalo per includere l'analisi pedaggi per ora.",
+    "planErrorRateLimit": "Troppe richieste in poco tempo. Attendi qualche secondo e riprova.",
+    "planErrorGeneric": "Qualcosa è andato storto durante la pianificazione (codice {code}). Riprova o modifica i dati.",
+    "@planErrorGeneric": {
+      "placeholders": {"code": {"type": "int"}}
+    },
+    "planErrorNetwork": "Non siamo riusciti a raggiungere il server. Controlla la connessione e riprova.",
+    "planErrorRetry": "Riprova",
+    "emptyAlertsTitle": "Percorso libero",
+    "emptyAlertsBody": "Nessun incendio, lavori o evento avverso sul tuo corridoio. Buon viaggio.",
+    "emptyHotelsTitle": "Nessun hotel vicino al percorso",
+    "emptyHotelsBody": "Prova ad ampliare la deviazione massima o a cambiare fascia di prezzo.",
+    "emptyRestaurantsTitle": "Nessun ristorante corrisponde",
+    "emptyRestaurantsBody": "Amplia la deviazione massima o rimuovi i filtri di cucina.",
+    "onboardEyebrowFuel": "PREZZI REALI",
+    "onboardTitleFuel": "Risparmia ad ogni rifornimento",
+    "onboardBodyFuel": "Prezzi ufficiali per stazione in Spagna, Francia e Italia. Marche premium mischiate con le low-cost.",
+    "onboardEyebrowDriving": "IN STRADA",
+    "onboardTitleDriving": "Il tuo copilota intelligente",
+    "onboardBodyDriving": "Dashboard live con prossima sosta, arrivo dinamico e nuovi avvisi. Compatibile con Android Auto.",
+    "onboardEyebrowProfile": "PERSONALIZZATO",
+    "onboardTitleProfile": "Compila il tuo profilo",
+    "onboardBodyProfile": "Senza profilo ottimizziamo solo il tempo. Con profilo calcoliamo carburante reale, hotel e pasti su misura.",
+    "multiDaySleepLabel": "Dormirai a",
+    "multiDaySleepNoHotel": "Sosta notte — nessun hotel disponibile",
+    "resumeTripTitle": "Riprendere il viaggio?",
+    "resumeTripBody": "Abbiamo rilevato un viaggio {origin} → {destination} in corso. Riprendere da dove hai lasciato?",
+    "@resumeTripBody": {
+      "placeholders": {
+        "origin": {"type": "String"},
+        "destination": {"type": "String"}
+      }
+    },
+    "resumeTripResume": "Riprendi",
+    "resumeTripDismiss": "Ignora",
+    "hotelPrefStarsLabel": "Stelle",
+    "hotelPrefStarsAny": "Tutte",
+    "hotelPrefParkingTitle": "Con parcheggio",
+    "hotelPrefParkingSub": "Solo hotel taggati con parcheggio. Quelli senza tag passano.",
+    "styleDailyCapRecommendedHint": "Per questo ritmo consigliamo {hours} h/giorno.",
+    "@styleDailyCapRecommendedHint": {
+      "placeholders": {"hours": {"type": "int"}}
+    },
+    "aaCoachTitle": "Come aprirla su Android Auto",
+    "aaCoachStep1": "Collega il telefono all'auto via USB (o wireless se l'auto lo supporta).",
+    "aaCoachStep2": "Nel launcher, passa alla categoria 'Point of Interest' o 'App'. NON appare accanto a Google Maps.",
+    "aaCoachStep3": "Tocca MyTravelPal. Il companion mostra prossima sosta, carburante più economico e arrivo.",
+    "aaCoachHint": "Il primo avvio richiede qualche secondo. Parcheggia con vista libera al cielo per prendere il GPS.",
+    "aaCoachDontShowAgain": "Non mostrare più",
+    "aaCoachDone": "Capito",
+    "batteryWhitelistTitle": "Evita che Android ci chiuda",
+    "batteryWhitelistBody": "Xiaomi/MIUI, Samsung e altri produttori chiudono le app in background dopo alcuni minuti. Se stai navigando con Google Maps e MyTravelPal muore, perdi gli avvisi live.",
+    "batteryWhitelistSteps": "Impostazioni → App → MyTravelPal → Batteria → Nessuna restrizione\n(o 'Non ottimizzare' secondo il modello)",
+    "batteryWhitelistDontShowAgain": "Non mostrare più",
+    "batteryWhitelistLater": "Non ora",
+    "batteryWhitelistOpen": "Apri guida",
+    "planRoundTripTitle": "Andata e ritorno",
+    "planRoundTripSubtitle": "Pianifichiamo il ritorno insieme con le stesse preferenze.",
+    "roundTripLegOutbound": "ANDATA",
+    "roundTripLegReturn": "RITORNO",
+    "roundTripSwapTo": "Vedi {leg}",
+    "@roundTripSwapTo": {
+      "placeholders": {"leg": {"type": "String"}}
+    },
 
     "resultStartTrip": "Inizia il viaggio",
     "navPickerTitle": "Continua su…",
@@ -536,6 +601,21 @@
     },
     "tripDashboardActiveNotifTitle": "Viaggio in corso",
     "tripDashboardActiveNotifBody": "MyTravelPal segue il tuo percorso in background.",
+    "tripDashboardForegroundBodyBare": "{done} / {total} km percorsi",
+    "@tripDashboardForegroundBodyBare": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"}
+      }
+    },
+    "tripDashboardForegroundBodyWithStop": "{done} / {total} km · prossima sosta: {name}",
+    "@tripDashboardForegroundBodyWithStop": {
+      "placeholders": {
+        "done": {"type": "String"},
+        "total": {"type": "String"},
+        "name": {"type": "String"}
+      }
+    },
     "tripDashboardSleepStopLabel": "hotel",
     "alertApproachingStopTitle": "Sosta in arrivo",
     "alertApproachingStopBody": "{slot} a {name} tra circa {mins} min. Preparati all'uscita.",

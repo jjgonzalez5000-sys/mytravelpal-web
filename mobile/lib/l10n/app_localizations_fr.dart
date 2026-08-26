@@ -430,7 +430,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultAlerts => 'Alertes';
 
   @override
-  String get resultRestStops => 'Pauses';
+  String get resultRestStops => 'Arrêts recommandés';
 
   @override
   String get resultHotels => 'Hôtels';
@@ -1304,7 +1304,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String daySleepMarker(String time) {
-    return 'Nuit vers $time';
+    return 'Fin de la conduite vers $time';
   }
 
   @override
@@ -1409,6 +1409,181 @@ class AppLocalizationsFr extends AppLocalizations {
       'Généralement 5 à 15 secondes. Vous pouvez ranger le téléphone.';
 
   @override
+  String get planErrorAuth => 'Session expirée. Reconnectez-vous et réessayez.';
+
+  @override
+  String get planErrorPremium =>
+      'Ce trajet nécessite Premium. Activez-le pour inclure l\'analyse des péages par heure.';
+
+  @override
+  String get planErrorRateLimit =>
+      'Trop de requêtes en peu de temps. Attendez quelques secondes puis réessayez.';
+
+  @override
+  String planErrorGeneric(int code) {
+    return 'Un problème est survenu lors de la planification (code $code). Réessayez ou modifiez les entrées.';
+  }
+
+  @override
+  String get planErrorNetwork =>
+      'Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.';
+
+  @override
+  String get planErrorRetry => 'Réessayer';
+
+  @override
+  String get emptyAlertsTitle => 'Itinéraire dégagé';
+
+  @override
+  String get emptyAlertsBody =>
+      'Aucun incendie, travaux ou événement adverse signalé sur votre corridor. Bon voyage.';
+
+  @override
+  String get emptyHotelsTitle => 'Aucun hôtel près de l\'itinéraire';
+
+  @override
+  String get emptyHotelsBody =>
+      'Essayez d\'élargir le détour max ou de changer la gamme de prix.';
+
+  @override
+  String get emptyRestaurantsTitle => 'Aucun restaurant ne correspond';
+
+  @override
+  String get emptyRestaurantsBody =>
+      'Élargissez le détour max ou retirez les filtres de cuisine.';
+
+  @override
+  String get onboardEyebrowFuel => 'PRIX RÉELS';
+
+  @override
+  String get onboardTitleFuel => 'Économisez à chaque plein';
+
+  @override
+  String get onboardBodyFuel =>
+      'Prix officiels par station en Espagne, France et Italie. Marques premium mélangées aux low-cost.';
+
+  @override
+  String get onboardEyebrowDriving => 'SUR LA ROUTE';
+
+  @override
+  String get onboardTitleDriving => 'Votre copilote intelligent';
+
+  @override
+  String get onboardBodyDriving =>
+      'Tableau de bord en direct avec prochain arrêt, arrivée dynamique et nouvelles alertes. Compatible Android Auto.';
+
+  @override
+  String get onboardEyebrowProfile => 'PERSONNALISÉ';
+
+  @override
+  String get onboardTitleProfile => 'Remplissez votre profil';
+
+  @override
+  String get onboardBodyProfile =>
+      'Sans profil nous optimisons juste le temps. Avec profil nous calculons carburant réel, hôtels et repas adaptés.';
+
+  @override
+  String get multiDaySleepLabel => 'Vous dormirez à';
+
+  @override
+  String get multiDaySleepNoHotel => 'Étape nuit — aucun hôtel disponible';
+
+  @override
+  String get resumeTripTitle => 'Reprendre votre trajet ?';
+
+  @override
+  String resumeTripBody(String origin, String destination) {
+    return 'Nous avons détecté un trajet $origin → $destination en cours. Reprendre où vous en étiez ?';
+  }
+
+  @override
+  String get resumeTripResume => 'Reprendre';
+
+  @override
+  String get resumeTripDismiss => 'Ignorer';
+
+  @override
+  String get hotelPrefStarsLabel => 'Étoiles';
+
+  @override
+  String get hotelPrefStarsAny => 'Toutes';
+
+  @override
+  String get hotelPrefParkingTitle => 'Avec parking';
+
+  @override
+  String get hotelPrefParkingSub =>
+      'Seulement les hôtels tagués avec parking. Ceux sans étiquette passent aussi.';
+
+  @override
+  String styleDailyCapRecommendedHint(int hours) {
+    return 'Pour ce rythme nous suggérons $hours h/jour.';
+  }
+
+  @override
+  String get aaCoachTitle => 'Comment l\'ouvrir sur Android Auto';
+
+  @override
+  String get aaCoachStep1 =>
+      'Connectez le téléphone à la voiture en USB (ou sans fil si votre autoradio le permet).';
+
+  @override
+  String get aaCoachStep2 =>
+      'Dans le lanceur, passez à la catégorie \'Point of Interest\' ou \'Apps\'. Elle N\'apparaît PAS à côté de Google Maps.';
+
+  @override
+  String get aaCoachStep3 =>
+      'Touchez MyTravelPal. Le companion affiche prochain arrêt, carburant moins cher et arrivée.';
+
+  @override
+  String get aaCoachHint =>
+      'Le premier lancement prend quelques secondes. Garez-vous avec vue dégagée pour capter le GPS.';
+
+  @override
+  String get aaCoachDontShowAgain => 'Ne plus afficher';
+
+  @override
+  String get aaCoachDone => 'Compris';
+
+  @override
+  String get batteryWhitelistTitle => 'Empêchez Android de nous fermer';
+
+  @override
+  String get batteryWhitelistBody =>
+      'Xiaomi/MIUI, Samsung et autres constructeurs ferment les apps en arrière-plan après quelques minutes. Si vous naviguez avec Google Maps et que MyTravelPal meurt, vous perdez les alertes en direct.';
+
+  @override
+  String get batteryWhitelistSteps =>
+      'Paramètres → Apps → MyTravelPal → Batterie → Aucune restriction\n(ou \'Ne pas optimiser\' selon le modèle)';
+
+  @override
+  String get batteryWhitelistDontShowAgain => 'Ne plus afficher';
+
+  @override
+  String get batteryWhitelistLater => 'Pas maintenant';
+
+  @override
+  String get batteryWhitelistOpen => 'Ouvrir l\'aide';
+
+  @override
+  String get planRoundTripTitle => 'Aller-retour';
+
+  @override
+  String get planRoundTripSubtitle =>
+      'Nous planifions le retour en même temps avec les mêmes préférences.';
+
+  @override
+  String get roundTripLegOutbound => 'ALLER';
+
+  @override
+  String get roundTripLegReturn => 'RETOUR';
+
+  @override
+  String roundTripSwapTo(String leg) {
+    return 'Voir $leg';
+  }
+
+  @override
   String get resultStartTrip => 'Démarrer le trajet';
 
   @override
@@ -1457,6 +1632,17 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get tripDashboardActiveNotifBody =>
       'MyTravelPal suit votre itinéraire en arrière-plan.';
+
+  @override
+  String tripDashboardForegroundBodyBare(String done, String total) {
+    return '$done / $total km parcourus';
+  }
+
+  @override
+  String tripDashboardForegroundBodyWithStop(
+      String done, String total, String name) {
+    return '$done / $total km · prochain arrêt : $name';
+  }
 
   @override
   String get tripDashboardSleepStopLabel => 'hôtel';

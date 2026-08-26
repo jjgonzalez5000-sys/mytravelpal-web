@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -611,6 +612,62 @@ async def plan_trip(
             top_n=payload.time_window_top_n,
         ),
     )
+    # Effective departure: the recommended window when we have one,
+    # else the user's original desired time. This anchor drives BOTH
+    # `compute_optimizations` (meal / sleep clocks) AND the
+    # consistency check (arrival timestamp). They MUST match — an
+    # earlier version used the recommended anchor for opts but the
+    # desired anchor for the consistency check, producing a spurious
+    # "breakfast at 07:03 but trip ends at 03:37" error on
+    # multi-day trips where windows[0] shifted by hours.
+    effective_departure_at = (
+        windows[0].departure_at if windows else payload.desired_departure_at
+    )
+    # Pace-dependent pause overhead — same table as
+    # `trip_optimizations._PAUSE_RATIO_BY_PACE`. Kept inline here so
+    # the check can compute an accurate arrival even before `opt` is
+    # built (opt is gated on `profile is not None` but the check
+    # itself must run either way).
+    _pause_ratio_by_pace = {
+        "push": 0.04, "steady": 0.10, "savour": 0.17,
+    }
+    _pace_value = (
+        profile.travel_pace.value if profile is not None else "steady"
+    )
+    _pause_ratio = _pause_ratio_by_pace.get(_pace_value, 0.10)
+    # Multi-day-aware arrival: single-day trips are just
+    # `dep + wall_hours(trip)`. Multi-day trips have to fold in
+    # ~13 h of overnight rest at the end of each intermediate day
+    # (from sleep to wake_hour of the next day). Without this the
+    # consistency check falsely fires "breakfast at Thu 08:00 but
+    # trip ends at Thu 07:35" for Day 2+ meals — the check thought
+    # the trip was continuous.
+    _trip_hours = route.free_flow_duration.total_seconds() / 3600.0
+    _cap_hours = float(
+        getattr(profile, "daily_driving_cap_hours", 8) or 8,
+    ) if profile is not None else 24.0
+    _wake_hour = (
+        getattr(profile, "wake_hour", 8) if profile is not None else 0
+    )
+    _day_start = effective_departure_at
+    _remaining = _trip_hours
+    _day_end = effective_departure_at
+    while _remaining > 0.01:
+        _drive = min(_cap_hours, _remaining)
+        _day_end = _day_start + timedelta(
+            hours=_drive * (1.0 + _pause_ratio),
+        )
+        _remaining -= _drive
+        if _remaining <= 0.01:
+            break
+        # Wake next day at wake_hour; fall through when no profile.
+        _next_wake_at = _day_end.replace(
+            hour=_wake_hour, minute=0, second=0, microsecond=0,
+        )
+        if _next_wake_at <= _day_end:
+            _next_wake_at += timedelta(days=1)
+        _day_start = _next_wake_at
+    effective_arrival_at = _day_end
     fuel = await providers.fuel.prices_along(route)
 
     all_hotels_cache = None  # avoid re-hitting provider for optimizations
@@ -782,22 +839,148 @@ async def plan_trip(
             )
             for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
         }
+        # Widened from 25 → 45 min (2026-08-25): overnight is
+        # high-stakes and drivers accept a bigger off-corridor
+        # detour to sleep in a real hotel. The narrow 25 min window
+        # returned an empty hotel pool for long trips where hotels
+        # cluster in cities a bit off the direct road, so the
+        # promoted "Dormirás en X" card was rendering with
+        # hotel_name = null even when good options existed.
         filtered_hotels_for_sleep = filter_hotels(
             opti_hotels,
-            max_detour_minutes=25.0,
+            max_detour_minutes=45.0,
             price_band=PriceBand.ANY,
             profile=profile,
-            limit=15,
+            limit=25,
         )
         opt = compute_optimizations(
-            departure_at=payload.desired_departure_at,
+            departure_at=effective_departure_at,
             trip_duration_hours=route.free_flow_duration.total_seconds() / 3600.0,
             rest_stops=compute_rest_stops(route),
             restaurants_by_slot=restaurants_by_slot,
             hotels=filtered_hotels_for_sleep,
             profile=profile,
         )
+        # Targeted densification: when the corridor-wide POI pass
+        # gave us a meal stop with no restaurant within 25 km
+        # (`_closest_restaurant` returned None), the pool is sparse
+        # in that specific area — likely because a big-city cluster
+        # elsewhere in the chunk filled Nominatim's `limit=40`.
+        # Fire a tiny point-radius search around the picked stop
+        # so a lunch at km 365 gets a real local option instead of
+        # falling back to a Zurich café or no name at all. Same
+        # for the sleep-stop hotel. Both are opt-in via
+        # `getattr(..., None)` so mock providers (used in tests)
+        # keep working without adding the method.
+        near_restaurants = getattr(
+            providers.restaurants, "restaurants_near", None,
+        )
+        densified_restaurants: list = []
+        if near_restaurants is not None:
+            patched_meals: list = []
+            # Names already assigned so back-to-back snapped meals
+            # at the same hotel spot get different densified hits.
+            used_meal_names: set[str] = {
+                m.restaurant.name
+                for m in opt.meal_stops if m.restaurant is not None
+            }
+            for m in opt.meal_stops:
+                if m.restaurant is None:
+                    hits = await near_restaurants(
+                        m.rest_stop.coordinate, 25.0,
+                    )
+                    densified_restaurants.extend(hits)
+                    pick = next(
+                        (h for h in hits if h.name not in used_meal_names),
+                        None,
+                    )
+                    if pick is not None:
+                        used_meal_names.add(pick.name)
+                        patched_meals.append(replace(m, restaurant=pick))
+                        continue
+                patched_meals.append(m)
+            opt = replace(opt, meal_stops=tuple(patched_meals))
+        near_hotels = getattr(providers.hotels, "hotels_near", None)
+        densified_hotels: list = []
+        if near_hotels is not None:
+            # Fill the sleep-stop hotel when the corridor pass
+            # returned nothing.
+            if (
+                opt.sleep_stop is not None
+                and opt.sleep_stop.hotel is None
+            ):
+                hits = await near_hotels(
+                    opt.sleep_stop.rest_stop.coordinate, 40.0,
+                )
+                if hits:
+                    densified_hotels.extend(hits)
+                    opt = replace(
+                        opt,
+                        sleep_stop=replace(
+                            opt.sleep_stop, hotel=hits[0],
+                        ),
+                    )
+            # Densify around EVERY distinct sleep/meal spot in the
+            # plan so per-day "HOTELES CERCA DEL PUNTO DE
+            # PERNOCTA" lists always have local candidates —
+            # even when the corridor pass returned plenty but
+            # they cluster at the destination city. Dedup coords
+            # to avoid firing the same query for lunch + dinner
+            # + next-day breakfast that all share the day-sleep
+            # rest_stop.
+            seen_coords: set[tuple[float, float]] = set()
+            for m in opt.meal_stops:
+                key = (
+                    round(m.rest_stop.coordinate.lat, 3),
+                    round(m.rest_stop.coordinate.lon, 3),
+                )
+                if key in seen_coords:
+                    continue
+                seen_coords.add(key)
+                hits = await near_hotels(m.rest_stop.coordinate, 40.0)
+                densified_hotels.extend(hits)
         opt_domain = opt
+        # Merge densified POIs into the flat output lists so the
+        # day-view sections and hotel/restaurant scrollers surface
+        # them even when the corridor pass returned empty (typical
+        # under Nominatim 429). Dedup by name+lat since the pool
+        # might have overlap with the corridor pass.
+        _seen_hotels = {(h.name, round(h.lat, 4), round(h.lon, 4))
+                        for h in hotels_out}
+        for h in densified_hotels:
+            key = (h.name, round(h.coordinate.lat, 4), round(h.coordinate.lon, 4))
+            if key in _seen_hotels:
+                continue
+            _seen_hotels.add(key)
+            hotels_out.append(HotelOut(
+                name=h.name,
+                country=h.country,
+                price_eur_per_night=h.price_eur_per_night,
+                price_band=h.price_band,
+                detour_minutes=h.detour_minutes,
+                distance_from_route_km=h.distance_from_route_km,
+                lat=h.coordinate.lat,
+                lon=h.coordinate.lon,
+                attributes=dict(h.attributes),
+            ))
+        _seen_rest = {(r.name, round(r.lat, 4), round(r.lon, 4))
+                      for r in restaurants_out}
+        for r in densified_restaurants:
+            key = (r.name, round(r.coordinate.lat, 4), round(r.coordinate.lon, 4))
+            if key in _seen_rest:
+                continue
+            _seen_rest.add(key)
+            restaurants_out.append(RestaurantOut(
+                name=r.name,
+                country=r.country,
+                price_eur_per_meal=r.price_eur_per_meal,
+                price_band=r.price_band,
+                detour_minutes=r.detour_minutes,
+                distance_from_route_km=r.distance_from_route_km,
+                lat=r.coordinate.lat,
+                lon=r.coordinate.lon,
+                attributes=dict(r.attributes),
+            ))
         fuel = await providers.fuel.prices_along(route)
         cost = estimate_fuel(route, profile.vehicle, fuel)
         fuel_cost_domain = cost
@@ -910,8 +1093,8 @@ async def plan_trip(
             code=i.code, severity=i.severity.value, message=i.message,
         )
         for i in check_trip_consistency(
-            departure_at=payload.desired_departure_at,
-            arrival_at=payload.desired_departure_at + route.free_flow_duration,
+            departure_at=effective_departure_at,
+            arrival_at=effective_arrival_at,
             optimizations=opt_domain,
             route=route,
             fuel_cost=fuel_cost_domain,
@@ -944,7 +1127,9 @@ async def plan_trip(
     days_out: list[DayPlanOut] = []
     if profile is not None:
         multiday = compute_day_plan(
-            departure_at=payload.desired_departure_at,
+            # Same anchor as `compute_optimizations` above — anything
+            # else desynchronises day boundaries from meal times.
+            departure_at=effective_departure_at,
             trip_duration_hours=(
                 route.free_flow_duration.total_seconds() / 3600.0
             ),
