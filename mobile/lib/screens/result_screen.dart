@@ -614,6 +614,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         notificationId: notificationId,
       );
       await storage.save(trip);
+      // Schedule fuel arbitrage notification if the trip crosses
+      // a border with a meaningful price difference. Fires 15 min
+      // before departure so the driver sees "fill up in X before
+      // crossing into Y" while still at home/hotel.
+      final arb = widget.response.fuelArbitrage;
+      if (arb != null && arb.estimatedTankSavingEur >= 5) {
+        await NotificationService.instance.scheduleDepartureReminder(
+          tripId: 'fuel:$id',
+          departureLocal:
+              recommended.departureAt.toLocal().subtract(
+                const Duration(minutes: 15),
+              ),
+          minutesBefore: 0,
+          title: l.fuelNotificationTitle,
+          body: l.fuelNotificationBody(
+            arb.cheaperCountry.displayName,
+            arb.cheaperMedianEurPerL.toStringAsFixed(2),
+            arb.pricierCountry.displayName,
+            arb.estimatedTankSavingEur.toStringAsFixed(0),
+          ),
+        );
+      }
       if (!mounted) return;
       setState(() => _saved = true);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -666,6 +688,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       const SizedBox(height: Tokens.space24),
       if (widget.response.consistencyIssues.isNotEmpty)
         ConsistencyBanner(issues: widget.response.consistencyIssues),
+      // Trip cost hero: the first thing the user wants to know.
+      if (widget.response.optimizations != null) ...[
+        _TotalTripCostCard(
+          fuelCostEur: widget.response.optimizations!.fuelCost.totalCostEur,
+          tollCostEur: route.tollCostEur,
+          mealStops: widget.response.optimizations!.mealStops,
+          sleepStop: widget.response.optimizations!.sleepStop,
+          tollSkipSavingsEur: _tollSkipSavingsEur,
+        ),
+        const SizedBox(height: Tokens.space16),
+      ],
       // Next-stop hero: pulls the first meal stop of the trip so the
       // driver always sees "next planned stop" up top without hunting
       // through the Optimizations section.
@@ -823,19 +856,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ),
-      // Total trip cost breakdown — the answer to "how much will
-      // this trip actually cost me?" Shows fuel + tolls + meals +
-      // hotel in one glanceable card.
-      if (widget.response.optimizations != null) ...[
-        const SizedBox(height: Tokens.space16),
-        _TotalTripCostCard(
-          fuelCostEur: widget.response.optimizations!.fuelCost.totalCostEur,
-          tollCostEur: route.tollCostEur,
-          mealStops: widget.response.optimizations!.mealStops,
-          sleepStop: widget.response.optimizations!.sleepStop,
-          tollSkipSavingsEur: _tollSkipSavingsEur,
-        ),
-      ],
       // Departure section: recommendation hero + time window chart
       // merged into one visual block. The user sees "best time to
       // leave" + the chart rows they can tap to replan, all in one
@@ -945,6 +965,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // sleep already surfaced per day, a separate "recommended
       // stops" list read as redundant noise. The domain data is
       // still emitted so day_plan / consistency checks work.
+      // Weather along route — forecast conditions at 5 points.
+      if (widget.response.weatherSegments.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space24),
+        _WeatherStripCard(segments: widget.response.weatherSegments),
+      ],
       // Flat hotel list removed (2026-08-26 tester feedback):
       // hotels are now shown per-day inside DayPlanSection,
       // grouped by overnight stop / destination. The promoted
@@ -2792,6 +2817,57 @@ class _AdverseEventTile extends StatelessWidget {
         borderColor: color.withValues(alpha: 0.3),
       ),
       onTap: onTap,
+    );
+  }
+}
+
+class _WeatherStripCard extends StatelessWidget {
+  const _WeatherStripCard({required this.segments});
+  final List<WeatherSegment> segments;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return SoftCard(
+      padding: const EdgeInsets.all(Tokens.space20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.wb_cloudy_outlined, size: 18,
+                  color: scheme.primary),
+              const SizedBox(width: Tokens.space8),
+              Text(
+                l.weatherAlongRouteTitle,
+                style: t.labelSmall?.copyWith(
+                  color: scheme.primary, letterSpacing: 1.4,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space12),
+          for (final s in segments)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Icon(s.iconData, size: 18, color: scheme.onSurface),
+                  const SizedBox(width: Tokens.space8),
+                  Expanded(
+                    child: Text(
+                      'km ${s.fromKm.toStringAsFixed(0)}-${s.toKm.toStringAsFixed(0)}  ·  ${s.label}'
+                      '${s.temperatureC != null ? '  ·  ${s.temperatureC!.toStringAsFixed(0)}°C' : ''}',
+                      style: t.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }

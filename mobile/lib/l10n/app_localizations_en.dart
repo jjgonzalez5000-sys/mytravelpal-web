@@ -1621,6 +1621,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripCostTotal => 'Total estimated';
 
   @override
+  String get weatherAlongRouteTitle => 'WEATHER ALONG YOUR ROUTE';
+
+  @override
+  String get fuelNotificationTitle => 'Fill up before the border!';
+
+  @override
+  String fuelNotificationBody(
+      String cheap, String price, String pricey, String savings) {
+    return 'Fuel in $cheap (~$price€/L) before crossing into $pricey — save ~$savings€ per tank';
+  }
+
+  @override
   String get tutorialSkip => 'Skip';
 
   @override

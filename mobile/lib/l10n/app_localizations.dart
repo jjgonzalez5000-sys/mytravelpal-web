@@ -2998,6 +2998,25 @@ abstract class AppLocalizations {
   /// **'Total estimated'**
   String get tripCostTotal;
 
+  /// No description provided for @weatherAlongRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'WEATHER ALONG YOUR ROUTE'**
+  String get weatherAlongRouteTitle;
+
+  /// No description provided for @fuelNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fill up before the border!'**
+  String get fuelNotificationTitle;
+
+  /// No description provided for @fuelNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel in {cheap} (~{price}€/L) before crossing into {pricey} — save ~{savings}€ per tank'**
+  String fuelNotificationBody(
+      String cheap, String price, String pricey, String savings);
+
   /// No description provided for @tutorialSkip.
   ///
   /// In en, this message translates to:

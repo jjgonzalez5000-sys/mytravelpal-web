@@ -1136,6 +1136,7 @@ class TripPlanResponse {
     this.consistencyIssues = const [],
     this.fuelArbitrage,
     this.days = const [],
+    this.weatherSegments = const [],
     this.rawJson,
   });
 
@@ -1163,6 +1164,7 @@ class TripPlanResponse {
   final List<ConsistencyIssue> consistencyIssues;
   final FuelArbitrage? fuelArbitrage;
   final List<DayPlan> days;
+  final List<WeatherSegment> weatherSegments;
 
   factory TripPlanResponse.fromJson(Map<String, dynamic> json) =>
       TripPlanResponse(
@@ -1231,6 +1233,11 @@ class TripPlanResponse {
         days: (json['days'] as List<dynamic>? ?? const [])
             .map((d) => DayPlan.fromJson(d as Map<String, dynamic>))
             .toList(growable: false),
+        weatherSegments:
+            (json['weather_segments'] as List<dynamic>? ?? const [])
+                .map((w) =>
+                    WeatherSegment.fromJson(w as Map<String, dynamic>))
+                .toList(growable: false),
         // Retain the whole envelope so the session-persistence layer
         // can re-serialise the exact plan without a per-field
         // `toJson` on every nested type.
@@ -1307,6 +1314,51 @@ class FuelArbitrage {
 /// duration exceeds the driver's daily driving cap or the arrival
 /// crosses their bedtime.
 @immutable
+@immutable
+class WeatherSegment {
+  const WeatherSegment({
+    required this.fromKm,
+    required this.toKm,
+    required this.label,
+    required this.icon,
+    this.temperatureC,
+    required this.coordinate,
+  });
+
+  final double fromKm;
+  final double toKm;
+  final String label;
+  final String icon;
+  final double? temperatureC;
+  final LatLon coordinate;
+
+  factory WeatherSegment.fromJson(Map<String, dynamic> j) => WeatherSegment(
+        fromKm: (j['from_km'] as num).toDouble(),
+        toKm: (j['to_km'] as num).toDouble(),
+        label: j['label'] as String,
+        icon: j['icon'] as String,
+        temperatureC: (j['temperature_c'] as num?)?.toDouble(),
+        coordinate: LatLon(
+          lat: (j['lat'] as num).toDouble(),
+          lon: (j['lon'] as num).toDouble(),
+        ),
+      );
+
+  IconData get iconData => switch (icon) {
+        'sunny' => Icons.wb_sunny_outlined,
+        'partly_cloudy' => Icons.wb_cloudy,
+        'cloudy' => Icons.cloud_outlined,
+        'fog' => Icons.foggy,
+        'drizzle' => Icons.grain,
+        'rain' => Icons.water_drop_outlined,
+        'heavy_rain' => Icons.thunderstorm,
+        'snow' => Icons.ac_unit,
+        'heavy_snow' => Icons.severe_cold,
+        'thunderstorm' => Icons.flash_on,
+        _ => Icons.wb_sunny_outlined,
+      };
+}
+
 class DayPlan {
   const DayPlan({
     required this.dayIndex,

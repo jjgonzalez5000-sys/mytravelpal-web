@@ -542,6 +542,16 @@ class ConsistencyIssueOut(BaseModel):
     message: str
 
 
+class WeatherSegmentOut(BaseModel):
+    from_km: float
+    to_km: float
+    label: str
+    icon: str
+    temperature_c: float | None = None
+    lat: float
+    lon: float
+
+
 class TripPlanResponse(BaseModel):
     route: RouteOut
     time_windows: list[TimeWindowOut]
@@ -562,6 +572,7 @@ class TripPlanResponse(BaseModel):
     consistency_issues: list[ConsistencyIssueOut] = Field(default_factory=list)
     fuel_arbitrage: FuelArbitrageOut | None = None
     days: list[DayPlanOut] = Field(default_factory=list)
+    weather_segments: list[WeatherSegmentOut] = Field(default_factory=list)
 
 
 def _providers() -> Providers:
@@ -1290,6 +1301,18 @@ async def plan_trip(
                     )
                 )
 
+    # Weather summary — Open-Meteo forecast at 5 points along the
+    # route for the expected arrival time at each point. Free, no
+    # key, adds ~1-2s. Fires regardless of profile (everyone wants
+    # to know if it'll rain).
+    from app.services.weather_summary import weather_along_route
+    try:
+        weather_raw = await weather_along_route(
+            route, effective_departure_at,
+        )
+    except Exception:
+        weather_raw = ()
+
     return TripPlanResponse(
         route=RouteOut(
             distance_km=route.distance_km,
@@ -1338,6 +1361,18 @@ async def plan_trip(
         consistency_issues=consistency_out,
         fuel_arbitrage=arbitrage_out,
         days=days_out,
+        weather_segments=[
+            WeatherSegmentOut(
+                from_km=s.from_km,
+                to_km=s.to_km,
+                label=s.label,
+                icon=s.icon,
+                temperature_c=s.temperature_c,
+                lat=s.coordinate.lat,
+                lon=s.coordinate.lon,
+            )
+            for s in weather_raw
+        ],
     )
 
 
