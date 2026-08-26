@@ -2962,6 +2962,42 @@ abstract class AppLocalizations {
   /// **'Hide map'**
   String get mapHideLabel;
 
+  /// No description provided for @tripCostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL TRIP COST'**
+  String get tripCostTitle;
+
+  /// No description provided for @tripCostFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get tripCostFuel;
+
+  /// No description provided for @tripCostTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'Tolls'**
+  String get tripCostTolls;
+
+  /// No description provided for @tripCostMeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Meals'**
+  String get tripCostMeals;
+
+  /// No description provided for @tripCostHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel'**
+  String get tripCostHotel;
+
+  /// No description provided for @tripCostTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total estimated'**
+  String get tripCostTotal;
+
   /// No description provided for @tutorialSkip.
   ///
   /// In en, this message translates to:

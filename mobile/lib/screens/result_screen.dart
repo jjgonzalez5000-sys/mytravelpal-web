@@ -823,6 +823,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ),
+      // Total trip cost breakdown — the answer to "how much will
+      // this trip actually cost me?" Shows fuel + tolls + meals +
+      // hotel in one glanceable card.
+      if (widget.response.optimizations != null) ...[
+        const SizedBox(height: Tokens.space16),
+        _TotalTripCostCard(
+          fuelCostEur: widget.response.optimizations!.fuelCost.totalCostEur,
+          tollCostEur: route.tollCostEur,
+          mealStops: widget.response.optimizations!.mealStops,
+          sleepStop: widget.response.optimizations!.sleepStop,
+          tollSkipSavingsEur: _tollSkipSavingsEur,
+        ),
+      ],
       // Departure section: recommendation hero + time window chart
       // merged into one visual block. The user sees "best time to
       // leave" + the chart rows they can tap to replan, all in one
@@ -1579,6 +1592,119 @@ class _RouteVariantRow extends StatelessWidget {
   }
 
   String _hhmm(double minutes) => durationCompact(minutes);
+}
+
+class _TotalTripCostCard extends StatelessWidget {
+  const _TotalTripCostCard({
+    required this.fuelCostEur,
+    required this.tollCostEur,
+    required this.mealStops,
+    this.sleepStop,
+    this.tollSkipSavingsEur = 0,
+  });
+  final double fuelCostEur;
+  final double tollCostEur;
+  final List<MealStopOpt> mealStops;
+  final SleepStopOpt? sleepStop;
+  final double tollSkipSavingsEur;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    final mealsCost = mealStops.fold<double>(
+      0.0, (sum, m) => sum + (m.restaurantPriceEurPerMeal ?? 15.0),
+    );
+    final hotelCost = sleepStop?.hotelPriceEurPerNight ?? 0.0;
+    final effectiveTolls = (tollCostEur - tollSkipSavingsEur).clamp(0.0, tollCostEur);
+    final total = fuelCostEur + effectiveTolls + mealsCost + hotelCost;
+
+    return SoftCard(
+      padding: const EdgeInsets.all(Tokens.space20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.receipt_long_outlined, size: 18,
+                  color: scheme.primary),
+              const SizedBox(width: Tokens.space8),
+              Text(
+                l.tripCostTitle,
+                style: t.labelSmall?.copyWith(
+                  color: scheme.primary,
+                  letterSpacing: 1.4,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space16),
+          _CostRow(label: l.tripCostFuel,
+              value: fuelCostEur, scheme: scheme, t: t),
+          _CostRow(label: l.tripCostTolls,
+              value: effectiveTolls, scheme: scheme, t: t),
+          if (mealsCost > 0)
+            _CostRow(label: '${l.tripCostMeals} (×${mealStops.length})',
+                value: mealsCost, scheme: scheme, t: t),
+          if (hotelCost > 0)
+            _CostRow(label: l.tripCostHotel,
+                value: hotelCost, scheme: scheme, t: t),
+          const SizedBox(height: Tokens.space8),
+          Divider(color: scheme.outlineVariant),
+          const SizedBox(height: Tokens.space8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(l.tripCostTotal,
+                  style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
+              Text(
+                '€${total.toStringAsFixed(0)}',
+                style: t.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.primary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CostRow extends StatelessWidget {
+  const _CostRow({
+    required this.label,
+    required this.value,
+    required this.scheme,
+    required this.t,
+  });
+  final String label;
+  final double value;
+  final ColorScheme scheme;
+  final TextTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: t.bodyMedium),
+          Text(
+            '€${value.toStringAsFixed(0)}',
+            style: t.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _SavingsSummaryCard extends StatelessWidget {

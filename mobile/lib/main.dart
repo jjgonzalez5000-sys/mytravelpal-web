@@ -1,5 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
+
 import 'app.dart';
 import 'providers.dart';
 import 'services/deep_link_handler.dart';
@@ -10,33 +14,35 @@ import 'services/widget_bridge.dart';
 import 'storage/app_prefs.dart';
 import 'storage/trip_storage.dart';
 
-Future<void> main() => _boot();
+const _kSentryDsn = String.fromEnvironment('SENTRY_DSN');
+
+Future<void> main() async {
+  if (_kSentryDsn.isNotEmpty) {
+    await SentryFlutter.init(
+      (options) {
+        options.dsn = _kSentryDsn;
+        options.tracesSampleRate = 0.1;
+        options.environment = 'production';
+      },
+      appRunner: _boot,
+    );
+  } else {
+    await _boot();
+  }
+}
 
 Future<void> _boot() async {
   WidgetsFlutterBinding.ensureInitialized();
   final storage = await TripStorage.open();
   final prefs = await AppPrefs.open();
 
-  // Notifications init before runApp so the schedule call from
-  // ResultScreen's Save button doesn't race the init.
   await NotificationService.instance.init();
-  // Foreground service init — no-op on non-Android. Starts on demand
-  // when the driver enters TripDashboardScreen, stops on dispose.
   await TripForegroundService.instance.init();
-
-  // Stamp the first-launch marker as early as possible so the
-  // in-app review prompter can compute a real "days since install"
-  // even for users who fire the first plan on day zero.
   await ReviewPrompter.instance.markLaunched();
 
-  // Push the "next upcoming trip" summary to the home-screen widget
-  // as soon as we know the current storage state. Widget users see
-  // fresh countdown numbers the moment they unpin/re-pin the app or
-  // launch it.
   // ignore: unawaited_futures
   storage.list().then((trips) => WidgetBridge.instance.refresh(trips));
 
-  // Wire deep links after the widget tree has a navigator to push into.
   final deepLinks = DeepLinkHandler(rootNavigatorKey);
   WidgetsBinding.instance.addPostFrameCallback((_) {
     deepLinks.start();
@@ -52,4 +58,3 @@ Future<void> _boot() async {
     ),
   );
 }
-

@@ -1603,6 +1603,24 @@ class AppLocalizationsIt extends AppLocalizations {
   String get mapHideLabel => 'Nascondi mappa';
 
   @override
+  String get tripCostTitle => 'COSTO TOTALE DEL VIAGGIO';
+
+  @override
+  String get tripCostFuel => 'Carburante';
+
+  @override
+  String get tripCostTolls => 'Pedaggi';
+
+  @override
+  String get tripCostMeals => 'Pasti';
+
+  @override
+  String get tripCostHotel => 'Hotel';
+
+  @override
+  String get tripCostTotal => 'Totale stimato';
+
+  @override
   String get tutorialSkip => 'Salta';
 
   @override

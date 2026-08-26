@@ -1609,6 +1609,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get mapHideLabel => 'Masquer la carte';
 
   @override
+  String get tripCostTitle => 'COÛT TOTAL DU VOYAGE';
+
+  @override
+  String get tripCostFuel => 'Carburant';
+
+  @override
+  String get tripCostTolls => 'Péages';
+
+  @override
+  String get tripCostMeals => 'Repas';
+
+  @override
+  String get tripCostHotel => 'Hôtel';
+
+  @override
+  String get tripCostTotal => 'Total estimé';
+
+  @override
   String get tutorialSkip => 'Passer';
 
   @override

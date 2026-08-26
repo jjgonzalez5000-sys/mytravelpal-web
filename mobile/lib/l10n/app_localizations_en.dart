@@ -1603,6 +1603,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mapHideLabel => 'Hide map';
 
   @override
+  String get tripCostTitle => 'TOTAL TRIP COST';
+
+  @override
+  String get tripCostFuel => 'Fuel';
+
+  @override
+  String get tripCostTolls => 'Tolls';
+
+  @override
+  String get tripCostMeals => 'Meals';
+
+  @override
+  String get tripCostHotel => 'Hotel';
+
+  @override
+  String get tripCostTotal => 'Total estimated';
+
+  @override
   String get tutorialSkip => 'Skip';
 
   @override

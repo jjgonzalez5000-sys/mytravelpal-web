@@ -1608,6 +1608,24 @@ class AppLocalizationsDe extends AppLocalizations {
   String get mapHideLabel => 'Karte ausblenden';
 
   @override
+  String get tripCostTitle => 'GESAMTKOSTEN DER REISE';
+
+  @override
+  String get tripCostFuel => 'Kraftstoff';
+
+  @override
+  String get tripCostTolls => 'Maut';
+
+  @override
+  String get tripCostMeals => 'Mahlzeiten';
+
+  @override
+  String get tripCostHotel => 'Hotel';
+
+  @override
+  String get tripCostTotal => 'Geschätzte Gesamtkosten';
+
+  @override
   String get tutorialSkip => 'Überspringen';
 
   @override
