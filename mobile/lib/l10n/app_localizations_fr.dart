@@ -391,6 +391,49 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareTripSubject => 'Mon voyage avec MyTravelPal';
 
   @override
+  String get shareTitle => 'MyTravelPal — plan de road trip';
+
+  @override
+  String shareRouteLine(String km, String hours, String tolls) {
+    return '$km km · $hours h en flux libre · péages $tolls €';
+  }
+
+  @override
+  String shareBestTime(String when, String minutes) {
+    return 'Meilleure heure de départ : $when ($minutes min au total)';
+  }
+
+  @override
+  String shareTollFreeAlt(String savings, String minutes) {
+    return 'Alt. sans péages : $savings € économisés pour +$minutes min';
+  }
+
+  @override
+  String shareRefuelHint(
+      String cheap, String price, String pricey, String savings) {
+    return 'Faire le plein en $cheap (~$price€/L) avant $pricey — $savings€ économisés/réservoir';
+  }
+
+  @override
+  String get shareHotelsHeader => 'Meilleurs hôtels envisagés :';
+
+  @override
+  String get shareRestaurantsHeader => 'Meilleurs restaurants envisagés :';
+
+  @override
+  String shareHotelLine(String name, String price, String km) {
+    return '$name — $price €/nuit · $km km hors route';
+  }
+
+  @override
+  String shareRestaurantLine(String name, String price, String km) {
+    return '$name — $price €/repas · $km km hors route';
+  }
+
+  @override
+  String get shareOpenInApp => 'Ouvrir dans MyTravelPal :';
+
+  @override
   String get eventReport => 'Signaler un événement';
 
   @override
@@ -1216,16 +1259,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profilePromptSetup => 'Configurez votre profil de voyage';
 
   @override
-  String get hotelPrefTitle => 'Ajouter des hôtels sur l\'itinéraire';
+  String get hotelPrefTitle => 'Trouver des hôtels près des arrêts';
 
   @override
-  String hotelPrefSubEnabled(int minutes, String band) {
-    return 'Jusqu\'à $minutes min de détour · $band';
-  }
+  String get hotelPrefSubOn =>
+      'Affiche les hébergements près de chaque point de nuit';
 
   @override
-  String get hotelPrefSubOff =>
-      'Désactivé. Activez pour voir les hôtels près de l\'itinéraire.';
+  String get hotelPrefSubOff => 'Désactivé';
 
   @override
   String get restaurantPrefTitle => 'Ajouter des restaurants sur l\'itinéraire';
@@ -1317,6 +1358,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get daySleepHotelsLabel => 'Hôtels près de votre nuit';
+
+  @override
+  String hotelDistFromStop(String km) {
+    return '$km km de l\'arrêt';
+  }
+
+  @override
+  String hotelDistFromDestination(String km) {
+    return '$km km de la destination';
+  }
+
+  @override
+  String get daySleepHotelsLabelDestination => 'Hôtels près de la destination';
 
   @override
   String get daySleepHotelsEmpty =>
@@ -1514,6 +1568,75 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get hotelPrefParkingSub =>
       'Seulement les hôtels tagués avec parking. Ceux sans étiquette passent aussi.';
+
+  @override
+  String get hotelFilterParking => 'Parking';
+
+  @override
+  String get hotelFilterWifi => 'WiFi gratuit';
+
+  @override
+  String get hotelFilterAccessible => 'Accessible';
+
+  @override
+  String get hotelFilterOtherTypes => 'Maisons d\'hôtes et plus';
+
+  @override
+  String get restaurantFilterVegetarian => 'Végétarien';
+
+  @override
+  String get restaurantFilterVegan => 'Végan';
+
+  @override
+  String get restaurantFilterGlutenFree => 'Sans gluten';
+
+  @override
+  String get restaurantFilterHalal => 'Halal';
+
+  @override
+  String get restaurantFilterKosher => 'Casher';
+
+  @override
+  String get restaurantDietaryLabel => 'Régime';
+
+  @override
+  String get tollSkipSelectAll => 'Tout sélectionner';
+
+  @override
+  String get tutorialOriginTitle => 'D\'où partez-vous ?';
+
+  @override
+  String get tutorialOriginBody =>
+      'Touchez ici pour chercher une ville ou utilisez le bouton de localisation pour partir de votre position actuelle.';
+
+  @override
+  String get tutorialDestinationTitle => 'Où allez-vous ?';
+
+  @override
+  String get tutorialDestinationBody =>
+      'Cherchez votre destination. Nous planifierons l\'itinéraire complet avec arrêts, hôtels et péages.';
+
+  @override
+  String get tutorialPrefsTitle => 'Personnalisez votre voyage';
+
+  @override
+  String get tutorialPrefsBody =>
+      'Activez hôtels, restaurants et alertes. Configurez préférences alimentaires, étoiles et plus.';
+
+  @override
+  String get tutorialTimeWindowTitle =>
+      'Choisissez la meilleure heure de départ';
+
+  @override
+  String get tutorialTimeWindowBody =>
+      'Touchez une tranche pour replanifier avec cette heure. Le graphique montre l\'impact du trafic à chaque heure.';
+
+  @override
+  String get tutorialTollTitle => 'Gérez les péages';
+
+  @override
+  String get tutorialTollBody =>
+      'Activez ou désactivez chaque tronçon de péage. L\'économie totale se met à jour en temps réel.';
 
   @override
   String styleDailyCapRecommendedHint(int hours) {

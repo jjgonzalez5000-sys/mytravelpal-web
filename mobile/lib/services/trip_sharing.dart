@@ -2,6 +2,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../api/models.dart';
+import '../l10n/app_localizations.dart';
 
 /// URL scheme used by outgoing shares. Registered as an Android intent
 /// filter in `android/app/src/main/AndroidManifest.xml` and, when we
@@ -90,6 +91,7 @@ class SharedTrip {
 /// reopens the plan in-app; for now we ship a text summary that reads
 /// well in WhatsApp / iMessage / email.
 String composeTripShare({
+  required AppLocalizations l,
   required String originName,
   required String destinationName,
   required RouteInfo route,
@@ -98,15 +100,16 @@ String composeTripShare({
   List<Hotel> hotels = const [],
   List<Restaurant> restaurants = const [],
   FuelArbitrage? fuelArbitrage,
+  String? localeName,
 }) {
-  final dateFmt = DateFormat('EEE d MMM · HH:mm');
-  final buf = StringBuffer('MyTravelPal — road trip plan\n\n');
+  final dateFmt = DateFormat('EEE d MMM · HH:mm', localeName);
+  final buf = StringBuffer('${l.shareTitle}\n\n');
   buf.writeln('📍 $originName → $destinationName');
-  buf.writeln(
-    '🛣️  ${route.distanceKm.toStringAsFixed(0)} km · '
-    '${(route.freeFlowMinutes / 60).toStringAsFixed(1)} h free flow · '
-    'tolls ${route.tollCostEur.toStringAsFixed(0)} €',
-  );
+  buf.writeln('🛣️  ${l.shareRouteLine(
+    route.distanceKm.toStringAsFixed(0),
+    (route.freeFlowMinutes / 60).toStringAsFixed(1),
+    route.tollCostEur.toStringAsFixed(0),
+  )}');
   if (route.countriesCrossed.isNotEmpty) {
     buf.writeln(
       '🌍 ${route.countriesCrossed.map((c) => c.displayName).join(' · ')}',
@@ -114,51 +117,54 @@ String composeTripShare({
   }
   if (recommended != null) {
     buf.writeln();
-    buf.writeln(
-      '⏰ Best time to leave: ${dateFmt.format(recommended.departureAt)} '
-      '(${recommended.estimatedMinutes.toStringAsFixed(0)} min total)',
-    );
+    buf.writeln('⏰ ${l.shareBestTime(
+      dateFmt.format(recommended.departureAt),
+      recommended.estimatedMinutes.toStringAsFixed(0),
+    )}');
   }
   if (tollAlt != null && tollAlt.worthIt) {
     buf.writeln();
-    buf.writeln(
-      '💰 Toll-free alt: save €${tollAlt.savingsEur.toStringAsFixed(0)} '
-      'for +${tollAlt.timePenaltyMinutes.toStringAsFixed(0)} min',
-    );
+    buf.writeln('💰 ${l.shareTollFreeAlt(
+      tollAlt.savingsEur.toStringAsFixed(0),
+      tollAlt.timePenaltyMinutes.toStringAsFixed(0),
+    )}');
   }
   if (fuelArbitrage != null) {
     buf.writeln();
-    buf.writeln(
-      '⛽ Refuel in ${fuelArbitrage.cheaperCountry.displayName} '
-      '(~${fuelArbitrage.cheaperMedianEurPerL.toStringAsFixed(2)}€/L) '
-      'before ${fuelArbitrage.pricierCountry.displayName} — '
-      'save ~${fuelArbitrage.estimatedTankSavingEur.toStringAsFixed(0)}€/tank',
-    );
+    buf.writeln('⛽ ${l.shareRefuelHint(
+      fuelArbitrage.cheaperCountry.displayName,
+      fuelArbitrage.cheaperMedianEurPerL.toStringAsFixed(2),
+      fuelArbitrage.pricierCountry.displayName,
+      fuelArbitrage.estimatedTankSavingEur.toStringAsFixed(0),
+    )}');
   }
   if (hotels.isNotEmpty) {
     buf.writeln();
-    buf.writeln('🏨 Top hotels considered:');
+    buf.writeln('🏨 ${l.shareHotelsHeader}');
     for (final h in hotels.take(3)) {
-      buf.writeln(
-        '  · ${h.name} — ${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
-        '${h.distanceFromRouteKm.toStringAsFixed(1)} km off route',
-      );
+      buf.writeln('  · ${l.shareHotelLine(
+        h.name,
+        h.priceEurPerNight.toStringAsFixed(0),
+        h.distanceFromRouteKm.toStringAsFixed(1),
+      )}');
     }
   }
   if (restaurants.isNotEmpty) {
     buf.writeln();
-    buf.writeln('🍽️ Top restaurants considered:');
+    buf.writeln('🍽️ ${l.shareRestaurantsHeader}');
     for (final r in restaurants.take(3)) {
-      buf.writeln(
-        '  · ${r.name} — ${r.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
-        '${r.distanceFromRouteKm.toStringAsFixed(1)} km off route',
-      );
+      buf.writeln('  · ${l.shareRestaurantLine(
+        r.name,
+        r.priceEurPerMeal.toStringAsFixed(0),
+        r.distanceFromRouteKm.toStringAsFixed(1),
+      )}');
     }
   }
   return buf.toString();
 }
 
 Future<void> shareTrip({
+  required AppLocalizations l,
   required String originName,
   required String destinationName,
   required RouteInfo route,
@@ -170,8 +176,10 @@ Future<void> shareTrip({
   List<Hotel> hotels = const [],
   List<Restaurant> restaurants = const [],
   FuelArbitrage? fuelArbitrage,
+  String? localeName,
 }) async {
   final text = composeTripShare(
+    l: l,
     originName: originName,
     destinationName: destinationName,
     route: route,
@@ -180,6 +188,7 @@ Future<void> shareTrip({
     hotels: hotels,
     restaurants: restaurants,
     fuelArbitrage: fuelArbitrage,
+    localeName: localeName,
   );
   final link = encodeTripLink(
     origin: origin,
@@ -189,7 +198,7 @@ Future<void> shareTrip({
     destinationName: destinationName,
   );
   await Share.share(
-    '$text\n\nOpen in MyTravelPal:\n$link',
+    '$text\n\n${l.shareOpenInApp}\n$link',
     subject: '$originName → $destinationName',
   );
 }

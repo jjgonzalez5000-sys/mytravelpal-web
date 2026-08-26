@@ -830,6 +830,67 @@ abstract class AppLocalizations {
   /// **'My road trip via MyTravelPal'**
   String get shareTripSubject;
 
+  /// No description provided for @shareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MyTravelPal — road trip plan'**
+  String get shareTitle;
+
+  /// No description provided for @shareRouteLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km · {hours} h free flow · tolls {tolls} €'**
+  String shareRouteLine(String km, String hours, String tolls);
+
+  /// No description provided for @shareBestTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Best time to leave: {when} ({minutes} min total)'**
+  String shareBestTime(String when, String minutes);
+
+  /// No description provided for @shareTollFreeAlt.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll-free alt: save €{savings} for +{minutes} min'**
+  String shareTollFreeAlt(String savings, String minutes);
+
+  /// No description provided for @shareRefuelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuel in {cheap} (~{price}€/L) before {pricey} — save ~{savings}€/tank'**
+  String shareRefuelHint(
+      String cheap, String price, String pricey, String savings);
+
+  /// No description provided for @shareHotelsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Top hotels considered:'**
+  String get shareHotelsHeader;
+
+  /// No description provided for @shareRestaurantsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Top restaurants considered:'**
+  String get shareRestaurantsHeader;
+
+  /// No description provided for @shareHotelLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — {price} €/night · {km} km off route'**
+  String shareHotelLine(String name, String price, String km);
+
+  /// No description provided for @shareRestaurantLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — {price} €/meal · {km} km off route'**
+  String shareRestaurantLine(String name, String price, String km);
+
+  /// No description provided for @shareOpenInApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in MyTravelPal:'**
+  String get shareOpenInApp;
+
   /// No description provided for @eventReport.
   ///
   /// In en, this message translates to:
@@ -2309,19 +2370,19 @@ abstract class AppLocalizations {
   /// No description provided for @hotelPrefTitle.
   ///
   /// In en, this message translates to:
-  /// **'Add hotels along the route'**
+  /// **'Find hotels near stops'**
   String get hotelPrefTitle;
 
-  /// No description provided for @hotelPrefSubEnabled.
+  /// No description provided for @hotelPrefSubOn.
   ///
   /// In en, this message translates to:
-  /// **'Up to {minutes} min detour · {band}'**
-  String hotelPrefSubEnabled(int minutes, String band);
+  /// **'Shows accommodation options near each overnight stop'**
+  String get hotelPrefSubOn;
 
   /// No description provided for @hotelPrefSubOff.
   ///
   /// In en, this message translates to:
-  /// **'Off. Turn on to see hotels near your route.'**
+  /// **'Off'**
   String get hotelPrefSubOff;
 
   /// No description provided for @restaurantPrefTitle.
@@ -2462,6 +2523,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Hotels near your overnight stop'**
   String get daySleepHotelsLabel;
+
+  /// No description provided for @hotelDistFromStop.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km from stop'**
+  String hotelDistFromStop(String km);
+
+  /// No description provided for @hotelDistFromDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km from destination'**
+  String hotelDistFromDestination(String km);
+
+  /// No description provided for @daySleepHotelsLabelDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotels near your destination'**
+  String get daySleepHotelsLabelDestination;
 
   /// No description provided for @daySleepHotelsEmpty.
   ///
@@ -2804,6 +2883,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Only hotels tagged with parking. Ones missing the tag pass through.'**
   String get hotelPrefParkingSub;
+
+  /// No description provided for @hotelFilterParking.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get hotelFilterParking;
+
+  /// No description provided for @hotelFilterWifi.
+  ///
+  /// In en, this message translates to:
+  /// **'Free WiFi'**
+  String get hotelFilterWifi;
+
+  /// No description provided for @hotelFilterAccessible.
+  ///
+  /// In en, this message translates to:
+  /// **'Accessible'**
+  String get hotelFilterAccessible;
+
+  /// No description provided for @hotelFilterOtherTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest houses & more'**
+  String get hotelFilterOtherTypes;
+
+  /// No description provided for @restaurantFilterVegetarian.
+  ///
+  /// In en, this message translates to:
+  /// **'Vegetarian'**
+  String get restaurantFilterVegetarian;
+
+  /// No description provided for @restaurantFilterVegan.
+  ///
+  /// In en, this message translates to:
+  /// **'Vegan'**
+  String get restaurantFilterVegan;
+
+  /// No description provided for @restaurantFilterGlutenFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Gluten-free'**
+  String get restaurantFilterGlutenFree;
+
+  /// No description provided for @restaurantFilterHalal.
+  ///
+  /// In en, this message translates to:
+  /// **'Halal'**
+  String get restaurantFilterHalal;
+
+  /// No description provided for @restaurantFilterKosher.
+  ///
+  /// In en, this message translates to:
+  /// **'Kosher'**
+  String get restaurantFilterKosher;
+
+  /// No description provided for @restaurantDietaryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dietary'**
+  String get restaurantDietaryLabel;
+
+  /// No description provided for @tollSkipSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get tollSkipSelectAll;
+
+  /// No description provided for @tutorialOriginTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you starting?'**
+  String get tutorialOriginTitle;
+
+  /// No description provided for @tutorialOriginBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap here to search for a city or use the location button to start from your current position.'**
+  String get tutorialOriginBody;
+
+  /// No description provided for @tutorialDestinationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you going?'**
+  String get tutorialDestinationTitle;
+
+  /// No description provided for @tutorialDestinationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Search for your destination. We\'ll plan the full route with stops, hotels, and tolls.'**
+  String get tutorialDestinationBody;
+
+  /// No description provided for @tutorialPrefsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customize your trip'**
+  String get tutorialPrefsTitle;
+
+  /// No description provided for @tutorialPrefsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle hotels, restaurants, and alerts. Set dietary preferences, star ratings, and more.'**
+  String get tutorialPrefsBody;
+
+  /// No description provided for @tutorialTimeWindowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the best departure time'**
+  String get tutorialTimeWindowTitle;
+
+  /// No description provided for @tutorialTimeWindowBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap any row to replan your trip with that departure time. The chart shows traffic impact at each hour.'**
+  String get tutorialTimeWindowBody;
+
+  /// No description provided for @tutorialTollTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage toll costs'**
+  String get tutorialTollTitle;
+
+  /// No description provided for @tutorialTollBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle individual toll stretches to skip. The total savings update in real time. The color strip shows the best hours to skip.'**
+  String get tutorialTollBody;
 
   /// No description provided for @styleDailyCapRecommendedHint.
   ///

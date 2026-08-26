@@ -277,7 +277,14 @@ class HybridGeocodingProvider:
     async def reverse(
         self, lat: float, lon: float,
     ) -> GeocodeResult | None:
-        result = await self._primary.reverse(lat, lon)
+        # For reverse geocoding, prefer the *fallback* (Nominatim)
+        # because it returns the actual town/village at the GPS
+        # coordinate, while the mock catalogue snaps to the nearest
+        # big city in its hardcoded list — Unterägeri and Rotkreuz
+        # both returned "Zürich" because it's within 50 km. Only
+        # fall back to the catalogue when Nominatim is down or the
+        # coord lands outside the supported country set.
+        result = await self._fallback.reverse(lat, lon)
         if result is not None:
             return result
-        return await self._fallback.reverse(lat, lon)
+        return await self._primary.reverse(lat, lon)

@@ -149,29 +149,42 @@ class TestMockNarrative:
 class TestNarrativeEndpoint:
     _PREMIUM_HEADER = {"X-MyTravelPal-Premium": "true"}
 
-    def test_returns_narrative_when_mock_provider_active(
-        self, monkeypatch: pytest.MonkeyPatch,
-    ) -> None:
-        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        response = client.post(
-            "/v1/trips/narrative",
-            headers=self._PREMIUM_HEADER,
-            json={
-                "plan_request": {
-                    "origin": {"lat": 48.8566, "lon": 2.3522},
-                    "destination": {"lat": 40.4168, "lon": -3.7038},
-                    "desired_departure_at": "2026-08-24T08:00:00",
+    def test_returns_narrative_when_mock_provider_active(self) -> None:
+        # Override the DI-injected Providers so the narrative endpoint
+        # always gets a MockLlmProvider regardless of whether the real
+        # ANTHROPIC_API_KEY happens to be present in the environment at
+        # test time (the factory builds its singleton at import, so
+        # monkeypatch.delenv is too late to affect it).
+        from dataclasses import replace as dc_replace
+
+        from app.providers.factory import get_providers
+        from app.providers.llm import MockLlmProvider
+
+        real_providers = get_providers()
+        mock_providers = dc_replace(real_providers, llm=MockLlmProvider())
+        app.dependency_overrides[get_providers] = lambda: mock_providers
+        try:
+            response = client.post(
+                "/v1/trips/narrative",
+                headers=self._PREMIUM_HEADER,
+                json={
+                    "plan_request": {
+                        "origin": {"lat": 48.8566, "lon": 2.3522},
+                        "destination": {"lat": 40.4168, "lon": -3.7038},
+                        "desired_departure_at": "2026-08-24T08:00:00",
+                    },
+                    "origin_name": "Paris",
+                    "destination_name": "Madrid",
                 },
-                "origin_name": "Paris",
-                "destination_name": "Madrid",
-            },
-        )
-        assert response.status_code == 200, response.text
-        body = response.json()
-        assert body["origin_name"] == "Paris"
-        assert body["destination_name"] == "Madrid"
-        assert "narrative" in body
-        assert body["narrative"]
+            )
+            assert response.status_code == 200, response.text
+            body = response.json()
+            assert body["origin_name"] == "Paris"
+            assert body["destination_name"] == "Madrid"
+            assert "narrative" in body
+            assert body["narrative"]
+        finally:
+            app.dependency_overrides.pop(get_providers, None)
 
     def test_rejects_invalid_plan_request(self) -> None:
         response = client.post(

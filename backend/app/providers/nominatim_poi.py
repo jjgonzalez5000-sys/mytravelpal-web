@@ -65,8 +65,12 @@ _RATE_LIMIT_STATUS = 429
 # Off-corridor distance filter — anything past this is dropped in the
 # API layer's `filter_hotels` / `filter_restaurants`, but we also cap
 # here so Nominatim's "any POI in the viewbox" doesn't smuggle in
-# something 50 km sideways.
-_MAX_OFF_CORRIDOR_KM = 8.0
+# something 50 km sideways. Widened from 8 → 15 km after the
+# Unterägeri → Turin test returned empty: curvy Alpine roads with
+# switchbacks make POIs in valleys read as "10 km off" the straight-
+# line polyline sample even though they're right off the actual road.
+# 15 km is the practical detour ceiling a driver accepts for a meal.
+_MAX_OFF_CORRIDOR_KM = 15.0
 _AVG_DETOUR_SPEED_KMH = 60.0
 
 

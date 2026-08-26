@@ -387,6 +387,49 @@ class AppLocalizationsEn extends AppLocalizations {
   String get shareTripSubject => 'My road trip via MyTravelPal';
 
   @override
+  String get shareTitle => 'MyTravelPal — road trip plan';
+
+  @override
+  String shareRouteLine(String km, String hours, String tolls) {
+    return '$km km · $hours h free flow · tolls $tolls €';
+  }
+
+  @override
+  String shareBestTime(String when, String minutes) {
+    return 'Best time to leave: $when ($minutes min total)';
+  }
+
+  @override
+  String shareTollFreeAlt(String savings, String minutes) {
+    return 'Toll-free alt: save €$savings for +$minutes min';
+  }
+
+  @override
+  String shareRefuelHint(
+      String cheap, String price, String pricey, String savings) {
+    return 'Refuel in $cheap (~$price€/L) before $pricey — save ~$savings€/tank';
+  }
+
+  @override
+  String get shareHotelsHeader => 'Top hotels considered:';
+
+  @override
+  String get shareRestaurantsHeader => 'Top restaurants considered:';
+
+  @override
+  String shareHotelLine(String name, String price, String km) {
+    return '$name — $price €/night · $km km off route';
+  }
+
+  @override
+  String shareRestaurantLine(String name, String price, String km) {
+    return '$name — $price €/meal · $km km off route';
+  }
+
+  @override
+  String get shareOpenInApp => 'Open in MyTravelPal:';
+
+  @override
   String get eventReport => 'Report an event';
 
   @override
@@ -1209,15 +1252,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profilePromptSetup => 'Set up your trip profile';
 
   @override
-  String get hotelPrefTitle => 'Add hotels along the route';
+  String get hotelPrefTitle => 'Find hotels near stops';
 
   @override
-  String hotelPrefSubEnabled(int minutes, String band) {
-    return 'Up to $minutes min detour · $band';
-  }
+  String get hotelPrefSubOn =>
+      'Shows accommodation options near each overnight stop';
 
   @override
-  String get hotelPrefSubOff => 'Off. Turn on to see hotels near your route.';
+  String get hotelPrefSubOff => 'Off';
 
   @override
   String get restaurantPrefTitle => 'Add restaurants along the route';
@@ -1309,6 +1351,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get daySleepHotelsLabel => 'Hotels near your overnight stop';
+
+  @override
+  String hotelDistFromStop(String km) {
+    return '$km km from stop';
+  }
+
+  @override
+  String hotelDistFromDestination(String km) {
+    return '$km km from destination';
+  }
+
+  @override
+  String get daySleepHotelsLabelDestination => 'Hotels near your destination';
 
   @override
   String get daySleepHotelsEmpty =>
@@ -1507,6 +1562,74 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get hotelPrefParkingSub =>
       'Only hotels tagged with parking. Ones missing the tag pass through.';
+
+  @override
+  String get hotelFilterParking => 'Parking';
+
+  @override
+  String get hotelFilterWifi => 'Free WiFi';
+
+  @override
+  String get hotelFilterAccessible => 'Accessible';
+
+  @override
+  String get hotelFilterOtherTypes => 'Guest houses & more';
+
+  @override
+  String get restaurantFilterVegetarian => 'Vegetarian';
+
+  @override
+  String get restaurantFilterVegan => 'Vegan';
+
+  @override
+  String get restaurantFilterGlutenFree => 'Gluten-free';
+
+  @override
+  String get restaurantFilterHalal => 'Halal';
+
+  @override
+  String get restaurantFilterKosher => 'Kosher';
+
+  @override
+  String get restaurantDietaryLabel => 'Dietary';
+
+  @override
+  String get tollSkipSelectAll => 'Select all';
+
+  @override
+  String get tutorialOriginTitle => 'Where are you starting?';
+
+  @override
+  String get tutorialOriginBody =>
+      'Tap here to search for a city or use the location button to start from your current position.';
+
+  @override
+  String get tutorialDestinationTitle => 'Where are you going?';
+
+  @override
+  String get tutorialDestinationBody =>
+      'Search for your destination. We\'ll plan the full route with stops, hotels, and tolls.';
+
+  @override
+  String get tutorialPrefsTitle => 'Customize your trip';
+
+  @override
+  String get tutorialPrefsBody =>
+      'Toggle hotels, restaurants, and alerts. Set dietary preferences, star ratings, and more.';
+
+  @override
+  String get tutorialTimeWindowTitle => 'Pick the best departure time';
+
+  @override
+  String get tutorialTimeWindowBody =>
+      'Tap any row to replan your trip with that departure time. The chart shows traffic impact at each hour.';
+
+  @override
+  String get tutorialTollTitle => 'Manage toll costs';
+
+  @override
+  String get tutorialTollBody =>
+      'Toggle individual toll stretches to skip. The total savings update in real time. The color strip shows the best hours to skip.';
 
   @override
   String styleDailyCapRecommendedHint(int hours) {

@@ -26,6 +26,7 @@ import 'mark_event_screen.dart';
 import 'settings_screen.dart';
 import 'profile_screen.dart';
 import 'result_screen.dart';
+import '../services/app_tutorial.dart';
 
 class PlanScreen extends ConsumerStatefulWidget {
   const PlanScreen({super.key, this.initialShared});
@@ -42,14 +43,29 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   GeocodeResult? _origin;
   GeocodeResult? _destination;
   late DateTime _departure = _defaultDeparture();
+
+  // Coach-mark tutorial GlobalKeys
+  final _originKey = GlobalKey();
+  final _destinationKey = GlobalKey();
+  final _preferencesKey = GlobalKey();
   // On-by-default so multi-day / overnight trips have hotel context
   // without asking the user to toggle first. The section still hides
   // when the toggle is off.
   HotelPreferences _hotelPrefs = HotelPreferences.enabledDefault;
   RestaurantPreferences _restaurantPrefs = RestaurantPreferences.disabled;
-  bool _alertsEnabled = false;
-  bool _tollAlternativeEnabled = false;
-  bool _hourlyTollEnabled = false;
+  // Two toggles now default-on (2026-08-26 tester ask): drivers
+  // consistently forgot to enable adverse events + the toll
+  // alternative and then wondered why the sections were missing.
+  // On by default; the switches stay so users who don't want them
+  // can opt out.
+  bool _alertsEnabled = true;
+  bool _tollAlternativeEnabled = true;
+  // Hourly toll analysis is now IMPLICIT: whenever the toll
+  // alternative is on we also request the hourly report. The
+  // standalone user-facing selector is removed from the UI so
+  // there's one less checkbox on the plan screen — the report
+  // still ships in the result when premium/enabled.
+  bool get _hourlyTollEnabled => _tollAlternativeEnabled;
   bool _routeComparisonEnabled = false;
   // Kept as fields (not consts) so the request builder keeps its
   // shape; a future iteration will re-expose the toggles or wire them
@@ -94,6 +110,18 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       _departure = incoming.departureAt.toLocal();
       // Note: we don't auto-submit — user confirms with the CTA.
     }
+    // Show the coach-mark tutorial after the first frame so
+    // GlobalKeys have been attached. Fires once, SharedPreferences
+    // gates subsequent launches.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showPlanTutorial(
+        context,
+        originKey: _originKey,
+        destinationKey: _destinationKey,
+        preferencesKey: _preferencesKey,
+      );
+    });
   }
 
   Country? _guessCountry(LatLon _) {
@@ -145,6 +173,18 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       _returnDeparture =
           DateTime(date.year, date.month, date.day, time.hour, time.minute);
     });
+  }
+
+  String? _buildHotelConditions() {
+    final parts = <String>[];
+    if (_hotelPrefs.requireParking) parts.add('fee');
+    if (_hotelPrefs.requireWifi) parts.add('internet_access.free');
+    if (_hotelPrefs.requireWheelchair) parts.add('wheelchair.yes');
+    // Note: dogs.yes is NOT sent as a Geoapify condition — too few
+    // OSM entries are tagged as dog-friendly so it empties the pool.
+    // The profile's `has_pets` flag soft-ranks pet-unfriendly hotels
+    // lower via `filter_hotels` penalty instead.
+    return parts.isEmpty ? null : parts.join(',');
   }
 
   Future<void> _submit() async {
@@ -203,6 +243,17 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         hotelPriceBands: _hotelPrefs.enabled
             ? _hotelPrefs.priceBands.toList()
             : null,
+        hotelMinStars: _hotelPrefs.enabled && _hotelPrefs.minStars > 0
+            ? _hotelPrefs.minStars
+            : null,
+        hotelIncludeOther: _hotelPrefs.enabled &&
+            _hotelPrefs.includeOtherAccommodation,
+        hotelConditions: _hotelPrefs.enabled
+            ? _buildHotelConditions()
+            : null,
+        restaurantConditions: _restaurantPrefs.enabled
+            ? _restaurantPrefs.geoapifyConditions
+            : null,
         restaurantMaxDetourMinutes: _restaurantPrefs.enabled
             ? _restaurantPrefs.maxDetourMinutes
             : null,
@@ -239,6 +290,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           hotelPriceBands: _hotelPrefs.enabled
               ? _hotelPrefs.priceBands.toList()
               : null,
+          hotelMinStars: _hotelPrefs.enabled && _hotelPrefs.minStars > 0
+              ? _hotelPrefs.minStars
+              : null,
+          hotelIncludeOther: _hotelPrefs.enabled &&
+              _hotelPrefs.includeOtherAccommodation,
+          hotelConditions: _hotelPrefs.enabled
+              ? _buildHotelConditions()
+              : null,
           restaurantMaxDetourMinutes: _restaurantPrefs.enabled
               ? _restaurantPrefs.maxDetourMinutes
               : null,
@@ -249,6 +308,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               : null,
           restaurantCuisines: _restaurantPrefs.enabled
               ? cuisineOsmTagsFor(_restaurantPrefs.cuisines).toList()
+              : null,
+          restaurantConditions: _restaurantPrefs.enabled
+              ? _restaurantPrefs.geoapifyConditions
               : null,
           includeAdverseEvents: _alertsEnabled,
           includeTollAlternative: _tollAlternativeEnabled,
@@ -491,6 +553,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     child: Column(
                       children: [
                         LocationSearchField(
+                          key: _originKey,
                           label: l.planFrom,
                           geocode: api.geocode,
                           onUseCurrentLocation: () async {
@@ -526,6 +589,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         ),
                         const SizedBox(height: Tokens.space12),
                         LocationSearchField(
+                          key: _destinationKey,
                           label: l.planTo,
                           geocode: api.geocode,
                           onSelected: (r) {
@@ -572,6 +636,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     eyebrow: l.planSectionOptionalEyebrow,
                   ),
                   SoftCard(
+                    key: _preferencesKey,
                     padding: const EdgeInsets.symmetric(
                       horizontal: Tokens.space16,
                       vertical: Tokens.space8,
@@ -615,41 +680,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                           value: _tollAlternativeEnabled,
                           onChanged: (v) => setState(() {
                             _tollAlternativeEnabled = v;
-                            if (!v) _hourlyTollEnabled = false;
                           }),
                         ),
-                        if (_tollAlternativeEnabled) ...[
-                          const Divider(height: Tokens.space16),
-                          SwitchListTile.adaptive(
-                            contentPadding: EdgeInsets.zero,
-                            title: Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    l.planOptHourlyTollTitle,
-                                    style: t.titleMedium,
-                                  ),
-                                ),
-                                SoftBadge(
-                                  label: l.planPremiumBadge,
-                                  color: scheme.tertiary,
-                                  background: scheme.tertiaryContainer,
-                                  borderColor:
-                                      scheme.tertiary.withValues(alpha: 0.3),
-                                ),
-                              ],
-                            ),
-                            subtitle: Padding(
-                              padding: const EdgeInsets.only(top: 4),
-                              child: Text(
-                                l.planOptHourlyTollSub, style: t.bodySmall,
-                              ),
-                            ),
-                            value: _hourlyTollEnabled,
-                            onChanged: (v) =>
-                                setState(() => _hourlyTollEnabled = v),
-                          ),
-                        ],
+                        // Hourly toll analysis selector removed: now
+                        // implicit when the toll alternative toggle
+                        // is on. See `_hourlyTollEnabled` getter.
                         const Divider(height: Tokens.space16),
                         SwitchListTile.adaptive(
                           contentPadding: EdgeInsets.zero,

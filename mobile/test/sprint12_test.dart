@@ -7,6 +7,7 @@ import 'package:mytravelpal/api/api_client.dart';
 import 'package:mytravelpal/api/config.dart';
 import 'package:mytravelpal/api/models.dart';
 import 'package:mytravelpal/domain/auth_user.dart';
+import 'package:mytravelpal/l10n/app_localizations_en.dart';
 import 'package:mytravelpal/services/trip_sharing.dart';
 import 'package:mytravelpal/storage/app_prefs.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -104,6 +105,7 @@ void main() {
   group('composeTripShare', () {
     test('produces a multi-line summary with cities and stats', () {
       final text = composeTripShare(
+        l: AppLocalizationsEn(),
         originName: 'Paris',
         destinationName: 'Madrid',
         route: const RouteInfo(

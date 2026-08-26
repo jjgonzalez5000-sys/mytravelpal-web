@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/l10n/app_localizations_en.dart';
 import 'package:mytravelpal/services/trip_sharing.dart';
 
 void main() {
@@ -53,6 +54,7 @@ void main() {
   group('composeTripShare + share URL contents', () {
     test('composed message wraps stats cleanly', () {
       final text = composeTripShare(
+        l: AppLocalizationsEn(),
         originName: 'Zürich',
         destinationName: 'Milano',
         route: const RouteInfo(

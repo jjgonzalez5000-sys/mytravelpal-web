@@ -22,10 +22,16 @@ class TimeWindowChart extends StatelessWidget {
     super.key,
     required this.windows,
     required this.desiredDepartureAt,
+    this.onSelect,
   });
 
   final List<TimeWindow> windows;
   final DateTime desiredDepartureAt;
+
+  /// Fires when the user taps a row. When null the chart stays
+  /// read-only (older callers). The parent typically re-plans the
+  /// trip with `window.departureAt` as the new desired departure.
+  final ValueChanged<TimeWindow>? onSelect;
 
   static const _barHeight = 8.0;
   static const _rowHeight = 30.0;
@@ -75,6 +81,9 @@ class TimeWindowChart extends StatelessWidget {
             timeFmt: fmt,
             scheme: scheme,
             textTheme: t,
+            onTap: onSelect == null
+                ? null
+                : () => onSelect!(sorted[i]),
           ),
       ],
     );
@@ -106,7 +115,10 @@ class _Row extends StatelessWidget {
     required this.timeFmt,
     required this.scheme,
     required this.textTheme,
+    this.onTap,
   });
+
+  final VoidCallback? onTap;
 
   final TimeWindow window;
   final bool isDesired;
@@ -139,7 +151,7 @@ class _Row extends StatelessWidget {
       fontFeatures: const [FontFeature.tabularFigures()],
     );
 
-    return SizedBox(
+    final row = SizedBox(
       height: rowHeight,
       child: Row(
         children: [
@@ -202,6 +214,12 @@ class _Row extends StatelessWidget {
           ),
         ],
       ),
+    );
+    if (onTap == null) return row;
+    // InkWell + Material so the ripple respects the chart's card.
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(onTap: onTap, child: row),
     );
   }
 }

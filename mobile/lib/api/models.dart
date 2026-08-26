@@ -203,10 +203,14 @@ class TripPlanRequest {
     this.hotelMaxDetourMinutes,
     this.hotelPriceBand,
     this.hotelPriceBands,
+    this.hotelMinStars,
     this.restaurantMaxDetourMinutes,
     this.restaurantPriceBand,
     this.restaurantPriceBands,
     this.restaurantCuisines,
+    this.hotelIncludeOther = false,
+    this.hotelConditions,
+    this.restaurantConditions,
     this.includeAdverseEvents = false,
     this.adverseEventsMaxDistanceKm = 25.0,
     this.includeTollAlternative = false,
@@ -238,6 +242,11 @@ class TripPlanRequest {
   /// list or one containing `PriceBand.any` disables filtering.
   final List<PriceBand>? hotelPriceBands;
 
+  /// Minimum OSM `stars` self-declared rating (1-5). Hotels lacking
+  /// the tag are dropped when this is set — the OSM community
+  /// doesn't tag every property so the pool shrinks fast.
+  final int? hotelMinStars;
+
   /// When > 0, the backend searches for restaurants within this
   /// round-trip detour off the route. Null or 0 disables.
   final int? restaurantMaxDetourMinutes;
@@ -250,6 +259,10 @@ class TripPlanRequest {
 
   /// OSM `cuisine` whitelist. Empty / null = no cuisine filter.
   final List<String>? restaurantCuisines;
+
+  final bool hotelIncludeOther;
+  final String? hotelConditions;
+  final String? restaurantConditions;
 
   /// If true, include known adverse events (fires, strikes, weather,
   /// accidents, roadworks, floods, snow, protests) along the route.
@@ -300,6 +313,8 @@ class TripPlanRequest {
         if (hotelPriceBands != null && hotelPriceBands!.isNotEmpty)
           'hotel_price_bands':
               hotelPriceBands!.map((b) => b.code).toList(),
+        if (hotelMinStars != null && hotelMinStars! > 0)
+          'hotel_min_stars': hotelMinStars,
         if (restaurantMaxDetourMinutes != null)
           'restaurant_max_detour_minutes': restaurantMaxDetourMinutes,
         if (restaurantPriceBand != null)
@@ -310,6 +325,11 @@ class TripPlanRequest {
               restaurantPriceBands!.map((b) => b.code).toList(),
         if (restaurantCuisines != null && restaurantCuisines!.isNotEmpty)
           'restaurant_cuisines': restaurantCuisines,
+        if (hotelIncludeOther) 'hotel_include_other': true,
+        if (hotelConditions != null && hotelConditions!.isNotEmpty)
+          'hotel_conditions': hotelConditions,
+        if (restaurantConditions != null && restaurantConditions!.isNotEmpty)
+          'restaurant_conditions': restaurantConditions,
         if (includeAdverseEvents) 'include_adverse_events': true,
         if (includeAdverseEvents)
           'adverse_events_max_distance_km': adverseEventsMaxDistanceKm,

@@ -92,6 +92,7 @@ async def _search(
     key: str,
     *,
     limit: int = _LIMIT,
+    conditions: str | None = None,
 ) -> list[dict[str, Any]]:
     """One Geoapify Places call. Returns the raw feature list;
     caller normalises to domain models. Never raises on HTTP
@@ -104,6 +105,8 @@ async def _search(
         "limit": str(limit),
         "apiKey": key,
     }
+    if conditions:
+        params["conditions"] = conditions
     try:
         response = await client.get(_URL, params=params)
     except httpx.HTTPError as exc:
@@ -119,7 +122,12 @@ async def _search(
         body = response.json()
     except ValueError:
         return []
-    return list(body.get("features") or [])
+    features = list(body.get("features") or [])
+    _log.info(
+        "Geoapify %s filter=%s → %d features",
+        categories, filter_[:60], len(features),
+    )
+    return features
 
 
 def _coord(feature: dict[str, Any]) -> Coordinate | None:
@@ -192,33 +200,50 @@ def _point_country(coord: Coordinate) -> Country:
 
 
 class GeoapifyHotelsProvider:
-    _CATEGORY = "accommodation.hotel"
+    _CATEGORY_HOTEL_ONLY = "accommodation.hotel"
+    _CATEGORY_ALL = (
+        "accommodation.hotel,"
+        "accommodation.guest_house,"
+        "accommodation.motel,"
+        "accommodation.apartment"
+    )
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client or _new_client()
 
-    async def hotels_along(self, route: Route) -> tuple[Hotel, ...]:
+    async def hotels_along(
+        self,
+        route: Route,
+        *,
+        include_other: bool = False,
+        conditions: str | None = None,
+    ) -> tuple[Hotel, ...]:
         key = _api_key()
         if not key:
             return ()
+        cat = self._CATEGORY_ALL if include_other else self._CATEGORY_HOTEL_ONLY
         boxes = _corridor_viewboxes(route)
         reference = _route_reference_points(route)
         features: list[dict[str, Any]] = []
         for vb in boxes:
             features.extend(await _search(
-                self._client, self._CATEGORY, _rect_filter(vb), key,
+                self._client, cat, _rect_filter(vb), key,
+                conditions=conditions,
             ))
         return tuple(self._hotels_from(features, route, reference))
 
     async def hotels_near(
         self, point: Coordinate, radius_km: float = 40.0,
+        *, include_other: bool = False, conditions: str | None = None,
     ) -> tuple[Hotel, ...]:
         key = _api_key()
         if not key:
             return ()
+        cat = self._CATEGORY_ALL if include_other else self._CATEGORY_HOTEL_ONLY
         features = await _search(
-            self._client, self._CATEGORY,
+            self._client, cat,
             _circle_filter(point, max(radius_km, 5.0)), key,
+            conditions=conditions,
         )
         hotels: list[Hotel] = []
         for f in features:
@@ -297,12 +322,21 @@ class GeoapifyHotelsProvider:
 
 
 class GeoapifyRestaurantsProvider:
-    _CATEGORIES = "catering.restaurant,catering.cafe,catering.fast_food"
+    # Parent category `catering` covers restaurant + cafe + fast_food
+    # + bar + pub + biergarten + ice_cream + everything else under
+    # the Geoapify catering tree. Using the parent instead of the
+    # three specific subcategories catches Alpine/rural eateries
+    # tagged as biergarten or bar that serve food — testers hit
+    # empty restaurant pools on mountain routes with narrow
+    # subcategory matches.
+    _CATEGORIES = "catering"
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client or _new_client()
 
-    async def restaurants_along(self, route: Route) -> tuple[Restaurant, ...]:
+    async def restaurants_along(
+        self, route: Route, *, conditions: str | None = None,
+    ) -> tuple[Restaurant, ...]:
         key = _api_key()
         if not key:
             return ()
@@ -312,11 +346,18 @@ class GeoapifyRestaurantsProvider:
         for vb in boxes:
             features.extend(await _search(
                 self._client, self._CATEGORIES, _rect_filter(vb), key,
+                conditions=conditions,
             ))
-        return tuple(self._restaurants_from(features, route, reference))
+        result = tuple(self._restaurants_from(features, route, reference))
+        _log.info(
+            "restaurants_along: %d raw features → %d after corridor filter",
+            len(features), len(result),
+        )
+        return result
 
     async def restaurants_near(
         self, point: Coordinate, radius_km: float = 25.0,
+        *, conditions: str | None = None,
     ) -> tuple[Restaurant, ...]:
         key = _api_key()
         if not key:
@@ -324,6 +365,7 @@ class GeoapifyRestaurantsProvider:
         features = await _search(
             self._client, self._CATEGORIES,
             _circle_filter(point, max(radius_km, 5.0)), key,
+            conditions=conditions,
         )
         rows: list[Restaurant] = []
         for f in features:
@@ -366,6 +408,12 @@ class GeoapifyRestaurantsProvider:
                 ),
             )
         rows.sort(key=lambda r: r.detour_minutes)
+        if not rows:
+            _log.warning(
+                "Geoapify restaurants_from: %d features → 0 after corridor "
+                "filter (MAX_OFF_CORRIDOR_KM=%s)",
+                len(features), _MAX_OFF_CORRIDOR_KM,
+            )
         return rows
 
     def _restaurant_from(

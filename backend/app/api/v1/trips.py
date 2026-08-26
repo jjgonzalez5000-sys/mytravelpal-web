@@ -163,6 +163,35 @@ class TripPlanRequest(BaseModel):
             "`hotel_price_band` when set."
         ),
     )
+    hotel_min_stars: int | None = Field(
+        default=None,
+        ge=1,
+        le=5,
+        description=(
+            "Minimum OSM `stars` rating for surfaced hotels (1-5). "
+            "When set, hotels lacking the tag are dropped — mappers "
+            "often omit stars so the pool can shrink significantly."
+        ),
+    )
+    hotel_include_other: bool = Field(
+        default=False,
+        description="Include guest houses, motels, apartments in addition to hotels.",
+    )
+    hotel_conditions: str | None = Field(
+        default=None,
+        description=(
+            "Geoapify conditions for hotel search. Comma-separated "
+            "(e.g. 'internet_access.free,dogs.yes'). Applied at query "
+            "time, not post-filter."
+        ),
+    )
+    restaurant_conditions: str | None = Field(
+        default=None,
+        description=(
+            "Geoapify conditions for restaurant search. Comma-separated "
+            "(e.g. 'vegetarian,gluten_free'). Applied at query time."
+        ),
+    )
     restaurant_max_detour_minutes: int | None = Field(
         default=None,
         ge=0,
@@ -682,13 +711,24 @@ async def plan_trip(
             scope_out is not None and scope_out.requires_overnight:
         effective_hotel_detour = 25
     if effective_hotel_detour and effective_hotel_detour > 0:
-        all_hotels_cache = await providers.hotels.hotels_along(route)
+        _hotel_kwargs: dict = {}
+        if payload.hotel_include_other:
+            _hotel_kwargs["include_other"] = True
+        if payload.hotel_conditions:
+            _hotel_kwargs["conditions"] = payload.hotel_conditions
+        try:
+            all_hotels_cache = await providers.hotels.hotels_along(
+                route, **_hotel_kwargs,
+            )
+        except TypeError:
+            all_hotels_cache = await providers.hotels.hotels_along(route)
         filtered = filter_hotels(
             all_hotels_cache,
             max_detour_minutes=float(effective_hotel_detour),
             price_band=payload.hotel_price_band or PriceBand.ANY,
             price_bands=payload.hotel_price_bands,
             profile=profile,
+            min_stars=payload.hotel_min_stars,
         )
         hotels_out = [
             HotelOut(
@@ -711,7 +751,15 @@ async def plan_trip(
         payload.restaurant_max_detour_minutes
         and payload.restaurant_max_detour_minutes > 0
     ):
-        all_restaurants_cache = await providers.restaurants.restaurants_along(route)
+        _rest_kwargs: dict = {}
+        if payload.restaurant_conditions:
+            _rest_kwargs["conditions"] = payload.restaurant_conditions
+        try:
+            all_restaurants_cache = await providers.restaurants.restaurants_along(
+                route, **_rest_kwargs,
+            )
+        except TypeError:
+            all_restaurants_cache = await providers.restaurants.restaurants_along(route)
         filtered_r = filter_restaurants(
             all_restaurants_cache,
             max_detour_minutes=float(payload.restaurant_max_detour_minutes),
@@ -929,6 +977,21 @@ async def plan_trip(
             # + next-day breakfast that all share the day-sleep
             # rest_stop.
             seen_coords: set[tuple[float, float]] = set()
+            # Always densify around the DESTINATION so single-day
+            # trips and the last day of multi-day trips have
+            # nearby hotel candidates even when the corridor-wide
+            # search is skewed to the origin.
+            dest_coord = Coordinate(
+                lat=payload.destination.lat,
+                lon=payload.destination.lon,
+            )
+            dest_key = (
+                round(dest_coord.lat, 3),
+                round(dest_coord.lon, 3),
+            )
+            seen_coords.add(dest_key)
+            dest_hits = await near_hotels(dest_coord, 40.0)
+            densified_hotels.extend(dest_hits)
             for m in opt.meal_stops:
                 key = (
                     round(m.rest_stop.coordinate.lat, 3),

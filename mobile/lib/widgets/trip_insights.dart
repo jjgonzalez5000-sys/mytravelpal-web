@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
+import 'poi_detail_sheet.dart';
 
 const double _earthRadiusKm = 6371.0088;
 
@@ -87,16 +88,22 @@ class DayPlanSection extends StatelessWidget {
     required this.days,
     required this.timeFormat,
     this.hotels = const [],
+    this.destination,
+    this.origin,
+    this.routeGeometry = const [],
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
 
-  /// Full hotels list from the response. We rank the closest ones to
-  /// each day's `sleepCoord` and render up to `_maxSleepHotels` under
-  /// the overnight marker.
+  /// Full hotels list from the response.
   final List<Hotel> hotels;
 
-  static const int _maxSleepHotels = 3;
+  /// Trip endpoints + geometry for POI detail sheet.
+  final LatLon? destination;
+  final LatLon? origin;
+  final List<LatLon> routeGeometry;
+
+  static const int _maxSleepHotels = 5;
 
   /// Rank hotels by real great-circle distance to `coord` and drop
   /// anything past `_maxHotelKmFromSleep`. Testers reported day-1
@@ -212,8 +219,27 @@ class DayPlanSection extends StatelessWidget {
                           ? const []
                           : _hotelsNear(d.sleepCoord!),
                       hotelsPresent: hotels.isNotEmpty,
+                      isDestination: false,
+                      origin: origin,
+                      destination: destination,
+                      routeGeometry: routeGeometry,
                     ),
                   ],
+                ],
+                // Last day (no sleepAt): show hotels near destination
+                if (d.sleepAt == null &&
+                    d.dayIndex == days.length &&
+                    destination != null &&
+                    hotels.isNotEmpty) ...[
+                  const SizedBox(height: Tokens.space8),
+                  _SleepHotelsBlock(
+                    entries: _hotelsNear(destination!),
+                    hotelsPresent: true,
+                    isDestination: true,
+                    origin: origin,
+                    destination: destination,
+                    routeGeometry: routeGeometry,
+                  ),
                 ],
               ],
             ),
@@ -229,9 +255,17 @@ class _SleepHotelsBlock extends StatelessWidget {
   const _SleepHotelsBlock({
     required this.entries,
     required this.hotelsPresent,
+    this.isDestination = false,
+    this.origin,
+    this.destination,
+    this.routeGeometry = const [],
   });
-  final List<(Hotel, double)> entries;  // (hotel, km_from_sleep_point)
-  final bool hotelsPresent;  // whether the plan itself has any hotels
+  final List<(Hotel, double)> entries;
+  final bool hotelsPresent;
+  final bool isDestination;
+  final LatLon? origin;
+  final LatLon? destination;
+  final List<LatLon> routeGeometry;
 
   @override
   Widget build(BuildContext context) {
@@ -253,39 +287,55 @@ class _SleepHotelsBlock extends StatelessWidget {
     if (entries.isEmpty) {
       return const SizedBox.shrink();
     }
+    final label = isDestination
+        ? l.daySleepHotelsLabelDestination
+        : l.daySleepHotelsLabel;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          l.daySleepHotelsLabel.toUpperCase(),
+          label.toUpperCase(),
           style: t.labelSmall?.copyWith(
             color: scheme.onSurfaceVariant,
             letterSpacing: 1.1,
           ),
         ),
         for (final (h, km) in entries)
-          Padding(
-            padding: const EdgeInsets.only(top: 4),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(Icons.hotel_outlined, size: 14,
-                    color: scheme.tertiary),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    // Real distance from the sleep point so the
-                    // user sees "the closest hotel is 6 km away"
-                    // rather than a generic "off route" number
-                    // that lumps hotels 1000 km down the road
-                    // together with ones on the corner.
-                    '${h.name}  ·  '
-                    '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
-                    'a ${km.toStringAsFixed(0)} km',
-                    style: t.bodySmall,
+          InkWell(
+            onTap: () => showPoiDetailSheet(
+              context,
+              kind: PoiKind.hotel,
+              name: h.name,
+              subtitle: '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
+                  '${km.toStringAsFixed(1)} km',
+              poi: h.coordinate,
+              origin: origin ?? h.coordinate,
+              destination: destination ?? h.coordinate,
+              routeGeometry: routeGeometry,
+              attributes: h.attributes,
+              icon: Icons.hotel_outlined,
+              accent: scheme.tertiary,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.hotel_outlined, size: 14,
+                      color: scheme.tertiary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${h.name}  ·  '
+                      '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
+                      '${isDestination ? l.hotelDistFromDestination(km.toStringAsFixed(1)) : l.hotelDistFromStop(km.toStringAsFixed(1))}',
+                      style: t.bodySmall,
+                    ),
                   ),
-                ),
-              ],
+                  Icon(Icons.chevron_right, size: 16,
+                      color: scheme.onSurfaceVariant),
+                ],
+              ),
             ),
           ),
       ],

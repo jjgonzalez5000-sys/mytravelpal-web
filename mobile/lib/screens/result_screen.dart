@@ -1,9 +1,11 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
 import '../domain/trip_profile.dart' show FuelType;
@@ -14,9 +16,11 @@ import '../providers.dart';
 import '../utils/duration_format.dart';
 import '../services/notifications.dart';
 import '../services/review_prompter.dart';
+import '../services/app_tutorial.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
 import '../widgets/added_stops_map_sheet.dart';
+import '../widgets/plan_loading_dialog.dart';
 import '../widgets/aa_coach_dialog.dart';
 import '../widgets/adverse_event_sheet.dart';
 import '../widgets/battery_whitelist_dialog.dart';
@@ -116,6 +120,30 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _saved = false;
   bool _saving = false;
 
+  /// Partial toll skip selection — held here so scroll recycling
+  /// doesn't reset the user's picks (the old StatefulWidget inside
+  /// the list re-ran initState on re-mount). Seeded from
+  /// `worthIt` in `initState`.
+  late Set<int> _tollSkipEnabled;
+
+  // Coach-mark tutorial keys for result screen
+  final _timeWindowKey = GlobalKey();
+  final _tollKey = GlobalKey();
+
+  double get _tollSkipSavingsEur {
+    final skips = widget.response.partialTollSkips;
+    return _tollSkipEnabled.fold(
+      0.0, (sum, i) => sum + skips[i].savingsEur,
+    );
+  }
+
+  double get _tollSkipPenaltyMinutes {
+    final skips = widget.response.partialTollSkips;
+    return _tollSkipEnabled.fold(
+      0.0, (sum, i) => sum + skips[i].timePenaltyMinutes,
+    );
+  }
+
   bool _isPlausibleSleepTime(DateTime at) => isPlausibleSleepTime(at);
 
   /// Response hotels with the client-side stars / parking filter
@@ -143,12 +171,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    // Reaching the result screen means the user just got value:
-    // a full plan. That's when Play tells us to ask for a review.
-    // Fire-and-forget; the prompter throttles internally and only
-    // fires the native sheet a fraction of the times it's called.
+    _tollSkipEnabled = {
+      for (var i = 0; i < widget.response.partialTollSkips.length; i++)
+        if (widget.response.partialTollSkips[i].worthIt) i,
+    };
     Future.microtask(() {
       ReviewPrompter.instance.onPlanCompleted();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (widget.response.partialTollSkips.isNotEmpty) {
+        showResultTutorial(
+          context,
+          timeWindowKey: _timeWindowKey,
+          tollKey: _tollKey,
+        );
+      }
     });
   }
 
@@ -279,6 +317,121 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
     final response = await api.planTrip(tuned);
     return response.timeWindows;
+  }
+
+  /// Tap-a-time-slot handler: replan the whole trip with the
+  /// picked window as the new desired departure. We re-fire the
+  /// full request (POI, tolls, adverse events, everything the
+  /// current request had enabled) so the result screen the driver
+  /// lands on is a real, complete plan for the new time — not a
+  /// mutated view of the old one.
+  ///
+  /// Uses `pushReplacement` rather than `setState`-ing the current
+  /// screen because too much state (persistence, notifications,
+  /// TripSession, share prefs) is tied to the response's identity;
+  /// swapping fields in place risks stale references. The loading
+  /// dialog gives the driver feedback while the request runs.
+  /// Flip `avoidMotorways` and replan. Same shape as
+  /// `_replanWithDeparture` — the toll toggle in the alternative
+  /// card fires this, and the driver lands on a fresh plan whose
+  /// route + toll cost + optimisations all reflect the new
+  /// choice.
+  Future<void> _replanWithSkipTolls(bool enabled) async {
+    if (enabled == widget.request.avoidMotorways) return;
+    await _replan(
+      newDeparture: widget.desiredDepartureAt,
+      avoidMotorways: enabled,
+    );
+  }
+
+  Future<void> _replanWithDeparture(TimeWindow window) async {
+    // Guard: tapping the row that's already the current departure
+    // is a no-op — no point burning another /plan call.
+    final delta =
+        window.departureAt.difference(widget.desiredDepartureAt).inMinutes.abs();
+    if (delta < 1) return;
+    await _replan(
+      newDeparture: window.departureAt,
+      avoidMotorways: widget.request.avoidMotorways,
+    );
+  }
+
+  Future<void> _replan({
+    required DateTime newDeparture,
+    required bool avoidMotorways,
+  }) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    var dialogOpen = true;
+    unawaited(showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const PlanLoadingDialog(),
+    ));
+    try {
+      final api = ref.read(apiClientWithPremiumProvider);
+      // Reuse the exact request that landed us here; only the
+      // desired departure changes. Downstream sections (POI,
+      // optimisations, day plan) recompute against the new time.
+      final replan = TripPlanRequest(
+        origin: widget.request.origin,
+        destination: widget.request.destination,
+        desiredDepartureAt: newDeparture,
+        countries: widget.request.countries,
+        hotelMaxDetourMinutes: widget.request.hotelMaxDetourMinutes,
+        hotelPriceBand: widget.request.hotelPriceBand,
+        hotelPriceBands: widget.request.hotelPriceBands,
+        hotelMinStars: widget.request.hotelMinStars,
+        restaurantMaxDetourMinutes:
+            widget.request.restaurantMaxDetourMinutes,
+        restaurantPriceBand: widget.request.restaurantPriceBand,
+        restaurantPriceBands: widget.request.restaurantPriceBands,
+        restaurantCuisines: widget.request.restaurantCuisines,
+        includeAdverseEvents: widget.request.includeAdverseEvents,
+        adverseEventsMaxDistanceKm:
+            widget.request.adverseEventsMaxDistanceKm,
+        includeTollAlternative: widget.request.includeTollAlternative,
+        includeRouteComparison: widget.request.includeRouteComparison,
+        includeHourlyTollAnalysis:
+            widget.request.includeHourlyTollAnalysis,
+        avoidMotorways: avoidMotorways,
+        preferScenic: widget.request.preferScenic,
+        timeWindowSpanHours: widget.request.timeWindowSpanHours,
+        timeWindowTopN: widget.request.timeWindowTopN,
+        tripProfile: widget.request.tripProfile,
+      );
+      final fresh = await api.planTrip(replan);
+      if (!mounted) return;
+      if (dialogOpen) {
+        navigator.pop();
+        dialogOpen = false;
+      }
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => ResultScreen(
+            request: replan,
+            origin: widget.origin,
+            destination: widget.destination,
+            response: fresh,
+            desiredDepartureAt: newDeparture,
+            currentLegLabel: widget.currentLegLabel,
+            otherLeg: widget.otherLeg,
+            hotelPrefs: widget.hotelPrefs,
+          ),
+        ),
+      );
+    } catch (_) {
+      if (dialogOpen && mounted) navigator.pop();
+      if (mounted) {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              AppLocalizations.of(context).planErrorNetwork,
+            ),
+          ),
+        );
+      }
+    }
   }
 
   /// Which meal slots does the trip actually cross? A 10 AM → 2 PM
@@ -469,7 +622,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     // Scope tells the client which sections to surface. When absent
     // (request had no TripProfile), fall through to a permissive default.
     final scope = widget.response.recommendationScope;
-    final showHotels = scope?.showHotels ?? true;
     final showRestaurants = scope?.showRestaurants ?? true;
     final bedtimeHour = widget.request.tripProfile?.bedtimeHour ?? 22;
 
@@ -549,8 +701,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: Tokens.space16),
       ],
       if (widget.response.savings.timeSavedMinutesVsDesired > 0 ||
-          widget.response.savings.moneySavedEurVsTolls > 0) ...[
-        _SavingsSummaryCard(savings: widget.response.savings),
+          widget.response.savings.moneySavedEurVsTolls > 0 ||
+          _tollSkipSavingsEur > 0) ...[
+        _SavingsSummaryCard(
+          savings: widget.response.savings,
+          tollSkipSavingsEur: _tollSkipSavingsEur,
+          tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
+        ),
         const SizedBox(height: Tokens.space16),
       ],
       if (recommended != null) ...[
@@ -618,12 +775,52 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         eyebrow: l.onboardEyebrowKiller,
         description: l.resultDepartureWindowDesc,
       ),
-      _TimeWindowExpandableCard(
-        initialWindows: widget.response.timeWindows,
-        desiredDepartureAt: widget.desiredDepartureAt,
-        initialSpanHours: widget.request.timeWindowSpanHours,
-        onFetch: _refetchWindows,
+      Container(
+        key: _timeWindowKey,
+        child: _TimeWindowExpandableCard(
+          initialWindows: widget.response.timeWindows,
+          desiredDepartureAt: widget.desiredDepartureAt,
+          initialSpanHours: widget.request.timeWindowSpanHours,
+          onFetch: _refetchWindows,
+          onWindowSelect: _replanWithDeparture,
+        ),
       ),
+      // Partial toll skips with select-all / deselect-all.
+      // State is held here (in _ResultScreenState) so scroll
+      // recycling doesn't reset the user's picks.
+      if (widget.response.partialTollSkips.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space16),
+        Container(
+          key: _tollKey,
+          child: _PartialTollSkipsCard(
+            skips: widget.response.partialTollSkips,
+            origin: widget.request.origin,
+            destination: widget.request.destination,
+            routeGeometry: widget.response.route.geometry,
+            enabledIndices: _tollSkipEnabled,
+            hourlyReport: widget.response.hourlyTollReport,
+            onToggle: (i, v) => setState(() {
+              if (v) {
+                _tollSkipEnabled.add(i);
+              } else {
+                _tollSkipEnabled.remove(i);
+              }
+            }),
+            onToggleAll: (v) => setState(() {
+              if (v) {
+                _tollSkipEnabled = {
+                  for (var i = 0;
+                      i < widget.response.partialTollSkips.length; i++)
+                    i,
+                };
+              } else {
+                _tollSkipEnabled = {};
+              }
+            }),
+          ),
+        ),
+      ],
+      // Hourly toll report now integrated inside the toll skip card.
       if (widget.response.routeVariants.length >= 2) ...[
         const SizedBox(height: Tokens.space24),
         _RouteVariantsSection(variants: widget.response.routeVariants),
@@ -641,21 +838,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         DayPlanSection(
           days: widget.response.days,
           timeFormat: DateFormat.Hm(),
-          hotels: widget.response.hotels,
+          hotels: _filteredHotels,
+          destination: widget.request.destination,
+          origin: widget.request.origin,
+          routeGeometry: widget.response.route.geometry,
         ),
       ],
-      if (widget.response.tollAlternative != null) ...[
+      // Single-day trips with hotels enabled: show a compact
+      // "Hotels near destination" block so the user who toggled
+      // on hotel search doesn't see nothing. Multi-day trips
+      // already surface hotels per day via DayPlanSection.
+      if (widget.response.days.isEmpty &&
+          widget.hotelPrefs != null &&
+          widget.hotelPrefs!.enabled &&
+          _filteredHotels.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
-        _TollAlternativeCard(alt: widget.response.tollAlternative!),
+        _DestinationHotelsSection(
+          hotels: _filteredHotels,
+          destination: widget.request.destination,
+          origin: widget.request.origin,
+          routeGeometry: widget.response.route.geometry,
+        ),
       ],
-      if (widget.response.partialTollSkips.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space16),
-        _PartialTollSkipsCard(skips: widget.response.partialTollSkips),
-      ],
-      if (widget.response.hourlyTollReport != null) ...[
-        const SizedBox(height: Tokens.space16),
-        _HourlyTollCard(report: widget.response.hourlyTollReport!),
-      ],
+      // (Toll cards promoted above the day plan.)
       // Alerts section: renders the "all clear" empty state when the
       // user asked for alerts but the corridor has none — reassures
       // the driver instead of silently hiding the section.
@@ -690,67 +895,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               .toList(),
         ),
       ],
-      // Rest stops: hidden by default (Sprint 21). Re-shown when the
-      // server-derived scope opts in — currently only for
-      // `travel_pace=savour` — and capped at `restStopsCountTarget`.
-      if (scope != null &&
-          scope.showRestStops &&
-          widget.response.restStops.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        SectionHeader(
-          title: l.resultRestStops,
-          eyebrow: l.resultEyebrowAlongRoute,
-          description: l.restStopsHint,
-        ),
-        ..._separated(
-          widget.response.restStops
-              .take(scope.restStopsCountTarget)
-              .map(_RestStopTile.new)
-              .toList(),
-        ),
-      ],
-      // Hotels: show empty state only when the user actively asked
-      // for them (hotelMaxDetourMinutes set) but nothing came back.
-      // Free tier requests with no hotel prefs shouldn't see the
-      // "no hotels" chatter.
-      if (showHotels &&
-          widget.request.hotelMaxDetourMinutes != null &&
-          widget.request.hotelMaxDetourMinutes! > 0 &&
-          _filteredHotels.isEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        SectionHeader(title: l.resultHotels, eyebrow: l.resultEyebrowNearRoute),
-        EmptyStateCard(
-          icon: Icons.hotel_outlined,
-          title: l.emptyHotelsTitle,
-          body: l.emptyHotelsBody,
-        ),
-      ],
-      if (showHotels && _filteredHotels.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        SectionHeader(title: l.resultHotels, eyebrow: l.resultEyebrowNearRoute),
-        ..._separated(
-          _filteredHotels
-              .map((h) => _HotelTile(
-                    hotel: h,
-                    onTap: () => showPoiDetailSheet(
-                      context,
-                      kind: PoiKind.hotel,
-                      name: h.name,
-                      subtitle: '${h.country.displayName} · '
-                          '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
-                          '+${h.detourMinutes.toStringAsFixed(0)} min',
-                      poi: h.coordinate,
-                      origin: widget.request.origin,
-                      destination: widget.request.destination,
-                      routeGeometry: widget.response.route.geometry,
-                      attributes: h.attributes,
-                      icon: Icons.hotel_outlined,
-                      accent: Theme.of(context).colorScheme.tertiary,
-                    ),
-                  ))
-              .toList(),
-        ),
-      ],
+      // Rest stops section removed (tester feedback): with meals +
+      // sleep already surfaced per day, a separate "recommended
+      // stops" list read as redundant noise. The domain data is
+      // still emitted so day_plan / consistency checks work.
+      // Flat hotel list removed (2026-08-26 tester feedback):
+      // hotels are now shown per-day inside DayPlanSection,
+      // grouped by overnight stop / destination. The promoted
+      // _MultiDaySleepPreview card stays; the scrollable flat
+      // list is gone.
       if (showRestaurants &&
           widget.request.restaurantMaxDetourMinutes != null &&
           widget.request.restaurantMaxDetourMinutes! > 0 &&
@@ -880,6 +1033,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             tooltip: l.resultShareTooltip,
             icon: const Icon(Icons.ios_share),
             onPressed: () => shareTrip(
+              l: l,
+              localeName: Localizations.localeOf(context).toString(),
               originName: _shortName(widget.origin),
               destinationName: _shortName(widget.destination),
               route: widget.response.route,
@@ -1057,21 +1212,38 @@ class _MapCard extends StatelessWidget {
 }
 
 class _TollAlternativeCard extends StatelessWidget {
-  const _TollAlternativeCard({required this.alt});
+  const _TollAlternativeCard({
+    required this.alt,
+    required this.skipEnabled,
+    required this.onToggleSkip,
+  });
   final TollAlternative alt;
+  /// Whether the driver has ACTUALLY chosen to skip tolls. When
+  /// false the displayed savings collapse to 0 € — the number
+  /// only reflects savings the driver has already committed to,
+  /// not hypothetical "you could save" figures which testers
+  /// found misleading.
+  final bool skipEnabled;
+  final ValueChanged<bool> onToggleSkip;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
-    final accent = alt.worthIt ? scheme.tertiary : scheme.onSurfaceVariant;
-    final containerBg = alt.worthIt
+    // Highlight the card only when skip is ON AND worth it. When
+    // skip is off we render neutral — this is now an actionable
+    // toggle, not a "verdict" card.
+    final active = skipEnabled && alt.worthIt;
+    final accent = active ? scheme.tertiary : scheme.onSurfaceVariant;
+    final containerBg = active
         ? scheme.tertiaryContainer
         : scheme.surfaceContainerLow;
-    final onContainer = alt.worthIt
+    final onContainer = active
         ? scheme.onTertiaryContainer
         : scheme.onSurface;
+    final displayedSavings = skipEnabled ? alt.savingsEur : 0.0;
+    final displayedPenalty = skipEnabled ? alt.timePenaltyMinutes : 0.0;
 
     return Container(
       padding: const EdgeInsets.all(Tokens.space20),
@@ -1093,13 +1265,13 @@ class _TollAlternativeCard extends StatelessWidget {
                     ?.copyWith(color: accent, letterSpacing: 1.4),
               ),
               const Spacer(),
-              SoftBadge(
-                label: alt.worthIt
-                    ? l.resultTollAlternativeWorthIt
-                    : l.resultTollAlternativeMarginal,
-                color: accent,
-                background: accent.withValues(alpha: 0.10),
-                borderColor: accent.withValues(alpha: 0.3),
+              // Toggle inline: driver flips skip on/off and the
+              // parent replans. Positioned in place of the old
+              // "verdict" badge — a switch communicates
+              // interactivity more clearly than a label.
+              Switch.adaptive(
+                value: skipEnabled,
+                onChanged: onToggleSkip,
               ),
             ],
           ),
@@ -1110,12 +1282,12 @@ class _TollAlternativeCard extends StatelessWidget {
               children: [
                 TextSpan(text: l.resultSaveExactly),
                 TextSpan(
-                  text: '€${alt.savingsEur.toStringAsFixed(0)}',
+                  text: '€${displayedSavings.toStringAsFixed(0)}',
                   style: TextStyle(color: accent, fontWeight: FontWeight.w700),
                 ),
                 const TextSpan(text: ' · '),
                 TextSpan(
-                  text: '+${alt.timePenaltyMinutes.toStringAsFixed(0)} min',
+                  text: '+${displayedPenalty.toStringAsFixed(0)} min',
                   style: TextStyle(color: accent, fontWeight: FontWeight.w700),
                 ),
               ],
@@ -1261,16 +1433,24 @@ class _RouteVariantRow extends StatelessWidget {
 }
 
 class _SavingsSummaryCard extends StatelessWidget {
-  const _SavingsSummaryCard({required this.savings});
+  const _SavingsSummaryCard({
+    required this.savings,
+    this.tollSkipSavingsEur = 0,
+    this.tollSkipPenaltyMinutes = 0,
+  });
   final TripSavings savings;
+  final double tollSkipSavingsEur;
+  final double tollSkipPenaltyMinutes;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
-    final savedTime = savings.timeSavedMinutesVsDesired;
-    final savedEur = savings.moneySavedEurVsTolls;
+    final savedTime =
+        savings.timeSavedMinutesVsDesired - tollSkipPenaltyMinutes;
+    final savedEur =
+        savings.moneySavedEurVsTolls + tollSkipSavingsEur;
     return Container(
       padding: const EdgeInsets.all(Tokens.space20),
       decoration: BoxDecoration(
@@ -1901,14 +2081,46 @@ class _HourStrip extends StatelessWidget {
 }
 
 class _PartialTollSkipsCard extends StatelessWidget {
-  const _PartialTollSkipsCard({required this.skips});
+  const _PartialTollSkipsCard({
+    required this.skips,
+    required this.origin,
+    required this.destination,
+    required this.routeGeometry,
+    required this.enabledIndices,
+    required this.onToggle,
+    required this.onToggleAll,
+    this.hourlyReport,
+  });
   final List<PartialTollSkip> skips;
+  final LatLon origin;
+  final LatLon destination;
+  final List<LatLon> routeGeometry;
+  final Set<int> enabledIndices;
+  final HourlyTollReport? hourlyReport;
+  final void Function(int index, bool value) onToggle;
+  final void Function(bool selectAll) onToggleAll;
+
+  double get _totalSavings => enabledIndices.fold(
+        0.0, (sum, i) => sum + skips[i].savingsEur,
+      );
+
+  double get _totalPenaltyMinutes => enabledIndices.fold(
+        0.0, (sum, i) => sum + skips[i].timePenaltyMinutes,
+      );
+
+  double get _totalExtraKm => enabledIndices.fold(
+        0.0, (sum, i) => sum + skips[i].extraDistanceKm,
+      );
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
+    final accent = enabledIndices.isEmpty
+        ? scheme.onSurfaceVariant
+        : scheme.tertiary;
+    final allSelected = enabledIndices.length == skips.length;
     return SoftCard(
       padding: const EdgeInsets.all(Tokens.space20),
       child: Column(
@@ -1918,10 +2130,21 @@ class _PartialTollSkipsCard extends StatelessWidget {
             children: [
               Icon(Icons.alt_route, size: 18, color: scheme.tertiary),
               const SizedBox(width: Tokens.space8),
-              Text(
-                l.partialTollSkipsTitle.toUpperCase(),
-                style: t.labelSmall?.copyWith(
-                  color: scheme.tertiary, letterSpacing: 1.4,
+              Expanded(
+                child: Text(
+                  l.partialTollSkipsTitle.toUpperCase(),
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.tertiary, letterSpacing: 1.4,
+                  ),
+                ),
+              ),
+              TextButton(
+                onPressed: () => onToggleAll(!allSelected),
+                child: Text(
+                  allSelected
+                      ? l.commonClear
+                      : l.tollSkipSelectAll,
+                  style: t.labelSmall?.copyWith(color: scheme.tertiary),
                 ),
               ),
             ],
@@ -1929,64 +2152,253 @@ class _PartialTollSkipsCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(l.resultHourlyExplainer, style: t.bodySmall),
           const SizedBox(height: Tokens.space12),
-          for (final s in skips) _PartialTollSkipRow(skip: s),
+          RichText(
+            text: TextSpan(
+              style: t.headlineSmall?.copyWith(color: scheme.onSurface),
+              children: [
+                TextSpan(text: l.resultSaveExactly),
+                TextSpan(
+                  text: '€${_totalSavings.toStringAsFixed(0)}',
+                  style: TextStyle(
+                    color: accent, fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const TextSpan(text: ' · '),
+                TextSpan(
+                  text: '+${_totalPenaltyMinutes.toStringAsFixed(0)} min',
+                  style: TextStyle(
+                    color: accent, fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const TextSpan(text: ' · '),
+                TextSpan(
+                  text: '+${_totalExtraKm.toStringAsFixed(0)} km',
+                  style: TextStyle(
+                    color: accent, fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: Tokens.space16),
+          for (var i = 0; i < skips.length; i++)
+            _PartialTollSkipRow(
+              skip: skips[i],
+              enabled: enabledIndices.contains(i),
+              onToggle: (v) => onToggle(i, v),
+              onTap: () => _openSkipDetail(context, i),
+            ),
+          if (hourlyReport != null) ...[
+            const SizedBox(height: Tokens.space16),
+            Divider(color: scheme.outlineVariant),
+            const SizedBox(height: Tokens.space12),
+            Text(
+              '${l.hourlyBestHours}: '
+              '${hourlyReport!.bestHoursToSkip.map((h) => '${h.toString().padLeft(2, '0')}:00').join(' · ')}',
+              style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '${l.hourlyWorstHours}: '
+              '${hourlyReport!.worstHoursToSkip.map((h) => '${h.toString().padLeft(2, '0')}:00').join(' · ')}',
+              style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Tokens.space8),
+            _HourStrip(verdicts: hourlyReport!.verdicts),
+          ],
         ],
+      ),
+    );
+  }
+
+  void _openSkipDetail(BuildContext context, int index) {
+    final skip = skips[index];
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _PartialTollSkipSheet(
+        skip: skip,
+        origin: origin,
+        destination: destination,
+        routeGeometry: routeGeometry,
       ),
     );
   }
 }
 
 class _PartialTollSkipRow extends StatelessWidget {
-  const _PartialTollSkipRow({required this.skip});
+  const _PartialTollSkipRow({
+    required this.skip,
+    required this.enabled,
+    required this.onToggle,
+    required this.onTap,
+  });
   final PartialTollSkip skip;
+  final bool enabled;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final accent = skip.worthIt ? scheme.tertiary : scheme.onSurfaceVariant;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Tokens.space8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: accent.withValues(alpha: 0.12),
-            child: Icon(
-              skip.worthIt ? Icons.check : Icons.remove,
-              color: accent, size: 18,
+    final accent = enabled ? scheme.tertiary : scheme.onSurfaceVariant;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Tokens.radiusMd),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            CircleAvatar(
+              radius: 18,
+              backgroundColor: accent.withValues(alpha: 0.12),
+              child: Icon(
+                enabled ? Icons.check : Icons.remove,
+                color: accent, size: 18,
+              ),
             ),
-          ),
-          const SizedBox(width: Tokens.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  skip.localizedLabel(AppLocalizations.of(context)),
-                  style: t.titleSmall,
-                ),
-                Text(
-                  'km ${skip.distanceFromOriginKm.toStringAsFixed(0)} · '
-                  '€${skip.savingsEur.toStringAsFixed(0)} saved · '
-                  '+${skip.timePenaltyMinutes.toStringAsFixed(0)} min · '
-                  '+${skip.extraDistanceKm.toStringAsFixed(0)} km',
-                  style: t.bodySmall,
-                ),
-              ],
+            const SizedBox(width: Tokens.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    skip.localizedLabel(AppLocalizations.of(context)),
+                    style: t.titleSmall,
+                  ),
+                  Text(
+                    'km ${skip.distanceFromOriginKm.toStringAsFixed(0)} · '
+                    '€${skip.savingsEur.toStringAsFixed(0)} · '
+                    '+${skip.timePenaltyMinutes.toStringAsFixed(0)} min · '
+                    '+${skip.extraDistanceKm.toStringAsFixed(0)} km',
+                    style: t.bodySmall,
+                  ),
+                ],
+              ),
             ),
-          ),
-          SoftBadge(
-            label: skip.worthIt
-                ? AppLocalizations.of(context).resultSkipLabel
-                : AppLocalizations.of(context).resultKeepLabel,
-            color: accent,
-            background: accent.withValues(alpha: 0.10),
-            borderColor: accent.withValues(alpha: 0.3),
-          ),
-        ],
+            Switch.adaptive(
+              value: enabled,
+              onChanged: onToggle,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _PartialTollSkipSheet extends StatelessWidget {
+  const _PartialTollSkipSheet({
+    required this.skip,
+    required this.origin,
+    required this.destination,
+    required this.routeGeometry,
+  });
+  final PartialTollSkip skip;
+  final LatLon origin;
+  final LatLon destination;
+  final List<LatLon> routeGeometry;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      builder: (_, controller) => SingleChildScrollView(
+        controller: controller,
+        padding: const EdgeInsets.all(Tokens.space20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              skip.localizedLabel(l),
+              style: t.headlineSmall,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'km ${skip.distanceFromOriginKm.toStringAsFixed(0)}',
+              style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: Tokens.space16),
+            AspectRatio(
+              aspectRatio: 4 / 3,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(Tokens.radiusMd),
+                // Full trip polyline as context, with the toll
+                // booth marked. We could OSRM a targeted alt
+                // route per skip later — for MVP the location
+                // + numbers are what the driver needs.
+                child: RouteMap(
+                  origin: origin,
+                  destination: destination,
+                  geometry: routeGeometry,
+                ),
+              ),
+            ),
+            const SizedBox(height: Tokens.space20),
+            _SkipMetricRow(
+              icon: Icons.savings_outlined,
+              label: l.resultSaveExactly,
+              value: '€${skip.savingsEur.toStringAsFixed(0)}',
+              accent: scheme.tertiary,
+            ),
+            const SizedBox(height: Tokens.space8),
+            _SkipMetricRow(
+              icon: Icons.schedule,
+              label: '+',
+              value:
+                  '${skip.timePenaltyMinutes.toStringAsFixed(0)} min',
+              accent: scheme.onSurface,
+            ),
+            const SizedBox(height: Tokens.space8),
+            _SkipMetricRow(
+              icon: Icons.straighten,
+              label: '+',
+              value: '${skip.extraDistanceKm.toStringAsFixed(0)} km',
+              accent: scheme.onSurface,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SkipMetricRow extends StatelessWidget {
+  const _SkipMetricRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: accent),
+        const SizedBox(width: Tokens.space12),
+        Expanded(child: Text(label, style: t.bodyMedium)),
+        Text(
+          value,
+          style: t.titleMedium?.copyWith(
+            color: accent, fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2029,44 +2441,95 @@ class _AdverseEventTile extends StatelessWidget {
   }
 }
 
-class _HotelTile extends StatelessWidget {
-  const _HotelTile({required this.hotel, this.onTap});
-  final Hotel hotel;
-  final VoidCallback? onTap;
+class _DestinationHotelsSection extends StatelessWidget {
+  const _DestinationHotelsSection({
+    required this.hotels,
+    required this.destination,
+    this.origin,
+    this.routeGeometry = const [],
+  });
+  final List<Hotel> hotels;
+  final LatLon destination;
+  final LatLon? origin;
+  final List<LatLon> routeGeometry;
+
+  static const _maxShow = 5;
+  static const _maxDistKm = 60.0;
+
+  static double _haversine(LatLon a, LatLon b) {
+    const r = 6371.0;
+    final dLat = (b.lat - a.lat) * math.pi / 180;
+    final dLon = (b.lon - a.lon) * math.pi / 180;
+    final aLat = a.lat * math.pi / 180;
+    final bLat = b.lat * math.pi / 180;
+    final x = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(aLat) * math.cos(bLat) *
+            math.sin(dLon / 2) * math.sin(dLon / 2);
+    return r * 2 * math.atan2(math.sqrt(x), math.sqrt(1 - x));
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        radius: 18,
-        backgroundColor: scheme.tertiaryContainer,
-        child: Icon(Icons.hotel_outlined,
-            color: scheme.onTertiaryContainer, size: 18),
-      ),
-      title: Text(hotel.name),
-      subtitle: Text(
-        '${hotel.country.displayName} · '
-        '${hotel.priceEurPerNight.toStringAsFixed(0)} €/night · '
-        '${AppLocalizations.of(context).poiDistanceKm(
-          hotel.distanceFromRouteKm.toStringAsFixed(1),
-          hotel.detourMinutes.toStringAsFixed(0),
-        )}',
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SoftBadge(label: hotel.priceBand.symbol),
-          const SizedBox(width: 4),
-          FavoriteStarButton(
-            id: hotel.favoriteId,
-            isRestaurant: false,
-            payload: hotel.toFavoriteJson(),
+    final t = Theme.of(context).textTheme;
+    final scored = <(Hotel, double)>[];
+    for (final h in hotels) {
+      final km = _haversine(destination, h.coordinate);
+      if (km <= _maxDistKm) scored.add((h, km));
+    }
+    scored.sort((a, b) => a.$2.compareTo(b.$2));
+    final top = scored.take(_maxShow).toList();
+    if (top.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l.daySleepHotelsLabelDestination.toUpperCase(),
+          style: t.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            letterSpacing: 1.1,
           ),
-        ],
-      ),
-      onTap: onTap,
+        ),
+        const SizedBox(height: Tokens.space8),
+        for (final (h, km) in top)
+          InkWell(
+            onTap: () => showPoiDetailSheet(
+              context,
+              kind: PoiKind.hotel,
+              name: h.name,
+              subtitle: '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
+                  '${km.toStringAsFixed(1)} km',
+              poi: h.coordinate,
+              origin: origin ?? destination,
+              destination: destination,
+              routeGeometry: routeGeometry,
+              attributes: h.attributes,
+              icon: Icons.hotel_outlined,
+              accent: scheme.tertiary,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(Icons.hotel_outlined, size: 14,
+                      color: scheme.tertiary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${h.name}  ·  '
+                      '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
+                      '${l.hotelDistFromDestination(km.toStringAsFixed(1))}',
+                      style: t.bodySmall,
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 16,
+                      color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
@@ -2199,12 +2662,17 @@ class _TimeWindowExpandableCard extends StatefulWidget {
     required this.desiredDepartureAt,
     required this.initialSpanHours,
     required this.onFetch,
+    this.onWindowSelect,
   });
 
   final List<TimeWindow> initialWindows;
   final DateTime desiredDepartureAt;
   final int initialSpanHours;
   final Future<List<TimeWindow>> Function(int spanHours) onFetch;
+
+  /// Optional: fires when the driver taps one of the time-window
+  /// rows. Parent replans the whole trip with that departure.
+  final ValueChanged<TimeWindow>? onWindowSelect;
 
   @override
   State<_TimeWindowExpandableCard> createState() =>
@@ -2260,6 +2728,7 @@ class _TimeWindowExpandableCardState
               TimeWindowChart(
                 windows: _windows,
                 desiredDepartureAt: widget.desiredDepartureAt,
+                onSelect: widget.onWindowSelect,
               ),
               if (_loading)
                 const Positioned(
@@ -2446,66 +2915,7 @@ class _AddedStopsChip extends StatelessWidget {
   }
 }
 
-/// Rest-stop tile: shown for `travel_pace=savour` trips (see
-/// `scope.showRestStops`). Times are cumulative from origin, formatted
-/// in whole hours so a 3.5 h stop renders "After 3h 30m".
-class _RestStopTile extends StatelessWidget {
-  const _RestStopTile(this.stop);
-  final RestStop stop;
-
-  Future<void> _openMaps() async {
-    // Same recipe as the POI sheet: prefer geo: for a labelled
-    // marker in the Maps app, fall back to https so browser-only
-    // devices still land somewhere sensible.
-    final geo = Uri.parse(
-      'geo:${stop.coordinate.lat},${stop.coordinate.lon}'
-      '?q=${stop.coordinate.lat},${stop.coordinate.lon}(Parada)',
-    );
-    var ok = false;
-    try {
-      ok = await launchUrl(geo, mode: LaunchMode.externalApplication);
-    } catch (_) {
-      ok = false;
-    }
-    if (!ok) {
-      final https = Uri.https('www.google.com', '/maps/search/', {
-        'api': '1',
-        'query': '${stop.coordinate.lat},${stop.coordinate.lon}',
-        'center': '${stop.coordinate.lat},${stop.coordinate.lon}',
-        'zoom': '15',
-      });
-      await launchUrl(https, mode: LaunchMode.platformDefault);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        radius: 18,
-        backgroundColor: scheme.secondaryContainer,
-        child: Icon(
-          Icons.pause_circle_outline,
-          color: scheme.onSecondaryContainer, size: 18,
-        ),
-      ),
-      title: Text(
-        durationCompact(stop.cumulativeDrivingHours * 60),
-      ),
-      subtitle: Text(
-        '${stop.distanceFromOriginKm.toStringAsFixed(0)} km · '
-        '${stop.recommendedBreakMinutes} min',
-      ),
-      trailing: IconButton(
-        tooltip: 'Google Maps',
-        icon: const Icon(Icons.map_outlined, size: 22),
-        onPressed: _openMaps,
-      ),
-    );
-  }
-}
+// _RestStopTile removed — rest stops section hidden per tester feedback.
 
 /// Hint card that fires when the projected arrival lands after the
 /// user's configured bedtime. Suggests an overnight stop with a link

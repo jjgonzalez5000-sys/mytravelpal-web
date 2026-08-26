@@ -101,7 +101,7 @@ void main() {
   });
 
   group('HotelPreferencesSection widget', () {
-    testWidgets('starts collapsed: no slider or segmented button shown',
+    testWidgets('starts collapsed: no price picker shown',
         (tester) async {
       var prefs = HotelPreferences.disabled;
       await tester.pumpWidget(MaterialApp(
@@ -114,16 +114,13 @@ void main() {
           ),
         ),
       ));
-      // Localized to English by default in tests.
-      expect(find.text('Add hotels along the route'), findsOneWidget);
-      expect(find.byType(Slider), findsNothing);
+      expect(find.text('Find hotels near stops'), findsOneWidget);
       expect(find.byType(PriceBandMultiSelect), findsNothing);
     });
 
-    testWidgets('flipping switch reveals slider and price picker',
+    testWidgets('flipping switch reveals price picker',
         (tester) async {
       var prefs = HotelPreferences.disabled;
-
       await tester.pumpWidget(MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -136,12 +133,9 @@ void main() {
           ),
         ),
       ));
-
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
-
       expect(prefs.enabled, isTrue);
-      expect(find.byType(Slider), findsOneWidget);
       expect(find.byType(PriceBandMultiSelect), findsOneWidget);
     });
   });
