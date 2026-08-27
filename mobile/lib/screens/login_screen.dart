@@ -10,6 +10,7 @@ import '../design/components.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/biometric_auth.dart';
 import 'plan_screen.dart';
 
 /// Sign-in screen. In production this offers Google + Facebook + Apple;
@@ -43,6 +44,37 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authProvider.notifier)
           .set(session.user, session.token);
+      // Sync profile from server after login — if the user has
+      // a saved profile from a previous device/install, it
+      // overrides the local defaults.
+      final profileNotifier = ref.read(tripProfileProvider.notifier);
+      profileNotifier.api = api;
+      await profileNotifier.syncFromServer();
+      if (!mounted) return;
+      // Offer biometric setup on first login when available
+      final bio = BiometricService.instance;
+      if (await bio.isAvailable && !(await bio.isEnabled)) {
+        if (mounted) {
+          final enable = await showDialog<bool>(
+            context: context,
+            builder: (_) => AlertDialog(
+              title: Text(l.biometricSetupTitle),
+              content: Text(l.biometricSetupBody),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: Text(l.biometricSetupSkip),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: Text(l.biometricSetupEnable),
+                ),
+              ],
+            ),
+          );
+          if (enable == true) await bio.setEnabled(true);
+        }
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute<void>(builder: (_) => const PlanScreen()),
@@ -56,9 +88,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  static const _googleWebClientId =
+      '885268678623-t4vdjvdf7n7i5v8s6bs6jqcbn4327a4d.apps.googleusercontent.com';
+
   Future<void> _signInWithGoogle() async {
     try {
-      final account = await GoogleSignIn().signIn();
+      final account = await GoogleSignIn(
+        serverClientId: _googleWebClientId,
+      ).signIn();
       if (account == null) return; // user cancelled
       final auth = await account.authentication;
       final token = auth.idToken;
@@ -67,10 +104,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         return;
       }
       await _finish('google', token);
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Google sign-in error: $e\n$stack');
       setState(
-        () => _error =
-            'Google sign-in unavailable (needs OAuth client configuration): $e',
+        () => _error = 'Google sign-in error: $e',
       );
     }
   }

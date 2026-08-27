@@ -89,6 +89,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planHero => 'Wohin fahren wir\nheute?';
 
   @override
+  String planHeroPersonal(String name) {
+    return 'Hi $name, wohin geht\'s?';
+  }
+
+  @override
   String get planIntro =>
       'Wähle zwei Punkte und eine Uhrzeit. Um den Rest kümmern wir uns.';
 
@@ -1624,6 +1629,19 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tripCostTotal => 'Geschätzte Gesamtkosten';
+
+  @override
+  String get biometricSetupTitle => 'Biometrie aktivieren?';
+
+  @override
+  String get biometricSetupBody =>
+      'Entsperren Sie MyTravelPal per Fingerabdruck oder Gesicht.';
+
+  @override
+  String get biometricSetupEnable => 'Aktivieren';
+
+  @override
+  String get biometricSetupSkip => 'Nicht jetzt';
 
   @override
   String get weatherAlongRouteTitle => 'WETTER AUF IHRER ROUTE';

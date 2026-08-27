@@ -17,7 +17,7 @@ dependencies = [
     "anthropic>=0.40",
     "sentry-sdk[fastapi]>=2.0",
     "pyjwt>=2.9",
-    "google-auth>=2.35",
+    "google-auth[requests]>=2.35",
 ]
 
 [project.optional-dependencies]

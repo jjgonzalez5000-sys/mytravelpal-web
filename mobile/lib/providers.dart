@@ -93,12 +93,28 @@ final unitFormatterProvider = Provider<UnitFormatter>((ref) {
 
 /// Current [TripProfile], or null if the user hasn't set one yet.
 class TripProfileNotifier extends StateNotifier<TripProfile?> {
-  TripProfileNotifier(this._prefs) : super(_prefs.tripProfile);
+  TripProfileNotifier(this._prefs, {this.api}) : super(_prefs.tripProfile);
   final AppPrefs _prefs;
+  ApiClient? api;
 
   Future<void> set(TripProfile? profile) async {
     state = profile;
     await _prefs.setTripProfile(profile);
+    if (profile != null && api != null) {
+      api!.saveProfile(profile.toJson());
+    }
+  }
+
+  Future<void> syncFromServer() async {
+    if (api == null) return;
+    final remote = await api!.fetchProfile();
+    if (remote != null) {
+      try {
+        final profile = TripProfile.fromJson(remote);
+        state = profile;
+        await _prefs.setTripProfile(profile);
+      } catch (_) {}
+    }
   }
 
   Future<void> clear() => set(null);
@@ -106,7 +122,12 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
 
 final tripProfileProvider =
     StateNotifierProvider<TripProfileNotifier, TripProfile?>((ref) {
-  return TripProfileNotifier(ref.watch(appPrefsProvider));
+  final notifier = TripProfileNotifier(ref.watch(appPrefsProvider));
+  final auth = ref.watch(authProvider);
+  if (auth.token != null) {
+    notifier.api = ref.read(apiClientWithPremiumProvider);
+  }
+  return notifier;
 });
 
 /// Whether the user is on the Premium tier. MVP: local toggle only —

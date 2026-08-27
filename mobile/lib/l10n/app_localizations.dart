@@ -254,6 +254,12 @@ abstract class AppLocalizations {
   /// **'Where are we going\ntoday?'**
   String get planHero;
 
+  /// No description provided for @planHeroPersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Hi {name}, where to?'**
+  String planHeroPersonal(String name);
+
   /// No description provided for @planIntro.
   ///
   /// In en, this message translates to:
@@ -2997,6 +3003,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total estimated'**
   String get tripCostTotal;
+
+  /// No description provided for @biometricSetupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable biometric login?'**
+  String get biometricSetupTitle;
+
+  /// No description provided for @biometricSetupBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Use your fingerprint or face to unlock MyTravelPal next time.'**
+  String get biometricSetupBody;
+
+  /// No description provided for @biometricSetupEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get biometricSetupEnable;
+
+  /// No description provided for @biometricSetupSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get biometricSetupSkip;
 
   /// No description provided for @weatherAlongRouteTitle.
   ///

@@ -487,14 +487,21 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         color: scheme.tertiary, letterSpacing: 1.4,
                       )),
                   const SizedBox(height: Tokens.space8),
-                  Text(l.planHero, style: t.displayMedium)
-                      .animate()
-                      .fadeIn(duration: Tokens.motionBase)
-                      .moveY(begin: 8, end: 0, curve: Tokens.curveOut),
-                  const SizedBox(height: Tokens.space8),
+                  Builder(builder: (context) {
+                    final auth = ref.watch(authProvider);
+                    final name = auth.user?.displayName.split(' ').first;
+                    final greeting = name != null && name.isNotEmpty
+                        ? l.planHeroPersonal(name)
+                        : l.planHero;
+                    return Text(greeting, style: t.headlineMedium)
+                        .animate()
+                        .fadeIn(duration: Tokens.motionBase)
+                        .moveY(begin: 8, end: 0, curve: Tokens.curveOut);
+                  }),
+                  const SizedBox(height: Tokens.space4),
                   Text(
                     l.planIntro,
-                    style: t.bodyLarge?.copyWith(color: scheme.onSurfaceVariant),
+                    style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: Tokens.space16),
                   _ProfileChip(

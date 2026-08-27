@@ -196,10 +196,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    _tollSkipEnabled = {
-      for (var i = 0; i < widget.response.partialTollSkips.length; i++)
-        if (widget.response.partialTollSkips[i].worthIt) i,
-    };
+    // Start with NO tolls skipped — the driver pays everything
+    // by default. Savings grow from zero as they choose to skip
+    // individual stretches. The old logic seeded from `worthIt`
+    // which showed "you save 80€" before the user did anything.
+    _tollSkipEnabled = {};
     Future.microtask(() {
       ReviewPrompter.instance.onPlanCompleted();
     });
@@ -764,7 +765,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: Tokens.space16),
       ],
       if (widget.response.savings.timeSavedMinutesVsDesired > 0 ||
-          widget.response.savings.moneySavedEurVsTolls > 0 ||
           _tollSkipSavingsEur > 0) ...[
         _SavingsSummaryCard(
           savings: widget.response.savings,
@@ -839,7 +839,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   ),
                   StatTile(
                     label: l.resultStatTolls,
-                    value: '€${route.tollCostEur.toStringAsFixed(0)}',
+                    value: '€${(route.tollCostEur - _tollSkipSavingsEur).clamp(0.0, route.tollCostEur).toStringAsFixed(0)}',
                   ),
                 ],
               ),
@@ -1749,8 +1749,10 @@ class _SavingsSummaryCard extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final savedTime =
         savings.timeSavedMinutesVsDesired - tollSkipPenaltyMinutes;
-    final savedEur =
-        savings.moneySavedEurVsTolls + tollSkipSavingsEur;
+    // Only count per-booth skip savings — the global toll-free
+    // alternative savings (moneySavedEurVsTolls) are excluded
+    // because we removed the whole-route toll-free toggle.
+    final savedEur = tollSkipSavingsEur;
     return Container(
       padding: const EdgeInsets.all(Tokens.space20),
       decoration: BoxDecoration(

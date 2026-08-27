@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/biometric_auth.dart';
 import '../services/trip_session_persistence.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
@@ -41,7 +42,21 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     } else if (!auth.isAuthenticated) {
       next = const LoginScreen();
     } else {
-      next = const PlanScreen();
+      // Biometric gate: if enabled, require fingerprint/face before
+      // showing the main screen. Fail → fall back to login.
+      final bio = BiometricService.instance;
+      if (await bio.isEnabled) {
+        final ok = await bio.authenticate(
+          reason: 'Verify your identity to access MyTravelPal',
+        );
+        if (!ok) {
+          next = const LoginScreen();
+        } else {
+          next = const PlanScreen();
+        }
+      } else {
+        next = const PlanScreen();
+      }
     }
     await Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(

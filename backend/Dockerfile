@@ -15,10 +15,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
-# Runtime image: only runtime deps, no `[dev]` extras (pytest, ruff, etc.)
-RUN pip install --upgrade pip && pip install -e .
-
 COPY app ./app
+RUN pip install --upgrade pip && pip install .
 
 EXPOSE 8000
 

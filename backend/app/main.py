@@ -31,10 +31,22 @@ else:
     _log.info("Sentry disabled — SENTRY_DSN not set")
 
 
+from contextlib import asynccontextmanager
+
+from app.db import init_db
+
+
+@asynccontextmanager
+async def _lifespan(a):
+    await init_db()
+    yield
+
+
 app = FastAPI(
     title="MyTravelPal API",
-    version="0.1.0",
+    version="0.2.0",
     description="Trip planning API with optimal-departure-window computation.",
+    lifespan=_lifespan,
 )
 
 # MVP: permissive CORS so the Flutter web build served on any localhost

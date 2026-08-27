@@ -200,6 +200,64 @@ class ApiClient {
         .toList(growable: false);
   }
 
+  /// Fetch the user's server-side profile (requires auth token).
+  Future<Map<String, dynamic>?> fetchProfile() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile');
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return null;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return body['profile'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Save the user's profile to the server (requires auth token).
+  Future<bool> saveProfile(Map<String, dynamic> profile) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile');
+    try {
+      final response = await _http.put(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({'profile': profile}),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Fetch saved trips from server (cloud backup).
+  Future<List<Map<String, dynamic>>> fetchTrips() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/trips');
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return [];
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['trips'] as List<dynamic>? ?? [])
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Push saved trips to server (cloud backup).
+  Future<bool> saveTrips(List<Map<String, dynamic>> trips) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/trips');
+    try {
+      final response = await _http.put(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({'trips': trips}),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Reverse-geocode a coordinate to the nearest supported-country place.
   ///
   /// Returns null when the backend responds 404 (open sea, wilderness,

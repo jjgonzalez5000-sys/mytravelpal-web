@@ -34,6 +34,9 @@ class OAuthPayload:
     demo_name: str | None = None
 
 
+import logging as _logging
+_glog = _logging.getLogger(__name__)
+
 class GoogleOAuthProvider:
     """Verifies a Google-issued ID token via `google-auth`.
 
@@ -53,12 +56,34 @@ class GoogleOAuthProvider:
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         if not client_id:
             raise OAuthVerificationError("GOOGLE_CLIENT_ID not configured")
+        android_client_id = os.environ.get("GOOGLE_ANDROID_CLIENT_ID")
+        _glog.info(
+            "Google verify: web_client=%s, android_client=%s, token_prefix=%s",
+            client_id[:20] if client_id else None,
+            android_client_id[:20] if android_client_id else None,
+            payload.id_token[:30] if payload.id_token else None,
+        )
         try:
             info = g_id_token.verify_oauth2_token(
                 payload.id_token, g_requests.Request(), client_id,
             )
-        except ValueError as exc:
-            raise OAuthVerificationError(f"Google token invalid: {exc}") from exc
+        except ValueError as exc1:
+            _glog.warning("Web client verify failed: %s", exc1)
+            if android_client_id:
+                try:
+                    info = g_id_token.verify_oauth2_token(
+                        payload.id_token, g_requests.Request(),
+                        android_client_id,
+                    )
+                except ValueError as exc2:
+                    _glog.error("Android client verify also failed: %s", exc2)
+                    raise OAuthVerificationError(
+                        f"Google token invalid: web={exc1}, android={exc2}",
+                    ) from exc2
+            else:
+                raise OAuthVerificationError(
+                    f"Google token invalid: {exc1}",
+                ) from exc1
         return AuthUser(
             id=f"google:{info['sub']}",
             email=str(info.get("email", "")),

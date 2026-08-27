@@ -7,6 +7,7 @@ from app.api.v1 import (
     diagnostics,
     geocode,
     narrative,
+    profile,
     trips,
 )
 
@@ -16,5 +17,6 @@ router.include_router(geocode.router)
 router.include_router(adverse_events.router)
 router.include_router(narrative.router)
 router.include_router(auth.router)
+router.include_router(profile.router)
 router.include_router(diagnostics.router)
 router.include_router(attributions.router)
