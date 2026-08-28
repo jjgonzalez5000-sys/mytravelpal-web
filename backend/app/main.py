@@ -27,9 +27,14 @@ if _dsn:
         environment=os.environ.get("FLY_APP_NAME", "local"),
         release=os.environ.get("FLY_IMAGE_REF", "dev"),
     )
-    _log.info("Sentry initialised (DSN set)")
+    # WARNING level so the init message actually surfaces in the
+    # default Fly logging config (INFO on `app.*` loggers is filtered
+    # out — uvicorn only opts its own loggers into INFO). It's not
+    # semantically a warning but it's a rare boot-time event and
+    # visibility matters for verifying the DSN wire-up.
+    _log.warning("Sentry initialised (DSN set, %s)", _dsn.split("@")[-1])
 else:
-    _log.info("Sentry disabled — SENTRY_DSN not set")
+    _log.warning("Sentry disabled — SENTRY_DSN not set")
 
 
 from contextlib import asynccontextmanager
