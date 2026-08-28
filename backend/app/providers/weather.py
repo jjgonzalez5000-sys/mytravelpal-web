@@ -86,13 +86,21 @@ class OpenMeteoWeatherProvider:
             if wmo is None or wmo not in _WMO_TO_EVENT:
                 continue
             etype, severity, label = _WMO_TO_EVENT[wmo]
+            # `description` stays short (just the label) so the
+            # client can prepend the LOCALIZED event type name and
+            # distance chip on top of a stable English weather
+            # word — instead of the previous
+            # `"Thunderstorm forecast near km 200"` which baked in
+            # English glue that ended up untranslated on ES/FR/DE
+            # devices. Full weather-label i18n is on the backlog
+            # (needs a `label_key` field wired through the model).
             events.append(
                 AdverseEvent(
                     id=f"weather:{uuid.uuid4().hex[:12]}",
                     type=etype, severity=severity,
                     source=AdverseEventSource.WEATHER,
                     coordinate=coord,
-                    description=f"{label} forecast near km {int(fraction * route.distance_km)}",
+                    description=label,
                     reported_at=now,
                     expires_at=target + timedelta(hours=2),
                 )

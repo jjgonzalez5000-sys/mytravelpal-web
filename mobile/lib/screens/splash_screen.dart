@@ -57,6 +57,24 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       } else {
         next = const PlanScreen();
       }
+      // Auth already valid from a previous session — the login
+      // screen never runs on this launch, so we must wire the
+      // api client into TripStorage + TripProfileNotifier here
+      // too. Without this hook every locally-saved trip stayed
+      // local (never pushed to Postgres), so `borrar datos +
+      // re-login` wiped everything even though the user
+      // expected the cloud copy to survive.
+      final api = ref.read(apiClientWithPremiumProvider);
+      final profileNotifier = ref.read(tripProfileProvider.notifier);
+      profileNotifier.api = api;
+      final storage = ref.read(tripStorageProvider);
+      storage.api = api;
+      // Fire the sync so any trips / profile changes the user
+      // made on another device (or before the last install)
+      // land locally. Fire-and-forget: navigation to Plan runs
+      // in parallel so the user doesn't wait for the network.
+      unawaited(profileNotifier.syncFromServer());
+      unawaited(storage.syncFromServer());
     }
     await Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(

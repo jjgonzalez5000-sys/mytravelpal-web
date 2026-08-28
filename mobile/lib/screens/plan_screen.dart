@@ -504,6 +504,19 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                   ),
                   const SizedBox(height: Tokens.space16),
+                  // Prominent CTA for saved trips. The AppBar
+                  // bookmark icon is easy to miss (5 icons in a
+                  // row), so a labelled row-button at the top of
+                  // the form gives the user a discoverable path
+                  // into their history.
+                  _SavedTripsBar(
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const HistoryScreen(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: Tokens.space16),
                   _ProfileChip(
                     profile: _overrideProfile
                         ?? ref.watch(tripProfileProvider),
@@ -546,7 +559,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                       if (_overrideProfile != null)
                         TextButton.icon(
                           icon: const Icon(Icons.clear, size: 16),
-                          label: const Text('Clear override'),
+                          label: Text(l.planProfileClearOverride),
                           onPressed: () =>
                               setState(() => _overrideProfile = null),
                         ),
@@ -645,76 +658,71 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   SoftCard(
                     key: _preferencesKey,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: Tokens.space16,
-                      vertical: Tokens.space8,
+                      horizontal: Tokens.space12,
+                      vertical: Tokens.space4,
                     ),
                     child: Column(
                       children: [
-                        HotelPreferencesSection(
-                          value: _hotelPrefs,
-                          onChanged: (v) => setState(() => _hotelPrefs = v),
-                        ),
-                        const Divider(height: Tokens.space16),
-                        RestaurantPreferencesSection(
-                          value: _restaurantPrefs,
-                          onChanged: (v) => setState(() => _restaurantPrefs = v),
-                        ),
-                        const Divider(height: Tokens.space16),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l.planOptAlertsTitle,
-                            style: t.titleMedium,
+                        // Group 1: "En la ruta" — hotels & restaurants
+                        // as ExpansionTiles so the sub-options
+                        // (detour, stars, cuisines) only take space
+                        // when actually configured. Alerts stay
+                        // inline (no sub-options, always on by
+                        // default).
+                        _CompactExpandableToggle(
+                          icon: Icons.hotel_outlined,
+                          title: l.hotelPrefTitle,
+                          value: _hotelPrefs.enabled,
+                          onChanged: (v) => setState(
+                            () => _hotelPrefs = _hotelPrefs.copyWith(enabled: v),
                           ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(l.planOptAlertsSub, style: t.bodySmall),
+                          expandedChild: HotelPreferencesSection(
+                            value: _hotelPrefs,
+                            onChanged: (v) => setState(() => _hotelPrefs = v),
+                            hideMainSwitch: true,
                           ),
+                        ),
+                        _CompactExpandableToggle(
+                          icon: Icons.restaurant_outlined,
+                          title: l.restaurantPrefTitle,
+                          value: _restaurantPrefs.enabled,
+                          onChanged: (v) => setState(
+                            () => _restaurantPrefs =
+                                _restaurantPrefs.copyWith(enabled: v),
+                          ),
+                          expandedChild: RestaurantPreferencesSection(
+                            value: _restaurantPrefs,
+                            onChanged: (v) =>
+                                setState(() => _restaurantPrefs = v),
+                            hideMainSwitch: true,
+                          ),
+                        ),
+                        _CompactToggle(
+                          icon: Icons.warning_amber_outlined,
+                          title: l.planOptAlertsTitle,
+                          subtitle: l.planOptAlertsSub,
                           value: _alertsEnabled,
-                          onChanged: (v) => setState(() => _alertsEnabled = v),
-                        ),
-                        const Divider(height: Tokens.space16),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l.planOptTollFreeTitle,
-                            style: t.titleMedium,
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(l.planOptTollFreeSub, style: t.bodySmall),
-                          ),
-                          value: _tollAlternativeEnabled,
-                          onChanged: (v) => setState(() {
-                            _tollAlternativeEnabled = v;
-                          }),
-                        ),
-                        // Hourly toll analysis selector removed: now
-                        // implicit when the toll alternative toggle
-                        // is on. See `_hourlyTollEnabled` getter.
-                        const Divider(height: Tokens.space16),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(
-                            l.planOptRouteVariantsTitle, style: t.titleMedium,
-                          ),
-                          subtitle: Padding(
-                            padding: const EdgeInsets.only(top: 4),
-                            child: Text(
-                              l.planOptRouteVariantsSub, style: t.bodySmall,
-                            ),
-                          ),
-                          value: _routeComparisonEnabled,
                           onChanged: (v) =>
-                              setState(() => _routeComparisonEnabled = v),
+                              setState(() => _alertsEnabled = v),
                         ),
-                        // "Avoid motorways" + "Prefer scenic" toggles
-                        // hidden for the beta — routing quality on
-                        // those variants isn't consistent yet and
-                        // exposing the switches confused testers.
-                        // They stay on the model side (flags default
-                        // false in _submit) so we can re-enable via
-                        // the trip profile in a later iteration.
+                        _CompactToggle(
+                          icon: Icons.euro,
+                          title: l.planOptTollFreeTitle,
+                          subtitle: l.planOptTollFreeSub,
+                          value: _tollAlternativeEnabled,
+                          onChanged: (v) => setState(
+                            () => _tollAlternativeEnabled = v,
+                          ),
+                        ),
+                        _CompactToggle(
+                          icon: Icons.alt_route,
+                          title: l.planOptRouteVariantsTitle,
+                          subtitle: l.planOptRouteVariantsSub,
+                          value: _routeComparisonEnabled,
+                          onChanged: (v) => setState(
+                            () => _routeComparisonEnabled = v,
+                          ),
+                        ),
                       ],
                     ),
                   ).animate().fadeIn(delay: 120.ms, duration: Tokens.motionBase),
@@ -776,6 +784,198 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                 ]),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact preferences row — icon + title/subtitle + switch, all
+/// on one line. Replaces the previous full-height SwitchListTile
+/// stack. Denser, faster to scan. Used for toggles with no sub-
+/// options (alerts / toll-free / route variants).
+class _CompactToggle extends StatelessWidget {
+  const _CompactToggle({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return InkWell(
+      onTap: () => onChanged(!value),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 4, vertical: Tokens.space8,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 20,
+                color: value ? scheme.primary : scheme.onSurfaceVariant),
+            const SizedBox(width: Tokens.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: t.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            const SizedBox(width: Tokens.space8),
+            Transform.scale(
+              scale: 0.85,
+              child: Switch.adaptive(
+                value: value,
+                onChanged: onChanged,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Compact toggle with an inline expansion — when `value` is
+/// true, `expandedChild` renders below the toggle (typically
+/// the nested detour / stars / cuisines options). When off,
+/// only the compact row is visible. Divider below for visual
+/// grouping with adjacent `_CompactToggle` rows.
+class _CompactExpandableToggle extends StatelessWidget {
+  const _CompactExpandableToggle({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+    required this.expandedChild,
+  });
+  final IconData icon;
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final Widget expandedChild;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InkWell(
+          onTap: () => onChanged(!value),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 4, vertical: Tokens.space8,
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 20,
+                    color: value ? scheme.primary : scheme.onSurfaceVariant),
+                const SizedBox(width: Tokens.space12),
+                Expanded(
+                  child: Text(title,
+                      style: t.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                ),
+                if (value)
+                  Icon(Icons.expand_less, size: 18,
+                      color: scheme.onSurfaceVariant),
+                const SizedBox(width: 4),
+                Transform.scale(
+                  scale: 0.85,
+                  child: Switch.adaptive(
+                    value: value, onChanged: onChanged,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (value)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              32, 0, 4, Tokens.space8,
+            ),
+            child: expandedChild,
+          ),
+      ],
+    );
+  }
+}
+
+/// A prominent CTA row at the top of the plan form that opens
+/// `HistoryScreen`. The bookmark AppBar icon was easy to miss —
+/// this labelled bar makes "Mis viajes" a first-class entry
+/// point of the plan flow. Non-consumer widget so it doesn't
+/// trigger rebuilds on unrelated auth state changes.
+class _SavedTripsBar extends StatelessWidget {
+  const _SavedTripsBar({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      child: Ink(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(Tokens.radiusLg),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16, vertical: Tokens.space12,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(Tokens.radiusMd),
+              ),
+              child: Icon(Icons.bookmark_outline,
+                  color: scheme.onPrimaryContainer, size: 20),
+            ),
+            const SizedBox(width: Tokens.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.planTooltipSaved,
+                      style: t.titleSmall
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(l.historyEmptyBody,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
           ],
         ),
       ),

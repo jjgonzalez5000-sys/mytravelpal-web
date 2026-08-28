@@ -155,18 +155,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return r * 2 * math.atan2(math.sqrt(x), math.sqrt(1 - x));
   }
 
+  // Savings = sum of tolls the user UNCHECKED (skipped).
+  // _tollSkipEnabled = indices the user KEEPS (pays).
+  // So savings come from indices NOT in the set.
   double get _tollSkipSavingsEur {
     final skips = widget.response.partialTollSkips;
-    return _tollSkipEnabled.fold(
-      0.0, (sum, i) => sum + skips[i].savingsEur,
-    );
+    var total = 0.0;
+    for (var i = 0; i < skips.length; i++) {
+      if (!_tollSkipEnabled.contains(i)) total += skips[i].savingsEur;
+    }
+    return total;
   }
 
   double get _tollSkipPenaltyMinutes {
     final skips = widget.response.partialTollSkips;
-    return _tollSkipEnabled.fold(
-      0.0, (sum, i) => sum + skips[i].timePenaltyMinutes,
-    );
+    var total = 0.0;
+    for (var i = 0; i < skips.length; i++) {
+      if (!_tollSkipEnabled.contains(i)) total += skips[i].timePenaltyMinutes;
+    }
+    return total;
   }
 
   bool _isPlausibleSleepTime(DateTime at) => isPlausibleSleepTime(at);
@@ -196,11 +203,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   void initState() {
     super.initState();
-    // Start with NO tolls skipped — the driver pays everything
-    // by default. Savings grow from zero as they choose to skip
-    // individual stretches. The old logic seeded from `worthIt`
-    // which showed "you save 80€" before the user did anything.
-    _tollSkipEnabled = {};
+    // All tolls CHECKED (= paid) by default. Savings start at 0.
+    // As the driver unchecks a toll, it gets removed from the set,
+    // savings grow, and the toll cost in the stats card drops.
+    _tollSkipEnabled = {
+      for (var i = 0; i < widget.response.partialTollSkips.length; i++) i,
+    };
     Future.microtask(() {
       ReviewPrompter.instance.onPlanCompleted();
     });
@@ -224,6 +232,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// detour field on the backend yet).
   final Map<String, double> _addedStops = <String, double>{};
 
+  /// Hotels the user "booked" for each night of the trip. Keyed by
+  /// day index (1-based). When set, the total cost card sums these
+  /// prices instead of just the backend-picked sleep_stop hotel,
+  /// and the day view shows the picked hotel prominently.
+  ///
+  /// Kept as a plain field (not persisted) — the driver rebuilds
+  /// the plan often and picks vary per session. If persistence is
+  /// asked for later, snapshot into `TripSessionPersistence`.
+  final Map<int, Hotel> _selectedNightHotels = <int, Hotel>{};
+
   static const double _fuelStopMinutes = 8.0;
 
   double get _addedMinutesTotal =>
@@ -239,6 +257,46 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _addedStops[key] = minutes;
       }
     });
+  }
+
+  /// Toggle a night's picked hotel. Only one hotel per day — tapping
+  /// a different one overwrites; tapping the same one un-picks.
+  void _toggleNightHotel(int dayIndex, Hotel hotel) {
+    setState(() {
+      final current = _selectedNightHotels[dayIndex];
+      if (current != null &&
+          current.name == hotel.name &&
+          current.coordinate.lat == hotel.coordinate.lat &&
+          current.coordinate.lon == hotel.coordinate.lon) {
+        _selectedNightHotels.remove(dayIndex);
+      } else {
+        _selectedNightHotels[dayIndex] = hotel;
+      }
+    });
+  }
+
+  /// Sum of picked-hotel prices across nights. Passed to the cost
+  /// card so the total reflects the user's actual bookings, not
+  /// just the algorithmically-chosen sleep_stop.
+  double get _selectedHotelsCostEur {
+    final pax = widget.request.tripProfile?.travellers ?? 1;
+    final rooms = (pax.clamp(1, 20) / 2).ceil();
+    return _selectedNightHotels.values
+        .fold<double>(0.0, (sum, h) => sum + h.priceEurPerNight * rooms);
+  }
+
+  /// Return the cheapest `limit` fuel stations that have both a
+  /// known price and a coordinate we can plot. Sorted ascending
+  /// by price. Used to seed the fuel map layer without drowning
+  /// long-corridor plans in every station along the road.
+  static List<FuelPrice> _topCheapestFuel(
+    List<FuelPrice> prices, int limit,
+  ) {
+    final withPrice = prices
+        .where((f) => f.priceAvailable && f.coordinate != null)
+        .toList()
+      ..sort((a, b) => a.priceEurPerL.compareTo(b.priceEurPerL));
+    return withPrice.take(limit).toList(growable: false);
   }
 
   void _clearAddedStops() {
@@ -292,7 +350,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           kind: AddedStopKind.fuel,
           label: p.stationName,
           subtitle: p.priceAvailable
-              ? '${p.priceEurPerL.toStringAsFixed(3)} €/L · '
+              ? '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel} · '
                   '${p.distanceFromOriginKm.toStringAsFixed(0)} km'
               : '${p.distanceFromOriginKm.toStringAsFixed(0)} km',
           coordinate: p.coordinate!,
@@ -683,6 +741,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         hotels: _filteredHotels,
         restaurants: widget.response.restaurants,
         tollSkips: widget.response.partialTollSkips,
+        // Top 10 cheapest fuel stations on the map — the layer
+        // picker in the top-right toggles them off. Filtered to
+        // stations with known prices (the "no price available"
+        // pins are noise for a "cheapest fuel" overlay).
+        fuelStations: _topCheapestFuel(widget.response.fuelPrices, 10),
+        adverseEvents: widget.response.adverseEvents,
         mode: _mapMode,
         onModeChange: (m) => setState(() => _mapMode = m),
       ),
@@ -697,8 +761,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           mealStops: widget.response.optimizations!.mealStops,
           sleepStop: widget.response.optimizations!.sleepStop,
           tollSkipSavingsEur: _tollSkipSavingsEur,
+          travellers: widget.request.tripProfile?.travellers ?? 1,
+          pickedHotelsCostEur: _selectedNightHotels.isEmpty
+              ? null
+              : _selectedHotelsCostEur,
+          pickedHotelsNights: _selectedNightHotels.length,
         ),
         const SizedBox(height: Tokens.space16),
+      ],
+      // Alerts at the top — the driver needs to know about fires,
+      // strikes, weather before anything else.
+      if (widget.response.adverseEvents.isNotEmpty) ...[
+        for (final e in widget.response.adverseEvents)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Tokens.space8),
+            child: _AdverseEventTile(
+              event: e,
+              onTap: () => showAdverseEventSheet(
+                context,
+                event: e,
+                origin: widget.request.origin,
+                destination: widget.request.destination,
+                routeGeometry: widget.response.route.geometry,
+              ),
+            ),
+          ),
+      ] else if (widget.request.includeAdverseEvents) ...[
+        EmptyStateCard(
+          icon: Icons.check_circle_outline,
+          title: l.emptyAlertsTitle,
+          body: l.emptyAlertsBody,
+          tint: scheme.tertiary,
+        ),
+        const SizedBox(height: Tokens.space8),
       ],
       // Next-stop hero: pulls the first meal stop of the trip so the
       // driver always sees "next planned stop" up top without hunting
@@ -908,6 +1003,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           destination: widget.request.destination,
           origin: widget.request.origin,
           routeGeometry: widget.response.route.geometry,
+          selectedNightHotels: _selectedNightHotels,
+          onToggleNightHotel: _toggleNightHotel,
+          // Hide all hotel content per-day when the user didn't
+          // ask for hotel search on the plan form. Keeps the
+          // day cards focused on driving hours + meal times
+          // instead of promoting an empty hotel slot.
+          showHotelSections:
+              widget.request.hotelMaxDetourMinutes != null &&
+                  widget.request.hotelMaxDetourMinutes! > 0,
         ),
       ],
       // Single-day trips with hotels enabled: show a compact
@@ -926,41 +1030,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           routeGeometry: widget.response.route.geometry,
         ),
       ],
-      // (Toll cards promoted above the day plan.)
-      // Alerts section: renders the "all clear" empty state when the
-      // user asked for alerts but the corridor has none — reassures
-      // the driver instead of silently hiding the section.
-      if (widget.request.includeAdverseEvents) ...[
-        const SizedBox(height: Tokens.space24),
-        SectionHeader(
-          title: l.resultAlerts,
-          eyebrow: l.resultEyebrowAlongRoute,
-          description: l.alertsAlongYourRouteDesc,
-        ),
-        if (widget.response.adverseEvents.isEmpty)
-          EmptyStateCard(
-            icon: Icons.check_circle_outline,
-            title: l.emptyAlertsTitle,
-            body: l.emptyAlertsBody,
-            tint: scheme.tertiary,
-          ),
-      ],
-      if (widget.response.adverseEvents.isNotEmpty) ...[
-        ..._separated(
-          widget.response.adverseEvents
-              .map((e) => _AdverseEventTile(
-                    event: e,
-                    onTap: () => showAdverseEventSheet(
-                      context,
-                      event: e,
-                      origin: widget.request.origin,
-                      destination: widget.request.destination,
-                      routeGeometry: widget.response.route.geometry,
-                    ),
-                  ))
-              .toList(),
-        ),
-      ],
+      // Alerts section moved to the top (after trip cost card).
       // Rest stops section removed (tester feedback): with meals +
       // sleep already surfaced per day, a separate "recommended
       // stops" list read as redundant noise. The domain data is
@@ -1002,17 +1072,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           FuelArbitrageBanner(hint: widget.response.fuelArbitrage!),
           const SizedBox(height: Tokens.space12),
         ],
-        SectionHeader(
-          title: l.resultFuel, eyebrow: l.resultEyebrowAlongRoute,
-        ),
-        ..._separated(
-          widget.response.fuelPrices.map((p) {
-            final coordSuffix = p.coordinate == null
-                ? ':nocoord'
-                : ':${p.coordinate!.lat.toStringAsFixed(4)},'
-                    '${p.coordinate!.lon.toStringAsFixed(4)}';
-            final key = 'fuel:${p.stationName}$coordSuffix';
-            return _FuelTile(
+        // Collapsible now — the top-10 cheapest are already on
+        // the map; this list becomes an on-demand detailed view
+        // for drivers who want to compare all stations.
+        Theme(
+          data: Theme.of(context)
+              .copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            initiallyExpanded: false,
+            title: Text(
+              l.resultFuel,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            subtitle: Text(
+              l.resultFuelCollapsedHint(
+                widget.response.fuelPrices.length,
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            leading: Icon(
+              Icons.local_gas_station,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            children: [
+              ..._separated(
+                widget.response.fuelPrices.map((p) {
+                  final coordSuffix = p.coordinate == null
+                      ? ':nocoord'
+                      : ':${p.coordinate!.lat.toStringAsFixed(4)},'
+                          '${p.coordinate!.lon.toStringAsFixed(4)}';
+                  final key = 'fuel:${p.stationName}$coordSuffix';
+                  return _FuelTile(
                     price: p,
                     isAdded: _isAdded(key),
                     onToggleAdd: () => _toggleStop(key, _fuelStopMinutes),
@@ -1024,19 +1116,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               name: p.stationName,
                               subtitle:
                                   '${p.country.displayName} · '
-                                  '${p.priceEurPerL.toStringAsFixed(3)} €/L · '
+                                  '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel} · '
                                   '${p.distanceFromOriginKm.toStringAsFixed(0)} km',
                               poi: p.coordinate!,
                               origin: widget.request.origin,
                               destination: widget.request.destination,
-                              routeGeometry: widget.response.route.geometry,
+                              routeGeometry:
+                                  widget.response.route.geometry,
                               attributes: p.attributes,
                               icon: Icons.local_gas_station,
                               accent:
                                   Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                   );
-          }).toList(),
+                }).toList(),
+              ),
+            ],
+          ),
         ),
       ],
       const SizedBox(height: Tokens.space32),
@@ -1230,6 +1326,8 @@ class _InteractiveMapCard extends StatelessWidget {
     this.hotels = const [],
     this.restaurants = const [],
     this.tollSkips = const [],
+    this.fuelStations = const [],
+    this.adverseEvents = const [],
     required this.mode,
     required this.onModeChange,
   });
@@ -1241,6 +1339,8 @@ class _InteractiveMapCard extends StatelessWidget {
   final List<Hotel> hotels;
   final List<Restaurant> restaurants;
   final List<PartialTollSkip> tollSkips;
+  final List<FuelPrice> fuelStations;
+  final List<AdverseEvent> adverseEvents;
   final _MapMode mode;
   final ValueChanged<_MapMode> onModeChange;
 
@@ -1263,6 +1363,8 @@ class _InteractiveMapCard extends StatelessWidget {
             hotelMarkers: hotels,
             restaurantMarkers: restaurants,
             tollMarkers: tollSkips,
+            fuelMarkers: fuelStations,
+            adverseEventMarkers: adverseEvents,
           ),
         ),
         Positioned(
@@ -1626,12 +1728,27 @@ class _TotalTripCostCard extends StatelessWidget {
     required this.mealStops,
     this.sleepStop,
     this.tollSkipSavingsEur = 0,
+    this.travellers = 1,
+    this.pickedHotelsCostEur,
+    this.pickedHotelsNights = 0,
   });
   final double fuelCostEur;
   final double tollCostEur;
   final List<MealStopOpt> mealStops;
   final SleepStopOpt? sleepStop;
   final double tollSkipSavingsEur;
+  final int travellers;
+
+  /// When non-null, overrides the algorithmic sleep_stop hotel
+  /// cost with the user-picked hotels sum. Set when the user has
+  /// tapped "+ hotel" on at least one night in the day view; the
+  /// picks span multiple nights, so the value is already
+  /// multiplied by rooms and summed across days.
+  final double? pickedHotelsCostEur;
+
+  /// Nights the user has picked. Drives the row label ("Hoteles ×2")
+  /// so the driver sees the picks reflected in the receipt.
+  final int pickedHotelsNights;
 
   @override
   Widget build(BuildContext context) {
@@ -1639,10 +1756,28 @@ class _TotalTripCostCard extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
 
-    final mealsCost = mealStops.fold<double>(
+    final pax = travellers.clamp(1, 20);
+    // Per-person meal cost × number of travellers × number of meals
+    final mealsCostPerPerson = mealStops.fold<double>(
       0.0, (sum, m) => sum + (m.restaurantPriceEurPerMeal ?? 15.0),
     );
-    final hotelCost = sleepStop?.hotelPriceEurPerNight ?? 0.0;
+    final mealsCost = mealsCostPerPerson * pax;
+    // Hotel line: user picks (multi-night) override the
+    // algorithmic single-night sleep_stop. Falls back to the
+    // sleep_stop estimate when the user hasn't picked anything —
+    // that way the receipt shows a plausible night even before
+    // they interact.
+    final rooms = (pax / 2).ceil();
+    final double hotelCost;
+    final int hotelNights;
+    if (pickedHotelsCostEur != null) {
+      hotelCost = pickedHotelsCostEur!;
+      hotelNights = pickedHotelsNights;
+    } else {
+      final hotelPerNight = sleepStop?.hotelPriceEurPerNight ?? 0.0;
+      hotelCost = hotelPerNight * rooms;
+      hotelNights = hotelPerNight > 0 ? 1 : 0;
+    }
     final effectiveTolls = (tollCostEur - tollSkipSavingsEur).clamp(0.0, tollCostEur);
     final total = fuelCostEur + effectiveTolls + mealsCost + hotelCost;
 
@@ -1671,11 +1806,31 @@ class _TotalTripCostCard extends StatelessWidget {
           _CostRow(label: l.tripCostTolls,
               value: effectiveTolls, scheme: scheme, t: t),
           if (mealsCost > 0)
-            _CostRow(label: '${l.tripCostMeals} (×${mealStops.length})',
-                value: mealsCost, scheme: scheme, t: t),
+            _CostRow(
+              label: pax > 1
+                  ? '${l.tripCostMeals} (${mealStops.length} × $pax)'
+                  : '${l.tripCostMeals} (×${mealStops.length})',
+              value: mealsCost, scheme: scheme, t: t,
+            ),
           if (hotelCost > 0)
-            _CostRow(label: l.tripCostHotel,
-                value: hotelCost, scheme: scheme, t: t),
+            _CostRow(
+              label: () {
+                // Multi-night picks: "Hoteles (×N nights [× R rooms])".
+                // Single algorithmic pick: keep the existing rooms-only
+                // label so the copy is stable when the user hasn't
+                // interacted yet.
+                if (hotelNights > 1) {
+                  final base = rooms > 1
+                      ? '${l.tripCostHotel} (×$hotelNights × $rooms)'
+                      : '${l.tripCostHotel} (×$hotelNights)';
+                  return base;
+                }
+                return rooms > 1
+                    ? '${l.tripCostHotel} (×$rooms)'
+                    : l.tripCostHotel;
+              }(),
+              value: hotelCost, scheme: scheme, t: t,
+            ),
           const SizedBox(height: Tokens.space8),
           Divider(color: scheme.outlineVariant),
           const SizedBox(height: Tokens.space8),
@@ -1882,7 +2037,8 @@ class _RecommendationHero extends StatelessWidget {
     final l = AppLocalizations.of(context);
 
     final shift = recommended.departureAt.difference(desired);
-    final savedVsDesired = _minutesShiftedForBetterTraffic(shift, recommended);
+    final savedVsDesired =
+        _minutesShiftedForBetterTraffic(shift, recommended, l);
     final shiftLabel = _formatShift(shift);
     final dateFmt = DateFormat('EEE, d MMM · HH:mm');
 
@@ -1963,13 +2119,18 @@ class _RecommendationHero extends StatelessWidget {
   }
 
   String _minutesShiftedForBetterTraffic(
-    Duration shift, TimeWindow recommended,
+    Duration shift, TimeWindow recommended, AppLocalizations l,
   ) {
     final delta = recommended.estimatedMinutes - freeFlowMinutes;
     final sign = delta >= 0 ? '+' : '';
-    return '$sign${delta.toStringAsFixed(0)} min vs free flow · '
-        '${shift.inMinutes.abs()} min ${shift.isNegative ? 'earlier' : 'later'} '
-        'than your target';
+    final vs = l.resultBestTimeVsFreeFlow(
+      '$sign${delta.toStringAsFixed(0)}',
+    );
+    final abs = shift.inMinutes.abs();
+    final rel = shift.isNegative
+        ? l.resultBestTimeEarlier(abs)
+        : l.resultBestTimeLater(abs);
+    return '$vs · $rel';
   }
 
   String _formatShift(Duration d) {
@@ -2015,7 +2176,8 @@ class _HeroSavingsBadge extends StatelessWidget {
           Icon(Icons.trending_down, size: 14, color: fg),
           const SizedBox(width: 4),
           Text(
-            '$magnitude saved',
+            AppLocalizations.of(context)
+                .resultHeroSavedBadge(magnitude),
             style: t.labelMedium?.copyWith(
               color: fg,
               fontWeight: FontWeight.w700,
@@ -2482,26 +2644,39 @@ class _PartialTollSkipsCard extends StatelessWidget {
   final void Function(int index, bool value) onToggle;
   final void Function(bool selectAll) onToggleAll;
 
-  double get _totalSavings => enabledIndices.fold(
-        0.0, (sum, i) => sum + skips[i].savingsEur,
-      );
+  // enabledIndices = tolls the user PAYS. Savings/penalty come
+  // from UNCHECKED indices (the ones they skip).
+  double get _totalSavings {
+    var total = 0.0;
+    for (var i = 0; i < skips.length; i++) {
+      if (!enabledIndices.contains(i)) total += skips[i].savingsEur;
+    }
+    return total;
+  }
 
-  double get _totalPenaltyMinutes => enabledIndices.fold(
-        0.0, (sum, i) => sum + skips[i].timePenaltyMinutes,
-      );
+  double get _totalPenaltyMinutes {
+    var total = 0.0;
+    for (var i = 0; i < skips.length; i++) {
+      if (!enabledIndices.contains(i)) total += skips[i].timePenaltyMinutes;
+    }
+    return total;
+  }
 
-  double get _totalExtraKm => enabledIndices.fold(
-        0.0, (sum, i) => sum + skips[i].extraDistanceKm,
-      );
+  double get _totalExtraKm {
+    var total = 0.0;
+    for (var i = 0; i < skips.length; i++) {
+      if (!enabledIndices.contains(i)) total += skips[i].extraDistanceKm;
+    }
+    return total;
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
-    final accent = enabledIndices.isEmpty
-        ? scheme.onSurfaceVariant
-        : scheme.tertiary;
+    final hasSavings = _totalSavings > 0;
+    final accent = hasSavings ? scheme.tertiary : scheme.onSurfaceVariant;
     final allSelected = enabledIndices.length == skips.length;
     return SoftCard(
       padding: const EdgeInsets.all(Tokens.space20),
@@ -2860,7 +3035,7 @@ class _WeatherStripCard extends StatelessWidget {
                   const SizedBox(width: Tokens.space8),
                   Expanded(
                     child: Text(
-                      'km ${s.fromKm.toStringAsFixed(0)}-${s.toKm.toStringAsFixed(0)}  ·  ${s.label}'
+                      'km ${s.fromKm.toStringAsFixed(0)}-${s.toKm.toStringAsFixed(0)}  ·  ${s.localizedLabel(AppLocalizations.of(context))}'
                       '${s.temperatureC != null ? '  ·  ${s.temperatureC!.toStringAsFixed(0)}°C' : ''}',
                       style: t.bodySmall,
                     ),
@@ -3037,7 +3212,7 @@ class _FuelTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
     final subtitle = price.priceAvailable
-        ? '${price.priceEurPerL.toStringAsFixed(3)} €/L · '
+        ? '${price.priceEurPerL.toStringAsFixed(3)} ${price.unitLabel} · '
               '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin'
         : '${l.fuelPriceUnavailable} · '
               '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin';

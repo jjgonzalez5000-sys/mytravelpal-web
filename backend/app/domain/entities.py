@@ -120,6 +120,20 @@ class AdverseEventType(str, Enum):
     FLOOD = "flood"
     SNOW = "snow"
     PROTEST = "protest"
+    # Added 2026-08-28 (tester ask). Providers wire-up phased:
+    # - EARTHQUAKE: USGS Earthquake Hazards feed (public, JSON).
+    # - LANDSLIDE / AVALANCHE: Copernicus EMS Rapid Mapping (public
+    #   but low-frequency); interim → user-marked only.
+    # - CLOSURE: road closures unrelated to roadworks — feeds via
+    #   national road authorities (Autopistas ES, DIRIF FR, ANAS
+    #   IT). MVP: user-marked only.
+    # - HEATWAVE: derived from Open-Meteo when max temp > 38 °C
+    #   for ≥ 2 consecutive days on any route segment.
+    EARTHQUAKE = "earthquake"
+    LANDSLIDE = "landslide"
+    AVALANCHE = "avalanche"
+    CLOSURE = "closure"
+    HEATWAVE = "heatwave"
     OTHER = "other"
 
 

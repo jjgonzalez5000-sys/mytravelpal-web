@@ -100,20 +100,84 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
   Future<void> set(TripProfile? profile) async {
     state = profile;
     await _prefs.setTripProfile(profile);
-    if (profile != null && api != null) {
-      api!.saveProfile(profile.toJson());
+    _pushToServer(profile);
+  }
+
+  /// Called by [RecentSearchesNotifier] when the user picks a new
+  /// place — pushes the same profile blob (which embeds recents
+  /// via `_recent_searches`) so the server gets an updated view.
+  /// Cheap: single PUT, fire-and-forget.
+  void pushRecentsChange() => _pushToServer(state);
+
+  void _pushToServer(TripProfile? profile) {
+    if (api == null || profile == null) return;
+    // Embed recents inside the profile blob so a single JSONB
+    // column round-trips everything. Previous code passed a
+    // `{profile: ..., recent_searches: ...}` dict where the client
+    // expected the top level and `saveProfile` re-wrapped it under
+    // `profile`, so the server persisted a doubly-nested blob and
+    // the round trip only worked by accident. Now the wire body
+    // is a single wrap: `{profile: {...profile, _recent_searches:
+    // [...]}}` — matches the server's `ProfilePayload` contract.
+    final profileJson = profile.toJson();
+    final recents = _prefs.recentSearches;
+    if (recents.isNotEmpty) {
+      profileJson['_recent_searches'] = recents
+          .map((r) => {
+                'displayName': r.displayName,
+                'lat': r.coordinate.lat,
+                'lon': r.coordinate.lon,
+                'country': r.country.code,
+              })
+          .toList();
     }
+    api!.saveProfile(profileJson);
   }
 
   Future<void> syncFromServer() async {
     if (api == null) return;
     final remote = await api!.fetchProfile();
     if (remote != null) {
+      // Server returns the raw profile blob (post-fix) OR the
+      // legacy doubly-nested `{profile: {...}, recent_searches:
+      // [...]}` blob for accounts saved before the fix. Detect
+      // both.
+      final Map<String, dynamic> profileData;
+      final Object? recents;
+      final legacyProfile = remote['profile'];
+      if (legacyProfile is Map<String, dynamic>) {
+        // Legacy nested shape.
+        profileData = legacyProfile;
+        recents = remote['recent_searches'];
+      } else {
+        // New shape: `remote` IS the profile, with recents
+        // embedded under `_recent_searches`.
+        profileData = remote;
+        recents = remote['_recent_searches'];
+      }
       try {
-        final profile = TripProfile.fromJson(remote);
+        final profile = TripProfile.fromJson(profileData);
         state = profile;
         await _prefs.setTripProfile(profile);
       } catch (_) {}
+      if (recents is List && recents.isNotEmpty) {
+        for (final r in recents) {
+          if (r is Map<String, dynamic>) {
+            try {
+              _prefs.pushRecentSearch(GeocodeResult(
+                displayName: r['displayName'] as String,
+                coordinate: LatLon(
+                  lat: (r['lat'] as num).toDouble(),
+                  lon: (r['lon'] as num).toDouble(),
+                ),
+                country: Country.fromCode(r['country'] as String),
+              ));
+            } catch (_) {}
+          }
+        }
+      }
+    } else if (state != null) {
+      _pushToServer(state);
     }
   }
 
@@ -193,24 +257,44 @@ final apiClientWithPremiumProvider = Provider<ApiClient>((ref) {
 
 /// Recent geocode picks, most recent first, capped at 8. Rebuilt from
 /// prefs on every mutation so widgets watching this rebuild too.
+///
+/// Every mutation triggers `TripProfileNotifier._pushToServer` too so
+/// the recents ride into Postgres alongside the profile blob and
+/// survive a "clear app data + re-login" cycle. Without this hook,
+/// only the profile fields synced back on login and the user got
+/// their preferences but an empty search history.
 class RecentSearchesNotifier extends StateNotifier<List<GeocodeResult>> {
-  RecentSearchesNotifier(this._prefs) : super(_prefs.recentSearches);
+  RecentSearchesNotifier(this._prefs, this._onChanged)
+      : super(_prefs.recentSearches);
   final AppPrefs _prefs;
+  final VoidCallback _onChanged;
 
   Future<void> push(GeocodeResult r) async {
     await _prefs.pushRecentSearch(r);
     state = _prefs.recentSearches;
+    _onChanged();
   }
 
   Future<void> clear() async {
     await _prefs.clearRecentSearches();
     state = const [];
+    _onChanged();
   }
 }
 
 final recentSearchesProvider = StateNotifierProvider<
     RecentSearchesNotifier, List<GeocodeResult>>((ref) {
-  return RecentSearchesNotifier(ref.watch(appPrefsProvider));
+  return RecentSearchesNotifier(
+    ref.watch(appPrefsProvider),
+    () {
+      // Re-push the current profile+recents blob to the server.
+      // Cheap (single PUT) and fire-and-forget so mutations feel
+      // instant. Skipped internally if the user isn't logged in.
+      final notifier = ref.read(tripProfileProvider.notifier);
+      final current = ref.read(tripProfileProvider);
+      if (current != null) notifier.pushRecentsChange();
+    },
+  );
 });
 
 /// One-shot service to resolve device location → nearest known place.

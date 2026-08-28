@@ -28,12 +28,19 @@ async def current_user_optional(
 
 
 async def current_user_required(
-    user: AuthUser | None = None,
     authorization: str | None = Header(default=None),
 ) -> AuthUser:
-    """Same as `current_user_optional` but raises 401 when no user found."""
-    if user is not None:
-        return user
+    """Same as `current_user_optional` but raises 401 when no user
+    found.
+
+    IMPORTANT: no extra params without explicit markers here. An
+    earlier `user: AuthUser | None = None` fallback made FastAPI
+    treat `user` as an implicit body param — every dependent
+    endpoint then required the body to be wrapped as
+    `{payload: {...}, user: {...}}` and returned 422 for the
+    normal `{profile: {...}}` shape. Removing the param restores
+    the plain "body = the endpoint's single Pydantic model" rule.
+    """
     resolved = await current_user_optional(authorization=authorization)
     if resolved is None:
         raise HTTPException(

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../api/api_client.dart';
 import '../services/widget_bridge.dart';
 import 'saved_trip.dart';
 
@@ -10,6 +11,11 @@ import 'saved_trip.dart';
 /// Backed by SharedPreferences under a single JSON-list key — good enough
 /// for the ~50-trip volume expected in the MVP, and testable without a
 /// real filesystem via `SharedPreferences.setMockInitialValues`.
+///
+/// When [api] is set (post-login), every save/delete/write also pushes
+/// the full list to the server via `PUT /v1/profile/trips`. The
+/// setter is invoked by [TripProfileNotifier] after the auth flow
+/// hands it the same [ApiClient] the profile sync uses.
 class TripStorage {
   TripStorage(this._prefs);
 
@@ -17,6 +23,9 @@ class TripStorage {
   static const _maxEntries = 100;
 
   final SharedPreferences _prefs;
+
+  /// Auth-wired API client. Null before login; set after.
+  ApiClient? api;
 
   static Future<TripStorage> open() async =>
       TripStorage(await SharedPreferences.getInstance());
@@ -49,7 +58,43 @@ class TripStorage {
 
   Future<void> clear() => _prefs.remove(_key);
 
-  Future<void> _write(List<SavedTrip> trips) async {
+  /// Pull trips from the server after login and merge into local
+  /// storage. Merge is "server wins for same id" — local additions
+  /// made offline keep their spot but a re-shared server copy
+  /// takes precedence on content.
+  Future<void> syncFromServer() async {
+    if (api == null) return;
+    final remote = await api!.fetchTrips();
+    if (remote.isEmpty) {
+      // Server has nothing — but we may have local trips from
+      // pre-login use; push them up so a re-login on another
+      // device picks them up.
+      final local = await list();
+      if (local.isNotEmpty) await _pushToServer(local);
+      return;
+    }
+    final local = await list();
+    final byId = <String, SavedTrip>{
+      for (final t in local) t.id: t,
+    };
+    for (final r in remote) {
+      try {
+        final trip = SavedTrip.fromJson(r);
+        byId[trip.id] = trip;
+      } catch (_) {}
+    }
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.savedAt.compareTo(a.savedAt));
+    if (merged.length > _maxEntries) {
+      merged.removeRange(_maxEntries, merged.length);
+    }
+    await _write(merged, skipServerPush: true);
+  }
+
+  Future<void> _write(
+    List<SavedTrip> trips, {
+    bool skipServerPush = false,
+  }) async {
     await _prefs.setString(
       _key,
       jsonEncode(trips.map((t) => t.toJson()).toList(growable: false)),
@@ -60,5 +105,20 @@ class TripStorage {
     // write is cheap and idempotent.
     // ignore: unawaited_futures
     WidgetBridge.instance.refresh(trips);
+    // Server push: fire-and-forget so an offline user still sees
+    // the save land locally. `skipServerPush` is set only when
+    // `syncFromServer` just merged from the server itself (would
+    // be pointless to bounce the same data back).
+    if (!skipServerPush) {
+      // ignore: unawaited_futures
+      _pushToServer(trips);
+    }
+  }
+
+  Future<void> _pushToServer(List<SavedTrip> trips) async {
+    if (api == null) return;
+    await api!.saveTrips(
+      trips.map((t) => t.toJson()).toList(growable: false),
+    );
   }
 }

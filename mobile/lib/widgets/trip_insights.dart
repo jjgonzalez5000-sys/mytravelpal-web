@@ -91,6 +91,9 @@ class DayPlanSection extends StatelessWidget {
     this.destination,
     this.origin,
     this.routeGeometry = const [],
+    this.selectedNightHotels = const {},
+    this.onToggleNightHotel,
+    this.showHotelSections = true,
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
@@ -98,10 +101,28 @@ class DayPlanSection extends StatelessWidget {
   /// Full hotels list from the response.
   final List<Hotel> hotels;
 
+  /// When false, no hotel-related content renders in any day
+  /// (no "HOTELES CERCA DE PERNOCTA", no "cerca del destino"
+  /// block, no empty-state). The user explicitly opted OUT of
+  /// hotel search on the plan form so a hotel section — even
+  /// an empty one — reads as noise.
+  final bool showHotelSections;
+
   /// Trip endpoints + geometry for POI detail sheet.
   final LatLon? destination;
   final LatLon? origin;
   final List<LatLon> routeGeometry;
+
+  /// Which hotel the user has picked for each night, keyed by
+  /// day index (1-based). Empty when nothing picked. The child
+  /// `_SleepHotelsBlock` renders the picked one with a filled
+  /// check icon and the others with an "add" icon.
+  final Map<int, Hotel> selectedNightHotels;
+
+  /// Fired when the user taps the add/remove hotel button on a
+  /// row. Parent screen stores the pick and re-computes the
+  /// total trip cost.
+  final void Function(int dayIndex, Hotel hotel)? onToggleNightHotel;
 
   static const int _maxSleepHotels = 5;
 
@@ -212,7 +233,7 @@ class DayPlanSection extends StatelessWidget {
                       ),
                     ],
                   ),
-                  if (d.sleepCoord != null) ...[
+                  if (d.sleepCoord != null && showHotelSections) ...[
                     const SizedBox(height: Tokens.space8),
                     _SleepHotelsBlock(
                       entries: hotels.isEmpty
@@ -223,6 +244,9 @@ class DayPlanSection extends StatelessWidget {
                       origin: origin,
                       destination: destination,
                       routeGeometry: routeGeometry,
+                      dayIndex: d.dayIndex,
+                      selectedHotel: selectedNightHotels[d.dayIndex],
+                      onToggleHotel: onToggleNightHotel,
                     ),
                   ],
                 ],
@@ -230,7 +254,8 @@ class DayPlanSection extends StatelessWidget {
                 if (d.sleepAt == null &&
                     d.dayIndex == days.length &&
                     destination != null &&
-                    hotels.isNotEmpty) ...[
+                    hotels.isNotEmpty &&
+                    showHotelSections) ...[
                   const SizedBox(height: Tokens.space8),
                   _SleepHotelsBlock(
                     entries: _hotelsNear(destination!),
@@ -239,6 +264,9 @@ class DayPlanSection extends StatelessWidget {
                     origin: origin,
                     destination: destination,
                     routeGeometry: routeGeometry,
+                    dayIndex: d.dayIndex,
+                    selectedHotel: selectedNightHotels[d.dayIndex],
+                    onToggleHotel: onToggleNightHotel,
                   ),
                 ],
               ],
@@ -259,6 +287,9 @@ class _SleepHotelsBlock extends StatelessWidget {
     this.origin,
     this.destination,
     this.routeGeometry = const [],
+    this.dayIndex,
+    this.selectedHotel,
+    this.onToggleHotel,
   });
   final List<(Hotel, double)> entries;
   final bool hotelsPresent;
@@ -266,6 +297,25 @@ class _SleepHotelsBlock extends StatelessWidget {
   final LatLon? origin;
   final LatLon? destination;
   final List<LatLon> routeGeometry;
+
+  /// 1-based day index this block belongs to (for the parent's
+  /// per-day picked-hotel map).
+  final int? dayIndex;
+
+  /// The hotel the user picked for this night, if any. Rendered
+  /// with a filled check + primary color so the pick stands out.
+  final Hotel? selectedHotel;
+
+  /// Callback that flips a hotel between picked / unpicked.
+  final void Function(int dayIndex, Hotel hotel)? onToggleHotel;
+
+  bool _isPicked(Hotel h) {
+    final s = selectedHotel;
+    if (s == null) return false;
+    return s.name == h.name &&
+        s.coordinate.lat == h.coordinate.lat &&
+        s.coordinate.lon == h.coordinate.lon;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -301,43 +351,74 @@ class _SleepHotelsBlock extends StatelessWidget {
           ),
         ),
         for (final (h, km) in entries)
-          InkWell(
-            onTap: () => showPoiDetailSheet(
-              context,
-              kind: PoiKind.hotel,
-              name: h.name,
-              subtitle: '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
-                  '${km.toStringAsFixed(1)} km',
-              poi: h.coordinate,
-              origin: origin ?? h.coordinate,
-              destination: destination ?? h.coordinate,
-              routeGeometry: routeGeometry,
-              attributes: h.attributes,
-              icon: Icons.hotel_outlined,
-              accent: scheme.tertiary,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.hotel_outlined, size: 14,
-                      color: scheme.tertiary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '${h.name}  ·  '
-                      '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
-                      '${isDestination ? l.hotelDistFromDestination(km.toStringAsFixed(1)) : l.hotelDistFromStop(km.toStringAsFixed(1))}',
-                      style: t.bodySmall,
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, size: 16,
-                      color: scheme.onSurfaceVariant),
-                ],
+          Builder(builder: (context) {
+            final picked = _isPicked(h);
+            final canPick = dayIndex != null && onToggleHotel != null;
+            return InkWell(
+              onTap: () => showPoiDetailSheet(
+                context,
+                kind: PoiKind.hotel,
+                name: h.name,
+                subtitle:
+                    '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
+                    '${km.toStringAsFixed(1)} km',
+                poi: h.coordinate,
+                origin: origin ?? h.coordinate,
+                destination: destination ?? h.coordinate,
+                routeGeometry: routeGeometry,
+                attributes: h.attributes,
+                icon: Icons.hotel_outlined,
+                accent: scheme.tertiary,
               ),
-            ),
-          ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.hotel_outlined, size: 14,
+                        color: picked ? scheme.primary : scheme.tertiary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        '${h.name}  ·  '
+                        '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
+                        '${isDestination ? l.hotelDistFromDestination(km.toStringAsFixed(1)) : l.hotelDistFromStop(km.toStringAsFixed(1))}',
+                        style: t.bodySmall?.copyWith(
+                          fontWeight:
+                              picked ? FontWeight.w700 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                    // "Add / picked" toggle: filled check when this
+                    // hotel is the night's pick, outline plus when
+                    // available to add. Tapping FIRES the parent's
+                    // toggle so the cost card updates the same tick.
+                    if (canPick) ...[
+                      const SizedBox(width: 4),
+                      InkResponse(
+                        onTap: () => onToggleHotel!(dayIndex!, h),
+                        radius: 18,
+                        child: Padding(
+                          padding: const EdgeInsets.all(4),
+                          child: Icon(
+                            picked
+                                ? Icons.check_circle
+                                : Icons.add_circle_outline,
+                            size: 20,
+                            color: picked
+                                ? scheme.primary
+                                : scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ] else
+                      Icon(Icons.chevron_right, size: 16,
+                          color: scheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            );
+          }),
       ],
     );
   }

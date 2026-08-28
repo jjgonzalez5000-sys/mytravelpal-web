@@ -209,6 +209,7 @@ def compute(
     restaurants_by_slot: dict[MealSlot, tuple[Restaurant, ...]],
     hotels: tuple[Hotel, ...],
     profile: TripProfile,
+    include_meal_stops: bool = True,
 ) -> Optimizations:
     """Bind rest stops to meals (and, when the drive rolls past bedtime,
     to a sleep hotel).
@@ -277,19 +278,25 @@ def compute(
                 first_sleep = day_sleep
 
         day_end = day_sleep.at if day_sleep is not None else day_drive_end
-        _extend_meals_for_day(
-            out=meal_stops,
-            day_start=day_start,
-            day_end=day_end,
-            day_sleep=day_sleep,
-            trip_duration_hours=trip_duration_hours,
-            rest_stops=rest_stops,
-            restaurants_by_slot=restaurants_by_slot,
-            profile=profile,
-            prefs=prefs,
-            pause_ratio=pause_ratio,
-            driving_offset=driving_offset,
-        )
+        # Gate the meal-stop expansion on the caller's opt-in.
+        # When restaurants weren't requested (`include_meal_stops=
+        # False`) we skip this entirely — the user asked NOT to
+        # see meal recommendations and would be confused by a
+        # "próxima parada: comida" hero appearing anyway.
+        if include_meal_stops:
+            _extend_meals_for_day(
+                out=meal_stops,
+                day_start=day_start,
+                day_end=day_end,
+                day_sleep=day_sleep,
+                trip_duration_hours=trip_duration_hours,
+                rest_stops=rest_stops,
+                restaurants_by_slot=restaurants_by_slot,
+                profile=profile,
+                prefs=prefs,
+                pause_ratio=pause_ratio,
+                driving_offset=driving_offset,
+            )
 
         remaining_driving -= driving_this_day
         driving_offset += driving_this_day

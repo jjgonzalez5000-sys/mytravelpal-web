@@ -199,6 +199,36 @@ def _point_country(coord: Coordinate) -> Country:
     return detect_country(coord) or Country.FR
 
 
+# Places whose OSM tags say "hostel" (or the price-conscious
+# equivalents) still sometimes carry the `accommodation.hotel`
+# Geoapify category — Geoapify normalises loosely. We drop them
+# so a `min_stars=4` search never surfaces a hostel by mistake.
+_HOSTEL_TOURISM_TAGS = frozenset(
+    {"hostel", "chalet", "camp_site", "caravan_site"},
+)
+
+
+def _is_hostel_like(feature: dict[str, Any]) -> bool:
+    tags = _raw_tags(feature)
+    tourism = str(tags.get("tourism") or "").lower()
+    if tourism in _HOSTEL_TOURISM_TAGS:
+        return True
+    # Category list is the Geoapify-canonical taxonomy — check
+    # for hostel/camping/chalet slugs there too in case `tourism`
+    # was stripped.
+    cats = (feature.get("properties") or {}).get("categories") or []
+    for c in cats:
+        s = str(c).lower()
+        if "hostel" in s or "camp" in s or "chalet" in s:
+            return True
+    # Some hostel chains embed the word in the name — cheap catch
+    # for edge cases where the OSM tag was omitted.
+    name = str(feature.get("properties", {}).get("name") or "").lower()
+    if "hostel" in name or "youth hotel" in name:
+        return True
+    return False
+
+
 class GeoapifyHotelsProvider:
     _CATEGORY_HOTEL_ONLY = "accommodation.hotel"
     _CATEGORY_ALL = (
@@ -247,6 +277,8 @@ class GeoapifyHotelsProvider:
         )
         hotels: list[Hotel] = []
         for f in features:
+            if _is_hostel_like(f):
+                continue
             coord = _coord(f)
             if coord is None:
                 continue
@@ -268,6 +300,8 @@ class GeoapifyHotelsProvider:
         hotels: list[Hotel] = []
         seen: set[tuple[float, float, str]] = set()
         for f in features:
+            if _is_hostel_like(f):
+                continue
             coord = _coord(f)
             if coord is None:
                 continue
@@ -455,18 +489,28 @@ class GeoapifyRestaurantsProvider:
 
 class GeoapifyFuelProvider:
     _CATEGORY = "service.vehicle.fuel"
+    _CATEGORY_CHARGING = "service.vehicle.charging_station"
+    # Public fast-charger average €/kWh across EU as of 2026. Serves
+    # as the mock price when we don't have live tariff data — we
+    # want the driver to see comparable numbers next to their fuel
+    # budget without misleading precision.
+    _CHARGING_EUR_PER_KWH = 0.42
 
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client or _new_client()
 
-    async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
+    async def prices_along(
+        self, route: Route, *, fuel_type: str | None = None,
+    ) -> tuple[FuelPrice, ...]:
         key = _api_key()
         if not key:
             return ()
         vb = _route_viewbox(route)
         reference = _route_reference_points(route)
+        is_ev = (fuel_type or "").lower() == "electric"
+        category = self._CATEGORY_CHARGING if is_ev else self._CATEGORY
         features = await _search(
-            self._client, self._CATEGORY, _rect_filter(vb), key,
+            self._client, category, _rect_filter(vb), key,
         )
         prices: list[FuelPrice] = []
         for f in features:
@@ -478,12 +522,17 @@ class GeoapifyFuelProvider:
                 continue
             country = _country_of(coord, route)
             anchor = COUNTRIES.get(country.value)
-            base = anchor.fuel_petrol_anchor_eur if anchor else 1.75
+            if is_ev:
+                base = self._CHARGING_EUR_PER_KWH
+            else:
+                base = anchor.fuel_petrol_anchor_eur if anchor else 1.75
             prices.append(
                 FuelPrice(
                     station_name=_tag(f, "brand") or _name(f),
                     country=country,
                     price_eur_per_l=round(base, 3),
+                    unit_label="€/kWh" if is_ev else "€/L",
+                    is_charging_station=is_ev,
                     distance_from_origin_km=round(
                         _haversine_km(route.origin, coord), 1,
                     ),

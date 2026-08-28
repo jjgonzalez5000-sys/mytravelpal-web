@@ -68,7 +68,14 @@ class HotelPreferencesSection extends StatelessWidget {
     super.key,
     required this.value,
     required this.onChanged,
+    this.hideMainSwitch = false,
   });
+
+  /// When true, don't render the top "Enable hotels" SwitchListTile.
+  /// Used by the compact prefs layout where the parent already owns
+  /// the enable/disable switch and this widget only shows the
+  /// nested options (detour slider, stars, filters).
+  final bool hideMainSwitch;
 
   final HotelPreferences value;
   final ValueChanged<HotelPreferences> onChanged;
@@ -80,16 +87,17 @@ class HotelPreferencesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          title: Text(l.hotelPrefTitle),
-          subtitle: Text(
-            value.enabled ? l.hotelPrefSubOn : l.hotelPrefSubOff,
-            style: t.bodySmall,
+        if (!hideMainSwitch)
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l.hotelPrefTitle),
+            subtitle: Text(
+              value.enabled ? l.hotelPrefSubOn : l.hotelPrefSubOff,
+              style: t.bodySmall,
+            ),
+            value: value.enabled,
+            onChanged: (v) => onChanged(value.copyWith(enabled: v)),
           ),
-          value: value.enabled,
-          onChanged: (v) => onChanged(value.copyWith(enabled: v)),
-        ),
         if (value.enabled) ...[
           const SizedBox(height: 4),
           PriceBandMultiSelect(

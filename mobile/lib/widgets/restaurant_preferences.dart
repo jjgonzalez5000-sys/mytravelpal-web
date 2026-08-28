@@ -85,10 +85,16 @@ class RestaurantPreferencesSection extends StatelessWidget {
     super.key,
     required this.value,
     required this.onChanged,
+    this.hideMainSwitch = false,
   });
 
   final RestaurantPreferences value;
   final ValueChanged<RestaurantPreferences> onChanged;
+
+  /// See [HotelPreferencesSection.hideMainSwitch] — same
+  /// contract: parent owns the enable/disable switch, this
+  /// widget only renders the nested options.
+  final bool hideMainSwitch;
 
   static const _detourStep = 5;
   static const _detourMin = 5;
@@ -146,18 +152,19 @@ class RestaurantPreferencesSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SwitchListTile.adaptive(
-          contentPadding: EdgeInsets.zero,
-          title: Text(l.restaurantPrefTitle),
-          subtitle: value.enabled
-              ? Text(l.restaurantPrefSubEnabled(
-                  value.maxDetourMinutes,
-                  _bandsLabel(l, value.priceBands),
-                ))
-              : Text(l.restaurantPrefSubOff),
-          value: value.enabled,
-          onChanged: (v) => onChanged(value.copyWith(enabled: v)),
-        ),
+        if (!hideMainSwitch)
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: Text(l.restaurantPrefTitle),
+            subtitle: value.enabled
+                ? Text(l.restaurantPrefSubEnabled(
+                    value.maxDetourMinutes,
+                    _bandsLabel(l, value.priceBands),
+                  ))
+                : Text(l.restaurantPrefSubOff),
+            value: value.enabled,
+            onChanged: (v) => onChanged(value.copyWith(enabled: v)),
+          ),
         if (value.enabled) ...[
           const SizedBox(height: 8),
           Text(l.prefMaxDetour(value.maxDetourMinutes),

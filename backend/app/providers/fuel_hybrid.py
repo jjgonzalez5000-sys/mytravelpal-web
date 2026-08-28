@@ -24,6 +24,7 @@ from dataclasses import replace
 from app.domain import Country, Route
 from app.providers.fuel import FuelPrice
 from app.providers.fuel_gov import COVERED_COUNTRIES, GovFuelProvider
+from app.providers.geoapify_poi import GeoapifyFuelProvider
 from app.providers.nominatim_poi import NominatimFuelProvider
 
 _log = logging.getLogger(__name__)
@@ -40,7 +41,23 @@ class HybridFuelProvider:
         self._gov = gov or GovFuelProvider()
         self._nominatim = nominatim or NominatimFuelProvider()
 
-    async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
+    async def prices_along(
+        self, route: Route, *, fuel_type: str | None = None,
+    ) -> tuple[FuelPrice, ...]:
+        # Electric vehicles: skip liquid-fuel gov feeds entirely —
+        # they have no charger data — and route straight to Geoapify
+        # with the `charging_station` category. Returns tariff-tagged
+        # `FuelPrice` entries with `is_charging_station=True` so the
+        # frontend picks the EV icon / €/kWh label.
+        if (fuel_type or "").lower() == "electric":
+            try:
+                return await GeoapifyFuelProvider().prices_along(
+                    route, fuel_type=fuel_type,
+                )
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("Geoapify EV fetch failed: %r", exc)
+                return ()
+
         gov = await self._gov.prices_along(route)
 
         # Figure out which countries the route crosses but we DON'T have

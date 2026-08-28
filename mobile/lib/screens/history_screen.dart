@@ -12,6 +12,8 @@ import '../providers.dart';
 import '../widgets/skeleton.dart';
 import '../services/notifications.dart';
 import '../storage/saved_trip.dart';
+import '../services/trip_sharing.dart';
+import 'plan_screen.dart';
 import 'result_screen.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
@@ -27,12 +29,23 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   void initState() {
     super.initState();
-    _future = ref.read(tripStorageProvider).list();
+    _future = _loadAndSync();
+  }
+
+  Future<List<SavedTrip>> _loadAndSync() async {
+    final storage = ref.read(tripStorageProvider);
+    // Sync from server first — pulls trips saved from other
+    // devices / installs into local storage before we display.
+    // Cheap when there's nothing new; important when the user
+    // just did "borrar datos + re-login" and expects their
+    // cloud trips to reappear.
+    await storage.syncFromServer();
+    return storage.list();
   }
 
   Future<void> _reload() async {
     setState(() {
-      _future = ref.read(tripStorageProvider).list();
+      _future = _loadAndSync();
     });
   }
 
@@ -55,10 +68,31 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Future<void> _reopen(SavedTrip trip) async {
     final api = ref.read(apiClientWithPremiumProvider);
+    // If the saved departure is already in the past, shift it to
+    // the next occurrence of the same weekday + time. Testers who
+    // saved a trip weeks ago tried to "reopen" and got either a
+    // 4xx from the planner (past date) or a nonsense window that
+    // couldn't be acted on. Same-weekday shift keeps the plan
+    // useful (commutes, weekly trips) without asking the user to
+    // pick a new date every time.
+    final now = DateTime.now();
+    var departure = trip.desiredDepartureAt;
+    if (departure.isBefore(now)) {
+      final target = departure;
+      var candidate = DateTime(
+        now.year, now.month, now.day, target.hour, target.minute,
+      );
+      while (
+        candidate.weekday != target.weekday || candidate.isBefore(now)
+      ) {
+        candidate = candidate.add(const Duration(days: 1));
+      }
+      departure = candidate;
+    }
     final request = TripPlanRequest(
       origin: trip.origin.coordinate,
       destination: trip.destination.coordinate,
-      desiredDepartureAt: trip.desiredDepartureAt,
+      desiredDepartureAt: departure,
     );
     try {
       final response = await api.planTrip(request);
@@ -70,7 +104,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             origin: trip.origin,
             destination: trip.destination,
             response: response,
-            desiredDepartureAt: trip.desiredDepartureAt,
+            desiredDepartureAt: departure,
           ),
         ),
       );
@@ -82,6 +116,44 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         )),
       );
     }
+  }
+
+  /// Prefill the plan screen with the saved trip's origin +
+  /// destination and hand control back to the user so they can
+  /// tweak the departure / preferences before submitting. Better
+  /// UX than `_reopen` when the driver wants to change something
+  /// (different day, different profile, extra stops).
+  Future<void> _repeat(SavedTrip trip) async {
+    final now = DateTime.now();
+    var departure = trip.desiredDepartureAt;
+    if (departure.isBefore(now)) {
+      // Same-weekday shift as `_reopen`, but here it's just a
+      // sensible default the user can still override on the
+      // date picker.
+      final target = departure;
+      var candidate = DateTime(
+        now.year, now.month, now.day, target.hour, target.minute,
+      );
+      while (
+        candidate.weekday != target.weekday || candidate.isBefore(now)
+      ) {
+        candidate = candidate.add(const Duration(days: 1));
+      }
+      departure = candidate;
+    }
+    final shared = SharedTrip(
+      origin: trip.origin.coordinate,
+      destination: trip.destination.coordinate,
+      departureAt: departure,
+      originName: trip.origin.displayName,
+      destinationName: trip.destination.displayName,
+    );
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PlanScreen(initialShared: shared),
+      ),
+    );
   }
 
   @override
@@ -158,6 +230,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                 return _TripCard(
                   trip: trip,
                   onOpen: () => _reopen(trip),
+                  onRepeat: () => _repeat(trip),
                   onDelete: () => _delete(trip),
                 )
                     .animate()
@@ -179,11 +252,13 @@ class _TripCard extends StatelessWidget {
   const _TripCard({
     required this.trip,
     required this.onOpen,
+    required this.onRepeat,
     required this.onDelete,
   });
 
   final SavedTrip trip;
   final VoidCallback onOpen;
+  final VoidCallback onRepeat;
   final VoidCallback onDelete;
 
   @override
@@ -247,6 +322,74 @@ class _TripCard extends StatelessWidget {
           Text(
             l.historyWantedAt(dateFmt.format(trip.desiredDepartureAt)),
             style: t.bodySmall,
+          ),
+          // Cost + savings summary per trip. Shown even when a
+          // number is zero (fuel-only trips still show €0 saved
+          // instead of hiding the row) so the layout is stable
+          // across cards.
+          if (trip.fuelCostEur > 0 ||
+              trip.savedEurVsTolls > 0 ||
+              trip.savedMinutesVsDesired > 0) ...[
+            const SizedBox(height: Tokens.space12),
+            Divider(color: scheme.outlineVariant, height: 1),
+            const SizedBox(height: Tokens.space12),
+            Row(
+              children: [
+                if (trip.fuelCostEur > 0) ...[
+                  Icon(Icons.local_gas_station, size: 14,
+                      color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 4),
+                  Text('€${trip.fuelCostEur.toStringAsFixed(0)}',
+                      style: t.labelMedium),
+                  const SizedBox(width: Tokens.space16),
+                ],
+                if (trip.savedEurVsTolls > 0) ...[
+                  Icon(Icons.savings_outlined, size: 14,
+                      color: scheme.tertiary),
+                  const SizedBox(width: 4),
+                  Text(
+                    '€${trip.savedEurVsTolls.toStringAsFixed(0)}',
+                    style: t.labelMedium
+                        ?.copyWith(color: scheme.tertiary),
+                  ),
+                  const SizedBox(width: Tokens.space16),
+                ],
+                if (trip.savedMinutesVsDesired > 0) ...[
+                  Icon(Icons.timer_outlined, size: 14,
+                      color: scheme.primary),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${trip.savedMinutesVsDesired.toStringAsFixed(0)} min',
+                    style: t.labelMedium
+                        ?.copyWith(color: scheme.primary),
+                  ),
+                ],
+              ],
+            ),
+          ],
+          // Action row — explicit CTAs so the user knows how to
+          // reopen the plan OR recover the trip into the plan
+          // form to tweak it. The whole card is still tappable
+          // (falls through to onOpen) for the common case.
+          const SizedBox(height: Tokens.space12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.play_arrow, size: 18),
+                  label: Text(l.historyReopenCta),
+                  onPressed: onOpen,
+                ),
+              ),
+              const SizedBox(width: Tokens.space8),
+              Expanded(
+                child: FilledButton.tonalIcon(
+                  icon: const Icon(Icons.replay, size: 18),
+                  label: Text(l.historyRepeatCta),
+                  onPressed: onRepeat,
+                ),
+              ),
+            ],
           ),
         ],
       ),

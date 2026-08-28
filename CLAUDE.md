@@ -69,3 +69,19 @@ flutter install
 - Play Store submission — needs Privacy Policy + ToS + screenshots
 - Android Auto POI Companion — Kotlin bridge designed, not started
 - Getaway planner ("discover a trip from my location") — designed, not started
+- Multi-provider hotel prices ("show lowest across sites") — Booking Affiliate
+  Content API + Amadeus free tier (2k reqs/mo). Google-scraping ruled out
+  (Google ToS §3.2.4 + anti-bot). Post-beta priority — needs traction to
+  justify partner-program approval effort.
+- Real hotel stars (fix OSM inaccuracies) — same Booking Affiliate integration
+  above gives the official star classification. Tester reported "Idea Hotel
+  Torino Mirafiori" tagged as 4★ in OSM but actually 3★. Solved when we
+  ship the Booking integration.
+- Hotel "auto-mark as booked" tras reserva vía Booking Affiliate — el usuario
+  quería un botón "añadir a la ruta / marcar como reservado" que salga en el
+  cálculo de gasto. Actualmente hay toggle manual por noche en day view; la
+  automatización llega cuando integramos el callback de reservas de Booking.
+- Add more adverse event types (landslide, earthquake, avalanche, road
+  closure, heatwave) — tester ask 2026-08-28. Enum ya soporta FLOOD; falta
+  extender el enum + wire a proveedores (EFFIS fires ok; landslides/quakes
+  necesitarían USGS o Copernicus EMS).

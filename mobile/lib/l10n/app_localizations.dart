@@ -1647,6 +1647,150 @@ abstract class AppLocalizations {
   /// **'Delete'**
   String get historyDeleteTooltip;
 
+  /// No description provided for @historyReopenCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen'**
+  String get historyReopenCta;
+
+  /// No description provided for @historyRepeatCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Repeat'**
+  String get historyRepeatCta;
+
+  /// No description provided for @resultFuelCollapsedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Show all {count} stations found on the route'**
+  String resultFuelCollapsedHint(int count);
+
+  /// No description provided for @resultBestTimeVsFreeFlow.
+  ///
+  /// In en, this message translates to:
+  /// **'{delta} min vs free flow'**
+  String resultBestTimeVsFreeFlow(String delta);
+
+  /// No description provided for @resultBestTimeEarlier.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min earlier than your target'**
+  String resultBestTimeEarlier(int minutes);
+
+  /// No description provided for @resultBestTimeLater.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min later than your target'**
+  String resultBestTimeLater(int minutes);
+
+  /// No description provided for @resultHeroSavedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{magnitude} saved'**
+  String resultHeroSavedBadge(String magnitude);
+
+  /// No description provided for @consistencyNeedsReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip plan needs review'**
+  String get consistencyNeedsReview;
+
+  /// No description provided for @consistencyNeedsReviewErrors.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip plan needs review · {errors} errors'**
+  String consistencyNeedsReviewErrors(int errors);
+
+  /// No description provided for @consistencyNeedsReviewMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip plan needs review · {errors} error(s), {warnings} warning(s)'**
+  String consistencyNeedsReviewMixed(int errors, int warnings);
+
+  /// No description provided for @consistencyHeadsUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Heads-up on your trip plan'**
+  String get consistencyHeadsUp;
+
+  /// No description provided for @consistencyHeadsUpWarnings.
+  ///
+  /// In en, this message translates to:
+  /// **'Heads-up on your trip plan · {warnings} warnings'**
+  String consistencyHeadsUpWarnings(int warnings);
+
+  /// No description provided for @consistencyMoreCount.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String consistencyMoreCount(int count);
+
+  /// No description provided for @planProfileClearOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear override'**
+  String get planProfileClearOverride;
+
+  /// No description provided for @weatherSunny.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunny'**
+  String get weatherSunny;
+
+  /// No description provided for @weatherPartlyCloudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Partly cloudy'**
+  String get weatherPartlyCloudy;
+
+  /// No description provided for @weatherCloudy.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloudy'**
+  String get weatherCloudy;
+
+  /// No description provided for @weatherFog.
+  ///
+  /// In en, this message translates to:
+  /// **'Fog'**
+  String get weatherFog;
+
+  /// No description provided for @weatherDrizzle.
+  ///
+  /// In en, this message translates to:
+  /// **'Drizzle'**
+  String get weatherDrizzle;
+
+  /// No description provided for @weatherRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Rain'**
+  String get weatherRain;
+
+  /// No description provided for @weatherHeavyRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy rain'**
+  String get weatherHeavyRain;
+
+  /// No description provided for @weatherSnow.
+  ///
+  /// In en, this message translates to:
+  /// **'Snow'**
+  String get weatherSnow;
+
+  /// No description provided for @weatherHeavySnow.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy snow'**
+  String get weatherHeavySnow;
+
+  /// No description provided for @weatherThunderstorm.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm'**
+  String get weatherThunderstorm;
+
   /// No description provided for @historyBestAt.
   ///
   /// In en, this message translates to:
@@ -2127,6 +2271,36 @@ abstract class AppLocalizations {
   /// **'Protest'**
   String get eventTypeProtest;
 
+  /// No description provided for @eventTypeEarthquake.
+  ///
+  /// In en, this message translates to:
+  /// **'Earthquake'**
+  String get eventTypeEarthquake;
+
+  /// No description provided for @eventTypeLandslide.
+  ///
+  /// In en, this message translates to:
+  /// **'Landslide'**
+  String get eventTypeLandslide;
+
+  /// No description provided for @eventTypeAvalanche.
+  ///
+  /// In en, this message translates to:
+  /// **'Avalanche'**
+  String get eventTypeAvalanche;
+
+  /// No description provided for @eventTypeClosure.
+  ///
+  /// In en, this message translates to:
+  /// **'Road closure'**
+  String get eventTypeClosure;
+
+  /// No description provided for @eventTypeHeatwave.
+  ///
+  /// In en, this message translates to:
+  /// **'Heatwave'**
+  String get eventTypeHeatwave;
+
   /// No description provided for @eventTypeOther.
   ///
   /// In en, this message translates to:
@@ -2256,7 +2430,7 @@ abstract class AppLocalizations {
   /// No description provided for @planOptAlertsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Alert me about adverse events'**
+  /// **'Alert me to critical events on the route'**
   String get planOptAlertsTitle;
 
   /// No description provided for @planOptAlertsSub.
@@ -3003,6 +3177,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Total estimated'**
   String get tripCostTotal;
+
+  /// No description provided for @addToRouteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to route'**
+  String get addToRouteLabel;
 
   /// No description provided for @biometricSetupTitle.
   ///

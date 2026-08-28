@@ -411,6 +411,8 @@ class FuelPriceOut(BaseModel):
     lat: float | None = None
     lon: float | None = None
     attributes: dict[str, str] = Field(default_factory=dict)
+    unit_label: str = "€/L"
+    is_charging_station: bool = False
 
 
 class FuelArbitrageOut(BaseModel):
@@ -545,6 +547,9 @@ class ConsistencyIssueOut(BaseModel):
 class WeatherSegmentOut(BaseModel):
     from_km: float
     to_km: float
+    # English fallback — kept for backwards compat. Localised on the
+    # client via `icon` (weather-family code) so the label doesn't
+    # bake in the server locale.
     label: str
     icon: str
     temperature_c: float | None = None
@@ -708,7 +713,15 @@ async def plan_trip(
             _next_wake_at += timedelta(days=1)
         _day_start = _next_wake_at
     effective_arrival_at = _day_end
-    fuel = await providers.fuel.prices_along(route)
+    # Route to charging stations instead of liquid fuel when the
+    # driver's profile says electric — the whole fuel pipeline
+    # (map layer, list, cost card) still works because FuelPrice
+    # carries `unit_label` and `is_charging_station` flags.
+    _fuel_type = None
+    if profile is not None and profile.vehicle is not None:
+        ft = getattr(profile.vehicle, "fuel_type", None)
+        _fuel_type = ft.value if ft is not None else None
+    fuel = await providers.fuel.prices_along(route, fuel_type=_fuel_type)
 
     all_hotels_cache = None  # avoid re-hitting provider for optimizations
     hotels_out: list[HotelOut] = []
@@ -881,23 +894,51 @@ async def plan_trip(
     fuel_cost_domain = None
     fuel_prices_domain: tuple = ()
     if profile is not None:
-        # Ensure we have hotels + restaurants to draw from.
-        opti_hotels = all_hotels_cache or await providers.hotels.hotels_along(route)
-        opti_restaurants = (
-            all_restaurants_cache
-            or await providers.restaurants.restaurants_along(route)
+        # Meal stops (with or without a picked restaurant) live
+        # under the "Añadir restaurantes en la ruta" toggle — the
+        # driver who explicitly opted OUT of restaurant search
+        # doesn't expect a "próxima parada · comida" recommendation.
+        # Gate the whole meal-stop computation on that toggle so
+        # the response is consistent with the request scope.
+        restaurants_requested = bool(
+            payload.restaurant_max_detour_minutes
+            and payload.restaurant_max_detour_minutes > 0
         )
-        restaurants_by_slot: dict[MealSlot, tuple[Restaurant, ...]] = {
-            slot: filter_restaurants(
-                opti_restaurants,
-                max_detour_minutes=15.0,
-                price_band=PriceBand.ANY,
-                profile=profile,
-                slot=slot,
-                limit=15,
+        # Same gating for hotels — if the user didn't tick
+        # "Añadir hoteles en la ruta", skip the fetch entirely.
+        # The sleep_stop selection still runs but with an empty
+        # hotel pool (surfaces the rest area + time without a
+        # hotel name), and the day-view hotel sections stay
+        # collapsed on the frontend via `showHotelSections`.
+        hotels_requested = bool(
+            payload.hotel_max_detour_minutes
+            and payload.hotel_max_detour_minutes > 0
+        )
+        if hotels_requested:
+            opti_hotels = (
+                all_hotels_cache
+                or await providers.hotels.hotels_along(route)
             )
-            for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
-        }
+        else:
+            opti_hotels = ()
+        if restaurants_requested:
+            opti_restaurants = (
+                all_restaurants_cache
+                or await providers.restaurants.restaurants_along(route)
+            )
+            restaurants_by_slot: dict[MealSlot, tuple[Restaurant, ...]] = {
+                slot: filter_restaurants(
+                    opti_restaurants,
+                    max_detour_minutes=15.0,
+                    price_band=PriceBand.ANY,
+                    profile=profile,
+                    slot=slot,
+                    limit=15,
+                )
+                for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
+            }
+        else:
+            restaurants_by_slot = {}
         # Widened from 25 → 45 min (2026-08-25): overnight is
         # high-stakes and drivers accept a bigger off-corridor
         # detour to sleep in a real hotel. The narrow 25 min window
@@ -919,6 +960,7 @@ async def plan_trip(
             restaurants_by_slot=restaurants_by_slot,
             hotels=filtered_hotels_for_sleep,
             profile=profile,
+            include_meal_stops=restaurants_requested,
         )
         # Targeted densification: when the corridor-wide POI pass
         # gave us a meal stop with no restaurant within 25 km
@@ -961,7 +1003,10 @@ async def plan_trip(
             opt = replace(opt, meal_stops=tuple(patched_meals))
         near_hotels = getattr(providers.hotels, "hotels_near", None)
         densified_hotels: list = []
-        if near_hotels is not None:
+        # Only densify when the user actually asked for hotels;
+        # otherwise even a densification pass would leak hotel
+        # names into a response the driver didn't request.
+        if near_hotels is not None and hotels_requested:
             # Fill the sleep-stop hotel when the corridor pass
             # returned nothing.
             if (
@@ -1021,8 +1066,24 @@ async def plan_trip(
         # might have overlap with the corridor pass.
         _seen_hotels = {(h.name, round(h.lat, 4), round(h.lon, 4))
                         for h in hotels_out}
-        for h in densified_hotels:
-            key = (h.name, round(h.coordinate.lat, 4), round(h.coordinate.lon, 4))
+        # Reuse `filter_hotels` on the densified pool so the same
+        # min_stars / price_bands / detour cap that gated the
+        # corridor list also gates the point-radius additions.
+        # Testers reported hostels + 2-star places sneaking into
+        # a "4+ stars" result because this merge bypassed the
+        # filter. Detour cap unbounded here since the densifier's
+        # radius already scoped the results geographically.
+        _densified_filtered = filter_hotels(
+            tuple(densified_hotels),
+            max_detour_minutes=1e9,
+            price_band=payload.hotel_price_band or PriceBand.ANY,
+            price_bands=payload.hotel_price_bands,
+            profile=profile,
+            min_stars=payload.hotel_min_stars,
+        )
+        for h in _densified_filtered:
+            key = (h.name, round(h.coordinate.lat, 4),
+                   round(h.coordinate.lon, 4))
             if key in _seen_hotels:
                 continue
             _seen_hotels.add(key)
@@ -1055,7 +1116,16 @@ async def plan_trip(
                 lon=r.coordinate.lon,
                 attributes=dict(r.attributes),
             ))
-        fuel = await providers.fuel.prices_along(route)
+        # Route to charging stations for electric vehicles (same
+        # rationale as the earlier `prices_along` call at the top
+        # of the endpoint).
+        _fuel_type_inner = None
+        if profile.vehicle is not None:
+            ft = getattr(profile.vehicle, "fuel_type", None)
+            _fuel_type_inner = ft.value if ft is not None else None
+        fuel = await providers.fuel.prices_along(
+            route, fuel_type=_fuel_type_inner,
+        )
         cost = estimate_fuel(route, profile.vehicle, fuel)
         fuel_cost_domain = cost
         fuel_prices_domain = fuel
@@ -1129,6 +1199,17 @@ async def plan_trip(
                 lon=payload.destination.lon,
             )
             dest_hits = await near_hotels_fn(dest_coord, 40.0)
+            # Same filter guard as the profile-branch densifier
+            # above — otherwise `hotel_min_stars=4` still leaks
+            # 2-star places at the destination.
+            dest_hits = filter_hotels(
+                tuple(dest_hits),
+                max_detour_minutes=1e9,
+                price_band=payload.hotel_price_band or PriceBand.ANY,
+                price_bands=payload.hotel_price_bands,
+                profile=None,
+                min_stars=payload.hotel_min_stars,
+            )
             _seen = {(h.name, round(h.lat, 4), round(h.lon, 4))
                      for h in hotels_out}
             for h in dest_hits:
@@ -1344,6 +1425,8 @@ async def plan_trip(
                 lat=fp.coordinate.lat if fp.coordinate is not None else None,
                 lon=fp.coordinate.lon if fp.coordinate is not None else None,
                 attributes=dict(fp.attributes),
+                unit_label=fp.unit_label,
+                is_charging_station=fp.is_charging_station,
             )
             for fp in fuel
         ],

@@ -12,6 +12,11 @@ enum AdverseEventType {
   flood,
   snow,
   protest,
+  earthquake,
+  landslide,
+  avalanche,
+  closure,
+  heatwave,
   other;
 
   String get code => name;
@@ -27,6 +32,11 @@ enum AdverseEventType {
         AdverseEventType.flood => 'Flood',
         AdverseEventType.snow => 'Snow',
         AdverseEventType.protest => 'Protest',
+        AdverseEventType.earthquake => 'Earthquake',
+        AdverseEventType.landslide => 'Landslide',
+        AdverseEventType.avalanche => 'Avalanche',
+        AdverseEventType.closure => 'Road closure',
+        AdverseEventType.heatwave => 'Heatwave',
         AdverseEventType.other => 'Other',
       };
 
@@ -39,6 +49,11 @@ enum AdverseEventType {
         AdverseEventType.flood => l.eventTypeFlood,
         AdverseEventType.snow => l.eventTypeSnow,
         AdverseEventType.protest => l.eventTypeProtest,
+        AdverseEventType.earthquake => l.eventTypeEarthquake,
+        AdverseEventType.landslide => l.eventTypeLandslide,
+        AdverseEventType.avalanche => l.eventTypeAvalanche,
+        AdverseEventType.closure => l.eventTypeClosure,
+        AdverseEventType.heatwave => l.eventTypeHeatwave,
         AdverseEventType.other => l.eventTypeOther,
       };
 
@@ -51,6 +66,11 @@ enum AdverseEventType {
         AdverseEventType.flood => Icons.water_damage,
         AdverseEventType.snow => Icons.ac_unit,
         AdverseEventType.protest => Icons.groups,
+        AdverseEventType.earthquake => Icons.vibration,
+        AdverseEventType.landslide => Icons.terrain,
+        AdverseEventType.avalanche => Icons.landscape,
+        AdverseEventType.closure => Icons.block,
+        AdverseEventType.heatwave => Icons.whatshot,
         AdverseEventType.other => Icons.warning,
       };
 
@@ -631,6 +651,8 @@ class FuelPrice {
     required this.distanceFromOriginKm,
     this.coordinate,
     this.attributes = const {},
+    this.unitLabel = '€/L',
+    this.isChargingStation = false,
   });
 
   final String stationName;
@@ -659,6 +681,15 @@ class FuelPrice {
   /// for mock stations.
   final Map<String, String> attributes;
 
+  /// Display unit — `€/L` for liquid fuels, `€/kWh` for EV
+  /// chargers. Backend sets it based on the requested vehicle
+  /// fuel type; the UI reads it instead of hard-coding `€/L`.
+  final String unitLabel;
+
+  /// True when the entry is an EV charging point rather than a
+  /// liquid-fuel station. Drives icon + list eyebrow copy.
+  final bool isChargingStation;
+
   factory FuelPrice.fromJson(Map<String, dynamic> json) => FuelPrice(
         stationName: json['station_name'] as String,
         country: Country.fromCode(json['country'] as String),
@@ -675,6 +706,9 @@ class FuelPrice {
                 lon: (json['lon'] as num).toDouble(),
               ),
         attributes: _readAttrs(json['attributes']),
+        unitLabel: (json['unit_label'] as String?) ?? '€/L',
+        isChargingStation:
+            (json['is_charging_station'] as bool?) ?? false,
       );
 }
 
@@ -1356,6 +1390,24 @@ class WeatherSegment {
         'heavy_snow' => Icons.severe_cold,
         'thunderstorm' => Icons.flash_on,
         _ => Icons.wb_sunny_outlined,
+      };
+
+  /// Localise the weather family via `icon` (backend sends English
+  /// `label` for backwards compat, but the `icon` string is a
+  /// stable code — sunny / cloudy / rain / thunderstorm / … — that
+  /// we map to the current app locale.
+  String localizedLabel(AppLocalizations l) => switch (icon) {
+        'sunny' => l.weatherSunny,
+        'partly_cloudy' => l.weatherPartlyCloudy,
+        'cloudy' => l.weatherCloudy,
+        'fog' => l.weatherFog,
+        'drizzle' => l.weatherDrizzle,
+        'rain' => l.weatherRain,
+        'heavy_rain' => l.weatherHeavyRain,
+        'snow' => l.weatherSnow,
+        'heavy_snow' => l.weatherHeavySnow,
+        'thunderstorm' => l.weatherThunderstorm,
+        _ => label,
       };
 }
 

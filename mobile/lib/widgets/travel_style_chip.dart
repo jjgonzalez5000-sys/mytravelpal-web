@@ -52,17 +52,24 @@ class TravelStyleChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.only(right: 4),
-      child: ActionChip(
-        avatar: Icon(_icon(), size: 16),
-        label: Text(_label(context)),
+    // Icon-only chip. The previous "Balanced · 8 h" label was long
+    // enough to push the AppBar title off-screen next to the 4-5
+    // other icon buttons. Tooltip carries the descriptive label
+    // so hover / long-press still surfaces the full state. The
+    // "override active" state is signalled by a filled colour
+    // (tertiary container) instead of the neutral surface.
+    return IconButton(
+      tooltip: _label(context),
+      icon: Icon(_icon(), size: 20),
+      style: IconButton.styleFrom(
         backgroundColor: isOverride
             ? scheme.tertiaryContainer
-            : scheme.surfaceContainerHigh,
-        side: BorderSide(color: scheme.outlineVariant),
-        onPressed: () => _openSheet(context),
+            : null,
+        foregroundColor: isOverride
+            ? scheme.onTertiaryContainer
+            : scheme.onSurface,
       ),
+      onPressed: () => _openSheet(context),
     );
   }
 

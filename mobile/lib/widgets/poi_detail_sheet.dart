@@ -4,6 +4,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
+import '../l10n/app_localizations.dart';
 import 'osm_attribution.dart';
 
 /// Kind of POI the sheet is describing. Governs which external CTAs
@@ -30,6 +31,7 @@ Future<void> showPoiDetailSheet(
   required Map<String, String> attributes,
   required IconData icon,
   required Color accent,
+  VoidCallback? onAddToRoute,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -40,6 +42,7 @@ Future<void> showPoiDetailSheet(
       poi: poi, origin: origin, destination: destination,
       routeGeometry: routeGeometry, attributes: attributes,
       icon: icon, accent: accent,
+      onAddToRoute: onAddToRoute,
     ),
   );
 }
@@ -48,6 +51,7 @@ class _PoiDetailSheet extends StatelessWidget {
   const _PoiDetailSheet({
     required this.kind, required this.name, required this.subtitle,
     required this.poi, required this.origin, required this.destination,
+    this.onAddToRoute,
     required this.routeGeometry, required this.attributes,
     required this.icon, required this.accent,
   });
@@ -62,11 +66,13 @@ class _PoiDetailSheet extends StatelessWidget {
   final Map<String, String> attributes;
   final IconData icon;
   final Color accent;
+  final VoidCallback? onAddToRoute;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final poiPoint = LatLng(poi.lat, poi.lon);
     final points = _routePoints();
     final bounds = _fitBounds(poiPoint, points);
@@ -180,6 +186,21 @@ class _PoiDetailSheet extends StatelessWidget {
                       ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 12),
+              ],
+              if (onAddToRoute != null) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () {
+                      onAddToRoute!();
+                      Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.add_location_alt_outlined),
+                    label: Text(l.addToRouteLabel),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
               _ExternalCtaRow(kind: kind, name: name, poi: poi, attributes: attributes),
             ],
@@ -417,8 +438,42 @@ class _ExternalCtaRow extends StatelessWidget {
         'zoom': '17',
       });
 
+  // Hotels benefit from a NAME-based Google Maps search — the
+  // name is usually distinctive enough that Google resolves it to
+  // the actual business page (with photos, reviews, hours) instead
+  // of just dropping a coordinate pin. We pass the name AND
+  // `<lat>,<lon>` in the query so Google Maps ranks matches near
+  // the point rather than picking a same-named hotel across the
+  // continent. Restaurants stay on the plain geo-pin path because
+  // their names collide too often ("Café Central" exists in 20
+  // cities) and testers reported wrong-place landings when we did
+  // name-search on POIs.
+  Uri _googleMapsHotelUrl() {
+    final q = Uri.encodeComponent(
+      '${name.replaceAll(RegExp(r'\s+'), ' ').trim()} '
+      '${poi.lat.toStringAsFixed(5)},${poi.lon.toStringAsFixed(5)}',
+    );
+    return Uri.parse(
+      'https://www.google.com/maps/search/?api=1&query=$q',
+    );
+  }
+
   Future<void> _openInMaps(BuildContext context) async {
     var ok = false;
+    // Hotels: try the name+coord URL first — usually lands on the
+    // business page directly. Everything else keeps the geo pin
+    // approach.
+    if (kind == PoiKind.hotel) {
+      try {
+        ok = await launchUrl(
+          _googleMapsHotelUrl(),
+          mode: LaunchMode.externalApplication,
+        );
+      } catch (_) {
+        ok = false;
+      }
+      if (ok) return;
+    }
     try {
       ok = await launchUrl(_geoUri(),
           mode: LaunchMode.externalApplication);

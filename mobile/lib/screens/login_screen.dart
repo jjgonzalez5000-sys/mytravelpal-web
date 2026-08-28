@@ -50,24 +50,33 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       final profileNotifier = ref.read(tripProfileProvider.notifier);
       profileNotifier.api = api;
       await profileNotifier.syncFromServer();
+      // Same wiring for saved trips — merges server trips into
+      // local storage AND arms the storage so future save/delete
+      // pushes to the server too. Without this the user only
+      // sees their local device's trips.
+      final storage = ref.read(tripStorageProvider);
+      storage.api = api;
+      await storage.syncFromServer();
       if (!mounted) return;
-      // Offer biometric setup on first login when available
+      // Offer biometric setup on first real login (not demo)
       final bio = BiometricService.instance;
-      if (await bio.isAvailable && !(await bio.isEnabled)) {
+      if (provider != 'demo' &&
+          await bio.isAvailable && !(await bio.isEnabled)) {
         if (mounted) {
+          final loc = AppLocalizations.of(context);
           final enable = await showDialog<bool>(
             context: context,
             builder: (_) => AlertDialog(
-              title: Text(l.biometricSetupTitle),
-              content: Text(l.biometricSetupBody),
+              title: Text(loc.biometricSetupTitle),
+              content: Text(loc.biometricSetupBody),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: Text(l.biometricSetupSkip),
+                  child: Text(loc.biometricSetupSkip),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.pop(context, true),
-                  child: Text(l.biometricSetupEnable),
+                  child: Text(loc.biometricSetupEnable),
                 ),
               ],
             ),

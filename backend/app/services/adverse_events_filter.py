@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
-from app.domain import AdverseEvent, Coordinate, Route
+from app.domain import AdverseEvent, AdverseEventType, Coordinate, Route
 from app.providers.routing import _haversine_km
+
+
+# Event types considered too routine to surface as a "critical event"
+# alert. Roadworks in particular are so common in Europe that
+# including them dilutes the "avísame de eventos críticos" promise —
+# every plan would trigger 3-5 roadwork rows the driver ignores.
+# Keeping them in the enum for backwards compatibility with stored
+# user-marked events; the filter just drops them from output.
+_UNSURFACED_TYPES: frozenset[AdverseEventType] = frozenset(
+    {AdverseEventType.ROADWORK},
+)
 
 # Corridor width used when the caller doesn't override. 25 km was too
 # generous for FIRMS — it dragged in fires that were plainly outside
@@ -47,6 +58,8 @@ def filter_events_near_route(
     seen_ids: set[str] = set()
     seen_signatures: list[tuple[str, str, float, float]] = []
     for e in events:
+        if e.type in _UNSURFACED_TYPES:
+            continue
         if e.id in seen_ids:
             continue
         # Signature includes severity so the test-suite fabrications

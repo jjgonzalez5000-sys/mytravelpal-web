@@ -34,10 +34,23 @@ class FuelPrice:
     curation + serialization layers can read a single source of
     truth instead of shuffling side-dicts around.
     """
+    unit_label: str = "€/L"
+    """Display unit for `price_eur_per_l`. `€/L` for petrol / diesel /
+    LPG. `€/kWh` when this "fuel station" is actually an EV charging
+    point (electric vehicles). Lets the mobile UI render the right
+    label without inferring from the profile fuel type.
+    """
+    is_charging_station: bool = False
+    """True when this entry represents an EV charging station rather
+    than a liquid-fuel pump. Filters / icons switch accordingly on
+    the client.
+    """
 
 
 class FuelProvider(Protocol):
-    async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]: ...
+    async def prices_along(
+        self, route: Route, *, fuel_type: str | None = None,
+    ) -> tuple[FuelPrice, ...]: ...
 
 
 def _base_price(country: Country) -> float:
@@ -56,7 +69,9 @@ class MockFuelProvider:
     _KM_BETWEEN_STATIONS = 100.0
     _PRICE_SPREAD = 0.12  # ±12 cents around country average
 
-    async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
+    async def prices_along(
+        self, route: Route, *, fuel_type: str | None = None,
+    ) -> tuple[FuelPrice, ...]:
         n_stations = max(1, int(route.distance_km // self._KM_BETWEEN_STATIONS))
         seed = hashlib.sha1(route.polyline.encode()).digest()
         countries = route.countries_crossed or (Country.FR,)

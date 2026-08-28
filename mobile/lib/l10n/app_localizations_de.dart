@@ -849,6 +849,96 @@ class AppLocalizationsDe extends AppLocalizations {
   String get historyDeleteTooltip => 'Löschen';
 
   @override
+  String get historyReopenCta => 'Ansehen';
+
+  @override
+  String get historyRepeatCta => 'Wiederholen';
+
+  @override
+  String resultFuelCollapsedHint(int count) {
+    return 'Alle $count Tankstellen der Route anzeigen';
+  }
+
+  @override
+  String resultBestTimeVsFreeFlow(String delta) {
+    return '$delta min ggü. freiem Fluss';
+  }
+
+  @override
+  String resultBestTimeEarlier(int minutes) {
+    return '$minutes min früher als Ziel';
+  }
+
+  @override
+  String resultBestTimeLater(int minutes) {
+    return '$minutes min später als Ziel';
+  }
+
+  @override
+  String resultHeroSavedBadge(String magnitude) {
+    return '$magnitude gespart';
+  }
+
+  @override
+  String get consistencyNeedsReview => 'Reiseplan prüfen';
+
+  @override
+  String consistencyNeedsReviewErrors(int errors) {
+    return 'Reiseplan prüfen · $errors Fehler';
+  }
+
+  @override
+  String consistencyNeedsReviewMixed(int errors, int warnings) {
+    return 'Reiseplan prüfen · $errors Fehler, $warnings Warnung(en)';
+  }
+
+  @override
+  String get consistencyHeadsUp => 'Hinweis zu deinem Plan';
+
+  @override
+  String consistencyHeadsUpWarnings(int warnings) {
+    return 'Hinweis · $warnings Warnungen';
+  }
+
+  @override
+  String consistencyMoreCount(int count) {
+    return '+$count weitere';
+  }
+
+  @override
+  String get planProfileClearOverride => 'Anpassung zurücksetzen';
+
+  @override
+  String get weatherSunny => 'Sonnig';
+
+  @override
+  String get weatherPartlyCloudy => 'Teilweise bewölkt';
+
+  @override
+  String get weatherCloudy => 'Bewölkt';
+
+  @override
+  String get weatherFog => 'Nebel';
+
+  @override
+  String get weatherDrizzle => 'Nieselregen';
+
+  @override
+  String get weatherRain => 'Regen';
+
+  @override
+  String get weatherHeavyRain => 'Starker Regen';
+
+  @override
+  String get weatherSnow => 'Schnee';
+
+  @override
+  String get weatherHeavySnow => 'Starker Schneefall';
+
+  @override
+  String get weatherThunderstorm => 'Gewitter';
+
+  @override
   String historyBestAt(String when) {
     return 'Beste $when';
   }
@@ -1108,6 +1198,21 @@ class AppLocalizationsDe extends AppLocalizations {
   String get eventTypeProtest => 'Demonstration';
 
   @override
+  String get eventTypeEarthquake => 'Erdbeben';
+
+  @override
+  String get eventTypeLandslide => 'Erdrutsch';
+
+  @override
+  String get eventTypeAvalanche => 'Lawine';
+
+  @override
+  String get eventTypeClosure => 'Straßensperrung';
+
+  @override
+  String get eventTypeHeatwave => 'Hitzewelle';
+
+  @override
   String get eventTypeOther => 'Sonstiges';
 
   @override
@@ -1187,7 +1292,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planSectionOptionalEyebrow => 'Optional';
 
   @override
-  String get planOptAlertsTitle => 'Bei Ereignissen benachrichtigen';
+  String get planOptAlertsTitle =>
+      'Bei kritischen Ereignissen auf der Route benachrichtigen';
 
   @override
   String get planOptAlertsSub =>
@@ -1629,6 +1735,9 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get tripCostTotal => 'Geschätzte Gesamtkosten';
+
+  @override
+  String get addToRouteLabel => 'Zur Route hinzufügen';
 
   @override
   String get biometricSetupTitle => 'Biometrie aktivieren?';

@@ -9,6 +9,7 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../storage/saved_trip.dart';
+import 'login_screen.dart';
 
 /// Personal dashboard: aggregates the user's saved trips into a small
 /// set of headline stats + a most-visited-countries breakdown. Fully
@@ -235,7 +236,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 onPressed: () async {
                   await ref.read(authProvider.notifier).signOut();
                   if (!context.mounted) return;
-                  Navigator.of(context).popUntil((r) => r.isFirst);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const LoginScreen(),
+                    ),
+                    (_) => false,
+                  );
                 },
                 icon: const Icon(Icons.logout, size: 18),
                 label: Text(l.dashboardSignOut),

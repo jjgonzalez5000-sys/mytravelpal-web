@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../api/models.dart';
 import '../design/tokens.dart';
+import '../l10n/app_localizations.dart';
 
 /// Renders backend consistency issues (impossible meal-stop speeds,
 /// EV out of range, missing fuel stations, …) as a compact banner.
@@ -82,7 +83,10 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
                   minimumSize: const Size(0, 32),
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: Text('+$hiddenCount more'),
+                child: Text(
+                  AppLocalizations.of(context)
+                      .consistencyMoreCount(hiddenCount),
+                ),
               ),
             ),
         ],
@@ -117,21 +121,26 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
     );
   }
 
-  String _headerLabel(List<ConsistencyIssue> issues) {
+  String _headerLabelStatic(
+    AppLocalizations l, List<ConsistencyIssue> issues,
+  ) {
     final errors = issues.where((i) => i.isError).length;
     final warnings = issues.where((i) => i.isWarning).length;
     if (errors > 0 && warnings > 0) {
-      return 'Trip plan needs review · $errors error(s), $warnings warning(s)';
+      return l.consistencyNeedsReviewMixed(errors, warnings);
     }
     if (errors > 0) {
       return errors == 1
-          ? 'Trip plan needs review'
-          : 'Trip plan needs review · $errors errors';
+          ? l.consistencyNeedsReview
+          : l.consistencyNeedsReviewErrors(errors);
     }
     return warnings == 1
-        ? 'Heads-up on your trip plan'
-        : 'Heads-up on your trip plan · $warnings warnings';
+        ? l.consistencyHeadsUp
+        : l.consistencyHeadsUpWarnings(warnings);
   }
+
+  String _headerLabel(List<ConsistencyIssue> issues) =>
+      _headerLabelStatic(AppLocalizations.of(context), issues);
 
   Color _severityColor(String severity, ColorScheme scheme) {
     switch (severity) {

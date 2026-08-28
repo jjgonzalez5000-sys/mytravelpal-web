@@ -56,6 +56,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   /// we only mutate local state; `Use for this trip` remains the
   /// commit point since that flow returns the profile to the caller.
   void _update(TripProfile p) {
+    // Enforce the per-vehicle traveller cap. If the user switches
+    // from car (7 max) to motorbike (3 max) while their profile
+    // says 5 travellers, silently trim to the new cap so the
+    // request payload stays consistent. Trimming here (single
+    // funnel) beats sprinkling clamps at each call site.
+    final cap = _maxTravellersFor(p.vehicle.type);
+    if (p.travellers > cap) {
+      p = p.copyWith(travellers: cap);
+    }
     setState(() {
       _profile = p;
     });
@@ -65,6 +74,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       unawaited(ref.read(tripProfileProvider.notifier).set(p));
     }
   }
+
+  /// Traveller cap by vehicle type:
+  /// - `motorbike` → 3  (rider + kid seat / sidecar / trailer)
+  /// - `car`       → 7  (SUV / 7-seater sedan)
+  /// - `van` / `camper` → 9 (extended family / crew)
+  static int _maxTravellersFor(VehicleType t) => switch (t) {
+        VehicleType.motorbike => 3,
+        VehicleType.car => 7,
+        VehicleType.van => 9,
+        VehicleType.camper => 9,
+      };
 
   Future<void> _useForTrip() async {
     Navigator.of(context).pop(_profile);
@@ -146,7 +166,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   title: Text(l.profileTravellers),
                   trailing: _Stepper(
                     value: _profile.travellers,
-                    min: 1, max: 9,
+                    // Cap driven by vehicle type: bikes seat at
+                    // most 2-3 (rider + kid seat + trailer), cars
+                    // rarely exceed 7 (SUV / 7-seater). Vans /
+                    // campers still get the previous 9-max since
+                    // "we're going with the extended family" is
+                    // exactly what those exist for.
+                    min: 1,
+                    max: _maxTravellersFor(_profile.vehicle.type),
                     onChanged: (n) => _update(_profile.copyWith(travellers: n)),
                   ),
                 ),
