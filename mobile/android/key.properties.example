@@ -1,0 +1,15 @@
+# Release-signing config for the Android build.
+#
+# 1. Copy this file to `key.properties` (same folder) and fill in
+#    the values from `keytool -genkeypair`.
+# 2. Do NOT commit `key.properties` — it's in .gitignore.
+# 3. Losing the keystore means you can never publish updates to
+#    the Play Store: back it up somewhere safe (password manager
+#    with attached file, encrypted USB, etc.).
+
+storePassword=REPLACE_ME
+keyPassword=REPLACE_ME
+keyAlias=mytravelpal
+# Absolute path OR path relative to the `android/` folder.
+# The generated keystore lives OUTSIDE the repo by convention.
+storeFile=/absolute/path/to/mytravelpal-release.jks

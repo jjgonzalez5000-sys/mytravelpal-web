@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  App icon proposal A v2: "compass-M".
+  Two roads climb from the bottom corners, peak at upper-left and
+  upper-right, and dip together at the centre where a compass star
+  sits — silhouette reads as a capital M. Sunset gradient (coral
+  to magenta) to stand out from the blue-cyan navigation crowd
+  (Waze, Google, Sygic).
+
+  M anatomy:
+    (80,460) -> (170,90) -> (256,240) -> (342,90) -> (432,460)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF7A45"/>
+      <stop offset="0.55" stop-color="#F44F72"/>
+      <stop offset="1" stop-color="#B02A88"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.85"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="1"/>
+    </linearGradient>
+    <radialGradient id="star" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.55" stop-color="#FFF2C9"/>
+      <stop offset="1" stop-color="#FFD166"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!--
+    Two symmetrical road ribbons. Each ribbon is drawn as a closed
+    path: outer edge climbs from a wide base to a narrower peak,
+    then descends toward the central dip; inner edge mirrors it a
+    little narrower so the ribbon tapers on the way up. Result:
+    dimensional highway that leans into the M silhouette.
+  -->
+  <!-- Left ribbon: outer (80,460)->(170,90)->(256,260); inner
+       (150,460)->(200,110)->(256,260) -->
+  <path
+    d="M 80 470
+       C 100 360, 130 220, 170 90
+       C 190 145, 220 210, 256 260
+       C 240 270, 220 285, 200 300
+       C 190 265, 175 220, 160 175
+       C 145 265, 130 355, 150 470 Z"
+    fill="url(#road)"/>
+  <!-- Right ribbon: mirrored -->
+  <path
+    d="M 432 470
+       C 412 360, 382 220, 342 90
+       C 322 145, 292 210, 256 260
+       C 272 270, 292 285, 312 300
+       C 322 265, 337 220, 352 175
+       C 367 265, 382 355, 362 470 Z"
+    fill="url(#road)"/>
+
+  <!-- Dashed centrelines (subtle) -->
+  <g stroke="#B02A88" stroke-width="6" stroke-linecap="round"
+     stroke-dasharray="12 22" fill="none" opacity="0.5">
+    <path d="M 118 460 C 138 340, 160 205, 185 100"/>
+    <path d="M 394 460 C 374 340, 352 205, 327 100"/>
+  </g>
+
+  <!-- Compass star at the centre dip -->
+  <g transform="translate(256 260)">
+    <circle r="56" fill="#FFFFFF" opacity="0.14"/>
+    <path d="M 0 -62 L 14 -14 L 62 0 L 14 14 L 0 62 L -14 14 L -62 0 L -14 -14 Z"
+          fill="url(#star)" stroke="#B02A88" stroke-width="4"
+          stroke-linejoin="round"/>
+    <circle r="10" fill="#B02A88"/>
+  </g>
+</svg>

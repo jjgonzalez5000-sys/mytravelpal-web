@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  App icon proposal C: "MTP road-T monogram".
+  Three geometric condensed sans letters M · T · P on a warm
+  gradient background. The T's horizontal bar is drawn as a road
+  (white slab with dashed magenta centerline) so the wordmark
+  itself carries the road-trip metaphor — no separate map / pin
+  needed. Reads well at 48×48 mipmap because the M and P bulk
+  give the silhouette weight while the road-bar highlights the T
+  and adds a splash of colour.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF7A45"/>
+      <stop offset="0.55" stop-color="#F44F72"/>
+      <stop offset="1" stop-color="#B02A88"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!--
+    Wordmark. Three letters in a geometric heavy sans, sized so
+    the trio fills ~340 px of the 512 canvas with breathing room
+    on all sides. Baseline ~340; caps height ~200.
+    Letters constructed as polygons for pixel-perfect control at
+    every mipmap density (real font would rasterise differently
+    across launcher previews).
+  -->
+  <g fill="#FFFFFF">
+    <!-- M: two legs + inner V -->
+    <path d="M 66 340
+             L 66 172
+             L 106 172
+             L 148 268
+             L 190 172
+             L 230 172
+             L 230 340
+             L 194 340
+             L 194 236
+             L 162 314
+             L 134 314
+             L 102 236
+             L 102 340 Z"/>
+
+    <!-- T stem (crossbar rendered separately as a "road slab") -->
+    <rect x="272" y="200" width="42" height="140"/>
+
+    <!-- P: stem + closed bowl -->
+    <path d="M 344 340
+             L 344 172
+             L 420 172
+             C 456 172, 472 194, 472 220
+             C 472 246, 456 268, 420 268
+             L 380 268
+             L 380 340 Z
+             M 380 200
+             L 380 240
+             L 416 240
+             C 428 240, 436 232, 436 220
+             C 436 208, 428 200, 416 200 Z"
+          fill-rule="evenodd"/>
+  </g>
+
+  <!-- T road-bar: white slab with dashed magenta centerline -->
+  <g>
+    <rect x="242" y="172" width="102" height="30" rx="6" fill="#FFFFFF"/>
+    <line x1="256" y1="187" x2="330" y2="187"
+          stroke="#B02A88" stroke-width="4"
+          stroke-linecap="round"
+          stroke-dasharray="12 10"/>
+  </g>
+</svg>

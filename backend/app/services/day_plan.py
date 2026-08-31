@@ -29,8 +29,14 @@ from app.domain import (
     RestStop,
     Route,
     TripProfile,
+    Waypoint,
 )
-from app.services.trip_optimizations import MealStop, Optimizations
+from app.services.trip_optimizations import (
+    MealStop,
+    Optimizations,
+    _pause_ratio,
+    _wall_hours,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +56,12 @@ class DayPlan:
     # one lands in this day; otherwise interpolated from the route
     # geometry at the day's `to_km`.
     sleep_coord: Coordinate | None = None
+    # When this day sits at a waypoint the driver chose (dwell
+    # arrival day OR follow-on stay-put days), `dwell_label`
+    # carries the waypoint's display name so the mobile renders
+    # "Día 2 · Mendrisio" instead of an opaque "km 267 → 267"
+    # range.
+    dwell_label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,16 +79,29 @@ def compute(
     rest_stops: tuple[RestStop, ...],
     route_distance_km: float,
     route: Route | None = None,
+    waypoints: tuple[Waypoint, ...] = (),
 ) -> MultiDayPlan | None:
     """Return `None` for single-day trips. For multi-day trips returns
     the per-day breakdown.
+
+    `waypoints` with `dwell_nights >= 1` force a day boundary at
+    the waypoint's coordinate and emit `dwell_nights` extra days
+    that stay parked there — those days have zero driving hours,
+    their `sleep_coord` equals the waypoint's coord, and the
+    driving-cap day that arrives at the waypoint ends slightly
+    earlier so the driver can settle in.
     """
     arrival_at = departure_at + timedelta(hours=trip_duration_hours)
     cap_hours = float(profile.daily_driving_cap_hours)
     arrival_local_hour = arrival_at.hour
+    # A trip with any dwell waypoint is inherently multi-day even
+    # if the driving alone would fit in one day (you can't stay
+    # 2 nights somewhere in an 8-hour trip).
+    has_dwell = any(w.dwell_nights >= 1 for w in waypoints)
     is_multiday = (
         trip_duration_hours > cap_hours
         or arrival_local_hour >= profile.bedtime_hour
+        or has_dwell
     )
     if not is_multiday:
         return None
@@ -97,9 +122,35 @@ def compute(
     # the promoted sleep card correctly says "sleep at 17:01" (6 h
     # driving × 1.17 pause overhead). Same source of truth on both
     # surfaces or the two disagree by exactly the pause overhead.
-    boundaries: list[tuple[datetime, datetime, float, float]] = []
+    # Each boundary carries an optional `dwell_at` coordinate +
+    # optional `dwell_label`: non-None coordinate means the day
+    # is anchored at a waypoint (arrival day OR follow-on stay-
+    # put day). The label carries the waypoint's display name
+    # for the day header.
+    boundaries: list[
+        tuple[
+            datetime, datetime, float, float,
+            Coordinate | None, str | None,
+        ]
+    ] = []
     current_start = departure_at
     current_start_km = 0.0
+    # Project dwell waypoints onto the route geometry so we can
+    # detect when the driving cap for a day would carry us past a
+    # forced overnight anchor. Pass-through waypoints (dwell 0)
+    # are ignored here — they still influence routing (via OSRM)
+    # but don't force day boundaries.
+    dwell_anchors: list[tuple[float, Waypoint]] = []
+    if route is not None:
+        for wp in waypoints:
+            if wp.dwell_nights < 1:
+                continue
+            km = _km_at_coord(route, wp.coordinate)
+            if km is None or km <= 5.0 or km >= route.distance_km - 5.0:
+                continue
+            dwell_anchors.append((km, wp))
+    dwell_anchors.sort(key=lambda t: t[0])
+    dwell_idx = 0
     # Effective km / h at the trip's average speed. Guard against
     # zero-hour trips (shouldn't happen, defensive).
     avg_kmh = (
@@ -113,6 +164,12 @@ def compute(
         optimizations.sleep_stop if optimizations is not None else None
     )
     opt_sleep_consumed = False
+    # Fold pause overhead into wall-clock day boundaries so middle
+    # days don't sleep at 16:00 (raw 08:00 + 8 h driving) — a real
+    # driver takes ~15 % more clock time than pure road time. Same
+    # ratio the trip-optimizations service uses, kept in sync so
+    # the promoted "sleep" card and the multi-day plan agree.
+    pause_ratio = _pause_ratio(profile)
     while remaining_hours > 0:
         day_index += 1
         # Day 1: honour the opt sleep-stop when present. It already
@@ -126,14 +183,68 @@ def compute(
         else:
             driving_this_day = min(cap_hours, remaining_hours)
             day_end_driving_at = current_start + timedelta(
-                hours=driving_this_day,
+                hours=_wall_hours(driving_this_day, pause_ratio),
             )
             end_km = current_start_km + driving_this_day * avg_kmh
+        # Clip to the next dwell waypoint if this day would drive
+        # past it. Arriving 20 km short of the anchor is fine; we
+        # snap the day's end to the anchor exactly.
+        clipped_at_dwell: Waypoint | None = None
+        if dwell_idx < len(dwell_anchors):
+            next_dwell_km, next_dwell_wp = dwell_anchors[dwell_idx]
+            if end_km > next_dwell_km > current_start_km:
+                clip_ratio = (
+                    (next_dwell_km - current_start_km)
+                    / max(end_km - current_start_km, 1e-6)
+                )
+                driving_this_day = driving_this_day * clip_ratio
+                day_end_driving_at = current_start + timedelta(
+                    hours=_wall_hours(driving_this_day, pause_ratio),
+                )
+                end_km = next_dwell_km
+                clipped_at_dwell = next_dwell_wp
         boundaries.append(
-            (current_start, day_end_driving_at, current_start_km, end_km),
+            (current_start, day_end_driving_at, current_start_km, end_km,
+             None, None),
         )
         remaining_hours -= driving_this_day
         current_start_km = end_km
+        # Emit N-1 stay-put boundaries at the dwell anchor.
+        # `dwell_nights=1` means "sleep ONE night here" — the
+        # arrival day (already emitted) IS that night. Zero extra
+        # days are needed. `dwell_nights=2` = one full stay-put
+        # day between arrival and continuation, and so on.
+        if clipped_at_dwell is not None:
+            dwell_idx += 1
+            # Mark the arrival boundary itself as a dwell day so
+            # the mobile renderer picks up the waypoint label
+            # AND uses the waypoint coord as sleep_coord (rather
+            # than interpolating a coord along the route that
+            # would drift a few km off the actual overnight).
+            _prev = boundaries[-1]
+            boundaries[-1] = (
+                _prev[0], _prev[1], _prev[2], _prev[3],
+                clipped_at_dwell.coordinate,
+                clipped_at_dwell.label,
+            )
+            stay_start = _next_wake(day_end_driving_at, profile.wake_hour)
+            for _ in range(clipped_at_dwell.dwell_nights - 1):
+                stay_end = stay_start.replace(
+                    hour=profile.bedtime_hour, minute=0, second=0,
+                    microsecond=0,
+                )
+                if stay_end <= stay_start:
+                    stay_end += timedelta(days=1)
+                boundaries.append(
+                    (stay_start, stay_end, current_start_km,
+                     current_start_km, clipped_at_dwell.coordinate,
+                     clipped_at_dwell.label),
+                )
+                stay_start = _next_wake(stay_end, profile.wake_hour)
+            current_start = stay_start
+            if remaining_hours <= 0:
+                break
+            continue
         if remaining_hours <= 0:
             break
         # Sleep until wake_hour of the next day.
@@ -142,7 +253,9 @@ def compute(
 
     days: list[DayPlan] = []
     total = len(boundaries)
-    for idx, (start_at, end_at, from_km, to_km) in enumerate(boundaries):
+    for idx, (
+        start_at, end_at, from_km, to_km, dwell_coord, dwell_label,
+    ) in enumerate(boundaries):
         # Bucket meals by their wall-clock `at`, NOT by km — a
         # multi-day trip has meals at the sleep spot (same km on
         # both ends of the overnight break) that would otherwise
@@ -171,10 +284,16 @@ def compute(
         )
         sleep_at = end_at if idx + 1 < total else None
         sleep_coord: Coordinate | None = None
+        # Dwell days (stay-put at a waypoint) sleep at the waypoint
+        # coord — no interpolation, no ambiguity. Wins over all
+        # other seeding rules.
+        if dwell_coord is not None:
+            sleep_coord = dwell_coord
+            sleep_at = end_at
         # Day 1: opt_sleep already seeded the boundary so end_at IS
         # the sleep time and coord comes from the rest area. Later
         # days: fall through to route-geometry interpolation.
-        if idx == 0 and opt_sleep_consumed and sleep_at is not None:
+        elif idx == 0 and opt_sleep_consumed and sleep_at is not None:
             sleep_coord = opt_sleep.rest_stop.coordinate  # type: ignore[union-attr]
         elif sleep_at is not None and route is not None:
             # Otherwise interpolate a rough coord from the route
@@ -192,6 +311,7 @@ def compute(
                 rest_stops=day_rests,
                 sleep_at=sleep_at,
                 sleep_coord=sleep_coord,
+                dwell_label=dwell_label,
             )
         )
     return MultiDayPlan(days=tuple(days), total_days=total)
@@ -203,6 +323,41 @@ def _coord_at_km(route: Route, km: float) -> Coordinate | None:
     fraction = max(0.0, min(1.0, km / route.distance_km))
     idx = int(fraction * (len(route.geometry) - 1))
     return route.geometry[idx]
+
+
+def _km_at_coord(route: Route, coord: Coordinate) -> float | None:
+    """Inverse of `_coord_at_km`: find the km-along-route closest to
+    the given coord by scanning the polyline. Used to place dwell
+    waypoints as forced day boundaries. Naive O(n) scan is fine —
+    route.geometry rarely exceeds 500 points and this fires once
+    per waypoint per plan.
+    """
+    if not route.geometry or route.distance_km <= 0:
+        return None
+    from math import radians, cos, sin, asin, sqrt
+
+    def _haversine(a: Coordinate, b: Coordinate) -> float:
+        lat1, lon1, lat2, lon2 = map(
+            radians, (a.lat, a.lon, b.lat, b.lon),
+        )
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        h = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+        return 2 * 6371.0 * asin(sqrt(h))
+
+    best_idx = 0
+    best_d = float("inf")
+    for i, p in enumerate(route.geometry):
+        d = _haversine(p, coord)
+        if d < best_d:
+            best_d = d
+            best_idx = i
+    # If the closest polyline vertex is farther than 30 km, the
+    # waypoint is off-corridor — refuse to anchor.
+    if best_d > 30.0:
+        return None
+    fraction = best_idx / max(len(route.geometry) - 1, 1)
+    return fraction * route.distance_km
 
 
 def _next_wake(reference: datetime, wake_hour: int) -> datetime:

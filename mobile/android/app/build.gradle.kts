@@ -1,7 +1,22 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// Load release signing config from `android/key.properties` if it
+// exists. That file lives OUTSIDE the git repo (added to
+// .gitignore) so the keystore password stays out of source. When
+// the file is missing (contributors without the release key, CI
+// without secrets) release builds fall back to the debug keystore.
+val keystoreProperties = Properties()
+val keystorePropertiesFile = rootProject.file("key.properties")
+val hasReleaseSigning = keystorePropertiesFile.exists()
+if (hasReleaseSigning) {
+    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
 
 android {
@@ -29,11 +44,32 @@ android {
         multiDexEnabled = true
     }
 
+    signingConfigs {
+        // Only register `release` when `key.properties` is present,
+        // so contributors without the release key can still build
+        // debug variants without a keystore file lying around.
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Sign with the release keystore when configured. Without
+            // it we fall back to the debug signing config so the app
+            // still builds — but the resulting APK cannot be shared
+            // across devices as an update (signature mismatch). See
+            // `key.properties.example` in the repo root for setup.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }

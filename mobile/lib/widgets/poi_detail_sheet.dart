@@ -294,6 +294,12 @@ class _AttributeGrid extends StatelessWidget {
     'shop': Icons.storefront,
     'self_service': Icons.self_improvement,
     'toilets': Icons.wc,
+    // Google Places enrichment — real rating + count. Rendered
+    // like any other attribute chip so the layout stays clean.
+    'rating': Icons.star_rate,
+    'rating_count': Icons.people_alt_outlined,
+    'google_price_level': Icons.euro,
+    'google_maps_url': Icons.link,
   };
 
   String _prettifyValue(String key, String value) {
@@ -438,42 +444,42 @@ class _ExternalCtaRow extends StatelessWidget {
         'zoom': '17',
       });
 
-  // Hotels benefit from a NAME-based Google Maps search — the
-  // name is usually distinctive enough that Google resolves it to
-  // the actual business page (with photos, reviews, hours) instead
-  // of just dropping a coordinate pin. We pass the name AND
-  // `<lat>,<lon>` in the query so Google Maps ranks matches near
-  // the point rather than picking a same-named hotel across the
-  // continent. Restaurants stay on the plain geo-pin path because
-  // their names collide too often ("Café Central" exists in 20
-  // cities) and testers reported wrong-place landings when we did
-  // name-search on POIs.
-  Uri _googleMapsHotelUrl() {
-    final q = Uri.encodeComponent(
-      '${name.replaceAll(RegExp(r'\s+'), ' ').trim()} '
-      '${poi.lat.toStringAsFixed(5)},${poi.lon.toStringAsFixed(5)}',
-    );
-    return Uri.parse(
-      'https://www.google.com/maps/search/?api=1&query=$q',
-    );
+  /// Deterministic Google Maps URL when the POI carries a
+  /// `google_maps_url` attribute (fed in by the backend's Google
+  /// Places enricher). This links to the exact Google Place page
+  /// — right business, right coords, no name-search fuzzy match.
+  /// Returns null when the attribute isn't present, e.g. hotels
+  /// before Places enrichment ships for them.
+  Uri? _placeUrl() {
+    final raw = attributes['google_maps_url'];
+    if (raw == null || raw.isEmpty) return null;
+    final u = Uri.tryParse(raw);
+    if (u == null || !u.hasScheme) return null;
+    return u;
   }
 
   Future<void> _openInMaps(BuildContext context) async {
     var ok = false;
-    // Hotels: try the name+coord URL first — usually lands on the
-    // business page directly. Everything else keeps the geo pin
-    // approach.
-    if (kind == PoiKind.hotel) {
+    // Preferred path: Places-enriched URL that resolves to the
+    // exact Google Place. This eliminates the "wrong hotel across
+    // Europe" bug when Google's name search overrode the coord
+    // hint. Restaurants already carry this attribute; hotels get
+    // it once we extend enrichment to them.
+    final place = _placeUrl();
+    if (place != null) {
       try {
         ok = await launchUrl(
-          _googleMapsHotelUrl(),
-          mode: LaunchMode.externalApplication,
+          place, mode: LaunchMode.externalApplication,
         );
       } catch (_) {
         ok = false;
       }
       if (ok) return;
     }
+    // Fallback: geo pin at the exact coord with the POI's name as
+    // the pin label. No name search happens here — Maps just
+    // drops a marker at the given lat/lon. Reliable across every
+    // POI kind (hotels, restaurants, fuel, viewpoints).
     try {
       ok = await launchUrl(_geoUri(),
           mode: LaunchMode.externalApplication);
@@ -505,6 +511,25 @@ class _ExternalCtaRow extends StatelessWidget {
         'label': 'mytravelpal-hotel-deeplink',
       });
 
+  /// Deep-link to Airbnb searching short-term rentals in a small
+  /// bounding box around this hotel's coordinates. Airbnb has no
+  /// public affiliate API, so this is unmonetised — but it closes
+  /// the "I want to check Airbnb here" gap without kicking users
+  /// out of the app's flow completely. ±0.03° ~= ±3.3 km at 45°N.
+  Uri _airbnb() {
+    const halfDeg = 0.03;
+    return Uri.https('www.airbnb.com', '/s/homes', {
+      'refinement_paths[]': '/homes',
+      'query': name,
+      'ne_lat': (poi.lat + halfDeg).toStringAsFixed(5),
+      'ne_lng': (poi.lon + halfDeg).toStringAsFixed(5),
+      'sw_lat': (poi.lat - halfDeg).toStringAsFixed(5),
+      'sw_lng': (poi.lon - halfDeg).toStringAsFixed(5),
+      'zoom': '13',
+      'search_type': 'filter_change',
+    });
+  }
+
   Uri _officialWebsite() {
     final w = attributes['website'] ?? attributes['contact:website'] ?? '';
     return w.startsWith('http') ? Uri.parse(w) : Uri.parse('https://$w');
@@ -534,12 +559,18 @@ class _ExternalCtaRow extends StatelessWidget {
             label: 'TheFork',
             onPressed: () => _launch(context, _theFork()),
           ),
-        if (kind == PoiKind.hotel)
+        if (kind == PoiKind.hotel) ...[
           _CtaButton(
             icon: Icons.hotel_outlined,
             label: 'Booking',
             onPressed: () => _launch(context, _booking()),
           ),
+          _CtaButton(
+            icon: Icons.home_work_outlined,
+            label: 'Airbnb',
+            onPressed: () => _launch(context, _airbnb()),
+          ),
+        ],
         if (hasPhone)
           _CtaButton(
             icon: Icons.phone,

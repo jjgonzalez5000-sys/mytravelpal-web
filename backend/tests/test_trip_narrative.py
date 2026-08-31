@@ -147,7 +147,20 @@ class TestMockNarrative:
 
 
 class TestNarrativeEndpoint:
-    _PREMIUM_HEADER = {"X-MyTravelPal-Premium": "true"}
+    # Narrative now requires both premium + a valid JWT (project
+    # ai_cost_defense — layer 2 blocks anonymous LLM calls even
+    # when the app key alone is present). Mint one demo token at
+    # import time; a plain user id is fine for the quota bump.
+    from app.auth.jwt import AuthUser as _AuthUser
+    from app.auth.jwt import issue_token as _issue_token
+    _TOKEN = _issue_token(_AuthUser(
+        id="test-user", email="test@example.com",
+        display_name="Test User", provider="test",
+    ))
+    _PREMIUM_HEADER = {
+        "X-MyTravelPal-Premium": "true",
+        "Authorization": f"Bearer {_TOKEN}",
+    }
 
     def test_returns_narrative_when_mock_provider_active(self) -> None:
         # Override the DI-injected Providers so the narrative endpoint

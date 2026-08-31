@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -40,26 +41,63 @@ class PlanLoadingDialog extends StatefulWidget {
 }
 
 class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
+  // Base step cadence — matches roughly how long each phase takes
+  // on a fast trip. Longer trips extend past this and switch into
+  // the long-tail loop to reassure the user we're still working.
   static const _rotateInterval = Duration(seconds: 2, milliseconds: 500);
-  Timer? _timer;
+  // Long-tail messages fire slower — once every 3.5 s so the copy
+  // has time to be read on the tail of a big request.
+  static const _longTailInterval = Duration(seconds: 3, milliseconds: 500);
+  // Where the progress bar plateaus while we wait on the tail.
+  // Real completion is server-side, so pretending 100% would be
+  // dishonest and jarring when the sheet snaps closed at 60%.
+  static const double _progressPlateau = 0.9;
+  // Expected worst-case fast-path duration (in seconds) for the
+  // progress bar to interpolate against. Real backends can and do
+  // exceed this — that's what the plateau is for.
+  static const int _fastPathSeconds = 12;
+
+  Timer? _rotateTimer;
+  Timer? _elapsedTimer;
   int _index = 0;
+  int _longTailIndex = 0;
+  int _elapsedSeconds = 0;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(_rotateInterval, (_) {
+    _rotateTimer = Timer.periodic(_rotateInterval, (_) {
       if (!mounted) return;
-      // Cycle deterministically — no randomness so the same trip
-      // shows the same order twice in a row (less disorienting).
       setState(() => _index++);
+    });
+    _elapsedTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() {
+        _elapsedSeconds++;
+        // Once base steps are exhausted, tick the long-tail index
+        // on its own slower cadence so the caption keeps changing.
+        if (_elapsedSeconds > 0 &&
+            _elapsedSeconds %
+                    (_longTailInterval.inSeconds) == 0) {
+          _longTailIndex++;
+        }
+      });
     });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _rotateTimer?.cancel();
+    _elapsedTimer?.cancel();
     super.dispose();
   }
+
+  List<(IconData, String)> _longTailCaptions(AppLocalizations l) => [
+        (Icons.public, l.planLoadingLongCrossingCountries),
+        (Icons.local_gas_station, l.planLoadingLongScanningFuel),
+        (Icons.explore_outlined, l.planLoadingLongBigTrip),
+        (Icons.check_circle_outline, l.planLoadingLongAlmostDone),
+      ];
 
   List<(IconData, String)> _steps(AppLocalizations l) {
     // Build the caption list in the order the backend actually runs
@@ -102,12 +140,28 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final steps = _steps(l);
-    // Ride the index past the last step by showing "almost there" —
-    // if the request takes longer than steps × interval, we don't
-    // want to loop back to the first message.
-    final effectiveIndex =
-        _index < steps.length - 1 ? _index : steps.length - 1;
-    final (icon, caption) = steps[effectiveIndex];
+    // Two-phase caption strategy:
+    // 1. While we're inside `steps.length × rotateInterval`, cycle
+    //    through the step captions in order.
+    // 2. Once the base cadence is exhausted (long tail), cycle
+    //    through the reassurance messages so the user knows the
+    //    app is still working on heavy trips.
+    final baseIndex = _index < steps.length ? _index : steps.length;
+    final inLongTail = baseIndex >= steps.length;
+    final IconData icon;
+    final String caption;
+    if (!inLongTail) {
+      (icon, caption) = steps[baseIndex];
+    } else {
+      final tail = _longTailCaptions(l);
+      (icon, caption) = tail[_longTailIndex % tail.length];
+    }
+    // Progress bar: interpolate 0 → plateau over `_fastPathSeconds`;
+    // pin at plateau afterwards so we don't lie about completion.
+    final progress = math.min(
+      _progressPlateau,
+      _elapsedSeconds / _fastPathSeconds * _progressPlateau,
+    );
 
     return PopScope(
       // Block back button while the plan is running — cancelling
@@ -160,7 +214,13 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
                   ),
                 ),
                 child: Row(
-                  key: ValueKey<int>(effectiveIndex),
+                  // Stable key that swaps whenever the caption
+                  // changes so AnimatedSwitcher cross-fades.
+                  key: ValueKey<String>(
+                    inLongTail
+                        ? 'tail-$_longTailIndex'
+                        : 'step-$baseIndex',
+                  ),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Icon(icon, color: scheme.primary, size: 22),
@@ -176,11 +236,46 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
                   ],
                 ),
               ),
-              const SizedBox(height: Tokens.space20),
-              Text(
-                l.planLoadingHelper,
-                style: t.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+              const SizedBox(height: Tokens.space16),
+              // Progress bar — determinate up to `_progressPlateau`,
+              // then flat. Elapsed counter sits underneath so the
+              // driver has a concrete "time is passing" signal.
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor:
+                      scheme.surfaceContainerHigh,
+                  valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+                ),
+              ),
+              const SizedBox(height: Tokens.space8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Helper text takes the flex space so it wraps
+                  // instead of pushing the elapsed counter off the
+                  // dialog. Elapsed counter stays fixed-width on
+                  // the right thanks to tabular figures.
+                  Expanded(
+                    child: Text(
+                      l.planLoadingHelper,
+                      style: t.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ),
+                  const SizedBox(width: Tokens.space8),
+                  Text(
+                    l.planLoadingElapsed(_elapsedSeconds),
+                    style: t.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontFeatures: const [
+                        FontFeature.tabularFigures(),
+                      ],
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

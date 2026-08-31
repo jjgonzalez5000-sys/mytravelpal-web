@@ -168,7 +168,10 @@ class _AdverseEventSheet extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 12),
-            Text(event.description, style: t.bodyMedium),
+            Text(
+              event.displayText(AppLocalizations.of(context)),
+              style: t.bodyMedium,
+            ),
             const SizedBox(height: 8),
             Text(
               _timeFootnote(),

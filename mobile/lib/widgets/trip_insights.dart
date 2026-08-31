@@ -147,7 +147,11 @@ class DayPlanSection extends StatelessWidget {
     return scored.take(_maxSleepHotels).toList();
   }
 
-  static const double _maxHotelKmFromSleep = 60.0;
+  // Widened from 60 → 90 km (2026-08-31) so multi-day trips
+  // through sparse regions (interior Iberia, Massif Central,
+  // Ardèche) still surface at least a handful of overnight
+  // options. The backend densifies with the same widened radius.
+  static const double _maxHotelKmFromSleep = 90.0;
 
   String _slotLabel(AppLocalizations l, String slot) => switch (slot) {
         'breakfast' => l.profileBreakfast,
@@ -179,11 +183,17 @@ class DayPlanSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  l.dayHeaderRange(
-                    d.dayIndex,
-                    d.fromKm.toStringAsFixed(0),
-                    d.toKm.toStringAsFixed(0),
-                  ),
+                  d.isDwellDay
+                      // Stay-put day at a user-picked waypoint —
+                      // render "Día N · <place>" instead of the
+                      // raw "km A → B" range that reads as
+                      // nonsense when A == B.
+                      ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
+                      : l.dayHeaderRange(
+                          d.dayIndex,
+                          d.fromKm.toStringAsFixed(0),
+                          d.toKm.toStringAsFixed(0),
+                        ),
                   style: t.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -224,9 +234,14 @@ class DayPlanSection extends StatelessWidget {
                       Icon(Icons.bedtime, size: 14, color: scheme.primary),
                       const SizedBox(width: 6),
                       Text(
-                        l.daySleepMarker(
-                          timeFormat.format(d.sleepAt!.toLocal()),
-                        ),
+                        // Stay-put days shouldn't claim "terminas
+                        // de conducir hacia las 22:00" — the driver
+                        // never drove. Show a stay marker instead.
+                        d.isDwellDay
+                            ? l.daySleepStay(d.dwellLabel!)
+                            : l.daySleepMarker(
+                                timeFormat.format(d.sleepAt!.toLocal()),
+                              ),
                         style: t.labelMedium?.copyWith(
                           color: scheme.primary,
                         ),

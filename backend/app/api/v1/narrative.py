@@ -15,7 +15,9 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from app.api.ai_quota import require_narrative_quota
 from app.api.premium import require_premium
+from app.auth.jwt import AuthUser
 from app.api.v1.trips import TripPlanRequest, plan_trip
 from app.domain import Coordinate
 from app.providers import get_providers
@@ -47,6 +49,10 @@ async def trip_narrative(
     payload: NarrativeRequest,
     providers: Providers = Depends(_providers),
     _premium: bool = Depends(require_premium),
+    # JWT + daily quota (project_ai_cost_defense layer 1+2). The
+    # existing `require_premium` gates the FEATURE; this dep gates
+    # the per-user COST.
+    _user: AuthUser = Depends(require_narrative_quota),
 ) -> NarrativeResponse:
     # Plan first (uses the same DI, so hotels/restaurants/adverse events
     # honor the flags the client passed in the plan_request).

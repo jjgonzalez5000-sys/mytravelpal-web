@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">MyTravelPal</string>
+    <!--
+      Facebook Login credentials. Get them from:
+        https://developers.facebook.com/apps → Your app → Settings → Basic
+      Replace the placeholders below with the real values. The
+      `fb_login_protocol_scheme` MUST be `fb` + your App ID.
+      After swapping, add the release SHA-1 as an Android key hash
+      in the Facebook app's Android platform settings:
+        openssl base64 -in <(openssl sha1 -binary <(keytool -exportcert -alias mytravelpal -keystore ~/keystores/mytravelpal-release.jks -storepass "$(cat ~/keystores/mytravelpal.pass)"))
+    -->
+    <string name="facebook_app_id">REPLACE_WITH_FACEBOOK_APP_ID</string>
+    <string name="fb_login_protocol_scheme">fbREPLACE_WITH_FACEBOOK_APP_ID</string>
+    <string name="facebook_client_token">REPLACE_WITH_FACEBOOK_CLIENT_TOKEN</string>
+</resources>

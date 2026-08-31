@@ -9,7 +9,9 @@ import 'domain/trip_profile.dart';
 import 'domain/units.dart';
 import 'services/current_location.dart';
 import 'storage/app_prefs.dart';
+import 'storage/inspiration_storage.dart';
 import 'storage/trip_storage.dart';
+import 'theme.dart';
 
 final apiClientProvider = Provider<ApiClient>((ref) {
   final client = ApiClient();
@@ -33,6 +35,14 @@ final appPrefsProvider = Provider<AppPrefs>(
   ),
 );
 
+/// Local storage for Trip Inspiration proposals the user chose
+/// to keep. Lightweight FIFO in SharedPreferences (cap 20).
+final inspirationStorageProvider = Provider<InspirationStorage>(
+  (ref) => throw UnimplementedError(
+    'inspirationStorageProvider must be overridden at ProviderScope',
+  ),
+);
+
 /// Current [ThemeMode]. Reads initial value from prefs, persists on change.
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
   ThemeModeNotifier(this._prefs) : super(_prefs.themeMode);
@@ -47,6 +57,58 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
 final themeModeProvider =
     StateNotifierProvider<ThemeModeNotifier, ThemeMode>((ref) {
   return ThemeModeNotifier(ref.watch(appPrefsProvider));
+});
+
+/// Curated colour preset (Forest / Sunset / Ocean). See
+/// [ThemePreset] in `theme.dart`. Ignored when dynamic colour is
+/// enabled AND the device is Android 12+ (the wallpaper wins).
+class ThemePresetNotifier extends StateNotifier<ThemePreset> {
+  ThemePresetNotifier(this._prefs)
+      : super(ThemePreset.fromSlug(_prefs.themePreset));
+  final AppPrefs _prefs;
+
+  Future<void> set(ThemePreset preset) async {
+    state = preset;
+    await _prefs.setThemePreset(preset.slug);
+  }
+}
+
+final themePresetProvider =
+    StateNotifierProvider<ThemePresetNotifier, ThemePreset>((ref) {
+  return ThemePresetNotifier(ref.watch(appPrefsProvider));
+});
+
+/// Material You dynamic-colour toggle. Persisted; effective only
+/// when the device exposes wallpaper colours (Android 12+).
+class ThemeDynamicNotifier extends StateNotifier<bool> {
+  ThemeDynamicNotifier(this._prefs) : super(_prefs.themeDynamicEnabled);
+  final AppPrefs _prefs;
+
+  Future<void> set(bool value) async {
+    state = value;
+    await _prefs.setThemeDynamicEnabled(value);
+  }
+}
+
+final themeDynamicProvider =
+    StateNotifierProvider<ThemeDynamicNotifier, bool>((ref) {
+  return ThemeDynamicNotifier(ref.watch(appPrefsProvider));
+});
+
+/// Pure-black dark-mode surface toggle (OLED battery + contrast).
+class ThemeOledNotifier extends StateNotifier<bool> {
+  ThemeOledNotifier(this._prefs) : super(_prefs.themeOledEnabled);
+  final AppPrefs _prefs;
+
+  Future<void> set(bool value) async {
+    state = value;
+    await _prefs.setThemeOledEnabled(value);
+  }
+}
+
+final themeOledProvider =
+    StateNotifierProvider<ThemeOledNotifier, bool>((ref) {
+  return ThemeOledNotifier(ref.watch(appPrefsProvider));
 });
 
 /// User-picked locale override — null means "follow system".
@@ -89,6 +151,23 @@ final unitSystemProvider =
 /// Convenience: a ready-to-use [UnitFormatter] for the current system.
 final unitFormatterProvider = Provider<UnitFormatter>((ref) {
   return UnitFormatter(ref.watch(unitSystemProvider));
+});
+
+/// User-selected display currency (ISO-4217). Backend always sends
+/// EUR — this is only for how costs render on the client.
+class CurrencyNotifier extends StateNotifier<String> {
+  CurrencyNotifier(this._prefs) : super(_prefs.currencyCode);
+  final AppPrefs _prefs;
+
+  Future<void> set(String code) async {
+    state = code;
+    await _prefs.setCurrencyCode(code);
+  }
+}
+
+final currencyCodeProvider =
+    StateNotifierProvider<CurrencyNotifier, String>((ref) {
+  return CurrencyNotifier(ref.watch(appPrefsProvider));
 });
 
 /// Current [TripProfile], or null if the user hasn't set one yet.

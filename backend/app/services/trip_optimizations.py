@@ -76,7 +76,15 @@ class SleepStop:
 @dataclass(frozen=True, slots=True)
 class Optimizations:
     meal_stops: tuple[MealStop, ...]
+    # Kept as a single field for backward compatibility with the
+    # `/plan` schema — this is ALWAYS the first day's sleep.
     sleep_stop: SleepStop | None
+    # Every overnight the planner scheduled, first-day included.
+    # For a 1-day trip: empty. For a 3-day trip: two entries
+    # (end of day 1 + end of day 2). Downstream code hits this
+    # list to densify hotels around every overnight so multi-day
+    # trips don't lose their middle-day hotel recommendations.
+    sleep_stops: tuple[SleepStop, ...] = ()
 
 
 def _slot_hour(prefs: MealPreferences, slot: MealSlot) -> int:
@@ -242,6 +250,7 @@ def compute(
     # comida + cena on Day 2, Day 3, etc. instead of only Day 1.
     meal_stops: list[MealStop] = []
     first_sleep: SleepStop | None = None
+    all_sleeps: list[SleepStop] = []
     day_start = departure_at
     driving_offset = 0.0  # cumulative driving hours before day_start
     remaining_driving = trip_duration_hours
@@ -274,6 +283,8 @@ def compute(
                 driving_offset=driving_offset,
                 cap_hours=cap_hours,
             )
+            if day_sleep is not None:
+                all_sleeps.append(day_sleep)
             if day_index == 1:
                 first_sleep = day_sleep
 
@@ -312,6 +323,7 @@ def compute(
     return Optimizations(
         meal_stops=tuple(meal_stops),
         sleep_stop=first_sleep,
+        sleep_stops=tuple(all_sleeps),
     )
 
 

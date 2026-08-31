@@ -35,6 +35,7 @@ from app.providers.overpass import (
     OverpassRestaurantsProvider,
 )
 from app.providers.tollguru import TollGuruProvider, TollProvider
+from app.providers.tolls_here import HereTollsProvider
 from app.providers.weather import OpenMeteoWeatherProvider
 from app.providers.fuel import FuelProvider, MockFuelProvider
 from app.providers.geocoding import (
@@ -80,10 +81,20 @@ def get_providers() -> Providers:
 
 
 def _tollguru_provider() -> TollProvider | None:
-    # Only expose a live client when a key is present — otherwise the
-    # endpoint continues on with its heuristic pricing.
+    """Preferred booth-level provider. TollGuru returns per-booth
+    fares with real coordinates but requires a paid subscription
+    ($80/mo minimum as of 2026). We keep the wiring so switching
+    on the key is one env var, but the default falls to
+    `_here_tolls_provider()` for the free tier.
+    """
     if os.environ.get("TOLLGURU_API_KEY"):
         return TollGuruProvider()
+    # Fall back to HERE Routing v8 tolls when the free HERE key
+    # is set — same TollProvider protocol, section-level fares
+    # rather than booth-level. Costs are bundled in HERE's free
+    # tier along with Fuel Prices.
+    if os.environ.get("MYTRAVELPAL_HERE_API_KEY"):
+        return HereTollsProvider()
     return None
 
 

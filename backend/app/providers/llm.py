@@ -53,7 +53,7 @@ class ClaudeLlmProvider:
     when `anthropic` is not installed.
     """
 
-    _MODEL = "claude-opus-5"
+    _MODEL = "claude-haiku-4-5-20251001"
     _MAX_TOKENS = 2000
     _BETA_FALLBACKS = ["server-side-fallback-2026-07-01"]
 
@@ -69,12 +69,14 @@ class ClaudeLlmProvider:
 
     async def generate_narrative(self, prompt: str) -> str:
         client = self._get_client()
-        response = await client.beta.messages.create(
+        # Haiku doesn't support `effort`, `fallbacks` or the
+        # server-side beta refusal-fallback header. Use the plain
+        # messages endpoint with just the model + max tokens.
+        # Refusal handling below still applies when Anthropic
+        # returns `stop_reason == "refusal"`.
+        response = await client.messages.create(
             model=self._model,
             max_tokens=self._MAX_TOKENS,
-            betas=self._BETA_FALLBACKS,
-            fallbacks="default",
-            output_config={"effort": "low"},
             messages=[{"role": "user", "content": prompt}],
         )
 

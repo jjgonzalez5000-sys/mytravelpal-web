@@ -1,0 +1,6 @@
+# Minimal Jekyll config so GitHub Pages picks up the `docs/`
+# directory with the default theme. Change `title` / `description`
+# before publishing.
+title: MyTravelPal
+description: European road-trip planning made honest.
+theme: jekyll-theme-minimal

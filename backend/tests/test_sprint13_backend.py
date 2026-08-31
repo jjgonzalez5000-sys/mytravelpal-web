@@ -120,6 +120,7 @@ class TestPlanEndpointWithTollGuru:
 
         class _Routing:
             async def route(self, origin, destination, countries=None, *,
+                            waypoints=(),
                             avoid_tolls=False, avoid_motorways=False,
                             prefer_scenic=False):
                 return Route(

@@ -243,6 +243,109 @@ class ApiClient {
     }
   }
 
+  /// GDPR "delete my account" — hits the same endpoint the profile
+  /// DELETE uses, which now cascades to saved trips. Returns true on
+  /// 200, false on any HTTP or transport error. The caller signs the
+  /// user out afterwards regardless of the result so local state is
+  /// wiped even when the server rejects (unauth) or is unreachable.
+  Future<bool> deleteAccount() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile');
+    try {
+      final response = await _http.delete(uri, headers: _headers());
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// GDPR portability — pull EVERY row the server holds for this
+  /// user as a single JSON blob. Returns null on any failure so the
+  /// caller can show a snackbar instead of crashing.
+  Future<Map<String, dynamic>?> exportProfile() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/export');
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return null;
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Ask the Trip Inspiration LLM for a proposed itinerary. Long
+  /// timeout — Haiku output at 2k tokens can take 5-15 s.
+  /// Throws `ApiException` on 4xx/5xx so the UI can distinguish
+  /// "LLM refused / bad output" from "no network".
+  Future<InspireItinerary> inspireTrip({
+    required String prompt,
+    LatLon? origin,
+    String? locale,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/inspire');
+    final body = jsonEncode({
+      'prompt': prompt,
+      if (origin != null) 'origin': origin.toJson(),
+      if (locale != null) 'locale': locale,
+    });
+    final response = await _http
+        .post(uri, headers: _headers(), body: body)
+        .timeout(const Duration(seconds: 45));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return InspireItinerary.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Current weather + 7-day forecast for a point. Returns null on
+  /// any transport failure — the chip widget just hides then, so
+  /// silent-fail is fine.
+  Future<WeatherPoint?> weatherPoint({
+    required double lat,
+    required double lon,
+  }) async {
+    final uri = Uri.parse(
+      '$_baseUrl/v1/weather/point?lat=$lat&lon=$lon',
+    );
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return null;
+      return WeatherPoint.fromJson(
+        jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Companion mode tick: send driver state → get recommendations.
+  /// Returns an empty list when the engine has nothing to surface
+  /// or on any transport error (Companion cards are best-effort —
+  /// silence is better than fabricated warnings).
+  Future<List<CompanionRecommendation>> companionTick(
+    CompanionTickRequest state,
+  ) async {
+    final uri = Uri.parse('$_baseUrl/v1/companion/tick');
+    try {
+      final response = await _http.post(
+        uri,
+        headers: _headers(),
+        body: jsonEncode(state.toJson()),
+      );
+      if (response.statusCode != 200) return const [];
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (body['recommendations'] as List<dynamic>? ?? const []);
+      return list
+          .map((r) => CompanionRecommendation.fromJson(
+                r as Map<String, dynamic>,
+              ))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Push saved trips to server (cloud backup).
   Future<bool> saveTrips(List<Map<String, dynamic>> trips) async {
     final uri = Uri.parse('$_baseUrl/v1/profile/trips');

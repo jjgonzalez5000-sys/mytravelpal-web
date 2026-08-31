@@ -26,6 +26,12 @@
          approaching-stop / new-alert push notifications. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- READ_CONTACTS lets the user pick emergency contacts from the
+         device address book on the Emergency Contacts screen instead
+         of typing name + phone by hand. Prompted at runtime only
+         when the user taps the "Pick from contacts" button; users
+         can still add contacts manually if they deny. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
     <application
         android:label="mytravelpal"
         android:name="${applicationName}"
@@ -65,6 +71,32 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- Facebook Login. Values live in res/values/strings.xml
+             so we don't leak the App ID / Client Token into VCS
+             beyond the placeholder. Once real values are set the
+             SDK auto-picks them up on startup. -->
+        <meta-data
+            android:name="com.facebook.sdk.ApplicationId"
+            android:value="@string/facebook_app_id" />
+        <meta-data
+            android:name="com.facebook.sdk.ClientToken"
+            android:value="@string/facebook_client_token" />
+        <activity
+            android:name="com.facebook.FacebookActivity"
+            android:configChanges="keyboard|keyboardHidden|screenLayout|screenSize|orientation"
+            android:label="@string/app_name"
+            android:exported="false" />
+        <activity
+            android:name="com.facebook.CustomTabActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="@string/fb_login_protocol_scheme" />
+            </intent-filter>
+        </activity>
 
         <!-- Android Auto integration: MyTravelPal is registered in
              the POI (Point of Interest) category so it appears in
@@ -117,5 +149,9 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Facebook SDK checks if the FB app is installed so it
+             can hand off login through it (faster than webview). -->
+        <package android:name="com.facebook.katana" />
+        <package android:name="com.facebook.orca" />
     </queries>
 </manifest>

@@ -3,15 +3,17 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:sign_in_with_apple/sign_in_with_apple.dart';
+// Apple sign-in removed 2026-08-29 — Android-only build, no iOS
+// target. Re-add when we ship an iOS build (Apple then requires
+// this button per App Store Review Guidelines §4.8 for any app
+// offering 3rd-party sign-in).
 
 import '../api/api_client.dart';
-import '../design/components.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/biometric_auth.dart';
-import 'plan_screen.dart';
+import 'app_shell.dart';
 
 /// Sign-in screen. In production this offers Google + Facebook + Apple;
 /// in dev/demo builds a **Continue as demo** button lets you skip
@@ -86,7 +88,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const PlanScreen()),
+        MaterialPageRoute<void>(builder: (_) => const AppShell()),
       );
     } on ApiException catch (e) {
       setState(() => _error = 'Auth failed (${e.statusCode})');
@@ -121,35 +123,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInWithApple() async {
-    try {
-      final credential = await SignInWithApple.getAppleIDCredential(
-        scopes: [
-          AppleIDAuthorizationScopes.email,
-          AppleIDAuthorizationScopes.fullName,
-        ],
-      );
-      final token = credential.identityToken;
-      if (token == null) {
-        setState(() => _error = 'Apple returned no identity token');
-        return;
-      }
-      // Apple only returns the name on the FIRST sign-in and as
-      // separate fields (not inside the id_token). Forward it via the
-      // demo_name channel so the backend picks it up.
-      final firstLoginName = [
-        credential.givenName ?? '',
-        credential.familyName ?? '',
-      ].where((s) => s.isNotEmpty).join(' ').trim();
-      await _finish(
-        'apple', token,
-        demoName: firstLoginName.isEmpty ? null : firstLoginName,
-      );
-    } catch (e) {
-      setState(() => _error =
-          'Apple sign-in unavailable (needs iOS platform + APPLE_APP_ID): $e');
-    }
-  }
+  // _signInWithApple removed — Apple sign-in comes back when we
+  // ship iOS (Apple App Store rule §4.8 requires it for any app
+  // that offers a 3rd-party login option).
 
   Future<void> _signInWithFacebook() async {
     try {
@@ -168,19 +144,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  Future<void> _signInDemo() async {
-    final result = await showDialog<_DemoInput>(
-      context: context,
-      builder: (context) => const _DemoLoginDialog(),
-    );
-    if (result == null) return;
-    await _finish(
-      'demo',
-      'demo-token',
-      demoEmail: result.email,
-      demoName: result.name,
-    );
-  }
+  // _signInDemo removed 2026-08-30.
 
   @override
   Widget build(BuildContext context) {
@@ -209,12 +173,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const Spacer(),
               _OAuthButton(
-                icon: Icons.apple,
-                label: l.loginContinueApple,
-                onPressed: _busy ? null : _signInWithApple,
-              ),
-              const SizedBox(height: Tokens.space12),
-              _OAuthButton(
                 icon: Icons.g_mobiledata,
                 label: l.loginContinueGoogle,
                 onPressed: _busy ? null : _signInWithGoogle,
@@ -226,26 +184,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 onPressed: _busy ? null : _signInWithFacebook,
               ),
               const SizedBox(height: Tokens.space16),
-              Row(
-                children: [
-                  const Expanded(child: Divider()),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Tokens.space12,
-                    ),
-                    child: Text(l.loginDivider, style: t.bodySmall),
-                  ),
-                  const Expanded(child: Divider()),
-                ],
-              ),
-              const SizedBox(height: Tokens.space16),
-              PrimaryCta(
-                label: _busy ? l.loginBusy : l.loginContinueDemo,
-                icon: _busy ? null : Icons.person_outline,
-                loading: _busy,
-                onPressed: _signInDemo,
-              ),
-              const SizedBox(height: Tokens.space16),
+              // Demo login removed 2026-08-30 — Google covers
+              // ~95 % of Android users and demo accounts kept
+              // being mistaken for real ones (users lost data
+              // when the ephemeral session was wiped). Facebook
+              // sign-in button above stays as secondary path.
               if (_error != null)
                 Text(
                   _error!,
@@ -294,61 +237,5 @@ class _OAuthButton extends StatelessWidget {
   }
 }
 
-class _DemoInput {
-  const _DemoInput(this.name, this.email);
-  final String name;
-  final String email;
-}
-
-class _DemoLoginDialog extends StatefulWidget {
-  const _DemoLoginDialog();
-
-  @override
-  State<_DemoLoginDialog> createState() => _DemoLoginDialogState();
-}
-
-class _DemoLoginDialogState extends State<_DemoLoginDialog> {
-  final _name = TextEditingController();
-  final _email = TextEditingController();
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _email.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Continue as demo'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-            controller: _name,
-            decoration: const InputDecoration(labelText: 'Name (optional)'),
-          ),
-          const SizedBox(height: Tokens.space8),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Email (optional)'),
-          ),
-        ],
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(
-            _DemoInput(_name.text.trim(), _email.text.trim()),
-          ),
-          child: const Text('Continue'),
-        ),
-      ],
-    );
-  }
-}
+// _DemoInput + _DemoLoginDialog removed 2026-08-30 with the
+// demo login path. See comment near the removed button above.

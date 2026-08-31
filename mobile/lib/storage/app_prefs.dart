@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/models.dart';
 import '../domain/auth_user.dart';
+import '../domain/emergency_contact.dart';
 import '../domain/favorite_place.dart';
 import '../domain/trip_profile.dart';
 import '../domain/units.dart';
@@ -22,6 +23,9 @@ class AppPrefs {
   // aware of the killer features shipped since their install.
   static const _onboardingKey = 'onboarding_shown.v2';
   static const _themeModeKey = 'theme_mode.v1';
+  static const _themePresetKey = 'theme_preset.v1';
+  static const _themeDynamicKey = 'theme_dynamic.v1';
+  static const _themeOledKey = 'theme_oled.v1';
   static const _localeKey = 'locale.v1';
   static const _unitSystemKey = 'unit_system.v1';
   static const _tripProfileKey = 'trip_profile.v1';
@@ -32,7 +36,10 @@ class AppPrefs {
   static const _favoriteHotelsKey = 'favorite_hotels.v1';
   static const _favoriteRestaurantsKey = 'favorite_restaurants.v1';
   static const _favoritePlacesKey = 'favorite_places.v1';
+  static const _emergencyContactsKey = 'emergency_contacts.v1';
+  static const _currencyCodeKey = 'currency_code.v1';
   static const _recentSearchesLimit = 8;
+  static const _emergencyContactsLimit = 3;
 
   final SharedPreferences _prefs;
 
@@ -62,6 +69,29 @@ class AppPrefs {
           ThemeMode.system => 'system',
         },
       );
+
+  /// Curated colour-scheme preset (Sunset / Ocean / Forest).
+  /// Ignored when [themeDynamicEnabled] is true and dynamic colour
+  /// is available on the device (Android 12+). Stored as the enum
+  /// value's short slug.
+  String get themePreset => _prefs.getString(_themePresetKey) ?? 'forest';
+  Future<void> setThemePreset(String preset) =>
+      _prefs.setString(_themePresetKey, preset);
+
+  /// Material You dynamic colour. When true and the device
+  /// exposes system colours (Android 12+), we seed the ColorScheme
+  /// from the user's wallpaper instead of the preset. Falls back
+  /// silently to the preset on unsupported devices / iOS.
+  bool get themeDynamicEnabled => _prefs.getBool(_themeDynamicKey) ?? false;
+  Future<void> setThemeDynamicEnabled(bool value) =>
+      _prefs.setBool(_themeDynamicKey, value);
+
+  /// Pure-black background in dark mode (OLED battery win). No
+  /// effect in light mode. Off by default so the palette stays
+  /// consistent for beta testers.
+  bool get themeOledEnabled => _prefs.getBool(_themeOledKey) ?? false;
+  Future<void> setThemeOledEnabled(bool value) =>
+      _prefs.setBool(_themeOledKey, value);
 
   /// User-picked locale override, or null meaning "follow system".
   /// Stored as a plain BCP-47 language tag (`en`, `es`, `fr`, `it`, `de`).
@@ -266,6 +296,42 @@ class AppPrefs {
     await _prefs.setStringList(
       _favoritePlacesKey,
       next.map((p) => jsonEncode(p.toJson())).toList(),
+    );
+  }
+
+  /// Emergency contacts for crash detection. Up to
+  /// [_emergencyContactsLimit] persons receive an SMS with the
+  /// impact location when the Companion detects a crash.
+  List<EmergencyContact> get emergencyContacts {
+    final raw = _prefs.getStringList(_emergencyContactsKey) ??
+        const <String>[];
+    final out = <EmergencyContact>[];
+    for (final s in raw) {
+      try {
+        out.add(EmergencyContact.fromJson(
+          jsonDecode(s) as Map<String, dynamic>,
+        ));
+      } catch (_) {
+        // Skip corrupted entries silently.
+      }
+    }
+    return out;
+  }
+
+  /// Currency code (ISO-4217) the user prefers to see costs in.
+  /// Defaults to EUR — backend always emits EUR, conversion is
+  /// client-side via `CurrencyService`.
+  String get currencyCode => _prefs.getString(_currencyCodeKey) ?? 'EUR';
+
+  Future<void> setCurrencyCode(String code) async {
+    await _prefs.setString(_currencyCodeKey, code);
+  }
+
+  Future<void> setEmergencyContacts(List<EmergencyContact> list) async {
+    final capped = list.take(_emergencyContactsLimit).toList();
+    await _prefs.setStringList(
+      _emergencyContactsKey,
+      capped.map((c) => jsonEncode(c.toJson())).toList(),
     );
   }
 

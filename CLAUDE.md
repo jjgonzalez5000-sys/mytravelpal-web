@@ -63,6 +63,45 @@ flutter install
 
 ## Backlog
 
+**Real APIs migration (prio ALTA 2026-08-30, ~1-2 días)**: sustituir
+las heurísticas actuales por APIs de producción. El plan concreto:
+- **Peajes**: TollGuru API ($5-30/mo). Ya tenemos el provider
+  cableado (`providers/tollguru.py`), solo falta activar la key.
+- **Gasolineras Alemania**: Tankerkönig (free con registro).
+- **Adverse events**: EFFIS fires ya activo. USGS earthquakes free.
+  Copernicus EMS landslides free. Añadir wire-ups.
+- **Hoteles precios reales**: Amadeus for Developers (2k reqs/mes
+  free) como MVP; Booking Affiliate cuando pase el partner review.
+- **Restaurantes**: TripAdvisor Content API o Google Places para
+  ratings reales. Ambos paid (~$17/1k requests Google Places).
+Cost estimate ya en `project_launch_plan.md`. Retomar cuando el
+usuario diga "vamos con las APIs reales".
+
+**Facebook login (aplazado 2026-08-29)**: infraestructura cableada
+en manifest + strings.xml (placeholders `REPLACE_WITH_FACEBOOK_APP_ID`).
+Falta que el usuario complete el registro en developers.facebook.com
+y pase el App ID + Client Token. Meta signup bug con verificación
+por email nos bloqueó. Cuando lo tengamos, 5 min de trabajo:
+sustituir 2 valores + añadir key hash release en la Android platform.
+Coste 0. Prioridad baja: Google login cubre el grueso de usuarios
+Android.
+
+**Weather widget en pickers origen/destino** (idea 2026-08-29):
+Mostrar un mini-widget del tiempo actual junto a los campos "Desde"
+y "A" del PlanScreen (icon + temp actual). Tap → sheet con forecast
+de 7 días (Open-Meteo daily endpoint, gratis). Ayuda al planner a
+decidir si posponer el viaje. Coste: 1-2 h wire-up.
+
+**Reverse geocode con dirección completa** (2026-08-29): el botón
+"Usar mi ubicación actual" resuelve al pueblo/ciudad, pero no a la
+calle + número. Bug de precisión: la API Geoapify reverse ya soporta
+`type=address` pero probablemente estamos pasando el default `city`.
+Fix en `providers/geoapify_poi.py` o donde viva reverse_geocode:
+cambiar el `type` param y añadir `street` y `housenumber` al
+`GeocodeResult.displayName` cuando estén disponibles. Coste: 1 h.
+
+## Backlog (existing)
+
 - TollGuru integration (real toll booth data) — code ready, needs API key
 - Tankerkönig (Germany fuel) — needs API key
 - Firebase Crashlytics — needs google-services.json

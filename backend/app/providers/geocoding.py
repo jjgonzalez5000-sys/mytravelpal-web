@@ -178,7 +178,13 @@ class NominatimGeocodingProvider:
             "lon": f"{lon:.6f}",
             "format": "json",
             "addressdetails": "1",
-            "zoom": "12",  # town / suburb level — meaningful place labels
+            # Building-level precision (was 12 = town). Testers
+            # reported "usar mi ubicación" only returned the
+            # town name when they expected the actual street +
+            # number. zoom=18 is Nominatim's finest granularity
+            # and its display_name then reads e.g.
+            # "12, Rathausgasse, Unterägeri, 6314, Zug, Suisse".
+            "zoom": "18",
         }
         try:
             response = await self._client.get(
@@ -208,11 +214,30 @@ class NominatimGeocodingProvider:
             r_lon = float(item["lon"])
         except (KeyError, ValueError):
             return None
-        display = (
-            item.get("display_name")
-            or f"{address.get('city') or address.get('town') or 'Unknown'}, "
-            f"{country.value}"
+        # Build a compact display that reads "Road N, City" so the
+        # mobile client's `.split(",").first` shows the street (not
+        # just the house number, which is what Nominatim's raw
+        # `display_name` returns as the first segment). Falls back
+        # to the raw display when we don't have enough parts, and
+        # to city+country when even that's missing.
+        road = address.get("road")
+        housenumber = address.get("house_number")
+        city = (
+            address.get("city")
+            or address.get("town")
+            or address.get("village")
+            or address.get("suburb")
+            or address.get("municipality")
         )
+        if road and housenumber and city:
+            display = f"{road} {housenumber}, {city}"
+        elif road and city:
+            display = f"{road}, {city}"
+        else:
+            display = (
+                item.get("display_name")
+                or f"{city or 'Unknown'}, {country.value}"
+            )
         return GeocodeResult(
             display_name=display,
             coordinate=Coordinate(lat=r_lat, lon=r_lon),

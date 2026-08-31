@@ -16,6 +16,7 @@ class HotelPreferences {
     this.requireWifi = false,
     this.requireWheelchair = false,
     this.includeOtherAccommodation = false,
+    this.destinationRadiusKm = 40,
   });
 
   final bool enabled;
@@ -26,6 +27,11 @@ class HotelPreferences {
   final bool requireWifi;
   final bool requireWheelchair;
   final bool includeOtherAccommodation;
+  /// Extra hotel-search radius around the destination. 5–100 km.
+  /// Default 40 matches the backend default; users can push it
+  /// higher for rural destinations where the corridor pass
+  /// returns a thin pool.
+  final int destinationRadiusKm;
 
   PriceBand get priceBand {
     if (priceBands.length == 1) return priceBands.first;
@@ -49,6 +55,7 @@ class HotelPreferences {
     bool? requireWifi,
     bool? requireWheelchair,
     bool? includeOtherAccommodation,
+    int? destinationRadiusKm,
   }) =>
       HotelPreferences(
         enabled: enabled ?? this.enabled,
@@ -60,6 +67,8 @@ class HotelPreferences {
         requireWheelchair: requireWheelchair ?? this.requireWheelchair,
         includeOtherAccommodation:
             includeOtherAccommodation ?? this.includeOtherAccommodation,
+        destinationRadiusKm:
+            destinationRadiusKm ?? this.destinationRadiusKm,
       );
 }
 
@@ -154,6 +163,34 @@ class HotelPreferencesSection extends StatelessWidget {
                 label: Text(l.hotelFilterOtherTypes),
                 onSelected: (v) =>
                     onChanged(value.copyWith(includeOtherAccommodation: v)),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space12),
+          // Destination radius — how far from the final stop we
+          // scan for hotels. Rural destinations benefit from
+          // pushing it up; city centres are fine at 40 km.
+          Row(
+            children: [
+              Text(l.hotelPrefDestRadiusLabel, style: t.bodyMedium),
+              const SizedBox(width: Tokens.space8),
+              Expanded(
+                child: Slider(
+                  min: 10, max: 100, divisions: 9,
+                  value: value.destinationRadiusKm.toDouble(),
+                  label: '${value.destinationRadiusKm} km',
+                  onChanged: (v) => onChanged(
+                    value.copyWith(destinationRadiusKm: v.round()),
+                  ),
+                ),
+              ),
+              SizedBox(
+                width: 48,
+                child: Text(
+                  '${value.destinationRadiusKm} km',
+                  textAlign: TextAlign.end,
+                  style: t.bodyMedium,
+                ),
               ),
             ],
           ),

@@ -418,6 +418,73 @@ COUNTRIES: dict[str, CountryData] = {
             ("Vilnius, Lithuania", 54.6872, 25.2797),
         ),
     ),
+    # -- Balkans + Andorra (added 2026-08-30) ---------------------------------
+    # Values are approximations from open sources (Wiki, Numbeo,
+    # tourism ministries). Tune with real usage once we have field
+    # data from testers.
+    "AD": CountryData(
+        "AD", "Andorra", "ad",
+        (42.43, 42.66, 1.40, 1.79),
+        toll_per_km_eur=0.0, vignette_eur=0.0,
+        hotel_anchor_eur=110.0, restaurant_anchor_eur=25.0,
+        fuel_petrol_anchor_eur=1.45,
+        sample_cities=(
+            ("Andorra la Vella, Andorra", 42.5063, 1.5218),
+        ),
+    ),
+    "BA": CountryData(
+        "BA", "Bosnia and Herzegovina", "ba",
+        (42.55, 45.28, 15.72, 19.62),
+        toll_per_km_eur=0.03, vignette_eur=0.0,
+        hotel_anchor_eur=55.0, restaurant_anchor_eur=12.0,
+        fuel_petrol_anchor_eur=1.35,
+        sample_cities=(
+            ("Sarajevo, Bosnia and Herzegovina", 43.8563, 18.4131),
+            ("Mostar, Bosnia and Herzegovina", 43.3438, 17.8078),
+        ),
+    ),
+    "RS": CountryData(
+        "RS", "Serbia", "rs",
+        (42.23, 46.19, 18.82, 23.00),
+        toll_per_km_eur=0.05, vignette_eur=0.0,
+        hotel_anchor_eur=60.0, restaurant_anchor_eur=13.0,
+        fuel_petrol_anchor_eur=1.55,
+        sample_cities=(
+            ("Beograd, Serbia", 44.7866, 20.4489),
+            ("Novi Sad, Serbia", 45.2671, 19.8335),
+        ),
+    ),
+    "ME": CountryData(
+        "ME", "Montenegro", "me",
+        (41.85, 43.56, 18.44, 20.36),
+        toll_per_km_eur=0.04, vignette_eur=0.0,
+        hotel_anchor_eur=70.0, restaurant_anchor_eur=15.0,
+        fuel_petrol_anchor_eur=1.45,
+        sample_cities=(
+            ("Podgorica, Montenegro", 42.4304, 19.2594),
+            ("Kotor, Montenegro", 42.4247, 18.7712),
+        ),
+    ),
+    "MK": CountryData(
+        "MK", "North Macedonia", "mk",
+        (40.85, 42.37, 20.45, 23.03),
+        toll_per_km_eur=0.03, vignette_eur=0.0,
+        hotel_anchor_eur=55.0, restaurant_anchor_eur=11.0,
+        fuel_petrol_anchor_eur=1.40,
+        sample_cities=(
+            ("Skopje, North Macedonia", 41.9973, 21.4280),
+        ),
+    ),
+    "AL": CountryData(
+        "AL", "Albania", "al",
+        (39.62, 42.66, 19.28, 21.05),
+        toll_per_km_eur=0.02, vignette_eur=0.0,
+        hotel_anchor_eur=50.0, restaurant_anchor_eur=10.0,
+        fuel_petrol_anchor_eur=1.55,
+        sample_cities=(
+            ("Tiranë, Albania", 41.3275, 19.8187),
+        ),
+    ),
 }
 
 
@@ -427,8 +494,13 @@ COUNTRIES: dict[str, CountryData] = {
 # spuriously covers a neighbour (NO's box is very wide east–west and
 # catches SE; SE has to be checked first).
 _PRIORITY: tuple[str, ...] = (
-    "LU", "CY", "MT", "IS",
+    # Tiniest first (Andorra + microstates handled first so their
+    # small bbox wins over neighbouring Spain / France).
+    "AD", "LU", "CY", "MT", "IS",
     "CH", "AT", "SI", "SK", "BE", "NL", "DK", "IE",
+    # Balkans slotted before larger neighbours so BA doesn't get
+    # spuriously matched as HR, etc.
+    "ME", "MK", "AL", "BA", "RS",
     "HR", "PT", "CZ", "HU", "GR", "LT", "LV", "EE", "BG", "RO",
     "SE", "FI", "IT", "PL", "GB",
     "NO",

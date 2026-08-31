@@ -24,6 +24,7 @@ from dataclasses import replace
 from app.domain import Country, Route
 from app.providers.fuel import FuelPrice
 from app.providers.fuel_gov import COVERED_COUNTRIES, GovFuelProvider
+from app.providers.fuel_here import HereFuelProvider
 from app.providers.geoapify_poi import GeoapifyFuelProvider
 from app.providers.nominatim_poi import NominatimFuelProvider
 
@@ -37,9 +38,14 @@ class HybridFuelProvider:
         self,
         gov: GovFuelProvider | None = None,
         nominatim: NominatimFuelProvider | None = None,
+        here: HereFuelProvider | None = None,
     ) -> None:
         self._gov = gov or GovFuelProvider()
         self._nominatim = nominatim or NominatimFuelProvider()
+        # HERE Fuel Prices — real €/L for the 25+ countries the
+        # gov feeds don't cover. Silently no-ops when the API key
+        # env var is missing (local dev, forks without credentials).
+        self._here = here or HereFuelProvider()
 
     async def prices_along(
         self, route: Route, *, fuel_type: str | None = None,
@@ -62,29 +68,52 @@ class HybridFuelProvider:
 
         # Figure out which countries the route crosses but we DON'T have
         # a real-price feed for. If every country is covered we skip the
-        # Nominatim call entirely — it's the common case for ES/FR/IT
+        # fallback calls entirely — it's the common case for ES/FR/IT
         # trips and avoids a wasted external request.
         crossed = set(route.countries_crossed or ())
         uncovered = crossed - COVERED_COUNTRIES
         if not uncovered and crossed:
             return gov
 
+        # HERE first — real prices for the uncovered countries.
+        # Nominatim only fills the geographic gap when HERE returns
+        # nothing (key missing, quota exhausted, weird region).
         try:
-            nominatim = await self._nominatim.prices_along(route)
-        except Exception as exc:  # noqa: BLE001 - never let fallback crash /plan
-            _log.warning("Nominatim fuel fallback failed: %r", exc)
-            return gov
+            here = await self._here.prices_along(route)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("HERE fuel fallback failed: %r", exc)
+            here = ()
 
         gov_cells = {_cell(p) for p in gov}
         merged: list[FuelPrice] = list(gov)
-        for p in nominatim:
-            # Skip Nominatim stations in countries where gov has data —
-            # gov is always more complete + carries real prices.
+        here_cells: set[tuple[int, int] | None] = set(gov_cells)
+        for p in here:
+            # Never let HERE overwrite gov coverage.
             if p.country in COVERED_COUNTRIES:
                 continue
-            if _cell(p) in gov_cells:
+            cell = _cell(p)
+            if cell in here_cells:
                 continue
+            here_cells.add(cell)
+            merged.append(p)
+
+        # Nominatim as final safety net — surface the station even
+        # without a price when both HERE and gov came up empty for
+        # that coord.
+        try:
+            nominatim = await self._nominatim.prices_along(route)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Nominatim fuel fallback failed: %r", exc)
+            nominatim = ()
+        for p in nominatim:
+            if p.country in COVERED_COUNTRIES:
+                continue
+            cell = _cell(p)
+            if cell in here_cells:
+                continue
+            here_cells.add(cell)
             merged.append(replace(p, price_available=False))
+
         merged.sort(key=lambda p: p.distance_from_origin_km)
         return tuple(merged)
 

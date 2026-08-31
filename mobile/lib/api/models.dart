@@ -214,11 +214,42 @@ class LatLon {
 }
 
 @immutable
+/// Intermediate stop with an optional dwell time. `dwellNights = 0`
+/// (default) is a pass-through — router visits the coord but the
+/// plan doesn't stay. `dwellNights >= 1` forces the day plan to
+/// stay N nights at the coord and densifies hotels around it.
+@immutable
+class TripWaypoint {
+  const TripWaypoint({
+    required this.coordinate,
+    this.dwellNights = 0,
+    this.label,
+  });
+
+  final LatLon coordinate;
+  final int dwellNights;
+  final String? label;
+
+  Map<String, dynamic> toJson() => {
+        'lat': coordinate.lat,
+        'lon': coordinate.lon,
+        'dwell_nights': dwellNights,
+        if (label != null && label!.isNotEmpty) 'label': label,
+      };
+
+  TripWaypoint copyWith({int? dwellNights, String? label}) => TripWaypoint(
+        coordinate: coordinate,
+        dwellNights: dwellNights ?? this.dwellNights,
+        label: label ?? this.label,
+      );
+}
+
 class TripPlanRequest {
   const TripPlanRequest({
     required this.origin,
     required this.destination,
     required this.desiredDepartureAt,
+    this.waypoints = const [],
     this.countries,
     this.hotelMaxDetourMinutes,
     this.hotelPriceBand,
@@ -229,6 +260,7 @@ class TripPlanRequest {
     this.restaurantPriceBands,
     this.restaurantCuisines,
     this.hotelIncludeOther = false,
+    this.hotelDestinationRadiusKm,
     this.hotelConditions,
     this.restaurantConditions,
     this.includeAdverseEvents = false,
@@ -246,6 +278,10 @@ class TripPlanRequest {
   final LatLon origin;
   final LatLon destination;
   final DateTime desiredDepartureAt;
+
+  /// Intermediate stops the router visits in order between origin
+  /// and destination. Empty = point-to-point. Backend caps at 8.
+  final List<TripWaypoint> waypoints;
 
   /// Optional. When null the backend infers countries from the coordinates.
   final List<Country>? countries;
@@ -281,6 +317,9 @@ class TripPlanRequest {
   final List<String>? restaurantCuisines;
 
   final bool hotelIncludeOther;
+  /// Extra hotel-search radius around the destination (5–100 km).
+  /// Null means "use backend default (40 km)".
+  final int? hotelDestinationRadiusKm;
   final String? hotelConditions;
   final String? restaurantConditions;
 
@@ -325,6 +364,8 @@ class TripPlanRequest {
         'origin': origin.toJson(),
         'destination': destination.toJson(),
         'desired_departure_at': desiredDepartureAt.toIso8601String(),
+        if (waypoints.isNotEmpty)
+          'waypoints': waypoints.map((w) => w.toJson()).toList(),
         if (countries != null)
           'countries': countries!.map((c) => c.code).toList(),
         if (hotelMaxDetourMinutes != null)
@@ -346,6 +387,8 @@ class TripPlanRequest {
         if (restaurantCuisines != null && restaurantCuisines!.isNotEmpty)
           'restaurant_cuisines': restaurantCuisines,
         if (hotelIncludeOther) 'hotel_include_other': true,
+        if (hotelDestinationRadiusKm != null)
+          'hotel_destination_radius_km': hotelDestinationRadiusKm,
         if (hotelConditions != null && hotelConditions!.isNotEmpty)
           'hotel_conditions': hotelConditions,
         if (restaurantConditions != null && restaurantConditions!.isNotEmpty)
@@ -388,6 +431,19 @@ class AdverseEvent {
   final DateTime expiresAt;
   final LatLon coordinate;
   final Country? country;
+
+  /// Text to render as the event's primary caption. For events
+  /// generated automatically (weather, EFFIS, mock) the raw
+  /// `description` field is untranslated English ("Thunderstorm",
+  /// "Wildfire near motorway — heavy smoke.") — we replace it
+  /// with the localised type label so ES/FR/DE/IT/PT/CA drivers
+  /// don't see English strings. User-marked events keep their
+  /// original description because the reporter wrote it in their
+  /// own language.
+  String displayText(AppLocalizations l) {
+    if (source == 'user') return description;
+    return type.localized(l);
+  }
 
   factory AdverseEvent.fromJson(Map<String, dynamic> json) => AdverseEvent(
         id: json['id'] as String,
@@ -1422,6 +1478,7 @@ class DayPlan {
     required this.restStops,
     this.sleepAt,
     this.sleepCoord,
+    this.dwellLabel,
   });
 
   final int dayIndex;
@@ -1437,6 +1494,18 @@ class DayPlan {
   /// to rank hotels for the day's "sleep nearby" card. `null` for
   /// the trip's final day.
   final LatLon? sleepCoord;
+
+  /// When this day is anchored at a user-picked dwell waypoint,
+  /// backend sends the label (city / hotel name / whatever the
+  /// user typed when adding the stop). Mobile shows it in the day
+  /// header instead of the raw "km A → B" range which reads as
+  /// nonsense for stay-put days.
+  final String? dwellLabel;
+
+  /// True when this day is a stay-put day (no driving) at a dwell
+  /// waypoint — same fromKm/toKm and a dwellLabel present.
+  bool get isDwellDay =>
+      dwellLabel != null && (toKm - fromKm).abs() < 1.0;
 
   factory DayPlan.fromJson(Map<String, dynamic> j) => DayPlan(
         dayIndex: (j['day_index'] as num).toInt(),
@@ -1459,6 +1528,7 @@ class DayPlan {
                 lat: (j['sleep_lat'] as num).toDouble(),
                 lon: (j['sleep_lon'] as num).toDouble(),
               ),
+        dwellLabel: j['dwell_label'] as String?,
       );
 }
 
@@ -1482,5 +1552,310 @@ class NarrativeResponse {
         originName: json['origin_name'] as String,
         destinationName: json['destination_name'] as String,
         generatedAt: DateTime.parse(json['generated_at'] as String),
+      );
+}
+
+/// Snapshot the client posts to `/v1/companion/tick` every ~60s
+/// while the Companion drive mode is active. The server-side
+/// engine consumes this to decide which recommendation cards to
+/// surface — see `backend/app/api/v1/companion.py`.
+@immutable
+class CompanionTickRequest {
+  const CompanionTickRequest({
+    required this.lat,
+    required this.lon,
+    this.speedKmh,
+    this.headingDeg,
+    this.drivingTimeHours = 0.0,
+    this.breakIntervalHours = 2.0,
+    this.alertWeather = true,
+    this.alertFuel = true,
+    this.alertBorder = true,
+    this.alertToll = true,
+    this.alertHotel = true,
+    this.alertCriticalAdverse = true,
+    this.suggestBreak = false,
+    this.fatigueStopSuggestion = false,
+    this.hasKids = false,
+    this.hasPets = false,
+    this.bedtimeHour = 22,
+    this.dismissedKinds = const [],
+  });
+
+  final double lat;
+  final double lon;
+  final double? speedKmh;
+  final double? headingDeg;
+  final double drivingTimeHours;
+  final double breakIntervalHours;
+  final bool alertWeather;
+  final bool alertFuel;
+  final bool alertBorder;
+  final bool alertToll;
+  final bool alertHotel;
+  /// Critical adverse events (fires/floods/quakes) alerts. Default
+  /// ON — safety-first — but a first-class user preference so
+  /// drivers who consciously want silence can flip it OFF.
+  final bool alertCriticalAdverse;
+  /// Whether the user opted into break-timer suggestions at all.
+  /// When false, the client suppresses `break_interval_hours`
+  /// entirely and the backend rule is bypassed by sending an
+  /// interval so large it never fires.
+  final bool suggestBreak;
+  /// EXPERIMENTAL: pair every fatigue-timer fire with a "pull
+  /// over now" recommendation. Only meaningful when [suggestBreak]
+  /// is true. Off by default; the timer signal alone is noisy.
+  final bool fatigueStopSuggestion;
+  final bool hasKids;
+  final bool hasPets;
+  final int bedtimeHour;
+  final List<String> dismissedKinds;
+
+  Map<String, dynamic> toJson() => {
+        'lat': lat,
+        'lon': lon,
+        if (speedKmh != null) 'speed_kmh': speedKmh,
+        if (headingDeg != null) 'heading_deg': headingDeg,
+        'driving_time_hours': drivingTimeHours,
+        // When the driver opted out of break suggestions we send a
+        // huge interval so the backend rule never fires. Cheaper
+        // than adding a new field on both sides.
+        'break_interval_hours': suggestBreak ? breakIntervalHours : 999.0,
+        'alert_weather': alertWeather,
+        'alert_fuel': alertFuel,
+        'alert_border': alertBorder,
+        'alert_toll': alertToll,
+        'alert_hotel': alertHotel,
+        'alert_critical_adverse': alertCriticalAdverse,
+        'fatigue_stop_suggestion':
+            suggestBreak && fatigueStopSuggestion,
+        'has_kids': hasKids,
+        'has_pets': hasPets,
+        'bedtime_hour': bedtimeHour,
+        'dismissed_kinds': dismissedKinds,
+      };
+}
+
+/// One recommendation card the server returned. `priority` drives
+/// the render style — `critical` blocks the UI until the driver
+/// dismisses; others are stackable.
+@immutable
+class CompanionRecommendation {
+  const CompanionRecommendation({
+    required this.kind,
+    required this.priority,
+    required this.title,
+    required this.body,
+    this.speech,
+    this.lat,
+    this.lon,
+    this.distanceKm,
+    this.actions = const [],
+  });
+
+  final String kind;
+  final String priority;
+  final String title;
+  final String body;
+  final String? speech;
+  final double? lat;
+  final double? lon;
+  final double? distanceKm;
+  final List<CompanionAction> actions;
+
+  bool get isCritical => priority == 'critical';
+
+  factory CompanionRecommendation.fromJson(Map<String, dynamic> j) =>
+      CompanionRecommendation(
+        kind: j['kind'] as String,
+        priority: j['priority'] as String? ?? 'normal',
+        title: j['title'] as String,
+        body: j['body'] as String,
+        speech: j['speech'] as String?,
+        lat: (j['lat'] as num?)?.toDouble(),
+        lon: (j['lon'] as num?)?.toDouble(),
+        distanceKm: (j['distance_km'] as num?)?.toDouble(),
+        actions: (j['actions'] as List<dynamic>? ?? const [])
+            .map((a) =>
+                CompanionAction.fromJson(a as Map<String, dynamic>))
+            .toList(growable: false),
+      );
+}
+
+/// Trip Inspiration LLM response models. See
+/// `backend/app/api/v1/inspire.py`.
+@immutable
+class InspirePoi {
+  const InspirePoi({
+    required this.name,
+    required this.lat,
+    required this.lon,
+    required this.kind,
+    required this.note,
+  });
+
+  final String name;
+  final double lat;
+  final double lon;
+  final String kind;
+  final String note;
+
+  LatLon get coordinate => LatLon(lat: lat, lon: lon);
+
+  factory InspirePoi.fromJson(Map<String, dynamic> j) => InspirePoi(
+        name: j['name'] as String,
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+        kind: j['kind'] as String? ?? 'other',
+        note: j['note'] as String? ?? '',
+      );
+}
+
+@immutable
+class InspireDay {
+  const InspireDay({
+    required this.day,
+    required this.fromName,
+    required this.toName,
+    this.distanceKmEstimate,
+    this.drivingHoursEstimate,
+    this.waypoints = const [],
+    this.hotelArea,
+    this.highlights = '',
+  });
+
+  final int day;
+  final String fromName;
+  final String toName;
+  final double? distanceKmEstimate;
+  final double? drivingHoursEstimate;
+  final List<InspirePoi> waypoints;
+  final String? hotelArea;
+  final String highlights;
+
+  factory InspireDay.fromJson(Map<String, dynamic> j) => InspireDay(
+        day: (j['day'] as num).toInt(),
+        fromName: j['from_name'] as String,
+        toName: j['to_name'] as String,
+        distanceKmEstimate: (j['distance_km_estimate'] as num?)?.toDouble(),
+        drivingHoursEstimate:
+            (j['driving_hours_estimate'] as num?)?.toDouble(),
+        waypoints: (j['waypoints'] as List<dynamic>? ?? const [])
+            .map((w) => InspirePoi.fromJson(w as Map<String, dynamic>))
+            .toList(growable: false),
+        hotelArea: j['hotel_area'] as String?,
+        highlights: j['highlights'] as String? ?? '',
+      );
+}
+
+@immutable
+class InspireItinerary {
+  const InspireItinerary({
+    required this.summary,
+    required this.days,
+    this.totalDistanceKmEstimate,
+    this.estimatedBudgetEur,
+    this.suggestedDepartureDaysFromNow,
+    this.suggestedDepartureHour,
+  });
+
+  final String summary;
+  final List<InspireDay> days;
+  final double? totalDistanceKmEstimate;
+  final double? estimatedBudgetEur;
+  /// Timing hints the LLM inferred from the prompt. When the
+  /// user said "weekend" the LLM computes how many days from
+  /// today's weekday to next Friday and returns the offset here.
+  /// Null when the prompt gave no time signal.
+  final int? suggestedDepartureDaysFromNow;
+  final int? suggestedDepartureHour;
+
+  factory InspireItinerary.fromJson(Map<String, dynamic> j) =>
+      InspireItinerary(
+        summary: j['summary'] as String? ?? '',
+        days: (j['days'] as List<dynamic>? ?? const [])
+            .map((d) => InspireDay.fromJson(d as Map<String, dynamic>))
+            .toList(growable: false),
+        totalDistanceKmEstimate:
+            (j['total_distance_km_estimate'] as num?)?.toDouble(),
+        estimatedBudgetEur:
+            (j['estimated_budget_eur'] as num?)?.toDouble(),
+        suggestedDepartureDaysFromNow:
+            (j['suggested_departure_days_from_now'] as num?)?.toInt(),
+        suggestedDepartureHour:
+            (j['suggested_departure_hour'] as num?)?.toInt(),
+      );
+}
+
+@immutable
+class DailyForecast {
+  const DailyForecast({
+    required this.date,
+    required this.icon,
+    this.tempMaxC,
+    this.tempMinC,
+    this.precipitationMm,
+  });
+
+  final DateTime date;
+  final String icon;
+  final double? tempMaxC;
+  final double? tempMinC;
+  final double? precipitationMm;
+
+  factory DailyForecast.fromJson(Map<String, dynamic> j) => DailyForecast(
+        date: DateTime.parse(j['date'] as String),
+        icon: j['icon'] as String? ?? 'sunny',
+        tempMaxC: (j['temp_max_c'] as num?)?.toDouble(),
+        tempMinC: (j['temp_min_c'] as num?)?.toDouble(),
+        precipitationMm: (j['precipitation_mm'] as num?)?.toDouble(),
+      );
+}
+
+@immutable
+class WeatherPoint {
+  const WeatherPoint({
+    required this.lat,
+    required this.lon,
+    this.currentTempC,
+    this.currentIcon,
+    this.daily = const [],
+  });
+
+  final double lat;
+  final double lon;
+  final double? currentTempC;
+  final String? currentIcon;
+  final List<DailyForecast> daily;
+
+  factory WeatherPoint.fromJson(Map<String, dynamic> j) => WeatherPoint(
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+        currentTempC: (j['current_temp_c'] as num?)?.toDouble(),
+        currentIcon: j['current_icon'] as String?,
+        daily: (j['daily'] as List<dynamic>? ?? const [])
+            .map((d) => DailyForecast.fromJson(d as Map<String, dynamic>))
+            .toList(growable: false),
+      );
+}
+
+@immutable
+class CompanionAction {
+  const CompanionAction({
+    required this.kind,
+    required this.label,
+    this.payload = const {},
+  });
+
+  final String kind;
+  final String label;
+  final Map<String, dynamic> payload;
+
+  factory CompanionAction.fromJson(Map<String, dynamic> j) =>
+      CompanionAction(
+        kind: j['kind'] as String,
+        label: j['label'] as String,
+        payload:
+            (j['payload'] as Map<String, dynamic>?) ?? const {},
       );
 }

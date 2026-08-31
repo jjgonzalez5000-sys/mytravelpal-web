@@ -11,7 +11,7 @@ import '../services/biometric_auth.dart';
 import '../services/trip_session_persistence.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
-import 'plan_screen.dart';
+import 'app_shell.dart';
 import 'result_screen.dart';
 
 /// Splash — animated brand mark, then routes to onboarding (first launch)
@@ -34,6 +34,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // Enough time to see the mark animate in, not enough to feel padding.
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
+    // Grab the localised biometric prompt copy BEFORE any async
+    // gap so the system dialog matches the app locale even if the
+    // widget rebuilds mid-flight.
+    final l = AppLocalizations.of(context);
     final prefs = ref.read(appPrefsProvider);
     final auth = ref.read(authProvider);
     final Widget next;
@@ -47,15 +51,15 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       final bio = BiometricService.instance;
       if (await bio.isEnabled) {
         final ok = await bio.authenticate(
-          reason: 'Verify your identity to access MyTravelPal',
+          reason: l.biometricPromptReason,
         );
         if (!ok) {
           next = const LoginScreen();
         } else {
-          next = const PlanScreen();
+          next = const AppShell();
         }
       } else {
-        next = const PlanScreen();
+        next = const AppShell();
       }
       // Auth already valid from a previous session — the login
       // screen never runs on this launch, so we must wire the

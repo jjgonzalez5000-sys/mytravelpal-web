@@ -22,6 +22,7 @@ from app.domain.entities import (
     TripProfile,
     Vehicle,
     VehicleType,
+    Waypoint,
 )
 
 __all__ = [
@@ -48,4 +49,5 @@ __all__ = [
     "TripProfile",
     "Vehicle",
     "VehicleType",
+    "Waypoint",
 ]

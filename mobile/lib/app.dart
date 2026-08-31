@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,17 +18,36 @@ class MyTravelPalApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mode = ref.watch(themeModeProvider);
     final localeOverride = ref.watch(localeOverrideProvider);
-    return MaterialApp(
-      title: 'MyTravelPal',
-      navigatorKey: rootNavigatorKey,
-      theme: AppTheme.light(),
-      darkTheme: AppTheme.dark(),
-      themeMode: mode,
-      locale: localeOverride,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const SplashScreen(),
-      debugShowCheckedModeBanner: false,
+    final preset = ref.watch(themePresetProvider);
+    final wantsDynamic = ref.watch(themeDynamicProvider);
+    final oled = ref.watch(themeOledProvider);
+    // DynamicColorBuilder runs the wallpaper-colour probe once per
+    // context; on iOS + Android <12 both schemes come back null so
+    // we fall back to the picked preset transparently.
+    return DynamicColorBuilder(
+      builder: (lightDynamic, darkDynamic) {
+        final effectiveLight = wantsDynamic ? lightDynamic : null;
+        final effectiveDark = wantsDynamic ? darkDynamic : null;
+        return MaterialApp(
+          title: 'MyTravelPal',
+          navigatorKey: rootNavigatorKey,
+          theme: AppTheme.buildLight(
+            preset: preset,
+            dynamicScheme: effectiveLight,
+          ),
+          darkTheme: AppTheme.buildDark(
+            preset: preset,
+            dynamicScheme: effectiveDark,
+            oled: oled,
+          ),
+          themeMode: mode,
+          locale: localeOverride,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const SplashScreen(),
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }

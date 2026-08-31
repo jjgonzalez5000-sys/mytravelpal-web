@@ -71,11 +71,13 @@ class RoutingProvider(Protocol):
         destination: Coordinate,
         countries: tuple[Country, ...] | None = None,
         *,
+        waypoints: tuple[Coordinate, ...] = (),
         avoid_tolls: bool = False,
         avoid_motorways: bool = False,
         prefer_scenic: bool = False,
     ) -> Route:
-        """Return a Route from origin to destination.
+        """Return a Route from origin to destination, visiting any
+        intermediate `waypoints` in the given order.
 
         Flags map to per-provider engine hints:
         - `avoid_tolls` — OSRM `?exclude=toll`, mock: +15 % distance, 0 €
@@ -136,11 +138,19 @@ class MockRoutingProvider:
         destination: Coordinate,
         countries: tuple[Country, ...] | None = None,
         *,
+        waypoints: tuple[Coordinate, ...] = (),
         avoid_tolls: bool = False,
         avoid_motorways: bool = False,
         prefer_scenic: bool = False,
     ) -> Route:
-        straight_km = _haversine_km(origin, destination)
+        # Multi-stop total distance = sum of segment great-circle
+        # distances × road factor. Same as before when waypoints
+        # is empty.
+        stops = [origin, *waypoints, destination]
+        straight_km = sum(
+            _haversine_km(stops[i], stops[i + 1])
+            for i in range(len(stops) - 1)
+        )
         base_km = straight_km * self._ROAD_FACTOR
         distance_penalty = 1.0
         if avoid_tolls:
@@ -233,11 +243,17 @@ class OsrmRoutingProvider:
         destination: Coordinate,
         countries: tuple[Country, ...] | None = None,
         *,
+        waypoints: tuple[Coordinate, ...] = (),
         avoid_tolls: bool = False,
         avoid_motorways: bool = False,
         prefer_scenic: bool = False,  # noqa: ARG002 - see docstring
     ) -> Route:
-        coords = f"{origin.lon},{origin.lat};{destination.lon},{destination.lat}"
+        # Join origin + intermediate waypoints + destination as
+        # semicolon-separated `lon,lat` pairs (OSRM's convention).
+        # Public demo caps at ~10 total coords; the API layer
+        # already caps waypoints at 8 so we're safe.
+        stops = [origin, *waypoints, destination]
+        coords = ";".join(f"{c.lon},{c.lat}" for c in stops)
         params: dict[str, str] = {
             "geometries": "geojson",
             "overview": "full",
@@ -337,6 +353,7 @@ class FallbackRoutingProvider:
         destination: Coordinate,
         countries: tuple[Country, ...] | None = None,
         *,
+        waypoints: tuple[Coordinate, ...] = (),
         avoid_tolls: bool = False,
         avoid_motorways: bool = False,
         prefer_scenic: bool = False,
@@ -344,6 +361,7 @@ class FallbackRoutingProvider:
         try:
             return await self._primary.route(
                 origin, destination, countries,
+                waypoints=waypoints,
                 avoid_tolls=avoid_tolls, avoid_motorways=avoid_motorways,
                 prefer_scenic=prefer_scenic,
             )
@@ -351,6 +369,7 @@ class FallbackRoutingProvider:
             _log.warning("primary routing provider failed, using fallback: %s", exc)
             return await self._fallback.route(
                 origin, destination, countries,
+                waypoints=waypoints,
                 avoid_tolls=avoid_tolls, avoid_motorways=avoid_motorways,
                 prefer_scenic=prefer_scenic,
             )

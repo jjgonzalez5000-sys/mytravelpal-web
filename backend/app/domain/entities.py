@@ -42,6 +42,16 @@ class Country(str, Enum):
     EE = "EE"
     LV = "LV"
     LT = "LT"
+    # Balkans + Andorra (added 2026-08-30 — road-trip destinations
+    # tourists often cross). Data is best-effort approximation:
+    # per-km toll and fuel anchors come from official/wiki
+    # sources but may drift; tune with real usage.
+    AD = "AD"
+    BA = "BA"
+    RS = "RS"
+    ME = "ME"
+    MK = "MK"
+    AL = "AL"
 
 
 class VehicleType(str, Enum):
@@ -175,6 +185,21 @@ class Coordinate:
             raise ValueError(f"lat out of range: {self.lat}")
         if not -180.0 <= self.lon <= 180.0:
             raise ValueError(f"lon out of range: {self.lon}")
+
+
+@dataclass(frozen=True, slots=True)
+class Waypoint:
+    """An intermediate stop with a stay duration.
+
+    `dwell_nights == 0` is a pass-through via point (the router
+    still visits the coord but no day boundary is forced). `>= 1`
+    turns the waypoint into a multi-day anchor: the plan splits
+    days around it, sleeps happen there for `dwell_nights` nights,
+    and hotels get densified within a wide radius.
+    """
+    coordinate: Coordinate
+    dwell_nights: int = 0
+    label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,7 +1,37 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'design/tokens.dart';
+
+/// User-selectable colour preset. Each maps to a seed colour we
+/// feed to [ColorScheme.fromSeed] so light + dark stay balanced.
+/// `forest` is the historical hand-built palette and stays as the
+/// default so existing users don't see a jarring change on
+/// upgrade.
+enum ThemePreset {
+  forest, // original green-based palette
+  sunset, // coral → magenta, matches the v4 icon gradient
+  ocean,  // sea blue → teal
+  ;
+
+  String get slug => name;
+
+  static ThemePreset fromSlug(String? s) => switch (s) {
+        'sunset' => ThemePreset.sunset,
+        'ocean' => ThemePreset.ocean,
+        _ => ThemePreset.forest,
+      };
+
+  /// Seed colour used by [ColorScheme.fromSeed]. Picked to sit at
+  /// ~S:0.7 L:0.5 in HSL so the generated palette has room to
+  /// breathe in both light and dark modes.
+  Color get seed => switch (this) {
+        ThemePreset.forest => const Color(0xFF2F6B4E),
+        ThemePreset.sunset => const Color(0xFFF44F72),
+        ThemePreset.ocean  => const Color(0xFF1E7BC4),
+      };
+}
 
 /// Nordic-flavoured Material 3 theme. Light + dark share the same primary,
 /// swap neutral surfaces. Typography is Inter across the board — geometric,
@@ -9,8 +39,60 @@ import 'design/tokens.dart';
 class AppTheme {
   AppTheme._();
 
+  /// Legacy entry points — kept for tests and any leftover call
+  /// sites. Prefer [buildLight] / [buildDark] with a preset.
   static ThemeData light() => _build(_lightScheme, brightness: Brightness.light);
   static ThemeData dark() => _build(_darkScheme, brightness: Brightness.dark);
+
+  /// Build a light-mode [ThemeData] for the requested [preset].
+  /// When [dynamicScheme] is non-null (Material You on Android
+  /// 12+), it wins over the preset seed.
+  static ThemeData buildLight({
+    required ThemePreset preset,
+    ColorScheme? dynamicScheme,
+  }) {
+    if (preset == ThemePreset.forest && dynamicScheme == null) {
+      return _build(_lightScheme, brightness: Brightness.light);
+    }
+    final scheme = dynamicScheme?.harmonized() ??
+        ColorScheme.fromSeed(
+          seedColor: preset.seed,
+          brightness: Brightness.light,
+        );
+    return _build(scheme, brightness: Brightness.light);
+  }
+
+  /// Build a dark-mode [ThemeData] for the requested [preset].
+  /// [oled] forces surfaces to pure black so OLED panels can gain
+  /// battery + contrast without needing a whole separate theme.
+  static ThemeData buildDark({
+    required ThemePreset preset,
+    ColorScheme? dynamicScheme,
+    bool oled = false,
+  }) {
+    ColorScheme scheme;
+    if (dynamicScheme != null) {
+      scheme = dynamicScheme.harmonized();
+    } else if (preset == ThemePreset.forest) {
+      scheme = _darkScheme;
+    } else {
+      scheme = ColorScheme.fromSeed(
+        seedColor: preset.seed,
+        brightness: Brightness.dark,
+      );
+    }
+    if (oled) {
+      scheme = scheme.copyWith(
+        surface: Colors.black,
+        surfaceContainerLowest: Colors.black,
+        surfaceContainerLow: const Color(0xFF060606),
+        surfaceContainer: const Color(0xFF0A0A0A),
+        surfaceContainerHigh: const Color(0xFF101010),
+        surfaceContainerHighest: const Color(0xFF161616),
+      );
+    }
+    return _build(scheme, brightness: Brightness.dark);
+  }
 
   // -- Color schemes -------------------------------------------------------
 

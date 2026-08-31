@@ -5,11 +5,13 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart' as intl;
 
+import 'app_localizations_ca.dart';
 import 'app_localizations_de.dart';
 import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
 import 'app_localizations_fr.dart';
 import 'app_localizations_it.dart';
+import 'app_localizations_pt.dart';
 
 // ignore_for_file: type=lint
 
@@ -97,11 +99,13 @@ abstract class AppLocalizations {
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
+    Locale('ca'),
     Locale('de'),
     Locale('en'),
     Locale('es'),
     Locale('fr'),
-    Locale('it')
+    Locale('it'),
+    Locale('pt')
   ];
 
   /// No description provided for @appName.
@@ -308,6 +312,246 @@ abstract class AppLocalizations {
   /// **'Along the route'**
   String get planSectionOptional;
 
+  /// No description provided for @planMoreOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'More options'**
+  String get planMoreOptions;
+
+  /// No description provided for @planLessOptions.
+  ///
+  /// In en, this message translates to:
+  /// **'Fewer options'**
+  String get planLessOptions;
+
+  /// No description provided for @planRoundTripChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Round trip'**
+  String get planRoundTripChip;
+
+  /// No description provided for @planLeaveNowFabTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave now'**
+  String get planLeaveNowFabTitle;
+
+  /// No description provided for @leaveNowConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave now to'**
+  String get leaveNowConfirmTitle;
+
+  /// No description provided for @leaveNowConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Head to {name}?'**
+  String leaveNowConfirmBody(Object name);
+
+  /// No description provided for @leaveNowConfirmCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Let\'s go'**
+  String get leaveNowConfirmCta;
+
+  /// No description provided for @leaveNowConfirmChange.
+  ///
+  /// In en, this message translates to:
+  /// **'Change destination'**
+  String get leaveNowConfirmChange;
+
+  /// No description provided for @settingsBiometric.
+  ///
+  /// In en, this message translates to:
+  /// **'Biometric unlock'**
+  String get settingsBiometric;
+
+  /// No description provided for @settingsBiometricSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Use fingerprint or face to open the app'**
+  String get settingsBiometricSub;
+
+  /// No description provided for @settingsBiometricUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Not available on this device'**
+  String get settingsBiometricUnavailable;
+
+  /// No description provided for @settingsReplayTutorial.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay tutorial'**
+  String get settingsReplayTutorial;
+
+  /// No description provided for @settingsReplayTutorialSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Show the guided coach-marks again'**
+  String get settingsReplayTutorialSub;
+
+  /// No description provided for @settingsReplayTutorialToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Tutorial reset. Reopen Plan to see it.'**
+  String get settingsReplayTutorialToast;
+
+  /// No description provided for @settingsColorPreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Colour preset'**
+  String get settingsColorPreset;
+
+  /// No description provided for @settingsPresetForest.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest'**
+  String get settingsPresetForest;
+
+  /// No description provided for @settingsPresetSunset.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get settingsPresetSunset;
+
+  /// No description provided for @settingsPresetOcean.
+  ///
+  /// In en, this message translates to:
+  /// **'Ocean'**
+  String get settingsPresetOcean;
+
+  /// No description provided for @settingsDynamicColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Material You (dynamic)'**
+  String get settingsDynamicColor;
+
+  /// No description provided for @settingsDynamicColorSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Match colours to your wallpaper (Android 12+)'**
+  String get settingsDynamicColorSub;
+
+  /// No description provided for @settingsOled.
+  ///
+  /// In en, this message translates to:
+  /// **'Pure black (OLED)'**
+  String get settingsOled;
+
+  /// No description provided for @settingsOledSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Deeper blacks in dark mode, saves battery on OLED screens'**
+  String get settingsOledSub;
+
+  /// No description provided for @inspireTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip Inspiration'**
+  String get inspireTitle;
+
+  /// No description provided for @inspireHero.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe your dream road trip'**
+  String get inspireHero;
+
+  /// No description provided for @inspireSub.
+  ///
+  /// In en, this message translates to:
+  /// **'AI drafts a multi-day itinerary you can turn into a real plan in one tap.'**
+  String get inspireSub;
+
+  /// No description provided for @inspireHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Romantic 4-day drive through Italian lakes'**
+  String get inspireHint;
+
+  /// No description provided for @inspireGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspire me'**
+  String get inspireGenerate;
+
+  /// No description provided for @inspireGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Thinking up your trip…'**
+  String get inspireGenerating;
+
+  /// No description provided for @inspireError.
+  ///
+  /// In en, this message translates to:
+  /// **'The muse is offline. Try a different prompt or try again.'**
+  String get inspireError;
+
+  /// No description provided for @inspireResultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your proposed itinerary'**
+  String get inspireResultTitle;
+
+  /// No description provided for @inspireDayLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {n}'**
+  String inspireDayLabel(Object n);
+
+  /// No description provided for @inspireBudgetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated budget'**
+  String get inspireBudgetLabel;
+
+  /// No description provided for @inspireConvertToPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn into a real plan'**
+  String get inspireConvertToPlan;
+
+  /// No description provided for @inspireSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get inspireSave;
+
+  /// No description provided for @inspireSavedToast.
+  ///
+  /// In en, this message translates to:
+  /// **'Idea saved. Find it in your saved inspirations.'**
+  String get inspireSavedToast;
+
+  /// No description provided for @inspireExamplesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Or start from an idea'**
+  String get inspireExamplesTitle;
+
+  /// No description provided for @inspireExample1.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekend of castles in the Loire Valley'**
+  String get inspireExample1;
+
+  /// No description provided for @inspireExample2.
+  ///
+  /// In en, this message translates to:
+  /// **'Coastal drive Barcelona to Marseille'**
+  String get inspireExample2;
+
+  /// No description provided for @inspireExample3.
+  ///
+  /// In en, this message translates to:
+  /// **'5-day Alpine loop from Milan'**
+  String get inspireExample3;
+
+  /// No description provided for @inspireExample4.
+  ///
+  /// In en, this message translates to:
+  /// **'Northern Spain with kids, no highways'**
+  String get inspireExample4;
+
   /// No description provided for @planOverrideForTrip.
   ///
   /// In en, this message translates to:
@@ -343,6 +587,498 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved trips'**
   String get planTooltipSaved;
+
+  /// No description provided for @tabPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan'**
+  String get tabPlan;
+
+  /// No description provided for @tabCompanion.
+  ///
+  /// In en, this message translates to:
+  /// **'Companion'**
+  String get tabCompanion;
+
+  /// No description provided for @tabMyTrips.
+  ///
+  /// In en, this message translates to:
+  /// **'My trips'**
+  String get tabMyTrips;
+
+  /// No description provided for @companionHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your driving companion'**
+  String get companionHeroTitle;
+
+  /// No description provided for @companionHeroBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Set your conditions, then start. The app tracks your drive and recommends when to stop, where to eat, and where to refuel.'**
+  String get companionHeroBody;
+
+  /// No description provided for @companionConfigSection.
+  ///
+  /// In en, this message translates to:
+  /// **'CONFIGURATION'**
+  String get companionConfigSection;
+
+  /// No description provided for @companionBreakInterval.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest suggestions'**
+  String get companionBreakInterval;
+
+  /// No description provided for @companionSuggestBreak.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest a rest based on drive time'**
+  String get companionSuggestBreak;
+
+  /// No description provided for @companionBreakHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommend a stop every {hours} h of driving'**
+  String companionBreakHint(String hours);
+
+  /// No description provided for @companionFatigueStopExperimental.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest pulling over on fatigue (experimental)'**
+  String get companionFatigueStopExperimental;
+
+  /// No description provided for @companionFatigueStopHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Timer-only signal today — over-eager for short micro-pauses.'**
+  String get companionFatigueStopHint;
+
+  /// No description provided for @companionAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert types'**
+  String get companionAlerts;
+
+  /// No description provided for @companionAlertCriticalAdverse.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical incidents (fires, floods, quakes)'**
+  String get companionAlertCriticalAdverse;
+
+  /// No description provided for @companionAlertCriticalAdverseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended. Something serious happening near you — not just weather.'**
+  String get companionAlertCriticalAdverseHint;
+
+  /// No description provided for @companionAlertWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather ahead'**
+  String get companionAlertWeather;
+
+  /// No description provided for @companionAlertFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cheapest fuel along the route'**
+  String get companionAlertFuel;
+
+  /// No description provided for @companionAlertBorder.
+  ///
+  /// In en, this message translates to:
+  /// **'Border crossing info'**
+  String get companionAlertBorder;
+
+  /// No description provided for @companionAlertToll.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll skip suggestions'**
+  String get companionAlertToll;
+
+  /// No description provided for @companionAlertHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel when past bedtime + 5h of drive'**
+  String get companionAlertHotel;
+
+  /// No description provided for @companionStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start companion'**
+  String get companionStart;
+
+  /// No description provided for @companionComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Companion mode launching soon!'**
+  String get companionComingSoon;
+
+  /// No description provided for @companionDriveTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Companion drive'**
+  String get companionDriveTitle;
+
+  /// No description provided for @companionForegroundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'MyTravelPal is tracking your drive'**
+  String get companionForegroundBody;
+
+  /// No description provided for @companionLocationDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Location permission is required for the companion.'**
+  String get companionLocationDenied;
+
+  /// No description provided for @companionDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'driving'**
+  String get companionDriving;
+
+  /// No description provided for @companionAllGood.
+  ///
+  /// In en, this message translates to:
+  /// **'No alerts — enjoy the drive.'**
+  String get companionAllGood;
+
+  /// No description provided for @companionEndTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'End companion?'**
+  String get companionEndTitle;
+
+  /// No description provided for @companionEndBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking will stop and any active alerts will be lost.'**
+  String get companionEndBody;
+
+  /// No description provided for @companionEndKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep driving'**
+  String get companionEndKeep;
+
+  /// No description provided for @companionEndConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'End session'**
+  String get companionEndConfirm;
+
+  /// No description provided for @emergencyContactsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Emergency contacts'**
+  String get emergencyContactsTitle;
+
+  /// No description provided for @emergencyContactsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notified by SMS on crash detection'**
+  String get emergencyContactsSubtitle;
+
+  /// No description provided for @emergencyContactsBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to 3 people receive an SMS with your location if the companion detects a crash.'**
+  String get emergencyContactsBody;
+
+  /// No description provided for @emergencyContactsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts added yet.'**
+  String get emergencyContactsEmpty;
+
+  /// No description provided for @emergencyContactsAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get emergencyContactsAdd;
+
+  /// No description provided for @emergencyContactsPickFromDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick from contacts'**
+  String get emergencyContactsPickFromDevice;
+
+  /// No description provided for @emergencyContactsPickSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search contacts'**
+  String get emergencyContactsPickSearch;
+
+  /// No description provided for @emergencyContactsPermDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Contacts permission denied. You can still add manually.'**
+  String get emergencyContactsPermDenied;
+
+  /// No description provided for @emergencyContactsNoDevice.
+  ///
+  /// In en, this message translates to:
+  /// **'No contacts with a phone number on this device.'**
+  String get emergencyContactsNoDevice;
+
+  /// No description provided for @emergencyContactAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add emergency contact'**
+  String get emergencyContactAddTitle;
+
+  /// No description provided for @emergencyContactName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get emergencyContactName;
+
+  /// No description provided for @emergencyContactNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a name'**
+  String get emergencyContactNameRequired;
+
+  /// No description provided for @emergencyContactPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone (E.164)'**
+  String get emergencyContactPhone;
+
+  /// No description provided for @emergencyContactPhoneRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a phone number'**
+  String get emergencyContactPhoneRequired;
+
+  /// No description provided for @emergencyContactPhoneInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Use international format: +34612345678'**
+  String get emergencyContactPhoneInvalid;
+
+  /// No description provided for @cancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get cancel;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
+  /// No description provided for @sosTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Possible crash detected'**
+  String get sosTitle;
+
+  /// No description provided for @sosBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Impact peak {g}g · speed drop {speed} km/h.'**
+  String sosBody(String g, String speed);
+
+  /// No description provided for @sosCountdown.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String sosCountdown(int seconds);
+
+  /// No description provided for @sosImOk.
+  ///
+  /// In en, this message translates to:
+  /// **'I\'m OK — cancel'**
+  String get sosImOk;
+
+  /// No description provided for @sosCall112.
+  ///
+  /// In en, this message translates to:
+  /// **'Call 112'**
+  String get sosCall112;
+
+  /// No description provided for @sosCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert cancelled.'**
+  String get sosCancelled;
+
+  /// No description provided for @sosClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get sosClose;
+
+  /// No description provided for @sosNoContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'No emergency contacts configured. Add one in Settings.'**
+  String get sosNoContacts;
+
+  /// No description provided for @sosSmsDispatched.
+  ///
+  /// In en, this message translates to:
+  /// **'SMS prepared for {count} contact(s).'**
+  String sosSmsDispatched(int count);
+
+  /// No description provided for @sosSmsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open SMS. Call manually below.'**
+  String get sosSmsFailed;
+
+  /// No description provided for @sosSmsPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'MyTravelPal — possible crash detected. My location:'**
+  String get sosSmsPrefix;
+
+  /// No description provided for @weatherForecastTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'7-day forecast'**
+  String get weatherForecastTitle;
+
+  /// No description provided for @weatherToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get weatherToday;
+
+  /// No description provided for @leaveNowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave now with companion'**
+  String get leaveNowTitle;
+
+  /// No description provided for @leaveNowSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a destination and go — we track and guide you.'**
+  String get leaveNowSubtitle;
+
+  /// No description provided for @leaveNowSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you heading?'**
+  String get leaveNowSheetTitle;
+
+  /// No description provided for @leaveNowPremiumTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Premium feature'**
+  String get leaveNowPremiumTitle;
+
+  /// No description provided for @leaveNowPremiumBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\'Leave now\' bundles the full plan with the driving companion. Available with MyTravelPal Premium.'**
+  String get leaveNowPremiumBody;
+
+  /// No description provided for @leaveNowPremiumDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get leaveNowPremiumDismiss;
+
+  /// No description provided for @leaveNowPremiumCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Try 7 days free'**
+  String get leaveNowPremiumCta;
+
+  /// No description provided for @shareCardOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as image'**
+  String get shareCardOption;
+
+  /// No description provided for @shareCardOptionSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Perfect for Instagram Stories, WhatsApp, X'**
+  String get shareCardOptionSub;
+
+  /// No description provided for @shareLinkOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as link'**
+  String get shareLinkOption;
+
+  /// No description provided for @shareLinkOptionSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Text summary + deep link to reopen the plan'**
+  String get shareLinkOptionSub;
+
+  /// No description provided for @shareLiveHeadline.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving through {city}'**
+  String shareLiveHeadline(String city);
+
+  /// No description provided for @shareLiveCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving through {city} with MyTravelPal 🚗'**
+  String shareLiveCaption(String city);
+
+  /// No description provided for @planAddStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Add stop'**
+  String get planAddStop;
+
+  /// No description provided for @planStopDwellPassThrough.
+  ///
+  /// In en, this message translates to:
+  /// **'Just passing through'**
+  String get planStopDwellPassThrough;
+
+  /// No description provided for @planStopDwellOneNight.
+  ///
+  /// In en, this message translates to:
+  /// **'1 night'**
+  String get planStopDwellOneNight;
+
+  /// No description provided for @planStopDwellNights.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} nights'**
+  String planStopDwellNights(int n);
+
+  /// No description provided for @planStopDwellTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How long at {name}?'**
+  String planStopDwellTitle(Object name);
+
+  /// No description provided for @planAddStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New stop'**
+  String get planAddStopTitle;
+
+  /// No description provided for @planStopLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop {n}'**
+  String planStopLabel(int n);
+
+  /// No description provided for @planStopRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove stop'**
+  String get planStopRemove;
+
+  /// No description provided for @settingsCurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Currency'**
+  String get settingsCurrency;
 
   /// No description provided for @planErrorPickEndpoints.
   ///
@@ -650,6 +1386,48 @@ abstract class AppLocalizations {
   /// **'Clear'**
   String get commonClear;
 
+  /// No description provided for @commonShowNMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show {n} more'**
+  String commonShowNMore(int n);
+
+  /// No description provided for @commonShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get commonShowLess;
+
+  /// No description provided for @planLoadingElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s elapsed'**
+  String planLoadingElapsed(int seconds);
+
+  /// No description provided for @planLoadingLongCrossingCountries.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross-checking tolls across the countries you\'re crossing…'**
+  String get planLoadingLongCrossingCountries;
+
+  /// No description provided for @planLoadingLongScanningFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning government fuel-price feeds in ES / FR / IT…'**
+  String get planLoadingLongScanningFuel;
+
+  /// No description provided for @planLoadingLongBigTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Long trips take a bit more — pulling extra hotel and rest data.'**
+  String get planLoadingLongBigTrip;
+
+  /// No description provided for @planLoadingLongAlmostDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Almost there — final touches on the itinerary.'**
+  String get planLoadingLongAlmostDone;
+
   /// No description provided for @commonSave.
   ///
   /// In en, this message translates to:
@@ -835,6 +1613,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'My road trip via MyTravelPal'**
   String get shareTripSubject;
+
+  /// No description provided for @shareFormatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as…'**
+  String get shareFormatTitle;
+
+  /// No description provided for @shareFormatStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Story · 9:16'**
+  String get shareFormatStory;
+
+  /// No description provided for @shareFormatStorySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Instagram / TikTok / WhatsApp Stories'**
+  String get shareFormatStorySub;
+
+  /// No description provided for @shareFormatFeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Square · 1:1'**
+  String get shareFormatFeed;
+
+  /// No description provided for @shareFormatFeedSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Instagram feed, Facebook, LinkedIn'**
+  String get shareFormatFeedSub;
 
   /// No description provided for @shareTitle.
   ///
@@ -1662,7 +2470,7 @@ abstract class AppLocalizations {
   /// No description provided for @resultFuelCollapsedHint.
   ///
   /// In en, this message translates to:
-  /// **'Show all {count} stations found on the route'**
+  /// **'Show the {count} cheapest stations along the route'**
   String resultFuelCollapsedHint(int count);
 
   /// No description provided for @resultBestTimeVsFreeFlow.
@@ -1940,6 +2748,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'About'**
   String get settingsSectionAbout;
+
+  /// No description provided for @settingsSectionData.
+  ///
+  /// In en, this message translates to:
+  /// **'Your data'**
+  String get settingsSectionData;
+
+  /// No description provided for @settingsExportData.
+  ///
+  /// In en, this message translates to:
+  /// **'Download my data'**
+  String get settingsExportData;
+
+  /// No description provided for @settingsExportDataSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Get a JSON file with everything MyTravelPal holds about you.'**
+  String get settingsExportDataSub;
+
+  /// No description provided for @settingsExportError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t export data — check your connection.'**
+  String get settingsExportError;
+
+  /// No description provided for @settingsDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete my account'**
+  String get settingsDeleteAccount;
+
+  /// No description provided for @settingsDeleteAccountSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes your profile, saved trips and preferences permanently.'**
+  String get settingsDeleteAccountSub;
+
+  /// No description provided for @settingsDeleteAccountConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account?'**
+  String get settingsDeleteAccountConfirmTitle;
+
+  /// No description provided for @settingsDeleteAccountConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This deletes your profile and every saved trip from our servers. This action cannot be undone.'**
+  String get settingsDeleteAccountConfirmBody;
+
+  /// No description provided for @settingsDeleteAccountCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get settingsDeleteAccountCancel;
+
+  /// No description provided for @settingsDeleteAccountConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete forever'**
+  String get settingsDeleteAccountConfirm;
+
+  /// No description provided for @settingsDeleteAccountPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed out locally, but the server may still hold data. Try again from a stable connection.'**
+  String get settingsDeleteAccountPartial;
+
+  /// No description provided for @settingsSupport.
+  ///
+  /// In en, this message translates to:
+  /// **'Support & contact'**
+  String get settingsSupport;
+
+  /// No description provided for @settingsPrivacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get settingsPrivacyPolicy;
+
+  /// No description provided for @settingsTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'Terms of Service'**
+  String get settingsTerms;
 
   /// No description provided for @settingsVersion.
   ///
@@ -2686,6 +3578,18 @@ abstract class AppLocalizations {
   /// **'Finish driving around {time}'**
   String daySleepMarker(String time);
 
+  /// No description provided for @dayHeaderDwell.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {index} · {place}'**
+  String dayHeaderDwell(int index, String place);
+
+  /// No description provided for @daySleepStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Staying in {place}'**
+  String daySleepStay(String place);
+
   /// No description provided for @nextStopHeroLabel.
   ///
   /// In en, this message translates to:
@@ -3046,6 +3950,30 @@ abstract class AppLocalizations {
   /// **'Stars'**
   String get hotelPrefStarsLabel;
 
+  /// No description provided for @hotelPrefDestRadiusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Radius from destination'**
+  String get hotelPrefDestRadiusLabel;
+
+  /// No description provided for @biometricPromptReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify your identity to open MyTravelPal'**
+  String get biometricPromptReason;
+
+  /// No description provided for @biometricPromptSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm to enable biometric unlock'**
+  String get biometricPromptSettings;
+
+  /// No description provided for @planDepartureLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred departure'**
+  String get planDepartureLabel;
+
   /// No description provided for @hotelPrefStarsAny.
   ///
   /// In en, this message translates to:
@@ -3085,7 +4013,7 @@ abstract class AppLocalizations {
   /// No description provided for @hotelFilterOtherTypes.
   ///
   /// In en, this message translates to:
-  /// **'Guest houses & more'**
+  /// **'Apartments, houses & more'**
   String get hotelFilterOtherTypes;
 
   /// No description provided for @restaurantFilterVegetarian.
@@ -3569,8 +4497,15 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['de', 'en', 'es', 'fr', 'it'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+        'ca',
+        'de',
+        'en',
+        'es',
+        'fr',
+        'it',
+        'pt'
+      ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -3579,6 +4514,8 @@ class _AppLocalizationsDelegate
 AppLocalizations lookupAppLocalizations(Locale locale) {
   // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
+    case 'ca':
+      return AppLocalizationsCa();
     case 'de':
       return AppLocalizationsDe();
     case 'en':
@@ -3589,6 +4526,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsFr();
     case 'it':
       return AppLocalizationsIt();
+    case 'pt':
+      return AppLocalizationsPt();
   }
 
   throw FlutterError(

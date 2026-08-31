@@ -76,6 +76,15 @@ async def save_profile(
 async def delete_profile(
     user: AuthUser = Depends(current_user_required),
 ) -> dict[str, str]:
+    """Erase EVERY row we hold for this user (profile + saved trips
+    + anything future tables add). GDPR right-to-erasure endpoint
+    and the one wired to the "Borrar mi cuenta" button in the
+    mobile Settings screen.
+
+    Also exposed at `/v1/me/account` (DELETE) with a friendlier
+    name — this legacy path stays for backwards compat with clients
+    already shipped.
+    """
     if db_available():
         async with get_session() as session:
             from sqlalchemy import text
@@ -83,10 +92,69 @@ async def delete_profile(
                 text("DELETE FROM user_profiles WHERE user_id = :uid"),
                 {"uid": user.id},
             )
+            await session.execute(
+                text("DELETE FROM saved_trips WHERE user_id = :uid"),
+                {"uid": user.id},
+            )
             await session.commit()
     else:
         _PROFILES.pop(user.id, None)
+        _TRIPS.pop(user.id, None)
     return {"status": "deleted"}
+
+
+class ExportResponse(BaseModel):
+    """Full user-data dump for GDPR portability requests. Small
+    dataset (single-user, cap ~50 trips) so JSON in-response is
+    fine — no streaming needed. Client renders it as a downloadable
+    file.
+    """
+    user_id: str
+    email: str
+    profile: dict[str, Any] | None = None
+    trips: list[dict[str, Any]] = []
+
+
+@router.get("/export", response_model=ExportResponse)
+async def export_profile(
+    user: AuthUser = Depends(current_user_required),
+) -> ExportResponse:
+    """Download-my-data endpoint. Returns everything the backend
+    stores linked to this user. The mobile client offers a "Save
+    JSON" button in Settings that hits this and shares/saves the
+    payload.
+    """
+    profile: dict[str, Any] | None = None
+    trips: list[dict[str, Any]] = []
+    if db_available():
+        async with get_session() as session:
+            from sqlalchemy import text
+            prow = await session.execute(
+                text(
+                    "SELECT profile FROM user_profiles WHERE user_id = :uid"
+                ),
+                {"uid": user.id},
+            )
+            presult = prow.mappings().first()
+            if presult:
+                profile = presult["profile"]
+            trows = await session.execute(
+                text(
+                    "SELECT trip FROM saved_trips "
+                    "WHERE user_id = :uid ORDER BY saved_at DESC"
+                ),
+                {"uid": user.id},
+            )
+            trips = [r["trip"] for r in trows.mappings().all()]
+    else:
+        profile = _PROFILES.get(user.id)
+        trips = list(_TRIPS.get(user.id, []))
+    return ExportResponse(
+        user_id=user.id,
+        email=user.email,
+        profile=profile,
+        trips=trips,
+    )
 
 
 # --- Saved trips ---

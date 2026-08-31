@@ -19,21 +19,38 @@ import '../widgets/location_search_field.dart';
 import '../widgets/plan_loading_dialog.dart';
 import '../widgets/restaurant_preferences.dart';
 import '../widgets/travel_style_chip.dart';
+import '../widgets/weather_chip.dart';
 import 'dashboard_screen.dart';
 import 'favorites_screen.dart';
-import 'history_screen.dart';
 import 'mark_event_screen.dart';
 import 'settings_screen.dart';
+import 'inspire_screen.dart';
+import 'pick_location_screen.dart';
 import 'profile_screen.dart';
 import 'result_screen.dart';
 import '../services/app_tutorial.dart';
 
 class PlanScreen extends ConsumerStatefulWidget {
-  const PlanScreen({super.key, this.initialShared});
+  const PlanScreen({
+    super.key,
+    this.initialShared,
+    this.initialStops = const [],
+  });
 
   /// When arriving via a shared trip link, prefill the form with the
   /// origin / destination / departure so the user just taps Plan.
   final SharedTrip? initialShared;
+
+  /// Intermediate stops to seed the plan form with. Currently
+  /// used by the Trip Inspiration hand-off (`InspireScreen`) to
+  /// turn a multi-day itinerary's cities into waypoints between
+  /// origin and destination. Empty for the normal entry path.
+  /// May contain [GeocodeResult] (legacy, dwell=0) or
+  /// [PlannedStop] (place + dwell nights + optional label).
+  /// Trip Inspiration hand-off passes places with dwell info
+  /// embedded so multi-day itineraries land with the correct
+  /// stay durations.
+  final List<Object> initialStops;
 
   @override
   ConsumerState<PlanScreen> createState() => _PlanScreenState();
@@ -42,6 +59,11 @@ class PlanScreen extends ConsumerStatefulWidget {
 class _PlanScreenState extends ConsumerState<PlanScreen> {
   GeocodeResult? _origin;
   GeocodeResult? _destination;
+  // Intermediate stops between origin and destination, in the
+  // order the driver picked them. Empty = classic point-to-
+  // point. Backend caps at 8.
+  final List<PlannedStop> _stops = [];
+  static const _maxStops = 8;
   late DateTime _departure = _defaultDeparture();
 
   // Coach-mark tutorial GlobalKeys
@@ -84,6 +106,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   bool _isRoundTrip = false;
   late DateTime _returnDeparture = _defaultReturnDeparture();
 
+  /// Progressive disclosure: the three advanced toggles (alerts,
+  /// toll-free, route-variants) collapse behind a "Más opciones"
+  /// row by default so first-timers see only Hotels + Restaurants.
+  /// Power users expand once; the state does NOT persist across
+  /// launches — kept in memory only, per session.
+  bool _advancedOptionsExpanded = false;
+
   DateTime _defaultReturnDeparture() =>
       _departure.add(const Duration(days: 3));
 
@@ -109,6 +138,18 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       );
       _departure = incoming.departureAt.toLocal();
       // Note: we don't auto-submit — user confirms with the CTA.
+    }
+    if (widget.initialStops.isNotEmpty) {
+      // Capped at _maxStops so the router (backend) does not reject
+      // an oversized waypoint list. Extras are silently dropped —
+      // rare: LLM would need to propose >8 intermediate cities.
+      for (final raw in widget.initialStops.take(_maxStops)) {
+        if (raw is PlannedStop) {
+          _stops.add(raw);
+        } else if (raw is GeocodeResult) {
+          _stops.add(PlannedStop(place: raw));
+        }
+      }
     }
     // Show the coach-mark tutorial after the first frame so
     // GlobalKeys have been attached. Fires once, SharedPreferences
@@ -187,6 +228,115 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     return parts.isEmpty ? null : parts.join(',');
   }
 
+  /// "Salir ya" one-tap flow. Skips the plan form: uses current
+  /// GPS as origin, now as departure, current profile defaults.
+  /// Prompts only for the destination in an inline sheet, plans
+  /// in the background, then hands off to CompanionDriveScreen.
+  ///
+  /// Free users get a paywall preview instead of the actual flow
+  /// (per model C monetisation — this CTA is the primary funnel).
+  Future<void> _leaveNowQuickPlan() async {
+    final l = AppLocalizations.of(context);
+    final isPremium = ref.read(premiumProvider);
+    if (!isPremium) {
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(l.leaveNowPremiumTitle),
+          content: Text(l.leaveNowPremiumBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l.leaveNowPremiumDismiss),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(l.leaveNowPremiumCta),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    // If the form already has a destination filled in, ask the
+    // driver whether they want to head there — one-tap confirm
+    // beats forcing them to re-search a place they already picked.
+    // Otherwise fall through to the full-screen picker.
+    GeocodeResult? destination;
+    if (_destination != null) {
+      final choice = await showDialog<_LeaveNowChoice>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(l.leaveNowConfirmTitle),
+          content: Text(l.leaveNowConfirmBody(_destination!.displayName)),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.of(ctx).pop(_LeaveNowChoice.change),
+              child: Text(l.leaveNowConfirmChange),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.of(ctx).pop(_LeaveNowChoice.go),
+              child: Text(l.leaveNowConfirmCta),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || choice == null) return;
+      if (choice == _LeaveNowChoice.go) {
+        destination = _destination;
+      }
+    }
+    destination ??= await Navigator.of(context).push<GeocodeResult>(
+      MaterialPageRoute(
+        builder: (_) => PickLocationScreen(
+          title: l.leaveNowSheetTitle,
+          label: l.planTo,
+          geocode: ref.read(apiClientWithPremiumProvider).geocode,
+        ),
+      ),
+    );
+    if (destination == null || !mounted) return;
+    setState(() => _destination = destination);
+
+    // Resolve current GPS as origin.
+    final res = await ref.read(currentLocationServiceProvider).resolve();
+    if (!mounted) return;
+    if (res.place == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.locationUnavailable)),
+      );
+      return;
+    }
+    setState(() {
+      _origin = res.place;
+      _departure = _defaultDeparture();
+    });
+    // Reuse the full plan flow — it already does loading dialog,
+    // notifications, storage, everything.
+    await _submit();
+  }
+
+  /// Show a lightweight bottom sheet with a location picker so
+  /// the driver adds an intermediate stop without leaving the
+  /// plan form.
+  Future<GeocodeResult?> _pickStop(
+    BuildContext context,
+    Future<List<GeocodeResult>> Function(String) geocode,
+  ) async {
+    final l = AppLocalizations.of(context);
+    return Navigator.of(context).push<GeocodeResult>(
+      MaterialPageRoute(
+        builder: (_) => PickLocationScreen(
+          title: l.planAddStopTitle,
+          label: l.planStopLabel(_stops.length + 1),
+          geocode: geocode,
+        ),
+      ),
+    );
+  }
+
   Future<void> _submit() async {
     final origin = _origin;
     final destination = _destination;
@@ -204,13 +354,17 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     // the flow — the plan endpoint runs regardless. We pop it in the
     // `finally` so it disappears whether the plan succeeds, fails,
     // or the widget is disposed mid-request.
+    // Capture the ROOT navigator BEFORE any async gap. When
+    // MaterialApp rebuilds (e.g. DynamicColorBuilder returns
+    // wallpaper colours mid-flight) `Navigator.of(context)` from
+    // a stale build context may resolve to a detached navigator,
+    // silently no-op'ing the dismiss. `rootNavigator: true`
+    // guarantees we address the same navigator that owns the
+    // dialog route.
+    final rootNav = Navigator.of(context, rootNavigator: true);
     var dialogOpen = false;
     if (mounted) {
       dialogOpen = true;
-      // Build the step list from the ACTUAL request the user just
-      // submitted so we never claim to be "searching hotels" on a
-      // trip that isn't asking for any. Routing + traffic + fuel
-      // always run server-side; the rest are gated.
       final steps = <PlanStep>[
         PlanStep.routing,
         PlanStep.traffic,
@@ -221,10 +375,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         if (_tollAlternativeEnabled || _hourlyTollEnabled)
           PlanStep.tolls,
       ];
-      // Fire-and-forget: `showDialog` returns a Future that resolves
-      // when the dialog closes; we don't await it.
       unawaited(showDialog<void>(
         context: context,
+        useRootNavigator: true,
         barrierDismissible: false,
         builder: (_) => PlanLoadingDialog(steps: steps),
       ));
@@ -234,6 +387,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       final request = TripPlanRequest(
         origin: origin.coordinate,
         destination: destination.coordinate,
+        waypoints: _stops
+            .map((s) => TripWaypoint(
+                  coordinate: s.place.coordinate,
+                  dwellNights: s.dwellNights,
+                  label: s.place.displayName,
+                ))
+            .toList(),
         desiredDepartureAt: _departure,
         hotelMaxDetourMinutes:
             _hotelPrefs.enabled ? _hotelPrefs.maxDetourMinutes : null,
@@ -248,6 +408,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             : null,
         hotelIncludeOther: _hotelPrefs.enabled &&
             _hotelPrefs.includeOtherAccommodation,
+        hotelDestinationRadiusKm: _hotelPrefs.enabled
+            ? _hotelPrefs.destinationRadiusKm
+            : null,
         hotelConditions: _hotelPrefs.enabled
             ? _buildHotelConditions()
             : null,
@@ -326,11 +489,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       final returnResponse =
           returnFuture == null ? null : await returnFuture;
       if (!mounted) return;
-      // Pop the loading dialog BEFORE pushing ResultScreen — otherwise
-      // the dialog stays underneath in the route stack and the later
-      // finally-pop would pop ResultScreen instead.
+      // Pop the loading dialog BEFORE pushing ResultScreen —
+      // otherwise the dialog stays on top and blocks navigation.
+      // Use the captured root navigator so a mid-flight MaterialApp
+      // rebuild (DynamicColorBuilder) can't detach the pop target.
       if (dialogOpen) {
-        Navigator.of(context).pop();
+        rootNav.pop();
         dialogOpen = false;
       }
       final l = AppLocalizations.of(context);
@@ -345,7 +509,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               desiredDepartureAt: _returnDeparture,
             )
           : null;
-      Navigator.of(context).push(
+      rootNav.push(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
             request: request,
@@ -378,10 +542,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       final l = AppLocalizations.of(context);
       setState(() => _error = l.planErrorNetwork);
     } finally {
-      // Only pops here on the ERROR path — success already popped
-      // above before the ResultScreen push.
-      if (mounted && dialogOpen && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
+      // Error path: pop the loading dialog via the same captured
+      // root navigator we used on success. Skips silently when
+      // the dialog has already been popped or when the navigator
+      // has no more routes to pop.
+      if (dialogOpen && rootNav.canPop()) {
+        rootNav.pop();
+        dialogOpen = false;
       }
       if (mounted) setState(() => _loading = false);
     }
@@ -393,9 +560,23 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
-    final dateFmt = DateFormat('EEE, d MMM · HH:mm');
+    // Pass the app locale so weekday + month names render in the
+    // user's language ("lun, 15 sep" instead of "Mon, 15 Sep").
+    final locale = Localizations.localeOf(context).toString();
+    final dateFmt = DateFormat('EEE, d MMM · HH:mm', locale);
 
     return Scaffold(
+      // Progressive disclosure: "Salir ya" lives as a FAB now
+      // instead of a big card in the hero. The card was eating
+      // premium above-the-fold real estate for a Premium-gated
+      // shortcut; the FAB stays thumb-reachable and doesn't
+      // distract the first-time user learning what MyTravelPal
+      // actually does.
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _leaveNowQuickPlan,
+        icon: const Icon(Icons.bolt),
+        label: Text(l.planLeaveNowFabTitle),
+      ),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -463,15 +644,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     ),
                   ),
                 ),
-                IconButton(
-                  tooltip: l.planTooltipSaved,
-                  icon: const Icon(Icons.bookmark_outline),
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const HistoryScreen(),
-                    ),
-                  ),
-                ),
+                // Saved-trips icon removed from AppBar: now lives
+                // as the "Mis viajes" bottom-nav tab in AppShell.
                 const SizedBox(width: Tokens.space8),
               ],
             ),
@@ -503,20 +677,29 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     l.planIntro,
                     style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                   ),
-                  const SizedBox(height: Tokens.space16),
-                  // Prominent CTA for saved trips. The AppBar
-                  // bookmark icon is easy to miss (5 icons in a
-                  // row), so a labelled row-button at the top of
-                  // the form gives the user a discoverable path
-                  // into their history.
-                  _SavedTripsBar(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const HistoryScreen(),
+                  const SizedBox(height: Tokens.space12),
+                  // Trip Inspiration entry — small, non-intrusive
+                  // CTA below the intro. LLM-powered "give me an
+                  // itinerary from a free-form prompt"; result
+                  // hands off to this same PlanScreen with
+                  // origin/destination/waypoints pre-filled.
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.auto_awesome, size: 18),
+                      label: Text(l.inspireTitle),
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const InspireScreen(),
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: Tokens.space16),
+                  // Note: "Salir ya" quick-plan lives as a FAB
+                  // now (see Scaffold.floatingActionButton) — the
+                  // former inline hero card was eating above-the-
+                  // fold real estate for a Premium-gated shortcut.
                   _ProfileChip(
                     profile: _overrideProfile
                         ?? ref.watch(tripProfileProvider),
@@ -572,73 +755,189 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     padding: const EdgeInsets.all(Tokens.space16),
                     child: Column(
                       children: [
-                        LocationSearchField(
-                          key: _originKey,
-                          label: l.planFrom,
-                          geocode: api.geocode,
-                          onUseCurrentLocation: () async {
-                            final res = await ref
-                                .read(currentLocationServiceProvider)
-                                .resolve();
-                            if (!context.mounted) return null;
-                            if (res.disabled || res.denied) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(
-                                  res.disabled
-                                      ? l.locationServiceOff
-                                      : l.locationPermissionDenied,
-                                )),
-                              );
-                              return null;
-                            }
-                            if (res.timedOut || res.place == null) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(l.locationUnavailable)),
-                              );
-                              return null;
-                            }
-                            return res.place;
-                          },
-                          onSelected: (r) {
-                            setState(() => _origin = r);
-                            if (r != null) {
-                              ref.read(recentSearchesProvider.notifier).push(r);
-                            }
-                          },
-                          initial: _origin,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: LocationSearchField(
+                                key: _originKey,
+                                label: l.planFrom,
+                                geocode: api.geocode,
+                                onUseCurrentLocation: () async {
+                                  final res = await ref
+                                      .read(currentLocationServiceProvider)
+                                      .resolve();
+                                  if (!context.mounted) return null;
+                                  if (res.disabled || res.denied) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(
+                                        res.disabled
+                                            ? l.locationServiceOff
+                                            : l.locationPermissionDenied,
+                                      )),
+                                    );
+                                    return null;
+                                  }
+                                  if (res.timedOut || res.place == null) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text(l.locationUnavailable)),
+                                    );
+                                    return null;
+                                  }
+                                  return res.place;
+                                },
+                                onSelected: (r) {
+                                  setState(() => _origin = r);
+                                  if (r != null) {
+                                    ref.read(recentSearchesProvider.notifier).push(r);
+                                  }
+                                },
+                                initial: _origin,
+                              ),
+                            ),
+                            // Weather chip inline (right of field).
+                            // Zero-width when no coord picked yet.
+                            if (_origin != null) ...[
+                              const SizedBox(width: Tokens.space8),
+                              WeatherChip(
+                                lat: _origin!.coordinate.lat,
+                                lon: _origin!.coordinate.lon,
+                              ),
+                            ],
+                          ],
                         ),
-                        const SizedBox(height: Tokens.space12),
-                        LocationSearchField(
-                          key: _destinationKey,
-                          label: l.planTo,
-                          geocode: api.geocode,
-                          onSelected: (r) {
-                            setState(() => _destination = r);
-                            if (r != null) {
-                              ref.read(recentSearchesProvider.notifier).push(r);
-                            }
-                          },
-                          initial: _destination,
-                        ),
-                        const SizedBox(height: Tokens.space12),
-                        _DepartureButton(
-                          label: dateFmt.format(_departure),
-                          onPressed: _pickDeparture,
-                        ),
-                        const SizedBox(height: Tokens.space8),
-                        SwitchListTile.adaptive(
-                          contentPadding: EdgeInsets.zero,
-                          title: Text(l.planRoundTripTitle),
-                          subtitle: Text(
-                            l.planRoundTripSubtitle,
-                            style: t.bodySmall,
+                        // Intermediate stops — inserted between
+                        // origin and destination in the given
+                        // order. The router visits them in
+                        // sequence. Each row has its own picker
+                        // + delete button. "+ Añadir parada"
+                        // sits at the bottom.
+                        for (var i = 0; i < _stops.length; i++) ...[
+                          const SizedBox(height: Tokens.space12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: LocationSearchField(
+                                  key: ValueKey('stop-$i'),
+                                  label: l.planStopLabel(i + 1),
+                                  geocode: api.geocode,
+                                  onSelected: (r) {
+                                    if (r == null) return;
+                                    setState(() => _stops[i] =
+                                        _stops[i].copyWith(place: r));
+                                  },
+                                  initial: _stops[i].place,
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: l.planStopRemove,
+                                icon: const Icon(Icons.close),
+                                onPressed: () {
+                                  setState(() => _stops.removeAt(i));
+                                },
+                              ),
+                            ],
                           ),
-                          value: _isRoundTrip,
-                          onChanged: (v) =>
-                              setState(() => _isRoundTrip = v),
+                          // Dwell picker under each stop — tap to
+                          // change nights. Default 0 = pass-through
+                          // (label "Solo paso"). ≥1 = "N noche(s)".
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              icon: Icon(
+                                _stops[i].dwellNights == 0
+                                    ? Icons.arrow_forward
+                                    : Icons.hotel_outlined,
+                                size: 16,
+                              ),
+                              label: Text(_dwellLabel(l, _stops[i].dwellNights)),
+                              onPressed: () async {
+                                final picked =
+                                    await _pickDwellNights(context, _stops[i]);
+                                if (picked == null) return;
+                                setState(() =>
+                                    _stops[i] = _stops[i].copyWith(
+                                        dwellNights: picked));
+                              },
+                            ),
+                          ),
+                        ],
+                        if (_stops.length < _maxStops) ...[
+                          const SizedBox(height: Tokens.space8),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.add_location_alt_outlined),
+                              label: Text(l.planAddStop),
+                              onPressed: () async {
+                                final picked =
+                                    await _pickStop(context, api.geocode);
+                                if (picked == null) return;
+                                // Fresh stop defaults to dwell=0
+                                // (pass-through). Driver taps the
+                                // dwell chip below the field to
+                                // upgrade to overnight if wanted.
+                                setState(() => _stops.add(
+                                      PlannedStop(place: picked),
+                                    ));
+                              },
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: Tokens.space12),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: LocationSearchField(
+                                key: _destinationKey,
+                                label: l.planTo,
+                                geocode: api.geocode,
+                                onSelected: (r) {
+                                  setState(() => _destination = r);
+                                  if (r != null) {
+                                    ref.read(recentSearchesProvider.notifier).push(r);
+                                  }
+                                },
+                                initial: _destination,
+                              ),
+                            ),
+                            if (_destination != null) ...[
+                              const SizedBox(width: Tokens.space8),
+                              WeatherChip(
+                                lat: _destination!.coordinate.lat,
+                                lon: _destination!.coordinate.lon,
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: Tokens.space12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _DepartureButton(
+                                label: dateFmt.format(_departure),
+                                onPressed: _pickDeparture,
+                              ),
+                            ),
+                            const SizedBox(width: Tokens.space8),
+                            FilterChip(
+                              selected: _isRoundTrip,
+                              avatar: Icon(
+                                Icons.repeat,
+                                size: 16,
+                                color: _isRoundTrip
+                                    ? scheme.onSecondaryContainer
+                                    : scheme.onSurfaceVariant,
+                              ),
+                              label: Text(l.planRoundTripChip),
+                              onSelected: (v) =>
+                                  setState(() => _isRoundTrip = v),
+                            ),
+                          ],
                         ),
                         if (_isRoundTrip) ...[
-                          const SizedBox(height: Tokens.space4),
+                          const SizedBox(height: Tokens.space8),
                           _DepartureButton(
                             label: '↩ ${dateFmt.format(_returnDeparture)}',
                             onPressed: _pickReturnDeparture,
@@ -697,31 +996,74 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             hideMainSwitch: true,
                           ),
                         ),
-                        _CompactToggle(
-                          icon: Icons.warning_amber_outlined,
-                          title: l.planOptAlertsTitle,
-                          subtitle: l.planOptAlertsSub,
-                          value: _alertsEnabled,
-                          onChanged: (v) =>
-                              setState(() => _alertsEnabled = v),
-                        ),
-                        _CompactToggle(
-                          icon: Icons.euro,
-                          title: l.planOptTollFreeTitle,
-                          subtitle: l.planOptTollFreeSub,
-                          value: _tollAlternativeEnabled,
-                          onChanged: (v) => setState(
-                            () => _tollAlternativeEnabled = v,
+                        InkWell(
+                          onTap: () => setState(
+                            () => _advancedOptionsExpanded =
+                                !_advancedOptionsExpanded,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: Tokens.space12,
+                              horizontal: Tokens.space4,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _advancedOptionsExpanded
+                                      ? Icons.expand_less
+                                      : Icons.expand_more,
+                                  size: 20,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: Tokens.space8),
+                                Text(
+                                  _advancedOptionsExpanded
+                                      ? l.planLessOptions
+                                      : l.planMoreOptions,
+                                  style: t.labelLarge?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
-                        _CompactToggle(
-                          icon: Icons.alt_route,
-                          title: l.planOptRouteVariantsTitle,
-                          subtitle: l.planOptRouteVariantsSub,
-                          value: _routeComparisonEnabled,
-                          onChanged: (v) => setState(
-                            () => _routeComparisonEnabled = v,
-                          ),
+                        AnimatedSize(
+                          duration: Tokens.motionBase,
+                          curve: Tokens.curveOut,
+                          child: !_advancedOptionsExpanded
+                              ? const SizedBox.shrink()
+                              : Column(
+                                  children: [
+                                    _CompactToggle(
+                                      icon: Icons.warning_amber_outlined,
+                                      title: l.planOptAlertsTitle,
+                                      subtitle: l.planOptAlertsSub,
+                                      value: _alertsEnabled,
+                                      onChanged: (v) => setState(
+                                        () => _alertsEnabled = v,
+                                      ),
+                                    ),
+                                    _CompactToggle(
+                                      icon: Icons.euro,
+                                      title: l.planOptTollFreeTitle,
+                                      subtitle: l.planOptTollFreeSub,
+                                      value: _tollAlternativeEnabled,
+                                      onChanged: (v) => setState(
+                                        () => _tollAlternativeEnabled = v,
+                                      ),
+                                    ),
+                                    _CompactToggle(
+                                      icon: Icons.alt_route,
+                                      title: l.planOptRouteVariantsTitle,
+                                      subtitle: l.planOptRouteVariantsSub,
+                                      value: _routeComparisonEnabled,
+                                      onChanged: (v) => setState(
+                                        () => _routeComparisonEnabled = v,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ],
                     ),
@@ -922,65 +1264,69 @@ class _CompactExpandableToggle extends StatelessWidget {
   }
 }
 
-/// A prominent CTA row at the top of the plan form that opens
-/// `HistoryScreen`. The bookmark AppBar icon was easy to miss —
-/// this labelled bar makes "Mis viajes" a first-class entry
-/// point of the plan flow. Non-consumer widget so it doesn't
-/// trigger rebuilds on unrelated auth state changes.
-class _SavedTripsBar extends StatelessWidget {
-  const _SavedTripsBar({required this.onTap});
-  final VoidCallback onTap;
+// _SavedTripsBar removed — "Mis viajes" is now a bottom-nav tab.
 
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(Tokens.radiusLg),
-      child: Ink(
-        decoration: BoxDecoration(
-          color: scheme.surfaceContainerHigh.withValues(alpha: 0.7),
-          borderRadius: BorderRadius.circular(Tokens.radiusLg),
-          border: Border.all(color: scheme.outlineVariant),
-        ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: Tokens.space16, vertical: Tokens.space12,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36, height: 36,
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(Tokens.radiusMd),
-              ),
-              child: Icon(Icons.bookmark_outline,
-                  color: scheme.onPrimaryContainer, size: 20),
+/// Inline sheet asking only for the destination — used by the
+/// "Salir ya" quick flow so the driver types one field instead
+/// of filling the full plan form.
+/// Return value of the "Leave now" confirmation dialog when the
+/// plan form already has a destination. `go` = use the current
+/// destination; `change` = open the picker to pick a different one.
+enum _LeaveNowChoice { go, change }
+
+/// Intermediate stop with an optional dwell duration. Backed by a
+/// [GeocodeResult] (place info) plus `dwellNights`. Pass-through
+/// stops have `dwellNights == 0`; overnight anchors have `>= 1`.
+class PlannedStop {
+  const PlannedStop({required this.place, this.dwellNights = 0});
+  final GeocodeResult place;
+  final int dwellNights;
+
+  PlannedStop copyWith({GeocodeResult? place, int? dwellNights}) =>
+      PlannedStop(
+        place: place ?? this.place,
+        dwellNights: dwellNights ?? this.dwellNights,
+      );
+}
+
+String _dwellLabel(AppLocalizations l, int nights) {
+  if (nights == 0) return l.planStopDwellPassThrough;
+  if (nights == 1) return l.planStopDwellOneNight;
+  return l.planStopDwellNights(nights);
+}
+
+Future<int?> _pickDwellNights(BuildContext context, PlannedStop stop) async {
+  final l = AppLocalizations.of(context);
+  final options = <int>[0, 1, 2, 3, 4, 5, 7];
+  return showModalBottomSheet<int>(
+    context: context,
+    builder: (_) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              l.planStopDwellTitle(stop.place.displayName),
+              style: Theme.of(context).textTheme.titleMedium,
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(width: Tokens.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(l.planTooltipSaved,
-                      style: t.titleSmall
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                  Text(l.historyEmptyBody,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
-                ],
+          ),
+          for (final n in options)
+            ListTile(
+              leading: Icon(
+                n == 0 ? Icons.arrow_forward : Icons.hotel_outlined,
               ),
+              title: Text(_dwellLabel(l, n)),
+              trailing: n == stop.dwellNights
+                  ? const Icon(Icons.check)
+                  : null,
+              onTap: () => Navigator.of(context).pop(n),
             ),
-            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-          ],
-        ),
+        ],
       ),
-    );
-  }
+    ),
+  );
 }
 
 class _ProfileChip extends StatelessWidget {
@@ -1069,11 +1415,12 @@ class _DepartureButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     return InkWell(
       onTap: onPressed,
       borderRadius: BorderRadius.circular(Tokens.radiusMd),
       child: InputDecorator(
-        decoration: const InputDecoration(labelText: 'Desired departure'),
+        decoration: InputDecoration(labelText: l.planDepartureLabel),
         child: Row(
           children: [
             Icon(Icons.event_outlined, color: scheme.onSurfaceVariant, size: 18),

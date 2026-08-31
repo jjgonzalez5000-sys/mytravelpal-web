@@ -14,9 +14,11 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../utils/duration_format.dart';
+import '../services/currency_service.dart';
 import '../services/notifications.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
+import '../services/trip_share_image.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
 import '../widgets/added_stops_map_sheet.dart';
@@ -33,6 +35,11 @@ import '../widgets/poi_detail_sheet.dart';
 import '../widgets/route_map.dart';
 import '../widgets/time_window_chart.dart';
 import 'narrative_screen.dart';
+import 'companion_drive_screen.dart';
+// trip_dashboard_screen kept around as a fallback for direct
+// deep-links; the "Tracking" button now routes to
+// CompanionDriveScreen with trip context (unified view).
+// ignore: unused_import
 import 'trip_dashboard_screen.dart';
 
 /// A trip leg the ResultScreen can jump to via an AppBar action —
@@ -444,11 +451,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     required DateTime newDeparture,
     required bool avoidMotorways,
   }) async {
-    final navigator = Navigator.of(context);
+    // Root navigator so a mid-flight MaterialApp rebuild
+    // (DynamicColorBuilder returning wallpaper colours) cannot
+    // detach the pop target and leave the loading dialog stuck.
+    final navigator = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
     var dialogOpen = true;
     unawaited(showDialog<void>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
       builder: (_) => const PlanLoadingDialog(),
     ));
@@ -705,6 +716,63 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
+  /// Two share modes. Text-only reuses the existing `shareTrip`
+  /// with the deep link. Image mode renders a story-format card
+  /// and hands it to the share sheet — perfect for Instagram
+  /// Stories / WhatsApp / X.
+  Future<void> _openShareMenu(AppLocalizations l) async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.image_outlined),
+              title: Text(l.shareCardOption),
+              subtitle: Text(l.shareCardOptionSub),
+              onTap: () => Navigator.of(context).pop('image'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: Text(l.shareLinkOption),
+              subtitle: Text(l.shareLinkOptionSub),
+              onTap: () => Navigator.of(context).pop('link'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    if (choice == 'image') {
+      await shareTripCard(
+        context,
+        originName: _shortName(widget.origin),
+        destinationName: _shortName(widget.destination),
+        route: widget.response.route,
+        savedEur: widget.response.savings.moneySavedEurVsTolls,
+        savedMinutes: widget.response.savings.timeSavedMinutesVsDesired,
+      );
+    } else {
+      await shareTrip(
+        l: l,
+        localeName: Localizations.localeOf(context).toString(),
+        originName: _shortName(widget.origin),
+        destinationName: _shortName(widget.destination),
+        route: widget.response.route,
+        origin: widget.request.origin,
+        destination: widget.request.destination,
+        departureAt: widget.desiredDepartureAt,
+        recommended: _recommended,
+        tollAlt: widget.response.tollAlternative,
+        hotels: widget.response.hotels,
+        restaurants: widget.response.restaurants,
+        fuelArbitrage: widget.response.fuelArbitrage,
+      );
+    }
+  }
+
   void _openNarrative() {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
@@ -724,6 +792,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
+    // User-selected display currency. Backend prices are EUR;
+    // `formatMoney` converts and appends the right symbol.
+    final ccy = ref.watch(currencyCodeProvider);
 
     // Scope tells the client which sections to surface. When absent
     // (request had no TripProfile), fall through to a permissive default.
@@ -749,6 +820,59 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         adverseEvents: widget.response.adverseEvents,
         mode: _mapMode,
         onModeChange: (m) => setState(() => _mapMode = m),
+      ),
+      const SizedBox(height: Tokens.space16),
+      // Trip stats sit RIGHT below the map (moved 2026-08-30 per
+      // tester feedback — "distance / sin trafico / peajes" reads
+      // as a caption to the map, not part of the savings block).
+      InkWell(
+        onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        child: SoftCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space20, vertical: Tokens.space20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Builder(builder: (context) {
+                    final fmt = ref.watch(unitFormatterProvider);
+                    return StatTile(
+                      label: l.resultStatDistance,
+                      value: fmt.distance(route.distanceKm),
+                    );
+                  }),
+                  StatTile(
+                    label: l.resultStatFreeFlow,
+                    value: _hhmm(
+                      route.freeFlowMinutes + _addedMinutesTotal,
+                    ),
+                  ),
+                  StatTile(
+                    label: l.resultStatTolls,
+                    value: formatMoney(
+                      (route.tollCostEur - _tollSkipSavingsEur)
+                          .clamp(0.0, route.tollCostEur),
+                      ccy,
+                    ),
+                  ),
+                ],
+              ),
+              if (_addedStops.isNotEmpty) ...[
+                const SizedBox(height: Tokens.space12),
+                _AddedStopsChip(
+                  count: _addedStops.length,
+                  minutes: _addedMinutesTotal,
+                  onClear: _clearAddedStops,
+                  onTap: _openAddedStopsMap,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
       const SizedBox(height: Tokens.space24),
       if (widget.response.consistencyIssues.isNotEmpty)
@@ -902,55 +1026,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space16),
       ],
-      // Tap-through: when any stops have been added, tapping this card
-      // opens a bottom sheet with a map showing the route plus a pin
-      // per added stop, so the driver can identify which POI they
-      // toggled without scrolling back through the sections list.
-      InkWell(
-        onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
-        borderRadius: BorderRadius.circular(Tokens.radiusLg),
-        child: SoftCard(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Tokens.space20, vertical: Tokens.space20,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Builder(builder: (context) {
-                    final fmt = ref.watch(unitFormatterProvider);
-                    return StatTile(
-                      label: l.resultStatDistance,
-                      value: fmt.distance(route.distanceKm),
-                    );
-                  }),
-                  StatTile(
-                    label: l.resultStatFreeFlow,
-                    value: _hhmm(
-                      route.freeFlowMinutes + _addedMinutesTotal,
-                    ),
-                  ),
-                  StatTile(
-                    label: l.resultStatTolls,
-                    value: '€${(route.tollCostEur - _tollSkipSavingsEur).clamp(0.0, route.tollCostEur).toStringAsFixed(0)}',
-                  ),
-                ],
-              ),
-              if (_addedStops.isNotEmpty) ...[
-                const SizedBox(height: Tokens.space12),
-                _AddedStopsChip(
-                  count: _addedStops.length,
-                  minutes: _addedMinutesTotal,
-                  onClear: _clearAddedStops,
-                  onTap: _openAddedStopsMap,
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
       // Departure section: recommendation hero + time window chart
       // merged into one visual block. The user sees "best time to
       // leave" + the chart rows they can tap to replan, all in one
@@ -984,7 +1059,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: Tokens.space24),
         _OptimizationsSection(
           opts: widget.response.optimizations!,
-          topHotels: _topDestinationHotels(2),
+          // Ship the full pool; the section shows 3 up-front and
+          // hides the rest behind a "Ver más" expander so the
+          // standalone `_DestinationHotelsSection` below stops
+          // duplicating this list.
+          topHotels: _topDestinationHotels(30),
           origin: widget.request.origin,
           destination: widget.request.destination,
           routeGeometry: widget.response.route.geometry,
@@ -1014,22 +1093,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   widget.request.hotelMaxDetourMinutes! > 0,
         ),
       ],
-      // Single-day trips with hotels enabled: show a compact
-      // "Hotels near destination" block so the user who toggled
-      // on hotel search doesn't see nothing. Multi-day trips
-      // already surface hotels per day via DayPlanSection.
-      if (widget.response.days.isEmpty &&
-          widget.hotelPrefs != null &&
-          widget.hotelPrefs!.enabled &&
-          _filteredHotels.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        _DestinationHotelsSection(
-          hotels: _filteredHotels,
-          destination: widget.request.destination,
-          origin: widget.request.origin,
-          routeGeometry: widget.response.route.geometry,
-        ),
-      ],
+      // The former standalone "_DestinationHotelsSection" was
+      // removed 2026-08-30 — its content duplicated the hotel
+      // list that now lives INSIDE `_OptimizationsSection`
+      // ("Optimizado") with a 3-item preview + "Ver más" expander.
+      // Multi-day trips still surface hotels per day via
+      // DayPlanSection.
       // Alerts section moved to the top (after trip cost card).
       // Rest stops section removed (tester feedback): with meals +
       // sleep already surfaced per day, a separate "recommended
@@ -1097,8 +1166,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               color: Theme.of(context).colorScheme.primary,
             ),
             children: [
+              // Sort ascending by price so the "cheapest X" copy
+              // is truthful — backend order is roughly by
+              // distance-from-origin which would surface expensive
+              // near-departure stations first.
               ..._separated(
-                widget.response.fuelPrices.map((p) {
+                (List<FuelPrice>.from(widget.response.fuelPrices)
+                      ..sort((a, b) =>
+                          a.priceEurPerL.compareTo(b.priceEurPerL)))
+                    .map((p) {
                   final coordSuffix = p.coordinate == null
                       ? ':nocoord'
                       : ':${p.coordinate!.lat.toStringAsFixed(4)},'
@@ -1199,21 +1275,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           IconButton(
             tooltip: l.resultShareTooltip,
             icon: const Icon(Icons.ios_share),
-            onPressed: () => shareTrip(
-              l: l,
-              localeName: Localizations.localeOf(context).toString(),
-              originName: _shortName(widget.origin),
-              destinationName: _shortName(widget.destination),
-              route: widget.response.route,
-              origin: widget.request.origin,
-              destination: widget.request.destination,
-              departureAt: widget.desiredDepartureAt,
-              recommended: _recommended,
-              tollAlt: widget.response.tollAlternative,
-              hotels: widget.response.hotels,
-              restaurants: widget.response.restaurants,
-              fuelArbitrage: widget.response.fuelArbitrage,
-            ),
+            onPressed: () => _openShareMenu(l),
           ),
           IconButton(
             tooltip: l.resultExplainTooltip,
@@ -1266,13 +1328,32 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 // flag) so we don't spam the driver every trip.
                 await BatteryWhitelistDialog.maybeShow(context);
                 if (!context.mounted) return;
+                // Unified drive experience: open Companion with
+                // the plan attached instead of the standalone
+                // dashboard. Companion renders speed + drive-time
+                // AND the trip-progress hero (ETA, km remaining,
+                // next stop). Profile-driven alert defaults keep
+                // the assistant sensible even without going
+                // through the Companion setup screen first.
+                final profile = widget.request.tripProfile;
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => TripDashboardScreen(
-                      request: widget.request,
-                      response: widget.response,
-                      origin: widget.origin,
-                      destination: widget.destination,
+                    builder: (_) => CompanionDriveScreen(
+                      breakIntervalHours: 2.0,
+                      suggestBreak: true,
+                      fatigueStopSuggestion: false,
+                      alertCriticalAdverse: true,
+                      alertWeather: true,
+                      alertFuel: true,
+                      alertBorder: true,
+                      alertToll: false,
+                      alertHotel: true,
+                      hasKids: profile?.hasKids ?? false,
+                      hasPets: profile?.hasPets ?? false,
+                      bedtimeHour: profile?.bedtimeHour ?? 23,
+                      activeTrip: widget.response,
+                      tripOrigin: widget.origin,
+                      tripDestination: widget.destination,
                     ),
                   ),
                 );
@@ -1721,7 +1802,7 @@ class _RouteVariantRow extends StatelessWidget {
   String _hhmm(double minutes) => durationCompact(minutes);
 }
 
-class _TotalTripCostCard extends StatelessWidget {
+class _TotalTripCostCard extends ConsumerWidget {
   const _TotalTripCostCard({
     required this.fuelCostEur,
     required this.tollCostEur,
@@ -1751,10 +1832,11 @@ class _TotalTripCostCard extends StatelessWidget {
   final int pickedHotelsNights;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
+    final ccy = ref.watch(currencyCodeProvider);
 
     final pax = travellers.clamp(1, 20);
     // Per-person meal cost × number of travellers × number of meals
@@ -1840,7 +1922,7 @@ class _TotalTripCostCard extends StatelessWidget {
               Text(l.tripCostTotal,
                   style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
               Text(
-                '€${total.toStringAsFixed(0)}',
+                formatMoney(total, ccy),
                 style: t.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: scheme.primary,
@@ -1854,7 +1936,7 @@ class _TotalTripCostCard extends StatelessWidget {
   }
 }
 
-class _CostRow extends StatelessWidget {
+class _CostRow extends ConsumerWidget {
   const _CostRow({
     required this.label,
     required this.value,
@@ -1867,7 +1949,8 @@ class _CostRow extends StatelessWidget {
   final TextTheme t;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ccy = ref.watch(currencyCodeProvider);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -1875,7 +1958,7 @@ class _CostRow extends StatelessWidget {
         children: [
           Text(label, style: t.bodyMedium),
           Text(
-            '€${value.toStringAsFixed(0)}',
+            formatMoney(value, ccy),
             style: t.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
               fontFeatures: const [FontFeature.tabularFigures()],
@@ -2040,7 +2123,10 @@ class _RecommendationHero extends StatelessWidget {
     final savedVsDesired =
         _minutesShiftedForBetterTraffic(shift, recommended, l);
     final shiftLabel = _formatShift(shift);
-    final dateFmt = DateFormat('EEE, d MMM · HH:mm');
+    final dateFmt = DateFormat(
+      'EEE, d MMM · HH:mm',
+      Localizations.localeOf(context).toString(),
+    );
 
     return Container(
       padding: const EdgeInsets.all(Tokens.space24),
@@ -2218,7 +2304,7 @@ class _HeroChip extends StatelessWidget {
   }
 }
 
-class _OptimizationsSection extends StatelessWidget {
+class _OptimizationsSection extends StatefulWidget {
   const _OptimizationsSection({
     required this.opts,
     this.topHotels = const [],
@@ -2231,6 +2317,24 @@ class _OptimizationsSection extends StatelessWidget {
   final LatLon? origin;
   final LatLon? destination;
   final List<LatLon> routeGeometry;
+
+  @override
+  State<_OptimizationsSection> createState() => _OptimizationsSectionState();
+}
+
+class _OptimizationsSectionState extends State<_OptimizationsSection> {
+  /// How many hotels we show before the driver taps "Ver más".
+  /// 3 matches the tester ask — enough to compare + one extra —
+  /// without eating half the screen inside the "Optimizado"
+  /// card.
+  static const _kInitialHotelCount = 3;
+  bool _hotelsExpanded = false;
+
+  Optimizations get opts => widget.opts;
+  List<(Hotel, double)> get topHotels => widget.topHotels;
+  LatLon? get origin => widget.origin;
+  LatLon? get destination => widget.destination;
+  List<LatLon> get routeGeometry => widget.routeGeometry;
 
   @override
   Widget build(BuildContext context) {
@@ -2312,42 +2416,76 @@ class _OptimizationsSection extends StatelessWidget {
                   );
                 }),
                 const SizedBox(height: Tokens.space8),
-                for (final (h, km) in topHotels)
-                  InkWell(
-                    onTap: () => showPoiDetailSheet(
-                      context,
-                      kind: PoiKind.hotel,
-                      name: h.name,
-                      subtitle: _hotelSubtitle(h),
-                      poi: h.coordinate,
-                      origin: origin ?? h.coordinate,
-                      destination: destination ?? h.coordinate,
-                      routeGeometry: routeGeometry,
-                      attributes: h.attributes,
-                      icon: Icons.hotel_outlined,
-                      accent: scheme.tertiary,
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Icon(Icons.hotel_outlined, size: 14,
-                              color: scheme.tertiary),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${h.name}  ·  '
-                              '${h.priceEurPerNight.toStringAsFixed(0)} €  ·  '
-                              '${km.toStringAsFixed(1)} km',
-                              style: t.bodySmall,
+                // Show 3 up-front then hide the tail behind a
+                // "Show N more" toggle so this card doesn't sprawl.
+                Builder(builder: (context) {
+                  final l = AppLocalizations.of(context);
+                  final visible = _hotelsExpanded
+                      ? topHotels
+                      : topHotels.take(_kInitialHotelCount).toList();
+                  final hidden = topHotels.length - visible.length;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final (h, km) in visible)
+                        InkWell(
+                          onTap: () => showPoiDetailSheet(
+                            context,
+                            kind: PoiKind.hotel,
+                            name: h.name,
+                            subtitle: _hotelSubtitle(h),
+                            poi: h.coordinate,
+                            origin: origin ?? h.coordinate,
+                            destination: destination ?? h.coordinate,
+                            routeGeometry: routeGeometry,
+                            attributes: h.attributes,
+                            icon: Icons.hotel_outlined,
+                            accent: scheme.tertiary,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Row(
+                              children: [
+                                Icon(Icons.hotel_outlined, size: 14,
+                                    color: scheme.tertiary),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '${h.name}  ·  '
+                                    '${h.priceEurPerNight.toStringAsFixed(0)} €  ·  '
+                                    '${km.toStringAsFixed(1)} km',
+                                    style: t.bodySmall,
+                                  ),
+                                ),
+                                Icon(Icons.chevron_right, size: 16,
+                                    color: scheme.onSurfaceVariant),
+                              ],
                             ),
                           ),
-                          Icon(Icons.chevron_right, size: 16,
-                              color: scheme.onSurfaceVariant),
-                        ],
-                      ),
-                    ),
-                  ),
+                        ),
+                      if (topHotels.length > _kInitialHotelCount)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            icon: Icon(
+                              _hotelsExpanded
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              size: 18,
+                            ),
+                            label: Text(
+                              _hotelsExpanded
+                                  ? l.commonShowLess
+                                  : l.commonShowNMore(hidden),
+                            ),
+                            onPressed: () => setState(
+                              () => _hotelsExpanded = !_hotelsExpanded,
+                            ),
+                          ),
+                        ),
+                    ],
+                  );
+                }),
               ],
             ],
           ),
@@ -2360,8 +2498,27 @@ class _OptimizationsSection extends StatelessWidget {
     final parts = <String>[
       '${h.priceEurPerNight.toStringAsFixed(0)} €/night',
     ];
+    // Prefer official star classification when OSM has it —
+    // otherwise fall back to the Google Places review rating
+    // (numeric mean, e.g. "4.3 ★ 128") which the backend enricher
+    // stamps into `attributes.rating` + `attributes.rating_count`
+    // for the top hotels. The two are semantically different
+    // (classification vs. crowd rating) so we render them
+    // differently: `4★` for classification, `4.3 · 128` for
+    // review rating. Full official-stars coverage arrives with
+    // the Booking Content API once the affiliate is approved.
     final stars = h.attributes['stars'];
-    if (stars != null && stars.isNotEmpty) parts.add('$stars★');
+    if (stars != null && stars.isNotEmpty) {
+      parts.add('$stars★');
+    } else {
+      final rating = h.attributes['rating'];
+      final count = h.attributes['rating_count'];
+      if (rating != null && rating.isNotEmpty) {
+        parts.add(count != null && count.isNotEmpty
+            ? '★ $rating ($count)'
+            : '★ $rating');
+      }
+    }
     if (h.attributes['internet_access'] == 'yes' ||
         h.attributes['internet_access'] == 'wlan') {
       parts.add('WiFi');
@@ -2375,14 +2532,15 @@ class _OptimizationsSection extends StatelessWidget {
   }
 }
 
-class _FuelCostRow extends StatelessWidget {
+class _FuelCostRow extends ConsumerWidget {
   const _FuelCostRow({required this.cost});
   final FuelCost cost;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final ccy = ref.watch(currencyCodeProvider);
     return Row(
       children: [
         Container(
@@ -2407,7 +2565,7 @@ class _FuelCostRow extends StatelessWidget {
                   style: t.labelSmall?.copyWith(letterSpacing: 1.1)),
               const SizedBox(height: 2),
               Text(
-                '€${cost.totalCostEur.toStringAsFixed(0)}',
+                formatMoney(cost.totalCostEur, ccy),
                 style: t.headlineMedium?.copyWith(
                   color: scheme.primary,
                   fontFeatures: const [FontFeature.tabularFigures()],
@@ -2624,7 +2782,7 @@ class _HourStrip extends StatelessWidget {
   }
 }
 
-class _PartialTollSkipsCard extends StatelessWidget {
+class _PartialTollSkipsCard extends ConsumerWidget {
   const _PartialTollSkipsCard({
     required this.skips,
     required this.origin,
@@ -2671,10 +2829,11 @@ class _PartialTollSkipsCard extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
+    final ccy = ref.watch(currencyCodeProvider);
     final hasSavings = _totalSavings > 0;
     final accent = hasSavings ? scheme.tertiary : scheme.onSurfaceVariant;
     final allSelected = enabledIndices.length == skips.length;
@@ -2715,7 +2874,7 @@ class _PartialTollSkipsCard extends StatelessWidget {
               children: [
                 TextSpan(text: l.resultSaveExactly),
                 TextSpan(
-                  text: '€${_totalSavings.toStringAsFixed(0)}',
+                  text: formatMoney(_totalSavings, ccy),
                   style: TextStyle(
                     color: accent, fontWeight: FontWeight.w700,
                   ),
@@ -2985,8 +3144,11 @@ class _AdverseEventTile extends StatelessWidget {
         child: Icon(event.type.icon, color: color, size: 18),
       ),
       title: Text(event.type.localized(AppLocalizations.of(context))),
-      subtitle: Text(event.description),
-      isThreeLine: event.description.length > 60,
+      subtitle: Text(event.displayText(AppLocalizations.of(context))),
+      isThreeLine: event
+              .displayText(AppLocalizations.of(context))
+              .length >
+          60,
       trailing: SoftBadge(
         label: event.severity.localized(AppLocalizations.of(context)),
         color: color,
@@ -3619,7 +3781,10 @@ class _MultiDaySleepPreview extends StatelessWidget {
     final canOpen = name != null && coord != null;
     final subtitle = [
       // Include short date so day-2 sleep stops are unambiguous.
-      DateFormat('EEE d MMM · HH:mm').format(sleepStop.at.toLocal()),
+      DateFormat(
+        'EEE d MMM · HH:mm',
+        Localizations.localeOf(context).toString(),
+      ).format(sleepStop.at.toLocal()),
       if (sleepStop.hotelPriceEurPerNight != null)
         '${sleepStop.hotelPriceEurPerNight!.toStringAsFixed(0)} €/night',
       '${sleepStop.distanceFromOriginKm.toStringAsFixed(0)} km',

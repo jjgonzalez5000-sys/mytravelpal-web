@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Adaptive-icon foreground for v4 "north-star route". Canvas is
+  108x108 dp with a 66dp safe zone; road + 8-point star fit
+  inside. Background is a soft daylight gradient drawable — kept
+  as a color for now (adaptive-icons background must be a single
+  drawable; the launcher blends its own parallax so a heavy
+  gradient collides with the mask animation).
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <linearGradient id="road" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="1"/>
+    </linearGradient>
+    <radialGradient id="star" cx="0.5" cy="0.4" r="0.55">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.6" stop-color="#FFF6D6"/>
+      <stop offset="1" stop-color="#F5B04B"/>
+    </radialGradient>
+  </defs>
+
+  <!--
+    Scale source coordinates from the 512 viewBox down to the 108
+    canvas. Road climbs from y=500 up into star centre y=172;
+    that ~330 px range maps to ~54 px on this canvas. Scale = 0.16.
+  -->
+  <g transform="translate(54 54) scale(0.16) translate(-256 -280)">
+    <path
+      d="M 210 500
+         C 190 430, 300 400, 268 320
+         C 240 250, 310 210, 260 170"
+      stroke="url(#road)" stroke-width="46" stroke-linecap="round"
+      fill="none"/>
+    <path
+      d="M 210 500
+         C 190 430, 300 400, 268 320
+         C 240 250, 310 210, 260 170"
+      stroke="#B04A26" stroke-width="6" stroke-linecap="round"
+      stroke-dasharray="14 22" fill="none" opacity="0.55"/>
+    <g transform="translate(256 172)">
+      <circle r="86" fill="#FFFFFF" opacity="0.18"/>
+      <path d="M 0 -100
+               L 16 -39 L 71 -71 L 39 -16
+               L 100 0   L 39 16   L 71 71   L 16 39
+               L 0 100   L -16 39  L -71 71  L -39 16
+               L -100 0  L -39 -16 L -71 -71 L -16 -39 Z"
+            fill="url(#star)" stroke="#B04A26" stroke-width="5"
+            stroke-linejoin="round"/>
+      <circle r="12" fill="#B04A26"/>
+    </g>
+  </g>
+</svg>

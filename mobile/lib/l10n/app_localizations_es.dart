@@ -120,6 +120,140 @@ class AppLocalizationsEs extends AppLocalizations {
   String get planSectionOptional => 'En la ruta';
 
   @override
+  String get planMoreOptions => 'Más opciones';
+
+  @override
+  String get planLessOptions => 'Menos opciones';
+
+  @override
+  String get planRoundTripChip => 'Ida y vuelta';
+
+  @override
+  String get planLeaveNowFabTitle => 'Salir ya';
+
+  @override
+  String get leaveNowConfirmTitle => 'Salir ya hacia';
+
+  @override
+  String leaveNowConfirmBody(Object name) {
+    return '¿Vamos a $name?';
+  }
+
+  @override
+  String get leaveNowConfirmCta => 'Vamos';
+
+  @override
+  String get leaveNowConfirmChange => 'Cambiar destino';
+
+  @override
+  String get settingsBiometric => 'Desbloqueo biométrico';
+
+  @override
+  String get settingsBiometricSub => 'Usa huella o cara para abrir la app';
+
+  @override
+  String get settingsBiometricUnavailable =>
+      'No disponible en este dispositivo';
+
+  @override
+  String get settingsReplayTutorial => 'Repetir tutorial';
+
+  @override
+  String get settingsReplayTutorialSub =>
+      'Vuelve a mostrar los coach-marks guiados';
+
+  @override
+  String get settingsReplayTutorialToast =>
+      'Tutorial reiniciado. Vuelve a Planificar para verlo.';
+
+  @override
+  String get settingsColorPreset => 'Paleta de color';
+
+  @override
+  String get settingsPresetForest => 'Bosque';
+
+  @override
+  String get settingsPresetSunset => 'Atardecer';
+
+  @override
+  String get settingsPresetOcean => 'Océano';
+
+  @override
+  String get settingsDynamicColor => 'Material You (dinámico)';
+
+  @override
+  String get settingsDynamicColorSub =>
+      'Adapta los colores a tu fondo de pantalla (Android 12+)';
+
+  @override
+  String get settingsOled => 'Negro puro (OLED)';
+
+  @override
+  String get settingsOledSub =>
+      'Negros más profundos en modo oscuro, ahorra batería en pantallas OLED';
+
+  @override
+  String get inspireTitle => 'Inspiración de viaje';
+
+  @override
+  String get inspireHero => 'Describe tu viaje soñado';
+
+  @override
+  String get inspireSub =>
+      'La IA propone un itinerario multi-día que puedes convertir en un plan real con un toque.';
+
+  @override
+  String get inspireHint =>
+      'ej. Escapada romántica de 4 días por los lagos italianos';
+
+  @override
+  String get inspireGenerate => 'Inspírame';
+
+  @override
+  String get inspireGenerating => 'Preparando tu ruta…';
+
+  @override
+  String get inspireError =>
+      'La musa está fuera de servicio. Prueba otro texto o inténtalo de nuevo.';
+
+  @override
+  String get inspireResultTitle => 'Itinerario propuesto';
+
+  @override
+  String inspireDayLabel(Object n) {
+    return 'Día $n';
+  }
+
+  @override
+  String get inspireBudgetLabel => 'Presupuesto estimado';
+
+  @override
+  String get inspireConvertToPlan => 'Convertir en plan real';
+
+  @override
+  String get inspireSave => 'Guardar';
+
+  @override
+  String get inspireSavedToast =>
+      'Idea guardada. La encontrarás en tus inspiraciones guardadas.';
+
+  @override
+  String get inspireExamplesTitle => 'O parte de una idea';
+
+  @override
+  String get inspireExample1 =>
+      'Fin de semana de castillos por el valle del Loira';
+
+  @override
+  String get inspireExample2 => 'Ruta costera de Barcelona a Marsella';
+
+  @override
+  String get inspireExample3 => '5 días por los Alpes desde Milán';
+
+  @override
+  String get inspireExample4 => 'Norte de España con niños, sin autopistas';
+
+  @override
   String get planOverrideForTrip => 'Sobrescribir para este viaje';
 
   @override
@@ -136,6 +270,291 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planTooltipSaved => 'Viajes guardados';
+
+  @override
+  String get tabPlan => 'Planificar';
+
+  @override
+  String get tabCompanion => 'Acompañar';
+
+  @override
+  String get tabMyTrips => 'Mis viajes';
+
+  @override
+  String get companionHeroTitle => 'Tu compañero de viaje';
+
+  @override
+  String get companionHeroBody =>
+      'Configura tus condiciones y arranca. La app te acompaña mientras conduces y te recomienda paradas, comida y repostaje.';
+
+  @override
+  String get companionConfigSection => 'CONFIGURACIÓN';
+
+  @override
+  String get companionBreakInterval => 'Sugerencias de descanso';
+
+  @override
+  String get companionSuggestBreak =>
+      'Sugerir descanso según tiempo de conducción';
+
+  @override
+  String companionBreakHint(String hours) {
+    return 'Recomendar parada cada $hours h de conducción';
+  }
+
+  @override
+  String get companionFatigueStopExperimental =>
+      'Sugerir parar por cansancio (experimental)';
+
+  @override
+  String get companionFatigueStopHint =>
+      'Hoy sólo por temporizador — se dispara con micro-pausas cortas.';
+
+  @override
+  String get companionAlerts => 'Tipos de aviso';
+
+  @override
+  String get companionAlertCriticalAdverse =>
+      'Incidentes críticos (incendios, riadas, terremotos)';
+
+  @override
+  String get companionAlertCriticalAdverseHint =>
+      'Recomendado. Algo grave pasando cerca — no es meteo simple.';
+
+  @override
+  String get companionAlertWeather => 'Meteo por delante';
+
+  @override
+  String get companionAlertFuel => 'Gasolineras más baratas en ruta';
+
+  @override
+  String get companionAlertBorder => 'Aviso al cruzar fronteras';
+
+  @override
+  String get companionAlertToll => 'Sugerencias para saltar peajes';
+
+  @override
+  String get companionAlertHotel =>
+      'Hotel al pasar tu hora + 5 h de conducción';
+
+  @override
+  String get companionStart => 'Iniciar acompañamiento';
+
+  @override
+  String get companionComingSoon => 'Modo acompañamiento disponible pronto!';
+
+  @override
+  String get companionDriveTitle => 'Acompañante activo';
+
+  @override
+  String get companionForegroundBody =>
+      'MyTravelPal está siguiendo tu conducción';
+
+  @override
+  String get companionLocationDenied =>
+      'Se necesita permiso de ubicación para el acompañante.';
+
+  @override
+  String get companionDriving => 'conduciendo';
+
+  @override
+  String get companionAllGood => 'Sin avisos — disfruta el viaje.';
+
+  @override
+  String get companionEndTitle => '¿Terminar acompañante?';
+
+  @override
+  String get companionEndBody =>
+      'El seguimiento se detendrá y los avisos activos se perderán.';
+
+  @override
+  String get companionEndKeep => 'Seguir conduciendo';
+
+  @override
+  String get companionEndConfirm => 'Terminar sesión';
+
+  @override
+  String get emergencyContactsTitle => 'Contactos de emergencia';
+
+  @override
+  String get emergencyContactsSubtitle =>
+      'Reciben SMS si se detecta un impacto';
+
+  @override
+  String get emergencyContactsBody =>
+      'Hasta 3 personas reciben un SMS con tu ubicación si el acompañante detecta un impacto.';
+
+  @override
+  String get emergencyContactsEmpty => 'Aún no hay contactos.';
+
+  @override
+  String get emergencyContactsAdd => 'Añadir contacto';
+
+  @override
+  String get emergencyContactsPickFromDevice => 'Elegir de contactos';
+
+  @override
+  String get emergencyContactsPickSearch => 'Buscar contactos';
+
+  @override
+  String get emergencyContactsPermDenied =>
+      'Permiso denegado. Puedes añadir manualmente.';
+
+  @override
+  String get emergencyContactsNoDevice =>
+      'No hay contactos con teléfono en el dispositivo.';
+
+  @override
+  String get emergencyContactAddTitle => 'Añadir contacto de emergencia';
+
+  @override
+  String get emergencyContactName => 'Nombre';
+
+  @override
+  String get emergencyContactNameRequired => 'Escribe un nombre';
+
+  @override
+  String get emergencyContactPhone => 'Teléfono (E.164)';
+
+  @override
+  String get emergencyContactPhoneRequired => 'Escribe un teléfono';
+
+  @override
+  String get emergencyContactPhoneInvalid =>
+      'Formato internacional: +34612345678';
+
+  @override
+  String get cancel => 'Cancelar';
+
+  @override
+  String get save => 'Guardar';
+
+  @override
+  String get sosTitle => 'Posible impacto detectado';
+
+  @override
+  String sosBody(String g, String speed) {
+    return 'Pico de impacto ${g}g · caída de velocidad $speed km/h.';
+  }
+
+  @override
+  String sosCountdown(int seconds) {
+    return '${seconds}s';
+  }
+
+  @override
+  String get sosImOk => 'Estoy bien — cancelar';
+
+  @override
+  String get sosCall112 => 'Llamar 112';
+
+  @override
+  String get sosCancelled => 'Alerta cancelada.';
+
+  @override
+  String get sosClose => 'Cerrar';
+
+  @override
+  String get sosNoContacts =>
+      'No hay contactos configurados. Añade uno en Ajustes.';
+
+  @override
+  String sosSmsDispatched(int count) {
+    return 'SMS preparado para $count contacto(s).';
+  }
+
+  @override
+  String get sosSmsFailed => 'No se pudo abrir SMS. Llama manualmente abajo.';
+
+  @override
+  String get sosSmsPrefix =>
+      'MyTravelPal — posible impacto detectado. Mi ubicación:';
+
+  @override
+  String get weatherForecastTitle => 'Previsión 7 días';
+
+  @override
+  String get weatherToday => 'Hoy';
+
+  @override
+  String get leaveNowTitle => 'Salir ya con acompañante';
+
+  @override
+  String get leaveNowSubtitle =>
+      'Elige destino y arranca — te seguimos y te guiamos.';
+
+  @override
+  String get leaveNowSheetTitle => '¿A dónde vas?';
+
+  @override
+  String get leaveNowPremiumTitle => 'Función Premium';
+
+  @override
+  String get leaveNowPremiumBody =>
+      '\'Salir ya\' combina el plan completo con el acompañante durante la conducción. Disponible con MyTravelPal Premium.';
+
+  @override
+  String get leaveNowPremiumDismiss => 'Más tarde';
+
+  @override
+  String get leaveNowPremiumCta => 'Probar 7 días gratis';
+
+  @override
+  String get shareCardOption => 'Compartir como imagen';
+
+  @override
+  String get shareCardOptionSub =>
+      'Perfecto para Instagram Stories, WhatsApp, X';
+
+  @override
+  String get shareLinkOption => 'Compartir como enlace';
+
+  @override
+  String get shareLinkOptionSub =>
+      'Resumen en texto + link para reabrir el plan';
+
+  @override
+  String shareLiveHeadline(String city) {
+    return 'Conduciendo por $city';
+  }
+
+  @override
+  String shareLiveCaption(String city) {
+    return 'Conduciendo por $city con MyTravelPal 🚗';
+  }
+
+  @override
+  String get planAddStop => 'Añadir parada';
+
+  @override
+  String get planStopDwellPassThrough => 'Solo paso';
+
+  @override
+  String get planStopDwellOneNight => '1 noche';
+
+  @override
+  String planStopDwellNights(int n) {
+    return '$n noches';
+  }
+
+  @override
+  String planStopDwellTitle(Object name) {
+    return '¿Cuánto tiempo en $name?';
+  }
+
+  @override
+  String get planAddStopTitle => 'Nueva parada';
+
+  @override
+  String planStopLabel(int n) {
+    return 'Parada $n';
+  }
+
+  @override
+  String get planStopRemove => 'Quitar parada';
+
+  @override
+  String get settingsCurrency => 'Moneda';
 
   @override
   String get planErrorPickEndpoints => 'Elige un origen y un destino.';
@@ -294,6 +713,35 @@ class AppLocalizationsEs extends AppLocalizations {
   String get commonClear => 'Borrar';
 
   @override
+  String commonShowNMore(int n) {
+    return 'Ver $n más';
+  }
+
+  @override
+  String get commonShowLess => 'Ver menos';
+
+  @override
+  String planLoadingElapsed(int seconds) {
+    return '${seconds}s transcurridos';
+  }
+
+  @override
+  String get planLoadingLongCrossingCountries =>
+      'Cruzando peajes en todos los países que vas a atravesar…';
+
+  @override
+  String get planLoadingLongScanningFuel =>
+      'Escaneando feeds oficiales de precios de combustible ES / FR / IT…';
+
+  @override
+  String get planLoadingLongBigTrip =>
+      'Los viajes largos tardan un poco más — cargando datos extra de hoteles y descansos.';
+
+  @override
+  String get planLoadingLongAlmostDone =>
+      'Ya casi está — últimos retoques al itinerario.';
+
+  @override
   String get commonSave => 'Guardar';
 
   @override
@@ -392,6 +840,21 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get shareTripSubject => 'Mi viaje con MyTravelPal';
+
+  @override
+  String get shareFormatTitle => 'Compartir como…';
+
+  @override
+  String get shareFormatStory => 'Story · 9:16';
+
+  @override
+  String get shareFormatStorySub => 'Instagram / TikTok / WhatsApp Stories';
+
+  @override
+  String get shareFormatFeed => 'Cuadrado · 1:1';
+
+  @override
+  String get shareFormatFeedSub => 'Feed de Instagram, Facebook, LinkedIn';
 
   @override
   String get shareTitle => 'MyTravelPal — plan de viaje';
@@ -856,7 +1319,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String resultFuelCollapsedHint(int count) {
-    return 'Mostrar las $count gasolineras de la ruta';
+    return 'Mostrar las $count gasolineras más baratas de la ruta';
   }
 
   @override
@@ -1019,6 +1482,53 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get settingsSectionAbout => 'Acerca de';
+
+  @override
+  String get settingsSectionData => 'Tus datos';
+
+  @override
+  String get settingsExportData => 'Descargar mis datos';
+
+  @override
+  String get settingsExportDataSub =>
+      'Obtén un JSON con todo lo que MyTravelPal guarda sobre ti.';
+
+  @override
+  String get settingsExportError =>
+      'No se pudieron exportar los datos — revisa tu conexión.';
+
+  @override
+  String get settingsDeleteAccount => 'Borrar mi cuenta';
+
+  @override
+  String get settingsDeleteAccountSub =>
+      'Elimina tu perfil, viajes guardados y preferencias de forma permanente.';
+
+  @override
+  String get settingsDeleteAccountConfirmTitle => '¿Borrar cuenta?';
+
+  @override
+  String get settingsDeleteAccountConfirmBody =>
+      'Esto borra tu perfil y todos los viajes guardados de nuestros servidores. No se puede deshacer.';
+
+  @override
+  String get settingsDeleteAccountCancel => 'Cancelar';
+
+  @override
+  String get settingsDeleteAccountConfirm => 'Borrar para siempre';
+
+  @override
+  String get settingsDeleteAccountPartial =>
+      'Sesión cerrada, pero el servidor puede aún tener datos. Reintenta con conexión estable.';
+
+  @override
+  String get settingsSupport => 'Soporte y contacto';
+
+  @override
+  String get settingsPrivacyPolicy => 'Política de privacidad';
+
+  @override
+  String get settingsTerms => 'Términos del servicio';
 
   @override
   String get settingsVersion => 'Versión';
@@ -1456,6 +1966,16 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String dayHeaderDwell(int index, String place) {
+    return 'Día $index · $place';
+  }
+
+  @override
+  String daySleepStay(String place) {
+    return 'Estancia en $place';
+  }
+
+  @override
   String get nextStopHeroLabel => 'Próxima parada sugerida';
 
   @override
@@ -1667,6 +2187,20 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hotelPrefStarsLabel => 'Estrellas';
 
   @override
+  String get hotelPrefDestRadiusLabel => 'Radio desde el destino';
+
+  @override
+  String get biometricPromptReason =>
+      'Verifica tu identidad para abrir MyTravelPal';
+
+  @override
+  String get biometricPromptSettings =>
+      'Confirma para activar el desbloqueo biométrico';
+
+  @override
+  String get planDepartureLabel => 'Salida preferida';
+
+  @override
   String get hotelPrefStarsAny => 'Todas';
 
   @override
@@ -1686,7 +2220,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get hotelFilterAccessible => 'Accesible';
 
   @override
-  String get hotelFilterOtherTypes => 'Casas rurales y más';
+  String get hotelFilterOtherTypes => 'Apartamentos, casas y más';
 
   @override
   String get restaurantFilterVegetarian => 'Vegetariano';

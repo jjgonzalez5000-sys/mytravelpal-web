@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
@@ -7,6 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.premium import is_premium
+
+_log = logging.getLogger(__name__)
 
 from app.domain import (
     AdverseEventSeverity,
@@ -24,9 +27,13 @@ from app.domain import (
     TripProfile,
     Vehicle,
     VehicleType,
+    Waypoint,
 )
+from app.domain.entities import Route
 from app.providers import get_providers
 from app.providers.factory import Providers
+from app.providers.google_places import GooglePlacesEnricher
+from app.providers.here_places import HerePlacesEnricher
 from app.services.adverse_events_filter import filter_events_near_route
 from app.services.day_plan import compute as compute_day_plan
 from app.services.fuel_cost import FuelCostEstimate, estimate as estimate_fuel
@@ -59,6 +66,26 @@ router = APIRouter(prefix="/trips", tags=["trips"])
 class CoordinateIn(BaseModel):
     lat: float = Field(ge=-90.0, le=90.0)
     lon: float = Field(ge=-180.0, le=180.0)
+
+
+class WaypointIn(BaseModel):
+    """Intermediate stop with an explicit dwell time.
+
+    `dwell_nights = 0` (default) preserves the historical
+    behaviour: the router only routes THROUGH the coord as a via
+    point. `dwell_nights >= 1` turns the waypoint into an anchor
+    that forces the multi-day plan to bookend N days there and
+    densifies hotels around it.
+
+    Accepts a bare `{lat, lon}` object too — Pydantic coerces via
+    the alias validator so callers on the previous request shape
+    (mobile pre-dwell) still work.
+    """
+
+    lat: float = Field(ge=-90.0, le=90.0)
+    lon: float = Field(ge=-180.0, le=180.0)
+    dwell_nights: int = Field(default=0, ge=0, le=14)
+    label: str | None = Field(default=None, max_length=120)
 
 
 class VehicleIn(BaseModel):
@@ -129,6 +156,12 @@ class TripProfileIn(BaseModel):
 class TripPlanRequest(BaseModel):
     origin: CoordinateIn
     destination: CoordinateIn
+    # Optional intermediate stops the router should visit in the
+    # order given. Empty (default) = classic point-to-point trip.
+    # Up to 8 waypoints — OSRM public demo has a soft limit of
+    # 10 total coordinates; we cap at 8 stops + origin +
+    # destination.
+    waypoints: list[WaypointIn] = Field(default_factory=list, max_length=8)
     desired_departure_at: datetime
     countries: list[Country] | None = Field(
         default=None,
@@ -176,6 +209,17 @@ class TripPlanRequest(BaseModel):
     hotel_include_other: bool = Field(
         default=False,
         description="Include guest houses, motels, apartments in addition to hotels.",
+    )
+    hotel_destination_radius_km: float | None = Field(
+        default=None,
+        ge=5.0,
+        le=100.0,
+        description=(
+            "Extra search radius around the DESTINATION to widen "
+            "the hotel pool when the corridor pass returned too "
+            "few. Defaults to 40 km when omitted; users can push "
+            "up to 100 km for rural destinations."
+        ),
     )
     hotel_conditions: str | None = Field(
         default=None,
@@ -438,6 +482,11 @@ class DayPlanOut(BaseModel):
     # this to rank hotels for the day's "sleep options" card.
     sleep_lat: float | None = None
     sleep_lon: float | None = None
+    # Human-readable label when this day is anchored at a
+    # user-picked dwell waypoint (e.g. "Mendrisio"). Mobile shows
+    # this in the day header instead of the raw "km 267 → 267"
+    # range that reads as nonsense for a stay-put day.
+    dwell_label: str | None = None
 
 
 class HotelOut(BaseModel):
@@ -603,10 +652,25 @@ async def plan_trip(
         )
     origin = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
     destination = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
+    waypoints = tuple(
+        Coordinate(lat=w.lat, lon=w.lon) for w in payload.waypoints
+    )
+    # Full waypoint list (including dwell metadata) — the routing
+    # provider only needs coords, but downstream services
+    # (day_plan, hotel densification) need dwell_nights + label.
+    dwell_waypoints = tuple(
+        Waypoint(
+            coordinate=Coordinate(lat=w.lat, lon=w.lon),
+            dwell_nights=w.dwell_nights,
+            label=w.label,
+        )
+        for w in payload.waypoints
+    )
     countries_override = tuple(payload.countries) if payload.countries else None
     profile = payload.trip_profile.to_domain() if payload.trip_profile else None
     route = await providers.routing.route(
         origin, destination, countries_override,
+        waypoints=waypoints,
         avoid_motorways=payload.avoid_motorways,
         prefer_scenic=payload.prefer_scenic,
     )
@@ -754,6 +818,29 @@ async def plan_trip(
             profile=profile,
             min_stars=payload.hotel_min_stars,
         )
+        # Enrich the top 30 hotels with Google Places data — adds
+        # `rating`, `rating_count` and `google_maps_url` so the
+        # mobile "Open in Maps" button lands on the exact Google
+        # Place page. Silent no-op if the key is missing or the
+        # API errors — filtered list ships unchanged.
+        try:
+            _h_enricher = GooglePlacesEnricher()
+            _h_head, _h_tail = filtered[:30], filtered[30:]
+            _h_enriched = await _h_enricher.enrich_hotels(tuple(_h_head))
+            filtered = tuple(_h_enriched) + tuple(_h_tail)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Google Places hotel enrichment failed: %r", exc)
+        # HERE Places: canonical name + verified address on top of
+        # the Google rating we just added. Improves Booking /
+        # Google Maps deep-link accuracy for the top hotels. Same
+        # 30-hotel cap — HERE's free tier easily covers it.
+        try:
+            _here_enricher = HerePlacesEnricher()
+            _h_head, _h_tail = filtered[:30], filtered[30:]
+            _h_enriched = await _here_enricher.enrich_hotels(tuple(_h_head))
+            filtered = tuple(_h_enriched) + tuple(_h_tail)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("HERE Places hotel enrichment failed: %r", exc)
         hotels_out = [
             HotelOut(
                 name=h.name,
@@ -794,6 +881,18 @@ async def plan_trip(
             exclude_origin_radius_km=payload.restaurant_exclude_origin_radius_km,
             profile=profile,
         )
+        # Enrich with Google Places rating + review count. Cap at
+        # the top 30 to keep the free-tier ($200/mo credit) safe
+        # even under heavy beta usage. Silent no-op if the key is
+        # missing (local dev) or the API errors — the response
+        # still ships without the rating chip.
+        try:
+            enricher = GooglePlacesEnricher()
+            head, tail = filtered_r[:30], filtered_r[30:]
+            enriched_head = await enricher.enrich_restaurants(tuple(head))
+            filtered_r = tuple(enriched_head) + tuple(tail)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Google Places enrichment failed: %r", exc)
         restaurants_out = [
             RestaurantOut(
                 name=r.name,
@@ -1007,22 +1106,30 @@ async def plan_trip(
         # otherwise even a densification pass would leak hotel
         # names into a response the driver didn't request.
         if near_hotels is not None and hotels_requested:
-            # Fill the sleep-stop hotel when the corridor pass
-            # returned nothing.
-            if (
-                opt.sleep_stop is not None
-                and opt.sleep_stop.hotel is None
-            ):
-                hits = await near_hotels(
-                    opt.sleep_stop.rest_stop.coordinate, 40.0,
-                )
-                if hits:
-                    densified_hotels.extend(hits)
+            # Fill EVERY overnight's hotel when the corridor pass
+            # returned nothing. Historically only `sleep_stop`
+            # (=first-day only) was densified, so middle days of a
+            # 3+-day trip lost their hotel candidates. Now we walk
+            # `sleep_stops` and query around each one; the first-
+            # day fill is a special case that also patches the
+            # legacy `sleep_stop` field so downstream schema code
+            # still sees the same value.
+            for i, s in enumerate(opt.sleep_stops):
+                if s.hotel is not None:
+                    continue
+                hits = await near_hotels(s.rest_stop.coordinate, 40.0)
+                if not hits:
+                    continue
+                densified_hotels.extend(hits)
+                new_sleeps = list(opt.sleep_stops)
+                new_sleeps[i] = replace(s, hotel=hits[0])
+                opt = replace(opt, sleep_stops=tuple(new_sleeps))
+                if opt.sleep_stop is not None and \
+                        opt.sleep_stop.rest_stop.coordinate == \
+                        s.rest_stop.coordinate:
                     opt = replace(
                         opt,
-                        sleep_stop=replace(
-                            opt.sleep_stop, hotel=hits[0],
-                        ),
+                        sleep_stop=replace(opt.sleep_stop, hotel=hits[0]),
                     )
             # Densify around EVERY distinct sleep/meal spot in the
             # plan so per-day "HOTELES CERCA DEL PUNTO DE
@@ -1046,8 +1153,105 @@ async def plan_trip(
                 round(dest_coord.lon, 3),
             )
             seen_coords.add(dest_key)
-            dest_hits = await near_hotels(dest_coord, 40.0)
+            # User can widen the destination pool via
+            # `hotel_destination_radius_km` — helpful in rural
+            # destinations where 40 km returns only a handful.
+            dest_radius = (
+                payload.hotel_destination_radius_km
+                if payload.hotel_destination_radius_km is not None
+                else 40.0
+            )
+            dest_hits = await near_hotels(dest_coord, dest_radius)
             densified_hotels.extend(dest_hits)
+            # Always seed nearby hotels around EVERY overnight so
+            # the day-view "Hotels near your stop" scroller for
+            # day 2 / day 3 has local options. Corridor pass may
+            # miss middle-day sleep towns entirely.
+            for s in opt.sleep_stops:
+                key = (
+                    round(s.rest_stop.coordinate.lat, 3),
+                    round(s.rest_stop.coordinate.lon, 3),
+                )
+                if key in seen_coords:
+                    continue
+                seen_coords.add(key)
+                hits = await near_hotels(s.rest_stop.coordinate, 40.0)
+                densified_hotels.extend(hits)
+            # Densify around EVERY middle-day sleep coord that the
+            # mobile day-plan renderer will actually filter by.
+            # Precompute the multi-day plan here (same call the
+            # response uses further down) so the coords are the
+            # canonical ones — not a re-projection that drifts by
+            # ~40 km once day 1 consumes an opt_sleep at a real
+            # rest area instead of the raw cap-boundary.
+            if profile is not None:
+                _preview_multiday = compute_day_plan(
+                    departure_at=effective_departure_at,
+                    trip_duration_hours=(
+                        route.free_flow_duration.total_seconds() / 3600.0
+                    ),
+                    profile=profile,
+                    optimizations=opt,
+                    rest_stops=compute_rest_stops(route),
+                    route_distance_km=route.distance_km,
+                    route=route,
+                )
+                _preview_days = (
+                    _preview_multiday.days if _preview_multiday
+                    else ()
+                )
+            else:
+                _preview_days = ()
+            # Densify around user-specified dwell waypoints — the
+            # driver has committed to sleeping N nights here, so we
+            # push harder (30 km radius, always fire) than the
+            # middle-day heuristic below.
+            for wp in dwell_waypoints:
+                if wp.dwell_nights < 1:
+                    continue
+                key = (
+                    round(wp.coordinate.lat, 3),
+                    round(wp.coordinate.lon, 3),
+                )
+                if key in seen_coords:
+                    continue
+                seen_coords.add(key)
+                hits = await near_hotels(wp.coordinate, 30.0)
+                if not hits:
+                    hits = await near_hotels(wp.coordinate, 60.0)
+                densified_hotels.extend(hits)
+            # Track raw hits per middle-day sleep coord so we can
+            # safety-net after the strict filter_hotels pass below.
+            _middle_day_hits: dict[tuple[float, float], list] = {}
+            for _d in _preview_days:
+                # Last day sleeps at destination (already densified
+                # above with `dest_radius`) — skip. Only middle-day
+                # overnights need this extra pass.
+                if _d.sleep_coord is None:
+                    continue
+                key = (
+                    round(_d.sleep_coord.lat, 3),
+                    round(_d.sleep_coord.lon, 3),
+                )
+                if key in seen_coords:
+                    continue
+                seen_coords.add(key)
+                # 60 km matches the mobile-side `_hotelsNear` cap so
+                # any hit surfaced here is guaranteed to pass the
+                # client filter. Zones like interior Iberia return
+                # < 5 hotels at 40 km — a wider probe keeps middle-
+                # day cards populated. Try 60 first, expand to 90
+                # if empty.
+                hits = await near_hotels(_d.sleep_coord, 60.0)
+                if not hits:
+                    hits = await near_hotels(_d.sleep_coord, 90.0)
+                _log.info(
+                    "densify day %d sleep_coord=%.3f,%.3f raw_hits=%d",
+                    _d.day_index, _d.sleep_coord.lat,
+                    _d.sleep_coord.lon, len(hits),
+                )
+                _middle_day_hits[key] = list(hits)
+                densified_hotels.extend(hits)
             for m in opt.meal_stops:
                 key = (
                     round(m.rest_stop.coordinate.lat, 3),
@@ -1081,6 +1285,40 @@ async def plan_trip(
             profile=profile,
             min_stars=payload.hotel_min_stars,
         )
+        # Safety-net for middle-day sleep coords: if the strict
+        # filter (min_stars / price_bands) erased everything for a
+        # given overnight, re-inject up to 5 raw hits from that
+        # sleep area so the day card doesn't render empty. Better
+        # to show a hostel outside the user's stars filter than an
+        # empty section — testers pointed this out repeatedly for
+        # multi-day trips through rural regions.
+        try:
+            _kept_coords = {
+                (round(h.coordinate.lat, 2), round(h.coordinate.lon, 2))
+                for h in _densified_filtered
+            }
+            _extra_middle: list = []
+            for key, raw in _middle_day_hits.items():
+                # Check if any filtered hotel is within ~1° of the
+                # sleep_coord (very loose — we just want to know if
+                # SOMETHING landed nearby). If not, inject raw.
+                nearby = any(
+                    abs(kc[0] - key[0]) < 1.0 and abs(kc[1] - key[1]) < 1.0
+                    for kc in _kept_coords
+                )
+                if nearby:
+                    continue
+                _log.info(
+                    "safety-net inject %d unfiltered hotels for "
+                    "sleep_coord %.3f,%.3f", len(raw[:5]), key[0], key[1],
+                )
+                _extra_middle.extend(raw[:5])
+            if _extra_middle:
+                _densified_filtered = tuple(
+                    list(_densified_filtered) + _extra_middle,
+                )
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("middle-day safety net failed: %r", exc)
         for h in _densified_filtered:
             key = (h.name, round(h.coordinate.lat, 4),
                    round(h.coordinate.lon, 4))
@@ -1331,6 +1569,7 @@ async def plan_trip(
             rest_stops=compute_rest_stops(route),
             route_distance_km=route.distance_km,
             route=route,
+            waypoints=dwell_waypoints,
         )
         if multiday is not None:
             for d in multiday.days:
@@ -1379,6 +1618,7 @@ async def plan_trip(
                         sleep_at=d.sleep_at,
                         sleep_lat=d.sleep_coord.lat if d.sleep_coord else None,
                         sleep_lon=d.sleep_coord.lon if d.sleep_coord else None,
+                        dwell_label=d.dwell_label,
                     )
                 )
 
@@ -1461,3 +1701,18 @@ async def plan_trip(
 
 def _minutes(delta: timedelta) -> float:
     return round(delta.total_seconds() / 60.0, 1)
+
+
+def _coord_at_km_route(route: Route, km: float) -> Coordinate | None:
+    """Interpolate a coordinate along the route's polyline at
+    approximately `km` from origin. Cheap linear pick — matches
+    what `day_plan._coord_at_km` does client-side and downstream.
+    Used by the hotel-densification pass to seed nearby hotels
+    around each middle-day sleep boundary the day plan will
+    interpolate at.
+    """
+    if not route.geometry or route.distance_km <= 0:
+        return None
+    fraction = max(0.0, min(1.0, km / route.distance_km))
+    idx = int(fraction * (len(route.geometry) - 1))
+    return route.geometry[idx]

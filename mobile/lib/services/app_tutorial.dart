@@ -17,6 +17,16 @@ Future<void> _markSeen(String key) async {
   await prefs.setBool(key, true);
 }
 
+/// Clear both the plan and result tutorial "seen" flags so that
+/// the coach-marks re-appear the next time the user opens the
+/// relevant screen. Called from the "Replay tutorial" entry in
+/// Settings.
+Future<void> resetTutorials() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.remove(_kPlanTutorialSeen);
+  await prefs.remove(_kResultTutorialSeen);
+}
+
 void showPlanTutorial(
   BuildContext context, {
   required GlobalKey originKey,
