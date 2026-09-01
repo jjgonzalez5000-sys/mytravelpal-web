@@ -58,7 +58,7 @@ _PREMIUM_BRANDS: frozenset[str] = frozenset({
 # on top of the pure "cheapest first" sort. On a 10-slot cap this
 # guarantees 3 premium picks even when independents dominate the low
 # end of the corridor.
-_PREMIUM_SLOT_FRACTION = 0.3
+_PREMIUM_SLOT_FRACTION = 0.5
 # Cluster stations within this many degrees of each other under the
 # same brand — a Repsol AND another Repsol 200 m away is usually the
 # same commercial site with two access lanes; keep the cheaper one.
@@ -248,16 +248,38 @@ def curate_stations(
     picks: list[FuelPrice] = []
     premium_target = max(1, round(_PER_COUNTRY_CAP * _PREMIUM_SLOT_FRACTION))
     for lst in per_country.values():
-        cheapest = lst[:_PER_COUNTRY_CAP]
-        already_ids = {id(p) for p in cheapest}
-        premium_extras = [
+        # Reserve premium_target slots for known majors; fill the
+        # remainder with the strict cheapest. Then combine + sort
+        # by price so the user still sees "cheapest first" while
+        # premium brands are ALWAYS represented if they exist in
+        # the corridor — previous approach let the sort-by-price
+        # push majors back out of the cap when their price was
+        # above the median.
+        premium_pool = [
             p for p in lst
             if _brand_key(p.station_name) in _PREMIUM_BRANDS
-            and id(p) not in already_ids
-        ][:premium_target]
-        combined = list(cheapest) + premium_extras
+        ]
+        cheap_slots = _PER_COUNTRY_CAP - min(
+            len(premium_pool), premium_target,
+        )
+        cheapest_nonpremium = [
+            p for p in lst
+            if _brand_key(p.station_name) not in _PREMIUM_BRANDS
+        ][:cheap_slots]
+        premium_selection = premium_pool[:premium_target]
+        # Any leftover slots (e.g. no premium found) go to the
+        # next cheapest independents.
+        combined_ids = {
+            id(p) for p in cheapest_nonpremium + premium_selection
+        }
+        leftover = [
+            p for p in lst[:_PER_COUNTRY_CAP + premium_target]
+            if id(p) not in combined_ids
+        ]
+        combined = cheapest_nonpremium + premium_selection + leftover
+        combined = combined[:_PER_COUNTRY_CAP]
         combined.sort(key=_score)
-        picks.extend(combined[:_PER_COUNTRY_CAP])
+        picks.extend(combined)
     picks.sort(key=_score)
     return tuple(picks[:_TOTAL_CAP])
 

@@ -444,6 +444,138 @@ abstract class AppLocalizations {
   /// **'Deeper blacks in dark mode, saves battery on OLED screens'**
   String get settingsOledSub;
 
+  /// No description provided for @parkingSearchTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find parking'**
+  String get parkingSearchTitle;
+
+  /// No description provided for @parkingSearchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Where are you going?'**
+  String get parkingSearchLabel;
+
+  /// No description provided for @parkingSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a destination and see parking nearby.'**
+  String get parkingSearchHint;
+
+  /// No description provided for @parkingRadiusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Radius'**
+  String get parkingRadiusLabel;
+
+  /// No description provided for @parkingNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No parking found within radius.'**
+  String get parkingNoResults;
+
+  /// No description provided for @parkingPriceUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Price ?'**
+  String get parkingPriceUnknown;
+
+  /// No description provided for @parkingCovered.
+  ///
+  /// In en, this message translates to:
+  /// **'Covered'**
+  String get parkingCovered;
+
+  /// No description provided for @parkingFilterKids.
+  ///
+  /// In en, this message translates to:
+  /// **'Kids'**
+  String get parkingFilterKids;
+
+  /// No description provided for @parkingFilterDogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Dogs'**
+  String get parkingFilterDogs;
+
+  /// No description provided for @parkingFilterToilets.
+  ///
+  /// In en, this message translates to:
+  /// **'Toilets'**
+  String get parkingFilterToilets;
+
+  /// No description provided for @parkingFilterFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get parkingFilterFood;
+
+  /// No description provided for @parkingFilterShowers.
+  ///
+  /// In en, this message translates to:
+  /// **'Showers'**
+  String get parkingFilterShowers;
+
+  /// No description provided for @parkingFilterEv.
+  ///
+  /// In en, this message translates to:
+  /// **'EV charger'**
+  String get parkingFilterEv;
+
+  /// No description provided for @parkingFilterFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get parkingFilterFuel;
+
+  /// No description provided for @parkingFilterWheelchair.
+  ///
+  /// In en, this message translates to:
+  /// **'Wheelchair'**
+  String get parkingFilterWheelchair;
+
+  /// No description provided for @parkingFilterRv.
+  ///
+  /// In en, this message translates to:
+  /// **'RV / camper'**
+  String get parkingFilterRv;
+
+  /// No description provided for @parkingFilterTruck.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck'**
+  String get parkingFilterTruck;
+
+  /// No description provided for @planFindParkingCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Find parking'**
+  String get planFindParkingCta;
+
+  /// No description provided for @poiFindParking.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get poiFindParking;
+
+  /// No description provided for @parkingPrefTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get parkingPrefTitle;
+
+  /// No description provided for @parkingPrefSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Show parkings near the destination.'**
+  String get parkingPrefSub;
+
+  /// No description provided for @parkingResultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking near destination'**
+  String get parkingResultTitle;
+
   /// No description provided for @inspireTitle.
   ///
   /// In en, this message translates to:
@@ -521,6 +653,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Idea saved. Find it in your saved inspirations.'**
   String get inspireSavedToast;
+
+  /// No description provided for @inspireRecentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent inspirations'**
+  String get inspireRecentTitle;
+
+  /// No description provided for @inspireHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My AI plans'**
+  String get inspireHistoryTitle;
+
+  /// No description provided for @inspireHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No AI plans yet. Generate one from the Plan tab.'**
+  String get inspireHistoryEmpty;
+
+  /// No description provided for @inspireHistoryDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get inspireHistoryDelete;
+
+  /// No description provided for @settingsMyAiPlans.
+  ///
+  /// In en, this message translates to:
+  /// **'My AI plans'**
+  String get settingsMyAiPlans;
+
+  /// No description provided for @settingsMyAiPlansSub.
+  ///
+  /// In en, this message translates to:
+  /// **'History of Trip Inspiration results'**
+  String get settingsMyAiPlansSub;
+
+  /// No description provided for @inspireChatTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refine the itinerary'**
+  String get inspireChatTitle;
+
+  /// No description provided for @inspireChatHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Change something: \"remove Cremona\", \"leave Friday evening\"…'**
+  String get inspireChatHint;
 
   /// No description provided for @inspireExamplesTitle.
   ///
@@ -1413,7 +1593,7 @@ abstract class AppLocalizations {
   /// No description provided for @planLoadingLongScanningFuel.
   ///
   /// In en, this message translates to:
-  /// **'Scanning government fuel-price feeds in ES / FR / IT…'**
+  /// **'Scanning European fuel-price feeds along the route…'**
   String get planLoadingLongScanningFuel;
 
   /// No description provided for @planLoadingLongBigTrip.
@@ -3869,7 +4049,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardBodyFuel.
   ///
   /// In en, this message translates to:
-  /// **'Official per-station prices in Spain, France and Italy. Premium brands mixed in with the low-cost independents.'**
+  /// **'Live per-station prices along your route across Europe. Premium brands mixed in with low-cost independents.'**
   String get onboardBodyFuel;
 
   /// No description provided for @onboardEyebrowDriving.

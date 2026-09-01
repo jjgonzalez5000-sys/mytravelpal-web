@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
 import '../l10n/app_localizations.dart';
+import '../screens/parking_search_screen.dart';
 import 'osm_attribution.dart';
 
 /// Kind of POI the sheet is describing. Governs which external CTAs
@@ -571,6 +572,27 @@ class _ExternalCtaRow extends StatelessWidget {
             onPressed: () => _launch(context, _airbnb()),
           ),
         ],
+        // Parking CTA for hotels + restaurants. Not every POI is
+        // reachable on foot from a random spot — surfacing "find
+        // parking nearby" here means the driver decides where to
+        // sleep / eat AND has an obvious next step for the car
+        // without navigating back to the plan.
+        if (kind == PoiKind.hotel || kind == PoiKind.restaurant)
+          _CtaButton(
+            icon: Icons.local_parking_outlined,
+            label: AppLocalizations.of(context).poiFindParking,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => ParkingSearchScreen(
+                  initialQuery: GeocodeResult(
+                    displayName: name,
+                    coordinate: poi,
+                    country: Country.fr, // best-guess; used only as label
+                  ),
+                ),
+              ),
+            ),
+          ),
         if (hasPhone)
           _CtaButton(
             icon: Icons.phone,

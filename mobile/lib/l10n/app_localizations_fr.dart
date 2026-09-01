@@ -191,6 +191,73 @@ class AppLocalizationsFr extends AppLocalizations {
       'Noirs plus profonds en mode sombre, économise la batterie sur OLED';
 
   @override
+  String get parkingSearchTitle => 'Trouver un parking';
+
+  @override
+  String get parkingSearchLabel => 'Où vas-tu ?';
+
+  @override
+  String get parkingSearchHint =>
+      'Choisis une destination pour voir les parkings.';
+
+  @override
+  String get parkingRadiusLabel => 'Rayon';
+
+  @override
+  String get parkingNoResults => 'Aucun parking dans ce rayon.';
+
+  @override
+  String get parkingPriceUnknown => 'Prix ?';
+
+  @override
+  String get parkingCovered => 'Couvert';
+
+  @override
+  String get parkingFilterKids => 'Enfants';
+
+  @override
+  String get parkingFilterDogs => 'Chiens';
+
+  @override
+  String get parkingFilterToilets => 'WC';
+
+  @override
+  String get parkingFilterFood => 'Restauration';
+
+  @override
+  String get parkingFilterShowers => 'Douches';
+
+  @override
+  String get parkingFilterEv => 'Borne EV';
+
+  @override
+  String get parkingFilterFuel => 'Station-service';
+
+  @override
+  String get parkingFilterWheelchair => 'PMR';
+
+  @override
+  String get parkingFilterRv => 'Camping-car';
+
+  @override
+  String get parkingFilterTruck => 'Poids lourd';
+
+  @override
+  String get planFindParkingCta => 'Trouver un parking';
+
+  @override
+  String get poiFindParking => 'Parking';
+
+  @override
+  String get parkingPrefTitle => 'Parking';
+
+  @override
+  String get parkingPrefSub => 'Afficher les parkings près de la destination.';
+
+  @override
+  String get parkingResultTitle => 'Parkings près de la destination';
+
+  @override
   String get inspireTitle => 'Inspiration voyage';
 
   @override
@@ -233,6 +300,32 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get inspireSavedToast =>
       'Idée enregistrée. Retrouve-la dans tes inspirations.';
+
+  @override
+  String get inspireRecentTitle => 'Récentes';
+
+  @override
+  String get inspireHistoryTitle => 'Mes plans IA';
+
+  @override
+  String get inspireHistoryEmpty =>
+      'Pas encore de plans IA. Génère-en un depuis l\'onglet Planifier.';
+
+  @override
+  String get inspireHistoryDelete => 'Supprimer';
+
+  @override
+  String get settingsMyAiPlans => 'Mes plans IA';
+
+  @override
+  String get settingsMyAiPlansSub => 'Historique Trip Inspiration';
+
+  @override
+  String get inspireChatTitle => 'Ajuste l\'itinéraire';
+
+  @override
+  String get inspireChatHint =>
+      'Demande un changement : \"enlève Crémone\", \"pars vendredi soir\"…';
 
   @override
   String get inspireExamplesTitle => 'Ou partez d\'une idée';
@@ -724,7 +817,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planLoadingLongScanningFuel =>
-      'Analyse des flux officiels de prix carburant ES / FR / IT…';
+      'Analyse des prix carburant européens le long de ta route…';
 
   @override
   String get planLoadingLongBigTrip =>
@@ -2137,7 +2230,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get onboardBodyFuel =>
-      'Prix officiels par station en Espagne, France et Italie. Marques premium mélangées aux low-cost.';
+      'Prix par station le long de ta route à travers l\'Europe. Marques premium mélangées aux low-cost.';
 
   @override
   String get onboardEyebrowDriving => 'SUR LA ROUTE';

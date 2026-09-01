@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,14 +33,60 @@ class InspireScreen extends ConsumerStatefulWidget {
 
 class _InspireScreenState extends ConsumerState<InspireScreen> {
   final _controller = TextEditingController();
+  final _refineController = TextEditingController();
   bool _loading = false;
+  bool _refining = false;
   String? _error;
   InspireItinerary? _result;
+  /// Conversation persisted alongside the itinerary. Each
+  /// generate/refine turn appends here so the LLM's next call
+  /// has full context.
+  final List<InspireChatTurn> _chat = [];
 
   @override
   void dispose() {
     _controller.dispose();
+    _refineController.dispose();
     super.dispose();
+  }
+
+  Future<void> _refine() async {
+    final prompt = _refineController.text.trim();
+    final prev = _result;
+    if (prompt.isEmpty || prev == null) return;
+    setState(() {
+      _refining = true;
+      _error = null;
+      _chat.add(InspireChatTurn(role: 'user', content: prompt));
+    });
+    _refineController.clear();
+    try {
+      final api = ref.read(apiClientWithPremiumProvider);
+      final locale = Localizations.localeOf(context).languageCode;
+      final updated = await api.refineTrip(
+        prompt: prompt,
+        previous: prev,
+        history: List.of(_chat),
+        locale: locale,
+      );
+      if (!mounted) return;
+      setState(() {
+        _result = updated;
+        if (updated.assistantNote != null &&
+            updated.assistantNote!.isNotEmpty) {
+          _chat.add(InspireChatTurn(
+            role: 'assistant', content: updated.assistantNote!,
+          ));
+        }
+      });
+      unawaited(_autoSaveInspiration(updated, _controller.text.trim()));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() =>
+          _error = AppLocalizations.of(context).inspireError);
+    } finally {
+      if (mounted) setState(() => _refining = false);
+    }
   }
 
   Future<void> _generate() async {
@@ -48,6 +96,10 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       _loading = true;
       _error = null;
       _result = null;
+      // Fresh conversation whenever the user regenerates from
+      // the initial prompt. Refinements append; regens reset.
+      _chat.clear();
+      _chat.add(InspireChatTurn(role: 'user', content: prompt));
     });
     try {
       final api = ref.read(apiClientWithPremiumProvider);
@@ -58,6 +110,11 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       );
       if (!mounted) return;
       setState(() => _result = itinerary);
+      // Auto-save every generation. Cheaper than losing an
+      // itinerary the driver liked but didn't tap "save" for.
+      // Dedup by prompt inside InspirationStorage prevents
+      // duplicates from same-prompt regenerations.
+      unawaited(_autoSaveInspiration(itinerary, prompt));
     } on ApiException catch (_) {
       if (!mounted) return;
       setState(() =>
@@ -68,6 +125,33 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
           _error = AppLocalizations.of(context).inspireError);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Compute a departure DateTime from a days-from-today offset.
+  /// Used only when the response carries no ISO date (older
+  /// backend build) or when the ISO is invalid.
+  DateTime _fallbackDeparture(int daysOffset, int hour) {
+    final target = DateTime.now().add(Duration(days: daysOffset));
+    return DateTime(target.year, target.month, target.day, hour);
+  }
+
+  Future<void> _autoSaveInspiration(
+    InspireItinerary it, String prompt,
+  ) async {
+    try {
+      final storage = ref.read(inspirationStorageProvider);
+      await storage.save(SavedInspiration(
+        id: 'insp_${DateTime.now().millisecondsSinceEpoch}',
+        prompt: prompt,
+        itinerary: it,
+        savedAt: DateTime.now(),
+        locale: Localizations.localeOf(context).languageCode,
+      ));
+    } catch (_) {
+      // Auto-save is best-effort — a persistence failure must
+      // not break the generation UX. User can still tap the
+      // manual save button on the result screen.
     }
   }
 
@@ -88,59 +172,101 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
     );
   }
 
-  void _convertToPlan() {
+  Future<void> _convertToPlan() async {
     final it = _result;
     if (it == null || it.days.isEmpty) return;
     final first = it.days.first;
     final last = it.days.last;
-    // Origin = first day's from_name at first waypoint (or the
-    // day's implicit start if we have one), destination = last
-    // day's to_name at last waypoint. Intermediate cities are
-    // handed off as waypoints so OSRM stitches the multi-leg
-    // route the same way it does for manually-added stops.
+    // Origin = first day's from_name; destination = last day's
+    // to_name; every other to_name becomes an intermediate
+    // waypoint. For each city we try three sources in order:
+    //   1) LLM waypoint whose name substring-matches the city
+    //   2) Backend geocode of the city name (authoritative)
+    //   3) Skip (previously silently fell back to the first
+    //      day.waypoints entry — that produced the "destination
+    //      says Monza but map shows Rome" bug when the LLM
+    //      threw sightseeing POIs from another city into the
+    //      day's waypoint list).
     GeocodeResult? originResult;
     GeocodeResult? destResult;
-    final stops = <GeocodeResult>[];
-    // Walk each day. The FROM of day 1 is the origin; the TO of
-    // the last day is the destination; every other TO becomes a
-    // waypoint. We anchor coordinates from the day's waypoint
-    // list where possible, falling back to the previous day's
-    // last waypoint or the next day's first when a name lacks a
-    // matching POI (LLMs sometimes omit city coords).
-    LatLon? guessCoord(String cityName, InspireDay day) {
+    final stops = <PlannedStop>[];
+    final api = ref.read(apiClientWithPremiumProvider);
+
+    LatLon? matchInDay(String cityName, InspireDay day) {
+      final needle = cityName.toLowerCase().trim();
+      if (needle.isEmpty) return null;
       for (final w in day.waypoints) {
-        if (w.name.toLowerCase().contains(cityName.toLowerCase()) ||
-            cityName.toLowerCase().contains(w.name.toLowerCase())) {
+        final hay = w.name.toLowerCase();
+        // Require BOTH substrings only when neither name is
+        // a real subset of the other — avoids catching "Roma"
+        // when the target is "Monza".
+        if (hay.contains(needle) || needle.contains(hay)) {
           return LatLon(lat: w.lat, lon: w.lon);
         }
       }
-      return day.waypoints.isNotEmpty
-          ? LatLon(
-              lat: day.waypoints.first.lat,
-              lon: day.waypoints.first.lon,
-            )
-          : null;
+      return null;
     }
 
-    final originCoord = guessCoord(first.fromName, first);
+    Future<LatLon?> resolveCoord(
+      String cityName, InspireDay day,
+    ) async {
+      final direct = matchInDay(cityName, day);
+      if (direct != null) return direct;
+      // Fallback: geocode via backend. Cheap, cached upstream,
+      // avoids the "waypoints.first" trap that silently rewrote
+      // Monza -> Roma when the LLM stuffed extra POIs into the
+      // day list.
+      try {
+        final results = await api.geocode(cityName.trim());
+        if (results.isNotEmpty) return results.first.coordinate;
+      } catch (_) {
+        // Network / backend hiccup — skip this stop rather than
+        // guess a coord.
+      }
+      return null;
+    }
+
+    final originCoord = await resolveCoord(first.fromName, first);
     if (originCoord != null) {
       originResult = GeocodeResult(
         displayName: first.fromName,
         coordinate: originCoord,
-        country: Country.fr, // best-guess; router still works.
+        country: Country.fr,
       );
     }
+    // Count how many days end in each city → that becomes the
+    // dwell_nights for that waypoint. Example: for a "Milan → Como
+    // (2 nights) → Bergamo → Milan" itinerary the LLM emits, Como
+    // ends day 1 AND day 2 as to_name → dwell_nights = 2. Bergamo
+    // ends day 3 → dwell_nights = 1.
+    final overnightCount = <String, int>{};
+    for (var i = 0; i < it.days.length - 1; i++) {
+      final key = it.days[i].toName.trim().toLowerCase();
+      overnightCount[key] = (overnightCount[key] ?? 0) + 1;
+    }
+    // Emit intermediate stops in first-occurrence order so the
+    // resulting waypoint list matches the LLM's day ordering. A
+    // city that appears twice as to_name (multi-night stay) shows
+    // up ONCE as a waypoint with the aggregated dwell.
+    final emittedStopKeys = <String>{};
     for (var i = 0; i < it.days.length - 1; i++) {
       final d = it.days[i];
-      final coord = guessCoord(d.toName, d);
+      final key = d.toName.trim().toLowerCase();
+      if (emittedStopKeys.contains(key)) continue;
+      final coord = await resolveCoord(d.toName, d);
       if (coord == null) continue;
-      stops.add(GeocodeResult(
-        displayName: d.toName,
-        coordinate: coord,
-        country: Country.fr,
+      emittedStopKeys.add(key);
+      final nights = overnightCount[key] ?? 1;
+      stops.add(PlannedStop(
+        place: GeocodeResult(
+          displayName: d.toName,
+          coordinate: coord,
+          country: Country.fr,
+        ),
+        dwellNights: nights,
       ));
     }
-    final destCoord = guessCoord(last.toName, last);
+    final destCoord = await resolveCoord(last.toName, last);
     if (destCoord != null) {
       destResult = GeocodeResult(
         displayName: last.toName,
@@ -149,6 +275,39 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       );
     }
 
+    // Also emit "significant" per-day waypoints as pass-through
+    // stops so items the user asked the AI to add (a restaurant
+    // near Como, a specific viewpoint, a museum) actually reach
+    // the real router instead of only living in the itinerary
+    // preview. Cap total stops at 8 (backend limit — origin +
+    // 8 waypoints + destination = 10, OSRM's soft cap).
+    const significantKinds = {
+      'restaurant', 'landmark', 'museum', 'viewpoint',
+    };
+    const maxTotalStops = 8;
+    final knownStopKeys = <String>{
+      for (final s in stops) s.place.displayName.trim().toLowerCase(),
+    };
+    for (final d in it.days) {
+      if (stops.length >= maxTotalStops) break;
+      for (final w in d.waypoints) {
+        if (stops.length >= maxTotalStops) break;
+        if (!significantKinds.contains(w.kind.toLowerCase())) continue;
+        final key = w.name.trim().toLowerCase();
+        if (key.isEmpty || knownStopKeys.contains(key)) continue;
+        knownStopKeys.add(key);
+        stops.add(PlannedStop(
+          place: GeocodeResult(
+            displayName: w.name,
+            coordinate: LatLon(lat: w.lat, lon: w.lon),
+            country: Country.fr,
+          ),
+          dwellNights: 0,   // pass-through: visit + continue
+        ));
+      }
+    }
+
+    if (!mounted) return;
     if (originResult == null || destResult == null) {
       // Nothing usable — fall back to just closing and letting the
       // user type manually. Rare (LLM would need to omit all
@@ -161,15 +320,27 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
     // path already knows how to pre-fill everything. Waypoints are
     // set via a small side channel — the PlanScreen already
     // supports intermediate stops.
-    // Preferred: honour the LLM's timing hints from the prompt
-    // ("weekend" -> next Friday, "next week" -> +7). Falls back
-    // to "tomorrow 08:00" only when the prompt carried no time
-    // signal at all.
-    final daysOffset = it.suggestedDepartureDaysFromNow ?? 1;
+    // Prefer the ISO date directly — the LLM was historically
+    // off-by-one on weekday arithmetic when we asked for an
+    // offset instead. Falls back to the offset field (older
+    // backends) and finally to "tomorrow 08:00".
     final hour = it.suggestedDepartureHour ?? 8;
-    final target = DateTime.now().add(Duration(days: daysOffset));
-    final departure =
-        DateTime(target.year, target.month, target.day, hour);
+    late DateTime departure;
+    final iso = it.suggestedDepartureIso;
+    if (iso != null) {
+      try {
+        final d = DateTime.parse(iso);
+        departure = DateTime(d.year, d.month, d.day, hour);
+      } catch (_) {
+        departure = _fallbackDeparture(
+          it.suggestedDepartureDaysFromNow ?? 1, hour,
+        );
+      }
+    } else {
+      departure = _fallbackDeparture(
+        it.suggestedDepartureDaysFromNow ?? 1, hour,
+      );
+    }
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => PlanScreen(
@@ -263,21 +434,192 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
                 ),
               ],
               const SizedBox(height: Tokens.space24),
-              if (_result == null) _ExamplesBlock(
-                onPick: (text) {
-                  _controller.text = text;
-                  _generate();
-                },
-              ),
-              if (_result != null) _ResultBlock(
-                itinerary: _result!,
-                onConvert: _convertToPlan,
-                onSave: _saveInspiration,
-              ),
+              if (_result == null) ...[
+                // Recent inspirations (auto-saved on each generate).
+                // Tapping one restores the itinerary immediately —
+                // no re-call to Anthropic → free.
+                Consumer(builder: (context, ref, _) {
+                  final storage = ref.read(inspirationStorageProvider);
+                  final recent = storage.list().take(3).toList();
+                  if (recent.isEmpty) return const SizedBox.shrink();
+                  final l = AppLocalizations.of(context);
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(l.inspireRecentTitle,
+                          style: Theme.of(context).textTheme.titleSmall),
+                      const SizedBox(height: Tokens.space8),
+                      for (final e in recent)
+                        Card(
+                          margin: const EdgeInsets.only(bottom: Tokens.space8),
+                          child: ListTile(
+                            leading: const Icon(Icons.history),
+                            title: Text(
+                              e.prompt,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            subtitle: Text(
+                              '${e.itinerary.days.length} ${l.inspireDayLabel(e.itinerary.days.length)}',
+                            ),
+                            onTap: () {
+                              _controller.text = e.prompt;
+                              setState(() => _result = e.itinerary);
+                            },
+                          ),
+                        ),
+                      const SizedBox(height: Tokens.space16),
+                    ],
+                  );
+                }),
+                _ExamplesBlock(
+                  onPick: (text) {
+                    _controller.text = text;
+                    _generate();
+                  },
+                ),
+              ],
+              if (_result != null) ...[
+                _ResultBlock(
+                  itinerary: _result!,
+                  onConvert: _convertToPlan,
+                  onSave: _saveInspiration,
+                ),
+                const SizedBox(height: Tokens.space20),
+                _ChatConversation(chat: _chat),
+                const SizedBox(height: Tokens.space8),
+                _RefineComposer(
+                  controller: _refineController,
+                  busy: _refining,
+                  onSend: _refine,
+                ),
+              ],
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Conversation trail of user/assistant bubbles. Rendered only
+/// once the refinement chat has at least one assistant reply —
+/// keeps the initial-generation view clean.
+class _ChatConversation extends StatelessWidget {
+  const _ChatConversation({required this.chat});
+  final List<InspireChatTurn> chat;
+
+  @override
+  Widget build(BuildContext context) {
+    // Skip when only the seed user message is present (no
+    // assistant turn yet → don't render a lonely bubble).
+    final assistantTurns =
+        chat.where((m) => m.role == 'assistant').length;
+    if (assistantTurns == 0) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          l.inspireChatTitle,
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+        ),
+        const SizedBox(height: Tokens.space8),
+        for (final m in chat.skip(1)) // drop the initial prompt
+          Align(
+            alignment: m.role == 'user'
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 8,
+              ),
+              constraints:
+                  const BoxConstraints(maxWidth: 320),
+              decoration: BoxDecoration(
+                color: m.role == 'user'
+                    ? scheme.primaryContainer
+                    : scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(14),
+                  topRight: const Radius.circular(14),
+                  bottomLeft: Radius.circular(m.role == 'user' ? 14 : 4),
+                  bottomRight: Radius.circular(m.role == 'user' ? 4 : 14),
+                ),
+              ),
+              child: Text(
+                m.content,
+                style: TextStyle(
+                  color: m.role == 'user'
+                      ? scheme.onPrimaryContainer
+                      : scheme.onSurface,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Composer row: text input + send button for refinement turns.
+class _RefineComposer extends StatelessWidget {
+  const _RefineComposer({
+    required this.controller,
+    required this.busy,
+    required this.onSend,
+  });
+  final TextEditingController controller;
+  final bool busy;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Expanded(
+          child: TextField(
+            controller: controller,
+            enabled: !busy,
+            minLines: 1,
+            maxLines: 4,
+            textInputAction: TextInputAction.send,
+            decoration: InputDecoration(
+              hintText: l.inspireChatHint,
+              border: const OutlineInputBorder(),
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 12,
+              ),
+            ),
+            onSubmitted: (_) => onSend(),
+          ),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          onPressed: busy ? null : onSend,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(52, 52),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+          ),
+          child: busy
+              ? SizedBox(
+                  width: 18, height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: scheme.onPrimary,
+                  ),
+                )
+              : const Icon(Icons.send),
+        ),
+      ],
     );
   }
 }

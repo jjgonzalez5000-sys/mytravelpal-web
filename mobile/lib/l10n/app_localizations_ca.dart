@@ -191,6 +191,72 @@ class AppLocalizationsCa extends AppLocalizations {
       'Deeper blacks in dark mode, saves battery on OLED screens';
 
   @override
+  String get parkingSearchTitle => 'Find parking';
+
+  @override
+  String get parkingSearchLabel => 'Where are you going?';
+
+  @override
+  String get parkingSearchHint => 'Pick a destination and see parking nearby.';
+
+  @override
+  String get parkingRadiusLabel => 'Radius';
+
+  @override
+  String get parkingNoResults => 'No parking found within radius.';
+
+  @override
+  String get parkingPriceUnknown => 'Price ?';
+
+  @override
+  String get parkingCovered => 'Covered';
+
+  @override
+  String get parkingFilterKids => 'Kids';
+
+  @override
+  String get parkingFilterDogs => 'Dogs';
+
+  @override
+  String get parkingFilterToilets => 'Toilets';
+
+  @override
+  String get parkingFilterFood => 'Food';
+
+  @override
+  String get parkingFilterShowers => 'Showers';
+
+  @override
+  String get parkingFilterEv => 'EV charger';
+
+  @override
+  String get parkingFilterFuel => 'Fuel';
+
+  @override
+  String get parkingFilterWheelchair => 'Wheelchair';
+
+  @override
+  String get parkingFilterRv => 'RV / camper';
+
+  @override
+  String get parkingFilterTruck => 'Truck';
+
+  @override
+  String get planFindParkingCta => 'Find parking';
+
+  @override
+  String get poiFindParking => 'Parking';
+
+  @override
+  String get parkingPrefTitle => 'Parking';
+
+  @override
+  String get parkingPrefSub => 'Show parkings near the destination.';
+
+  @override
+  String get parkingResultTitle => 'Parking near destination';
+
+  @override
   String get inspireTitle => 'Trip Inspiration';
 
   @override
@@ -233,6 +299,32 @@ class AppLocalizationsCa extends AppLocalizations {
   @override
   String get inspireSavedToast =>
       'Idea saved. Find it in your saved inspirations.';
+
+  @override
+  String get inspireRecentTitle => 'Recent inspirations';
+
+  @override
+  String get inspireHistoryTitle => 'My AI plans';
+
+  @override
+  String get inspireHistoryEmpty =>
+      'No AI plans yet. Generate one from the Plan tab.';
+
+  @override
+  String get inspireHistoryDelete => 'Delete';
+
+  @override
+  String get settingsMyAiPlans => 'My AI plans';
+
+  @override
+  String get settingsMyAiPlansSub => 'History of Trip Inspiration results';
+
+  @override
+  String get inspireChatTitle => 'Refine the itinerary';
+
+  @override
+  String get inspireChatHint =>
+      'Change something: \"remove Cremona\", \"leave Friday evening\"…';
 
   @override
   String get inspireExamplesTitle => 'Or start from an idea';
@@ -725,7 +817,7 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get planLoadingLongScanningFuel =>
-      'Scanning government fuel-price feeds in ES / FR / IT…';
+      'Scanning European fuel-price feeds along the route…';
 
   @override
   String get planLoadingLongBigTrip =>
@@ -2133,7 +2225,7 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get onboardBodyFuel =>
-      'Official per-station prices in Spain, France and Italy. Premium brands mixed in with the low-cost independents.';
+      'Live per-station prices along your route across Europe. Premium brands mixed in with low-cost independents.';
 
   @override
   String get onboardEyebrowDriving => 'ON THE ROAD';

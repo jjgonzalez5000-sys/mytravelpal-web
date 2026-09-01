@@ -122,23 +122,35 @@ class HereTollsProvider:
                 except (TypeError, ValueError, KeyError):
                     mid_lat = mid_lon = None
             for toll in tolls:
-                for fare in toll.get("fares") or []:
-                    price = fare.get("price") or {}
-                    if str(price.get("currency", "")).upper() != "EUR":
-                        continue
-                    val = price.get("value")
-                    if not isinstance(val, (int, float)):
-                        continue
-                    total_eur += float(val)
-                    booths.append(TollBooth(
-                        name=str(
-                            toll.get("tollSystem") or toll.get("name")
-                            or "Toll section",
-                        ),
-                        cost_eur=round(float(val), 2),
-                        lat=mid_lat if mid_lat is not None else 0.0,
-                        lon=mid_lon if mid_lon is not None else 0.0,
-                    ))
+                # HERE returns MULTIPLE `fares` per toll section —
+                # one per payment method (cash, tag, video). Emitting
+                # a TollBooth per fare produced the duplicate rows
+                # testers saw. Pick the MIN EUR fare (usually the
+                # tag / video price the driver would actually pay
+                # with a modern electronic system) and emit one
+                # booth per section.
+                eur_fares = [
+                    float((f.get("price") or {}).get("value"))
+                    for f in (toll.get("fares") or [])
+                    if str(((f.get("price") or {}).get("currency") or ""))
+                        .upper() == "EUR"
+                    and isinstance(
+                        (f.get("price") or {}).get("value"), (int, float),
+                    )
+                ]
+                if not eur_fares:
+                    continue
+                val = min(eur_fares)
+                total_eur += val
+                booths.append(TollBooth(
+                    name=str(
+                        toll.get("tollSystem") or toll.get("name")
+                        or "Toll section",
+                    ),
+                    cost_eur=round(val, 2),
+                    lat=mid_lat if mid_lat is not None else 0.0,
+                    lon=mid_lon if mid_lon is not None else 0.0,
+                ))
         return TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
 
 

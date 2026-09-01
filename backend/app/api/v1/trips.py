@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import replace
 from datetime import datetime, timedelta, timezone
@@ -318,6 +319,13 @@ class TripPlanRequest(BaseModel):
             "table (skip tolls at these hours, keep them at those)."
         ),
     )
+    include_parking: bool = Field(
+        default=False,
+        description=(
+            "When true, the response ships a `parkings[]` list of "
+            "options near the destination (5-10 sorted by distance)."
+        ),
+    )
     avoid_motorways: bool = Field(default=False)
     prefer_scenic: bool = Field(default=False)
     time_window_span_hours: int = Field(
@@ -403,6 +411,13 @@ class MealStopOut(BaseModel):
     restaurant_price_eur_per_meal: float | None
     restaurant_lat: float | None
     restaurant_lon: float | None
+    # Reverse-geocoded city near the meal stop coord. Shown in
+    # the mobile row as "Cerca de X" so drivers know where the
+    # stop actually is without opening a map.
+    city_hint: str | None = None
+    # The stop's actual GPS. Used by the mobile mini-map thumbnail.
+    lat: float | None = None
+    lon: float | None = None
 
 
 class SleepStopOut(BaseModel):
@@ -412,6 +427,9 @@ class SleepStopOut(BaseModel):
     hotel_price_eur_per_night: float | None
     hotel_lat: float | None
     hotel_lon: float | None
+    city_hint: str | None = None
+    lat: float | None = None
+    lon: float | None = None
 
 
 class OptimizationsOut(BaseModel):
@@ -606,12 +624,31 @@ class WeatherSegmentOut(BaseModel):
     lon: float
 
 
+class ParkingOutTrip(BaseModel):
+    name: str
+    lat: float
+    lon: float
+    country: str
+    distance_from_destination_km: float
+    price_eur_per_hour: float | None = None
+    covered: bool | None = None
+    capacity: int | None = None
+    kind: str = "surface"
+    kid_friendly: bool | None = None
+    dogs_allowed: bool | None = None
+    toilets: bool | None = None
+    food_nearby: bool | None = None
+    ev_charging: bool | None = None
+    rv_friendly: bool | None = None
+
+
 class TripPlanResponse(BaseModel):
     route: RouteOut
     time_windows: list[TimeWindowOut]
     fuel_prices: list[FuelPriceOut]
     hotels: list[HotelOut]
     restaurants: list[RestaurantOut]
+    parkings: list[ParkingOutTrip] = Field(default_factory=list)
     rest_stops: list[RestStopOut]
     adverse_events: list[AdverseEventOut]
     toll_alternative: TollAlternativeOut | None = None
@@ -1367,6 +1404,34 @@ async def plan_trip(
         cost = estimate_fuel(route, profile.vehicle, fuel)
         fuel_cost_domain = cost
         fuel_prices_domain = fuel
+        # Reverse-geocode every meal + sleep coord to a city hint
+        # so the mobile can render "Cerca de X" per row. Concurrent
+        # gather bounded by asyncio; cache TTL lives inside the
+        # geocoding provider so re-plans on the same corridor cost
+        # nothing. Silent no-op when the geocoder has no `reverse`
+        # method (mock provider in some tests).
+        async def _city(coord) -> str | None:
+            reverse = getattr(providers.geocoding, "reverse", None)
+            if reverse is None or coord is None:
+                return None
+            try:
+                r = await reverse(coord.lat, coord.lon)
+                if r is None:
+                    return None
+                # Prefer the shortest first token of the display name
+                # ("Toledo, Toledo, Castilla-La Mancha, España" →
+                # "Toledo").
+                return r.display_name.split(",")[0].strip() or None
+            except Exception:  # noqa: BLE001
+                return None
+
+        meal_city_hints = await asyncio.gather(*(
+            _city(m.rest_stop.coordinate) for m in opt.meal_stops
+        ))
+        sleep_city_hint = await _city(
+            opt.sleep_stop.rest_stop.coordinate
+            if opt.sleep_stop is not None else None
+        )
         optimizations_out = OptimizationsOut(
             meal_stops=[
                 MealStopOut(
@@ -1383,8 +1448,17 @@ async def plan_trip(
                     restaurant_lon=(
                         m.restaurant.coordinate.lon if m.restaurant else None
                     ),
+                    city_hint=meal_city_hints[i],
+                    lat=(
+                        m.restaurant.coordinate.lat if m.restaurant
+                        else m.rest_stop.coordinate.lat
+                    ),
+                    lon=(
+                        m.restaurant.coordinate.lon if m.restaurant
+                        else m.rest_stop.coordinate.lon
+                    ),
                 )
-                for m in opt.meal_stops
+                for i, m in enumerate(opt.meal_stops)
             ],
             sleep_stop=(
                 SleepStopOut(
@@ -1404,6 +1478,17 @@ async def plan_trip(
                     hotel_lon=(
                         opt.sleep_stop.hotel.coordinate.lon
                         if opt.sleep_stop.hotel else None
+                    ),
+                    city_hint=sleep_city_hint,
+                    lat=(
+                        opt.sleep_stop.hotel.coordinate.lat
+                        if opt.sleep_stop.hotel
+                        else opt.sleep_stop.rest_stop.coordinate.lat
+                    ),
+                    lon=(
+                        opt.sleep_stop.hotel.coordinate.lon
+                        if opt.sleep_stop.hotel
+                        else opt.sleep_stop.rest_stop.coordinate.lon
                     ),
                 )
                 if opt.sleep_stop is not None else None
@@ -1634,6 +1719,41 @@ async def plan_trip(
     except Exception:
         weather_raw = ()
 
+    parkings_out: list[ParkingOutTrip] = []
+    if payload.include_parking:
+        try:
+            from app.providers.parking import GeoapifyParkingProvider
+            parking_provider = GeoapifyParkingProvider()
+            dest_coord = Coordinate(
+                lat=payload.destination.lat,
+                lon=payload.destination.lon,
+            )
+            parkings_found = await parking_provider.parking_near(
+                dest_coord, radius_km=2.5,
+            )
+            for p in list(parkings_found)[:10]:
+                parkings_out.append(ParkingOutTrip(
+                    name=p.name,
+                    lat=p.coordinate.lat,
+                    lon=p.coordinate.lon,
+                    country=p.country.value,
+                    distance_from_destination_km=round(
+                        p.distance_from_query_km, 3,
+                    ),
+                    price_eur_per_hour=p.price_eur_per_hour,
+                    covered=p.covered,
+                    capacity=p.capacity,
+                    kind=p.kind,
+                    kid_friendly=p.kid_friendly,
+                    dogs_allowed=p.dogs_allowed,
+                    toilets=p.toilets,
+                    food_nearby=p.food_nearby,
+                    ev_charging=p.ev_charging,
+                    rv_friendly=p.rv_friendly,
+                ))
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Parking search failed: %r", exc)
+
     return TripPlanResponse(
         route=RouteOut(
             distance_km=route.distance_km,
@@ -1668,10 +1788,16 @@ async def plan_trip(
                 unit_label=fp.unit_label,
                 is_charging_station=fp.is_charging_station,
             )
+            # Drop stations without a live price — tester feedback:
+            # empty rows with "€ ?" read as noise and dilute the
+            # trustworthy list. EV charging stations always ship
+            # regardless (they may not have per-kWh price yet).
             for fp in fuel
+            if fp.price_available or fp.is_charging_station
         ],
         hotels=hotels_out,
         restaurants=restaurants_out,
+        parkings=parkings_out,
         rest_stops=rest_stops_out,
         adverse_events=adverse_events_out,
         toll_alternative=toll_alternative_out,

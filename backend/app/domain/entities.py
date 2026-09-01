@@ -188,6 +188,41 @@ class Coordinate:
 
 
 @dataclass(frozen=True, slots=True)
+class Parking:
+    """A parking option near a coordinate.
+
+    Amenity booleans use tri-state semantics: `True` = OSM has an
+    explicit yes tag; `False` = OSM has an explicit no tag; `None`
+    = unknown (majority of cases). Client filters use `True`-only
+    matching so unknowns don't get dropped when the user hasn't
+    checked that amenity.
+    """
+    name: str
+    coordinate: Coordinate
+    country: Country
+    distance_from_query_km: float
+    price_eur_per_hour: float | None = None
+    max_stay_hours: float | None = None
+    covered: bool | None = None
+    capacity: int | None = None
+    kind: str = "surface"
+    # Amenity flags. Sourced from OSM tags via the Geoapify feed.
+    kid_friendly: bool | None = None      # playground, kids_area, family
+    dogs_allowed: bool | None = None      # dog=yes
+    toilets: bool | None = None
+    showers: bool | None = None
+    food_nearby: bool | None = None       # restaurant / cafe / vending
+    ev_charging: bool | None = None
+    fuel_station: bool | None = None
+    wheelchair_access: bool | None = None
+    supervised: bool | None = None
+    rv_friendly: bool | None = None       # motor_vehicle=motorhome / campervan_site
+    truck_friendly: bool | None = None    # hgv=yes / trucks=yes
+    park_and_ride: bool | None = None
+    attributes: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
 class Waypoint:
     """An intermediate stop with a stay duration.
 

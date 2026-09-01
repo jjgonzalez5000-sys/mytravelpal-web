@@ -65,6 +65,16 @@ class InspireRequest(BaseModel):
         pattern=r"^[a-zA-Z]{2}(-[A-Za-z]{2})?$",
         description="BCP-47 code — LLM outputs narrative in this locale.",
     )
+    today_iso: str | None = Field(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+        description=(
+            "Client-local `YYYY-MM-DD`. When present it wins over "
+            "the server-side UTC date for the LLM's 'today' anchor. "
+            "Fixes weekday off-by-one bugs when the user's local "
+            "date differs from UTC (late night / early morning)."
+        ),
+    )
 
 
 class InspirePoi(BaseModel):
@@ -95,13 +105,55 @@ class InspireResponse(BaseModel):
     days: list[InspireDay]
     total_distance_km_estimate: float | None = None
     estimated_budget_eur: float | None = None
-    # Timing hints inferred from the user prompt. When the driver
-    # says "weekend" / "next Friday" / "in two weeks", the LLM
-    # returns concrete offsets we can turn into a real departure
-    # datetime on the client instead of defaulting to "tomorrow
-    # 08:00" which almost never matches the intent.
+    # Timing hints inferred from the user prompt. `_iso` is the
+    # authoritative field; `_days_from_now` is kept for backward
+    # compat with older mobile builds. The client should prefer
+    # `_iso` when both are present.
+    suggested_departure_iso: str | None = None
     suggested_departure_days_from_now: int | None = None
     suggested_departure_hour: int | None = None
+    # Short assistant reply (1-2 sentences) explaining what the
+    # LLM did — set by `/refine` only. `/inspire` leaves it null
+    # since the whole payload IS the response.
+    assistant_note: str | None = None
+
+
+class InspireChatTurn(BaseModel):
+    """One message in the refinement conversation."""
+    role: str  # "user" | "assistant"
+    content: str
+
+
+class InspireRefineRequest(BaseModel):
+    prompt: str = Field(
+        ..., min_length=1, max_length=500,
+        description=(
+            "User's refinement request, e.g. 'quita el día en Cremona' "
+            "or 'salir viernes por la tarde en vez de mañana'."
+        ),
+    )
+    previous_itinerary: InspireResponse = Field(
+        ...,
+        description=(
+            "The itinerary the LLM last emitted. The refine call "
+            "modifies THIS, not a fresh generation."
+        ),
+    )
+    history: list[InspireChatTurn] = Field(
+        default_factory=list, max_length=20,
+        description=(
+            "Prior turns of the conversation (oldest first). Capped "
+            "at 20 messages so the context stays cheap."
+        ),
+    )
+    locale: str = Field(
+        default="en",
+        pattern=r"^[a-zA-Z]{2}(-[A-Za-z]{2})?$",
+    )
+    today_iso: str | None = Field(
+        default=None,
+        pattern=r"^\d{4}-\d{2}-\d{2}$",
+    )
 
 
 _SYSTEM_PROMPT = """\
@@ -134,7 +186,7 @@ schema (no prose, no code fences):
   ],
   "total_distance_km_estimate": 850.0,
   "estimated_budget_eur": 480.0,
-  "suggested_departure_days_from_now": 4,
+  "suggested_departure_iso": "2026-09-04",
   "suggested_departure_hour": 8
 }
 
@@ -151,22 +203,29 @@ Rules:
 - Write `summary`, `note`, `highlights` in the requested locale.
 - `estimated_budget_eur` covers fuel + tolls + food + mid-range
   hotels for the whole party.
-- `suggested_departure_days_from_now`: parse the prompt for time
-  hints and emit a concrete integer:
-    * "weekend" / "fin de semana" -> next Friday from today (compute
-      how many days from today's weekday to Friday; if today is
-      already Friday, return 0)
-    * "next weekend" / "próximo finde" -> Friday after the coming one
-    * "tomorrow" -> 1
-    * "next week" -> 7
-    * "in two weeks" -> 14
-    * Explicit date (e.g. "on October 5th") -> days from today to
-      that date
-    * When no time hint at all, OMIT the field.
+- `suggested_departure_iso`: parse the prompt for a departure
+  hint and emit a concrete ISO date `YYYY-MM-DD`. RETURN AN ISO
+  DATE, NOT AN OFFSET — offsets have been unreliable historically.
+  Reasoning template:
+    1. Anchor `Today` (a specific date + weekday). Use that as
+       ground truth for weekday arithmetic.
+    2. Compute the target date from the prompt:
+       * "salgo el viernes" / "on Friday" / "vendredi" -> the NEXT
+         occurrence of Friday on or after Today. If Today IS
+         Friday, return today's date.
+       * "weekend" / "fin de semana" -> next Friday on or after Today
+       * "next weekend" / "próximo finde" -> the Friday of the
+         calendar week AFTER Today's week
+       * "tomorrow" -> Today + 1 calendar day
+       * "next week" -> Today + 7 calendar days
+       * Explicit "October 5th" -> that date in the current year
+         (or next year if it's already in the past)
+       * When no time hint at all, OMIT the field.
+    3. Sanity-check: the target must be ≤ 60 days from Today.
 - `suggested_departure_hour`: 8 for morning starts, 14 for
   post-lunch, 18 for evening. Omit when no hint.
-- Today's date is passed in the user prompt as `Today:` so you
-  can compute the offset correctly.
+- Today's date is passed in the user prompt as `Today:` (with
+  the exact weekday spelled out). Use it verbatim.
 """
 
 
@@ -185,7 +244,16 @@ async def inspire(
         f"Origin GPS: {payload.origin.lat:.4f},{payload.origin.lon:.4f}\n"
         if payload.origin else ""
     )
-    today = datetime.now(timezone.utc).date()
+    # Prefer client's local date over server-side UTC to avoid
+    # weekday-off-by-one bugs when the driver plans late at night.
+    from datetime import date as _date
+    if payload.today_iso:
+        try:
+            today = _date.fromisoformat(payload.today_iso)
+        except ValueError:
+            today = datetime.now(timezone.utc).date()
+    else:
+        today = datetime.now(timezone.utc).date()
     weekday_names = [
         "Monday", "Tuesday", "Wednesday", "Thursday",
         "Friday", "Saturday", "Sunday",
@@ -219,7 +287,7 @@ async def inspire(
             },
         )
     try:
-        return InspireResponse.model_validate(parsed)
+        response = InspireResponse.model_validate(parsed)
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -229,6 +297,168 @@ async def inspire(
                 "raw": raw[:400],
             },
         ) from exc
+    # Bridge iso ↔ offset: whichever field the LLM emitted, we
+    # populate both so mobile builds on either side work. If the
+    # ISO is in the past OR farther than 60 days, drop it — the
+    # LLM hallucinated a date and mobile shouldn't be poisoned.
+    if response.suggested_departure_iso:
+        try:
+            iso = _date.fromisoformat(response.suggested_departure_iso)
+            delta = (iso - today).days
+            if 0 <= delta <= 60:
+                response = response.model_copy(
+                    update={"suggested_departure_days_from_now": delta},
+                )
+            else:
+                _log.warning(
+                    "LLM emitted out-of-range departure ISO %s (delta=%d)",
+                    response.suggested_departure_iso, delta,
+                )
+                response = response.model_copy(update={
+                    "suggested_departure_iso": None,
+                    "suggested_departure_days_from_now": None,
+                })
+        except ValueError:
+            response = response.model_copy(update={
+                "suggested_departure_iso": None,
+            })
+    elif response.suggested_departure_days_from_now is not None:
+        # Backfill ISO from the offset the LLM did emit so mobile
+        # can always prefer ISO uniformly.
+        offset = response.suggested_departure_days_from_now
+        if 0 <= offset <= 60:
+            from datetime import timedelta as _td
+            response = response.model_copy(update={
+                "suggested_departure_iso":
+                    (today + _td(days=offset)).isoformat(),
+            })
+    return response
+
+
+_REFINE_SYSTEM_PROMPT = """\
+You are refining an existing MyTravelPal itinerary. The user is
+in an ongoing conversation with you and wants to tweak, not
+regenerate from scratch.
+
+You will receive:
+- The previous itinerary as JSON
+- The user's new request in natural language
+
+Return a JSON object with:
+- `assistant_note`: 1-2 short sentences (in the requested locale)
+  explaining what you changed and why. Speak in first person like
+  a friend planning together: "Vale, quitamos Cremona y ganamos
+  media tarde en Módena. He movido el hotel a…". Never say "I
+  updated the itinerary as requested" — be specific and useful.
+- ALL other fields of the original schema (summary, days,
+  waypoints, hotel_area, highlights, total_distance_km_estimate,
+  estimated_budget_eur, suggested_departure_iso,
+  suggested_departure_hour). Keep values UNCHANGED unless the
+  user's request implies changing them.
+
+Rules:
+- Preserve REAL coordinates. Reuse existing waypoint coords when
+  the user's edit doesn't touch them. Only invent new coords for
+  waypoints the user asked to add.
+- If the user asks something impossible or unclear, still return
+  the previous itinerary unchanged, and use `assistant_note` to
+  ask a follow-up question. Never crash the conversation.
+- Locale + today anchor come in the prompt below the schema.
+"""
+
+
+@router.post("/inspire/refine", response_model=InspireResponse)
+async def inspire_refine(
+    payload: InspireRefineRequest,
+    providers: Providers = Depends(get_providers),
+    user: AuthUser = Depends(require_inspire_quota),
+) -> InspireResponse:
+    """Turn-by-turn refinement of an existing itinerary."""
+    from datetime import date as _date
+    if payload.today_iso:
+        try:
+            today = _date.fromisoformat(payload.today_iso)
+        except ValueError:
+            today = datetime.now(timezone.utc).date()
+    else:
+        today = datetime.now(timezone.utc).date()
+    weekday_names = [
+        "Monday", "Tuesday", "Wednesday", "Thursday",
+        "Friday", "Saturday", "Sunday",
+    ]
+    today_line = (
+        f"Today: {today.isoformat()} ({weekday_names[today.weekday()]})\n"
+    )
+    # Serialise the previous itinerary compactly so the LLM sees a
+    # complete but small context. Drops null fields to save tokens.
+    prev = payload.previous_itinerary.model_dump(
+        exclude_none=True, exclude={"assistant_note"},
+    )
+    history_block = ""
+    if payload.history:
+        turns = []
+        for m in payload.history[-10:]:
+            role = "User" if m.role == "user" else "Assistant"
+            turns.append(f"{role}: {m.content}")
+        history_block = "Conversation so far:\n" + "\n".join(turns) + "\n\n"
+    user_prompt = (
+        f"{_REFINE_SYSTEM_PROMPT}\n\n"
+        f"{today_line}"
+        f"Locale: {payload.locale}\n\n"
+        f"Previous itinerary:\n{json.dumps(prev, ensure_ascii=False)}\n\n"
+        f"{history_block}"
+        f"New user request: {payload.prompt}\n\n"
+        f"Return the FULL updated itinerary as JSON with an "
+        f"`assistant_note` field on the top level."
+    )
+    try:
+        raw = await providers.llm.generate_narrative(user_prompt)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("LLM refine failed: %r", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": "llm_unavailable", "message": str(exc)},
+        ) from exc
+    parsed = _parse_json(raw)
+    if parsed is None:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "llm_bad_json",
+                "message": "LLM refine returned unparseable output.",
+                "raw": raw[:400],
+            },
+        )
+    try:
+        response = InspireResponse.model_validate(parsed)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={
+                "error": "llm_bad_schema",
+                "message": str(exc),
+                "raw": raw[:400],
+            },
+        ) from exc
+    # Same iso ↔ offset bridge as /inspire, and same 60-day guard.
+    if response.suggested_departure_iso:
+        try:
+            iso = _date.fromisoformat(response.suggested_departure_iso)
+            delta = (iso - today).days
+            if 0 <= delta <= 60:
+                response = response.model_copy(
+                    update={"suggested_departure_days_from_now": delta},
+                )
+            else:
+                response = response.model_copy(update={
+                    "suggested_departure_iso": None,
+                    "suggested_departure_days_from_now": None,
+                })
+        except ValueError:
+            response = response.model_copy(update={
+                "suggested_departure_iso": None,
+            })
+    return response
 
 
 def _parse_json(text: str) -> dict | None:

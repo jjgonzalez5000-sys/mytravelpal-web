@@ -14,6 +14,7 @@ import '../services/biometric_auth.dart';
 import '../services/currency_service.dart';
 import '../theme.dart';
 import 'attributions_screen.dart';
+import 'inspire_history_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
@@ -147,6 +148,17 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
           const _BiometricTile(),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome),
+            title: Text(l.settingsMyAiPlans),
+            subtitle: Text(l.settingsMyAiPlansSub),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const InspireHistoryScreen(),
+              ),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.school_outlined),
             title: Text(l.settingsReplayTutorial),

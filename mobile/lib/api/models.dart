@@ -213,6 +213,149 @@ class LatLon {
   int get hashCode => Object.hash(lat, lon);
 }
 
+/// Parking option returned by `POST /v1/pois/parking`. Used both
+/// from the plan flow (per-waypoint "necesito parking") and from
+/// the standalone "search parking near event" home entry.
+@immutable
+class Parking {
+  const Parking({
+    required this.name,
+    required this.coordinate,
+    required this.country,
+    required this.distanceFromQueryKm,
+    this.priceEurPerHour,
+    this.maxStayHours,
+    this.covered,
+    this.capacity,
+    this.kind = 'surface',
+    this.kidFriendly,
+    this.dogsAllowed,
+    this.toilets,
+    this.showers,
+    this.foodNearby,
+    this.evCharging,
+    this.fuelStation,
+    this.wheelchairAccess,
+    this.supervised,
+    this.rvFriendly,
+    this.truckFriendly,
+    this.parkAndRide,
+    this.attributes = const {},
+  });
+
+  final String name;
+  final LatLon coordinate;
+  final Country country;
+  final double distanceFromQueryKm;
+  final double? priceEurPerHour;
+  final double? maxStayHours;
+  final bool? covered;
+  final int? capacity;
+  final String kind;
+  final bool? kidFriendly;
+  final bool? dogsAllowed;
+  final bool? toilets;
+  final bool? showers;
+  final bool? foodNearby;
+  final bool? evCharging;
+  final bool? fuelStation;
+  final bool? wheelchairAccess;
+  final bool? supervised;
+  final bool? rvFriendly;
+  final bool? truckFriendly;
+  final bool? parkAndRide;
+  final Map<String, String> attributes;
+
+  factory Parking.fromJson(Map<String, dynamic> j) => Parking(
+        name: j['name'] as String? ?? 'Parking',
+        coordinate: LatLon(
+          lat: (j['lat'] as num).toDouble(),
+          lon: (j['lon'] as num).toDouble(),
+        ),
+        country: Country.fromCode(j['country'] as String),
+        distanceFromQueryKm:
+            (j['distance_from_query_km'] as num).toDouble(),
+        priceEurPerHour:
+            (j['price_eur_per_hour'] as num?)?.toDouble(),
+        maxStayHours: (j['max_stay_hours'] as num?)?.toDouble(),
+        covered: j['covered'] as bool?,
+        capacity: (j['capacity'] as num?)?.toInt(),
+        kind: (j['kind'] as String?) ?? 'surface',
+        kidFriendly: j['kid_friendly'] as bool?,
+        dogsAllowed: j['dogs_allowed'] as bool?,
+        toilets: j['toilets'] as bool?,
+        showers: j['showers'] as bool?,
+        foodNearby: j['food_nearby'] as bool?,
+        evCharging: j['ev_charging'] as bool?,
+        fuelStation: j['fuel_station'] as bool?,
+        wheelchairAccess: j['wheelchair_access'] as bool?,
+        supervised: j['supervised'] as bool?,
+        rvFriendly: j['rv_friendly'] as bool?,
+        truckFriendly: j['truck_friendly'] as bool?,
+        parkAndRide: j['park_and_ride'] as bool?,
+        attributes: (j['attributes'] as Map<String, dynamic>? ?? {})
+            .map((k, v) => MapEntry(k, v.toString())),
+      );
+}
+
+/// Set of parking amenity filters. Sent to the backend as
+/// separate query params. `true` = the driver requires that
+/// amenity; `false` (default) = no requirement.
+class ParkingFilters {
+  const ParkingFilters({
+    this.kidFriendly = false,
+    this.dogs = false,
+    this.toilets = false,
+    this.showers = false,
+    this.food = false,
+    this.ev = false,
+    this.fuel = false,
+    this.wheelchair = false,
+    this.rv = false,
+    this.truck = false,
+  });
+  final bool kidFriendly;
+  final bool dogs;
+  final bool toilets;
+  final bool showers;
+  final bool food;
+  final bool ev;
+  final bool fuel;
+  final bool wheelchair;
+  final bool rv;
+  final bool truck;
+
+  ParkingFilters copyWith({
+    bool? kidFriendly, bool? dogs, bool? toilets, bool? showers,
+    bool? food, bool? ev, bool? fuel, bool? wheelchair, bool? rv,
+    bool? truck,
+  }) => ParkingFilters(
+        kidFriendly: kidFriendly ?? this.kidFriendly,
+        dogs: dogs ?? this.dogs,
+        toilets: toilets ?? this.toilets,
+        showers: showers ?? this.showers,
+        food: food ?? this.food,
+        ev: ev ?? this.ev,
+        fuel: fuel ?? this.fuel,
+        wheelchair: wheelchair ?? this.wheelchair,
+        rv: rv ?? this.rv,
+        truck: truck ?? this.truck,
+      );
+
+  Map<String, String> toQueryParams() => {
+        if (kidFriendly) 'require_kid_friendly': 'true',
+        if (dogs) 'require_dogs': 'true',
+        if (toilets) 'require_toilets': 'true',
+        if (showers) 'require_showers': 'true',
+        if (food) 'require_food': 'true',
+        if (ev) 'require_ev': 'true',
+        if (fuel) 'require_fuel': 'true',
+        if (wheelchair) 'require_wheelchair': 'true',
+        if (rv) 'require_rv': 'true',
+        if (truck) 'require_truck': 'true',
+      };
+}
+
 @immutable
 /// Intermediate stop with an optional dwell time. `dwellNights = 0`
 /// (default) is a pass-through — router visits the coord but the
@@ -273,6 +416,7 @@ class TripPlanRequest {
     this.timeWindowSpanHours = 3,
     this.timeWindowTopN = 5,
     this.tripProfile,
+    this.includeParking = false,
   });
 
   final LatLon origin;
@@ -325,6 +469,11 @@ class TripPlanRequest {
 
   /// If true, include known adverse events (fires, strikes, weather,
   /// accidents, roadworks, floods, snow, protests) along the route.
+  /// When true, the response ships a `parkings[]` list of options
+  /// near the trip destination (5-10 sorted by distance). Off by
+  /// default so the plan endpoint stays fast for drivers who
+  /// don't care about parking.
+  final bool includeParking;
   final bool includeAdverseEvents;
 
   /// Max great-circle distance from the route for an adverse event to
@@ -393,6 +542,7 @@ class TripPlanRequest {
           'hotel_conditions': hotelConditions,
         if (restaurantConditions != null && restaurantConditions!.isNotEmpty)
           'restaurant_conditions': restaurantConditions,
+        if (includeParking) 'include_parking': true,
         if (includeAdverseEvents) 'include_adverse_events': true,
         if (includeAdverseEvents)
           'adverse_events_max_distance_km': adverseEventsMaxDistanceKm,
@@ -979,14 +1129,22 @@ class MealStopOpt {
     this.restaurantName,
     this.restaurantPriceEurPerMeal,
     this.restaurantCoordinate,
+    this.cityHint,
+    this.coordinate,
   });
 
-  final String slot; // "breakfast" | "lunch" | "dinner"
+  final String slot;
   final DateTime at;
   final double distanceFromOriginKm;
   final String? restaurantName;
   final double? restaurantPriceEurPerMeal;
   final LatLon? restaurantCoordinate;
+  /// Reverse-geocoded city name near the stop coord ("Toledo").
+  /// Rendered in the row as "Cerca de X".
+  final String? cityHint;
+  /// Coord for the mini-map thumbnail (restaurant if picked,
+  /// otherwise the rest-stop coord that anchors the meal slot).
+  final LatLon? coordinate;
 
   factory MealStopOpt.fromJson(Map<String, dynamic> j) => MealStopOpt(
         slot: j['slot'] as String,
@@ -1002,6 +1160,13 @@ class MealStopOpt {
                 lat: (j['restaurant_lat'] as num).toDouble(),
                 lon: (j['restaurant_lon'] as num).toDouble(),
               ),
+        cityHint: j['city_hint'] as String?,
+        coordinate: j['lat'] == null
+            ? null
+            : LatLon(
+                lat: (j['lat'] as num).toDouble(),
+                lon: (j['lon'] as num).toDouble(),
+              ),
       );
 }
 
@@ -1013,6 +1178,8 @@ class SleepStopOpt {
     this.hotelName,
     this.hotelPriceEurPerNight,
     this.hotelCoordinate,
+    this.cityHint,
+    this.coordinate,
   });
 
   final DateTime at;
@@ -1020,6 +1187,8 @@ class SleepStopOpt {
   final String? hotelName;
   final double? hotelPriceEurPerNight;
   final LatLon? hotelCoordinate;
+  final String? cityHint;
+  final LatLon? coordinate;
 
   factory SleepStopOpt.fromJson(Map<String, dynamic> j) => SleepStopOpt(
         at: DateTime.parse(j['at'] as String),
@@ -1033,6 +1202,13 @@ class SleepStopOpt {
             : LatLon(
                 lat: (j['hotel_lat'] as num).toDouble(),
                 lon: (j['hotel_lon'] as num).toDouble(),
+              ),
+        cityHint: j['city_hint'] as String?,
+        coordinate: j['lat'] == null
+            ? null
+            : LatLon(
+                lat: (j['lat'] as num).toDouble(),
+                lon: (j['lon'] as num).toDouble(),
               ),
       );
 }
@@ -1207,6 +1383,67 @@ class RecommendationScope {
 }
 
 @immutable
+/// Slim parking payload returned inside `TripPlanResponse.parkings`.
+/// Contains just the fields the "Parkings cerca del destino" list
+/// on the result screen renders, keyed to distance from the trip
+/// destination rather than a query point.
+@immutable
+class PlanParking {
+  const PlanParking({
+    required this.name,
+    required this.coordinate,
+    required this.country,
+    required this.distanceFromDestinationKm,
+    this.priceEurPerHour,
+    this.covered,
+    this.capacity,
+    this.kind = 'surface',
+    this.kidFriendly,
+    this.dogsAllowed,
+    this.toilets,
+    this.foodNearby,
+    this.evCharging,
+    this.rvFriendly,
+  });
+
+  final String name;
+  final LatLon coordinate;
+  final Country country;
+  final double distanceFromDestinationKm;
+  final double? priceEurPerHour;
+  final bool? covered;
+  final int? capacity;
+  final String kind;
+  final bool? kidFriendly;
+  final bool? dogsAllowed;
+  final bool? toilets;
+  final bool? foodNearby;
+  final bool? evCharging;
+  final bool? rvFriendly;
+
+  factory PlanParking.fromJson(Map<String, dynamic> j) => PlanParking(
+        name: j['name'] as String? ?? 'Parking',
+        coordinate: LatLon(
+          lat: (j['lat'] as num).toDouble(),
+          lon: (j['lon'] as num).toDouble(),
+        ),
+        country: Country.fromCode(j['country'] as String),
+        distanceFromDestinationKm:
+            (j['distance_from_destination_km'] as num).toDouble(),
+        priceEurPerHour:
+            (j['price_eur_per_hour'] as num?)?.toDouble(),
+        covered: j['covered'] as bool?,
+        capacity: (j['capacity'] as num?)?.toInt(),
+        kind: (j['kind'] as String?) ?? 'surface',
+        kidFriendly: j['kid_friendly'] as bool?,
+        dogsAllowed: j['dogs_allowed'] as bool?,
+        toilets: j['toilets'] as bool?,
+        foodNearby: j['food_nearby'] as bool?,
+        evCharging: j['ev_charging'] as bool?,
+        rvFriendly: j['rv_friendly'] as bool?,
+      );
+}
+
 class TripPlanResponse {
   const TripPlanResponse({
     required this.route,
@@ -1214,6 +1451,7 @@ class TripPlanResponse {
     required this.fuelPrices,
     required this.hotels,
     required this.restaurants,
+    this.parkings = const [],
     required this.restStops,
     required this.adverseEvents,
     this.tollAlternative,
@@ -1242,6 +1480,10 @@ class TripPlanResponse {
   final List<FuelPrice> fuelPrices;
   final List<Hotel> hotels;
   final List<Restaurant> restaurants;
+  /// Parkings near the trip destination. Populated only when the
+  /// plan form's "Parking" toggle was on; empty otherwise. Sorted
+  /// by distance from destination ascending.
+  final List<PlanParking> parkings;
   final List<RestStop> restStops;
   final List<AdverseEvent> adverseEvents;
   final TollAlternative? tollAlternative;
@@ -1271,6 +1513,10 @@ class TripPlanResponse {
         restaurants:
             (json['restaurants'] as List<dynamic>? ?? const <dynamic>[])
                 .map((r) => Restaurant.fromJson(r as Map<String, dynamic>))
+                .toList(growable: false),
+        parkings:
+            (json['parkings'] as List<dynamic>? ?? const <dynamic>[])
+                .map((p) => PlanParking.fromJson(p as Map<String, dynamic>))
                 .toList(growable: false),
         restStops: (json['rest_stops'] as List<dynamic>? ?? const <dynamic>[])
             .map((s) => RestStop.fromJson(s as Map<String, dynamic>))
@@ -1755,20 +2001,24 @@ class InspireItinerary {
     required this.days,
     this.totalDistanceKmEstimate,
     this.estimatedBudgetEur,
+    this.suggestedDepartureIso,
     this.suggestedDepartureDaysFromNow,
     this.suggestedDepartureHour,
+    this.assistantNote,
   });
 
   final String summary;
   final List<InspireDay> days;
   final double? totalDistanceKmEstimate;
   final double? estimatedBudgetEur;
-  /// Timing hints the LLM inferred from the prompt. When the
-  /// user said "weekend" the LLM computes how many days from
-  /// today's weekday to next Friday and returns the offset here.
-  /// Null when the prompt gave no time signal.
+  final String? suggestedDepartureIso;
   final int? suggestedDepartureDaysFromNow;
   final int? suggestedDepartureHour;
+  /// Short assistant reply set by `/inspire/refine` explaining
+  /// what changed in this turn. Rendered as a chat bubble below
+  /// the itinerary. Null on fresh generations (the whole payload
+  /// IS the introduction).
+  final String? assistantNote;
 
   factory InspireItinerary.fromJson(Map<String, dynamic> j) =>
       InspireItinerary(
@@ -1780,10 +2030,66 @@ class InspireItinerary {
             (j['total_distance_km_estimate'] as num?)?.toDouble(),
         estimatedBudgetEur:
             (j['estimated_budget_eur'] as num?)?.toDouble(),
+        suggestedDepartureIso: j['suggested_departure_iso'] as String?,
         suggestedDepartureDaysFromNow:
             (j['suggested_departure_days_from_now'] as num?)?.toInt(),
         suggestedDepartureHour:
             (j['suggested_departure_hour'] as num?)?.toInt(),
+        assistantNote: j['assistant_note'] as String?,
+      );
+
+  Map<String, dynamic> toJson() => {
+        'summary': summary,
+        'days': days
+            .map((d) => {
+                  'day': d.day,
+                  'from_name': d.fromName,
+                  'to_name': d.toName,
+                  if (d.distanceKmEstimate != null)
+                    'distance_km_estimate': d.distanceKmEstimate,
+                  if (d.drivingHoursEstimate != null)
+                    'driving_hours_estimate': d.drivingHoursEstimate,
+                  'waypoints': d.waypoints
+                      .map((w) => {
+                            'name': w.name,
+                            'lat': w.lat,
+                            'lon': w.lon,
+                            'kind': w.kind,
+                            'note': w.note,
+                          })
+                      .toList(),
+                  if (d.hotelArea != null) 'hotel_area': d.hotelArea,
+                  'highlights': d.highlights,
+                })
+            .toList(),
+        if (totalDistanceKmEstimate != null)
+          'total_distance_km_estimate': totalDistanceKmEstimate,
+        if (estimatedBudgetEur != null)
+          'estimated_budget_eur': estimatedBudgetEur,
+        if (suggestedDepartureIso != null)
+          'suggested_departure_iso': suggestedDepartureIso,
+        if (suggestedDepartureDaysFromNow != null)
+          'suggested_departure_days_from_now':
+              suggestedDepartureDaysFromNow,
+        if (suggestedDepartureHour != null)
+          'suggested_departure_hour': suggestedDepartureHour,
+      };
+}
+
+/// One turn in the refinement chat. Persisted alongside the
+/// itinerary so opening a saved inspiration keeps the context.
+@immutable
+class InspireChatTurn {
+  const InspireChatTurn({required this.role, required this.content});
+  final String role; // "user" | "assistant"
+  final String content;
+
+  Map<String, dynamic> toJson() => {'role': role, 'content': content};
+
+  factory InspireChatTurn.fromJson(Map<String, dynamic> j) =>
+      InspireChatTurn(
+        role: j['role'] as String,
+        content: j['content'] as String,
       );
 }
 

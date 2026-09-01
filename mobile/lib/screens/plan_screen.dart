@@ -25,6 +25,7 @@ import 'favorites_screen.dart';
 import 'mark_event_screen.dart';
 import 'settings_screen.dart';
 import 'inspire_screen.dart';
+import 'parking_search_screen.dart';
 import 'pick_location_screen.dart';
 import 'profile_screen.dart';
 import 'result_screen.dart';
@@ -81,6 +82,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   // On by default; the switches stay so users who don't want them
   // can opt out.
   bool _alertsEnabled = true;
+  /// Parking search at the destination. When on, the result
+  /// screen renders a "Parkings near destination" section. Off
+  /// by default so plan responses stay light.
+  bool _parkingEnabled = false;
   bool _tollAlternativeEnabled = true;
   // Hourly toll analysis is now IMPLICIT: whenever the toll
   // alternative is on we also request the hourly report. The
@@ -430,6 +435,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             : null,
         includeAdverseEvents: _alertsEnabled,
         includeTollAlternative: _tollAlternativeEnabled,
+        includeParking: _parkingEnabled,
         includeRouteComparison: _routeComparisonEnabled,
         includeHourlyTollAnalysis: _hourlyTollEnabled,
         avoidMotorways: _avoidMotorways,
@@ -477,6 +483,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               : null,
           includeAdverseEvents: _alertsEnabled,
           includeTollAlternative: _tollAlternativeEnabled,
+          includeParking: _parkingEnabled,
           includeRouteComparison: _routeComparisonEnabled,
           includeHourlyTollAnalysis: _hourlyTollEnabled,
           avoidMotorways: _avoidMotorways,
@@ -995,6 +1002,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                 setState(() => _restaurantPrefs = v),
                             hideMainSwitch: true,
                           ),
+                        ),
+                        _CompactToggle(
+                          icon: Icons.local_parking_outlined,
+                          title: l.parkingPrefTitle,
+                          subtitle: l.parkingPrefSub,
+                          value: _parkingEnabled,
+                          onChanged: (v) =>
+                              setState(() => _parkingEnabled = v),
                         ),
                         InkWell(
                           onTap: () => setState(

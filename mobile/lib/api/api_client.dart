@@ -272,20 +272,92 @@ class ApiClient {
     }
   }
 
+  /// Search parking near a coordinate. Used both from the plan
+  /// waypoint flow ("necesito parking aquí") and from the
+  /// standalone event-parking home entry.
+  Future<List<Parking>> searchParking({
+    required double lat,
+    required double lon,
+    double radiusKm = 2.0,
+    int limit = 20,
+    ParkingFilters filters = const ParkingFilters(),
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/pois/parking').replace(
+      queryParameters: {
+        'lat': lat.toString(),
+        'lon': lon.toString(),
+        'radius_km': radiusKm.toString(),
+        'limit': limit.toString(),
+        ...filters.toQueryParams(),
+      },
+    );
+    final response = await _http.post(uri, headers: _headers());
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    return (body['parkings'] as List<dynamic>? ?? const [])
+        .map((p) => Parking.fromJson(p as Map<String, dynamic>))
+        .toList(growable: false);
+  }
+
   /// Ask the Trip Inspiration LLM for a proposed itinerary. Long
   /// timeout — Haiku output at 2k tokens can take 5-15 s.
   /// Throws `ApiException` on 4xx/5xx so the UI can distinguish
   /// "LLM refused / bad output" from "no network".
+  /// Turn-by-turn refinement of an existing itinerary. Sends
+  /// the previous JSON + conversation history + the new user
+  /// message; backend returns an updated itinerary that includes
+  /// a short `assistantNote` explaining what changed.
+  Future<InspireItinerary> refineTrip({
+    required String prompt,
+    required InspireItinerary previous,
+    List<InspireChatTurn> history = const [],
+    String? locale,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/inspire/refine');
+    final now = DateTime.now();
+    final todayIso =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
+    final body = jsonEncode({
+      'prompt': prompt,
+      'previous_itinerary': previous.toJson(),
+      'history': history.map((m) => m.toJson()).toList(),
+      if (locale != null) 'locale': locale,
+      'today_iso': todayIso,
+    });
+    final response = await _http
+        .post(uri, headers: _headers(), body: body)
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return InspireItinerary.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
   Future<InspireItinerary> inspireTrip({
     required String prompt,
     LatLon? origin,
     String? locale,
   }) async {
     final uri = Uri.parse('$_baseUrl/v1/trips/inspire');
+    // Send the client's LOCAL date as ISO. Prevents the LLM from
+    // treating server-UTC date as "today" when the user is
+    // planning late at night in a west-of-UTC locale.
+    final now = DateTime.now();
+    final todayIso =
+        '${now.year.toString().padLeft(4, '0')}-'
+        '${now.month.toString().padLeft(2, '0')}-'
+        '${now.day.toString().padLeft(2, '0')}';
     final body = jsonEncode({
       'prompt': prompt,
       if (origin != null) 'origin': origin.toJson(),
       if (locale != null) 'locale': locale,
+      'today_iso': todayIso,
     });
     final response = await _http
         .post(uri, headers: _headers(), body: body)

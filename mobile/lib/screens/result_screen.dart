@@ -35,6 +35,8 @@ import '../widgets/poi_detail_sheet.dart';
 import '../widgets/route_map.dart';
 import '../widgets/time_window_chart.dart';
 import 'narrative_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import 'companion_drive_screen.dart';
 // trip_dashboard_screen kept around as a fallback for direct
 // deep-links; the "Tracking" button now routes to
@@ -1066,6 +1068,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           topHotels: _topDestinationHotels(30),
           origin: widget.request.origin,
           destination: widget.request.destination,
+          originName: widget.origin.displayName,
+          destinationName: widget.destination.displayName,
           routeGeometry: widget.response.route.geometry,
         ),
       ],
@@ -1108,6 +1112,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (widget.response.weatherSegments.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
         _WeatherStripCard(segments: widget.response.weatherSegments),
+      ],
+      // Parkings near destination — populated only when the user
+      // ticked the "Parking" preference on the plan form.
+      if (widget.response.parkings.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space24),
+        _DestinationParkingSection(
+          parkings: widget.response.parkings,
+        ),
       ],
       // Flat hotel list removed (2026-08-26 tester feedback):
       // hotels are now shown per-day inside DayPlanSection,
@@ -2310,12 +2322,20 @@ class _OptimizationsSection extends StatefulWidget {
     this.topHotels = const [],
     this.origin,
     this.destination,
+    this.originName,
+    this.destinationName,
     this.routeGeometry = const [],
   });
   final Optimizations opts;
   final List<(Hotel, double)> topHotels;
   final LatLon? origin;
   final LatLon? destination;
+  /// Origin / destination display names (city + country). Used to
+  /// render the "Madrid → Toledo" line under the section header
+  /// so a driver reading the "Optimizado" card knows which leg it
+  /// summarises without scrolling back to the hero.
+  final String? originName;
+  final String? destinationName;
   final List<LatLon> routeGeometry;
 
   @override
@@ -2345,10 +2365,18 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
       children: [
         Builder(builder: (context) {
           final l = AppLocalizations.of(context);
+          // Compose the "Madrid → Toledo" line when we have both
+          // names. Falls back to the generic tagline so the
+          // section still renders on legacy responses without
+          // origin/destination labels.
+          final od = (widget.originName != null &&
+                  widget.destinationName != null)
+              ? '${widget.originName}  →  ${widget.destinationName}'
+              : l.resultOptimizedDescription;
           return SectionHeader(
             title: l.resultOptimized,
             eyebrow: l.resultOptimizedEyebrow,
-            description: l.resultOptimizedDescription,
+            description: od,
           );
         }),
         SoftCard(
@@ -3156,6 +3184,154 @@ class _AdverseEventTile extends StatelessWidget {
         borderColor: color.withValues(alpha: 0.3),
       ),
       onTap: onTap,
+    );
+  }
+}
+
+/// Section that lists parking options near the trip destination.
+/// Populated only when the driver ticked the "Parking" preference
+/// on the plan form. Tap a row → open Google Maps at the exact
+/// coord (no name search).
+class _DestinationParkingSection extends StatelessWidget {
+  const _DestinationParkingSection({required this.parkings});
+  final List<PlanParking> parkings;
+
+  Future<void> _openMaps(PlanParking p) async {
+    final label = Uri.encodeComponent(p.name.trim());
+    final geo = Uri.parse(
+      'geo:${p.coordinate.lat},${p.coordinate.lon}'
+      '?q=${p.coordinate.lat},${p.coordinate.lon}($label)',
+    );
+    try {
+      final ok =
+          await launchUrl(geo, mode: LaunchMode.externalApplication);
+      if (ok) return;
+    } catch (_) {}
+    await launchUrl(
+      Uri.https('www.google.com', '/maps/search/', {
+        'api': '1',
+        'query': '${p.coordinate.lat},${p.coordinate.lon}',
+      }),
+      mode: LaunchMode.platformDefault,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return SoftCard(
+      padding: const EdgeInsets.all(Tokens.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_parking_outlined, color: scheme.primary),
+              const SizedBox(width: Tokens.space8),
+              Text(l.parkingResultTitle, style: t.titleMedium),
+            ],
+          ),
+          const SizedBox(height: Tokens.space12),
+          for (final p in parkings)
+            InkWell(
+              onTap: () => _openMaps(p),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.local_parking, size: 14,
+                        color: scheme.tertiary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '${p.name}  ·  '
+                            '${(p.distanceFromDestinationKm * 1000).round()} m',
+                            style: t.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Wrap(
+                            spacing: 6, runSpacing: 4,
+                            children: [
+                              if (p.priceEurPerHour != null)
+                                _TinyChip(
+                                  icon: Icons.euro,
+                                  label:
+                                      '${p.priceEurPerHour!.toStringAsFixed(2)}/h',
+                                ),
+                              if (p.covered == true)
+                                _TinyChip(
+                                  icon: Icons.house_outlined,
+                                  label: l.parkingCovered,
+                                ),
+                              if (p.kidFriendly == true)
+                                _TinyChip(
+                                  icon: Icons.child_friendly,
+                                  label: l.parkingFilterKids,
+                                ),
+                              if (p.dogsAllowed == true)
+                                _TinyChip(
+                                  icon: Icons.pets,
+                                  label: l.parkingFilterDogs,
+                                ),
+                              if (p.evCharging == true)
+                                _TinyChip(
+                                  icon: Icons.electric_car,
+                                  label: l.parkingFilterEv,
+                                ),
+                              if (p.rvFriendly == true)
+                                _TinyChip(
+                                  icon: Icons.rv_hookup,
+                                  label: l.parkingFilterRv,
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.navigation, size: 16,
+                        color: scheme.onSurfaceVariant),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TinyChip extends StatelessWidget {
+  const _TinyChip({required this.icon, required this.label});
+  final IconData icon;
+  final String label;
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 11, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 3),
+          Text(label,
+              style: TextStyle(
+                fontSize: 10,
+                color: scheme.onSurfaceVariant,
+              )),
+        ],
+      ),
     );
   }
 }

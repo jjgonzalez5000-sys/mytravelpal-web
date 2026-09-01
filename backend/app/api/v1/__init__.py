@@ -9,6 +9,7 @@ from app.api.v1 import (
     geocode,
     inspire,
     narrative,
+    parking,
     profile,
     trips,
     weather,
@@ -23,6 +24,7 @@ router.include_router(auth.router)
 router.include_router(profile.router)
 router.include_router(companion.router)
 router.include_router(inspire.router)
+router.include_router(parking.router)
 router.include_router(weather.router)
 router.include_router(diagnostics.router)
 router.include_router(attributions.router)
