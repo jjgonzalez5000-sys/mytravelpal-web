@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Google Play Feature Graphic — 1024×500. Shown at the top of the
+  Play Store listing and in promotional slots. Google's rules:
+  - No transparency
+  - No large text at edges (device UI overlays crop ~15% left/right)
+  - Reads clearly at 320×166 thumbnail
+  - No app screenshots inside (separate slot for those)
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 500" width="1024" height="500">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0A4A80"/>
+      <stop offset="0.55" stop-color="#1E7BC4"/>
+      <stop offset="1" stop-color="#78CFE6"/>
+    </linearGradient>
+    <linearGradient id="road" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.95"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background gradient (navy → cyan) matches launcher icon vibes -->
+  <rect x="0" y="0" width="1024" height="500" fill="url(#bg)"/>
+
+  <!-- Sweeping road on the right half (drivers' eye moves left to
+       right, road reinforces motion) -->
+  <path d="M 1050 500
+           C 900 400, 950 300, 780 260
+           C 620 220, 700 140, 560 90"
+        stroke="url(#road)" stroke-width="42" stroke-linecap="round"
+        fill="none"/>
+  <path d="M 1050 500
+           C 900 400, 950 300, 780 260
+           C 620 220, 700 140, 560 90"
+        stroke="#0A4A80" stroke-width="6" stroke-linecap="round"
+        stroke-dasharray="14 22" fill="none" opacity="0.55"/>
+
+  <!-- Destination pin at the road tip -->
+  <g transform="translate(560 90)">
+    <path d="M 0 -34 C -20 -34, -34 -20, -34 0
+             C -34 18, -12 38, 0 52
+             C 12 38, 34 18, 34 0
+             C 34 -20, 20 -34, 0 -34 Z"
+          fill="#F4C542" stroke="#0A4A80" stroke-width="4"/>
+    <circle cx="0" cy="-3" r="10" fill="#FFFFFF"/>
+  </g>
+
+  <!-- Left half: brand + tagline. Central-safe area (Google may crop
+       edges on smaller devices) — keep text within x=[64, 700]. -->
+  <g transform="translate(64 165)">
+    <!-- Logo mark: simplified compass roundel -->
+    <g transform="translate(0 -20)">
+      <circle r="34" fill="#FFFFFF" opacity="0.15"/>
+      <path d="M 0 -28 L 8 -8 L 28 0 L 8 8 L 0 28 L -8 8 L -28 0 L -8 -8 Z"
+            fill="#F4C542" stroke="#0A4A80" stroke-width="2"
+            stroke-linejoin="round"/>
+    </g>
+    <!-- Wordmark -->
+    <text x="60" y="-4"
+          font-family="Inter, Arial, sans-serif" font-size="38"
+          font-weight="900" fill="#FFFFFF" letter-spacing="-0.5">
+      MyTravelPal
+    </text>
+    <!-- Headline -->
+    <text x="0" y="80"
+          font-family="Inter, Arial, sans-serif" font-size="54"
+          font-weight="900" fill="#FFFFFF" letter-spacing="-1">
+      Plan the drive.
+    </text>
+    <text x="0" y="140"
+          font-family="Inter, Arial, sans-serif" font-size="54"
+          font-weight="900" fill="#F4C542" letter-spacing="-1">
+      Not just the destination.
+    </text>
+    <!-- Subline -->
+    <text x="0" y="200"
+          font-family="Inter, Arial, sans-serif" font-size="22"
+          font-weight="500" fill="#FFFFFF" opacity="0.85">
+      European road-trip planner · hotels · fuel · tolls · alerts
+    </text>
+  </g>
+</svg>
