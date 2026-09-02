@@ -3,7 +3,9 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:latlong2/latlong.dart' as fmap show LatLng;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
 
@@ -991,40 +993,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           savings: widget.response.savings,
           tollSkipSavingsEur: _tollSkipSavingsEur,
           tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
-        ),
-        const SizedBox(height: Tokens.space16),
-      ],
-      // Toll skips right after savings — the two are directly
-      // related (skipping tolls changes the savings number above).
-      if (widget.response.partialTollSkips.isNotEmpty) ...[
-        Container(
-          key: _tollKey,
-          child: _PartialTollSkipsCard(
-            skips: widget.response.partialTollSkips,
-            origin: widget.request.origin,
-            destination: widget.request.destination,
-            routeGeometry: widget.response.route.geometry,
-            enabledIndices: _tollSkipEnabled,
-            hourlyReport: widget.response.hourlyTollReport,
-            onToggle: (i, v) => setState(() {
-              if (v) {
-                _tollSkipEnabled.add(i);
-              } else {
-                _tollSkipEnabled.remove(i);
-              }
-            }),
-            onToggleAll: (v) => setState(() {
-              if (v) {
-                _tollSkipEnabled = {
-                  for (var i = 0;
-                      i < widget.response.partialTollSkips.length; i++)
-                    i,
-                };
-              } else {
-                _tollSkipEnabled = {};
-              }
-            }),
-          ),
+          intraSectionSkips: widget.response.intraSectionSkips,
         ),
         const SizedBox(height: Tokens.space16),
       ],
@@ -1079,12 +1048,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // structure stays visible above the details.
       if (widget.response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
-        DayPlanSection(
+        Container(
+          key: _tollKey,
+          child: DayPlanSection(
           days: widget.response.days,
           timeFormat: DateFormat.Hm(),
           hotels: _filteredHotels,
           destination: widget.request.destination,
           origin: widget.request.origin,
+          originName: widget.origin.displayName,
+          destinationName: widget.destination.displayName,
           routeGeometry: widget.response.route.geometry,
           selectedNightHotels: _selectedNightHotels,
           onToggleNightHotel: _toggleNightHotel,
@@ -1095,6 +1068,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           showHotelSections:
               widget.request.hotelMaxDetourMinutes != null &&
                   widget.request.hotelMaxDetourMinutes! > 0,
+          partialTollSkips: widget.response.partialTollSkips,
+          enabledTollIndices: _tollSkipEnabled,
+          onToggleToll: (i, enabled) => setState(() {
+            if (enabled) {
+              _tollSkipEnabled.add(i);
+            } else {
+              _tollSkipEnabled.remove(i);
+            }
+          }),
+          hourlyTollReport: widget.response.hourlyTollReport,
+          tripDepartureAt: widget.desiredDepartureAt,
+          routeFreeFlowMinutes: widget.response.route.freeFlowMinutes,
+          routeTotalKm: widget.response.route.distanceKm,
+        ),
         ),
       ],
       // The former standalone "_DestinationHotelsSection" was
@@ -1897,8 +1884,16 @@ class _TotalTripCostCard extends ConsumerWidget {
           const SizedBox(height: Tokens.space16),
           _CostRow(label: l.tripCostFuel,
               value: fuelCostEur, scheme: scheme, t: t),
-          _CostRow(label: l.tripCostTolls,
-              value: effectiveTolls, scheme: scheme, t: t),
+          _CostRow(
+            label: l.tripCostTolls,
+            value: effectiveTolls,
+            scheme: scheme, t: t,
+            // Strikethrough the original toll when the driver
+            // has skipped at least one booth. Concrete visual
+            // proof that the toggle work is paying off.
+            originalValue:
+                tollSkipSavingsEur > 0 ? tollCostEur : null,
+          ),
           if (mealsCost > 0)
             _CostRow(
               label: pax > 1
@@ -1954,27 +1949,51 @@ class _CostRow extends ConsumerWidget {
     required this.value,
     required this.scheme,
     required this.t,
+    this.originalValue,
   });
   final String label;
   final double value;
   final ColorScheme scheme;
   final TextTheme t;
+  /// When non-null and greater than [value], the row shows the
+  /// original amount struck through next to the discounted new
+  /// value. Used by the toll row when the driver skipped booths.
+  final double? originalValue;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ccy = ref.watch(currencyCodeProvider);
+    final hasStrike =
+        originalValue != null && originalValue! > value + 0.001;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: t.bodyMedium),
-          Text(
-            formatMoney(value, ccy),
-            style: t.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-              fontFeatures: const [FontFeature.tabularFigures()],
-            ),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (hasStrike) ...[
+                Text(
+                  formatMoney(originalValue!, ccy),
+                  style: t.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    decoration: TextDecoration.lineThrough,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                formatMoney(value, ccy),
+                style: t.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: hasStrike ? Colors.green.shade700 : null,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1987,10 +2006,12 @@ class _SavingsSummaryCard extends StatelessWidget {
     required this.savings,
     this.tollSkipSavingsEur = 0,
     this.tollSkipPenaltyMinutes = 0,
+    this.intraSectionSkips = const [],
   });
   final TripSavings savings;
   final double tollSkipSavingsEur;
   final double tollSkipPenaltyMinutes;
+  final List<IntraSectionSkip> intraSectionSkips;
 
   @override
   Widget build(BuildContext context) {
@@ -1999,10 +2020,20 @@ class _SavingsSummaryCard extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final savedTime =
         savings.timeSavedMinutesVsDesired - tollSkipPenaltyMinutes;
-    // Only count per-booth skip savings — the global toll-free
-    // alternative savings (moneySavedEurVsTolls) are excluded
-    // because we removed the whole-route toll-free toggle.
     final savedEur = tollSkipSavingsEur;
+
+    // Best intra-section bypass across all worth-it skips.
+    final worthIt = intraSectionSkips.where((s) => s.worthIt).toList();
+    final maxBypassSavings = worthIt.isEmpty
+        ? 0.0
+        : worthIt.map((s) => s.savingsEur).reduce((a, b) => a > b ? a : b);
+    final maxBypassPenalty = worthIt.isEmpty
+        ? 0.0
+        : worthIt
+            .where((s) => s.savingsEur == maxBypassSavings)
+            .first
+            .timePenaltyMinutes;
+
     return Container(
       padding: const EdgeInsets.all(Tokens.space20),
       decoration: BoxDecoration(
@@ -2058,6 +2089,49 @@ class _SavingsSummaryCard extends StatelessWidget {
                         : l.resultSavingsNone,
             style: t.bodySmall?.copyWith(color: scheme.onTertiaryContainer),
           ),
+          if (maxBypassSavings >= 2.0) ...[
+            const SizedBox(height: Tokens.space8),
+            const Divider(height: 1),
+            const SizedBox(height: Tokens.space8),
+            Row(
+              children: [
+                Icon(
+                  Icons.alt_route,
+                  size: 14,
+                  color: scheme.onTertiaryContainer.withOpacity(0.7),
+                ),
+                const SizedBox(width: 4),
+                Text.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: l.resultBypassSavingsPrefix,
+                        style: t.bodySmall?.copyWith(
+                          color: scheme.onTertiaryContainer,
+                        ),
+                      ),
+                      TextSpan(
+                        text:
+                            ' €${maxBypassSavings.toStringAsFixed(0)} ',
+                        style: t.bodySmall?.copyWith(
+                          color: Colors.green.shade700,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextSpan(
+                        text: l.resultBypassSavingsSuffix(
+                          maxBypassPenalty.toStringAsFixed(0),
+                        ),
+                        style: t.bodySmall?.copyWith(
+                          color: Colors.amber.shade800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -2636,6 +2710,12 @@ class _MealStopRow extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
     final dateFmt = intl.DateFormat.Hm();
+    // "5 km · Cerca de Toledo" if we have a city hint, else the
+    // legacy "5 km del origen" text.
+    final locationLine = stop.cityHint != null
+        ? '${stop.distanceFromOriginKm.toStringAsFixed(0)} km · '
+            '${l.resultCityHint(stop.cityHint!)}'
+        : '${stop.distanceFromOriginKm.toStringAsFixed(0)} km';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2658,15 +2738,17 @@ class _MealStopRow extends StatelessWidget {
                 stop.restaurantName != null
                     ? '${stop.restaurantName} · '
                         '${stop.restaurantPriceEurPerMeal?.toStringAsFixed(0)} €/meal · '
-                        '${stop.distanceFromOriginKm.toStringAsFixed(0)} km'
-                    : l.resultRestStopNoRestaurant(
-                        stop.distanceFromOriginKm.toStringAsFixed(0),
-                      ),
+                        '$locationLine'
+                    : locationLine,
                 style: t.bodySmall,
               ),
             ],
           ),
         ),
+        if (stop.coordinate != null) ...[
+          const SizedBox(width: Tokens.space8),
+          _MiniMapThumb(coord: stop.coordinate!, tint: scheme.tertiary),
+        ],
       ],
     );
   }
@@ -2681,6 +2763,11 @@ class _SleepStopRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final dateFmt = intl.DateFormat.Hm();
+    final l = AppLocalizations.of(context);
+    final locationLine = stop.cityHint != null
+        ? '${stop.distanceFromOriginKm.toStringAsFixed(0)} km · '
+            '${l.resultCityHint(stop.cityHint!)}'
+        : '${stop.distanceFromOriginKm.toStringAsFixed(0)} km';
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2695,20 +2782,17 @@ class _SleepStopRow extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Builder(builder: (context) {
-                final l = AppLocalizations.of(context);
-                return Text(
-                  l.resultSleepAt(dateFmt.format(stop.at.toLocal())),
-                  style: t.titleMedium,
-                );
-              }),
+              Text(
+                l.resultSleepAt(dateFmt.format(stop.at.toLocal())),
+                style: t.titleMedium,
+              ),
               const SizedBox(height: 2),
               Text(
                 stop.hotelName != null
                     ? '${stop.hotelName} · '
                         '${stop.hotelPriceEurPerNight?.toStringAsFixed(0)} €/night · '
-                        '${stop.distanceFromOriginKm.toStringAsFixed(0)} km'
-                    : AppLocalizations.of(context).resultNoHotelHere(
+                        '$locationLine'
+                    : l.resultNoHotelHere(
                         stop.distanceFromOriginKm.toStringAsFixed(0),
                       ),
                 style: t.bodySmall,
@@ -2716,7 +2800,57 @@ class _SleepStopRow extends StatelessWidget {
             ],
           ),
         ),
+        if (stop.coordinate != null) ...[
+          const SizedBox(width: Tokens.space8),
+          _MiniMapThumb(coord: stop.coordinate!, tint: scheme.secondary),
+        ],
       ],
+    );
+  }
+}
+
+/// Tiny 72×72 map thumbnail with a single pin at [coord]. Uses
+/// the same OSM tile layer as the main route map so it renders
+/// consistently. Static — no interaction, taps do nothing (the
+/// row is not tappable yet; future POI detail sheet would open
+/// here).
+class _MiniMapThumb extends StatelessWidget {
+  const _MiniMapThumb({required this.coord, required this.tint});
+  final LatLon coord;
+  final Color tint;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 72, height: 72,
+        child: fmap.FlutterMap(
+          options: fmap.MapOptions(
+            initialCenter: fmap.LatLng(coord.lat, coord.lon),
+            initialZoom: 12,
+            interactionOptions: const fmap.InteractionOptions(
+              flags: fmap.InteractiveFlag.none,
+            ),
+          ),
+          children: [
+            fmap.TileLayer(
+              urlTemplate:
+                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+            ),
+            fmap.MarkerLayer(
+              markers: [
+                fmap.Marker(
+                  point: fmap.LatLng(coord.lat, coord.lon),
+                  width: 24, height: 24,
+                  child: Icon(Icons.place, color: tint, size: 24),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -2895,6 +3029,16 @@ class _PartialTollSkipsCard extends ConsumerWidget {
           ),
           const SizedBox(height: 4),
           Text(l.resultHourlyExplainer, style: t.bodySmall),
+          const SizedBox(height: 6),
+          // CTA pointing the driver at the per-day tolls view.
+          // Same state is shared — toggling here or there updates
+          // both surfaces at once.
+          Text(
+            l.partialTollsPerDayHint,
+            style: t.bodySmall?.copyWith(
+              color: scheme.primary, fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: Tokens.space12),
           RichText(
             text: TextSpan(
@@ -3713,9 +3857,26 @@ class _TimeWindowExpandableCardState
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Tokens.space8),
-            child: Text(
-              l.timeWindowSpanHelper,
-              style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.onWindowSelect != null)
+                  Row(
+                    children: [
+                      Icon(Icons.touch_app_outlined, size: 13,
+                          color: scheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        l.timeWindowTapHint,
+                        style: t.bodySmall?.copyWith(color: scheme.primary),
+                      ),
+                    ],
+                  ),
+                Text(
+                  l.timeWindowSpanHelper,
+                  style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
             ),
           ),
         ],

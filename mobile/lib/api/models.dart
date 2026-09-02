@@ -757,7 +757,7 @@ class PartialTollSkip {
   }
 
   factory PartialTollSkip.fromJson(Map<String, dynamic> j) => PartialTollSkip(
-        label: j['label'] as String,
+        label: j['label'] as String? ?? '',
         kind: j['kind'] as String? ?? 'named',
         index: (j['index'] as num?)?.toInt() ?? 1,
         total: (j['total'] as num?)?.toInt(),
@@ -772,6 +772,56 @@ class PartialTollSkip {
           lat: (j['lat'] as num).toDouble(),
           lon: (j['lon'] as num).toDouble(),
         ),
+      );
+}
+
+@immutable
+class IntraSectionSkip {
+  const IntraSectionSkip({
+    required this.sectionName,
+    required this.exitGateName,
+    required this.exitLat,
+    required this.exitLon,
+    required this.reentryGateName,
+    required this.reentryLat,
+    required this.reentryLon,
+    required this.fullSectionEur,
+    required this.bypassEur,
+    required this.savingsEur,
+    required this.freeRoadKm,
+    required this.timePenaltyMinutes,
+    required this.worthIt,
+  });
+
+  final String sectionName;
+  final String exitGateName;
+  final double exitLat;
+  final double exitLon;
+  final String reentryGateName;
+  final double reentryLat;
+  final double reentryLon;
+  final double fullSectionEur;
+  final double bypassEur;
+  final double savingsEur;
+  final double freeRoadKm;
+  final double timePenaltyMinutes;
+  final bool worthIt;
+
+  factory IntraSectionSkip.fromJson(Map<String, dynamic> j) =>
+      IntraSectionSkip(
+        sectionName: j['section_name'] as String? ?? '',
+        exitGateName: j['exit_gate_name'] as String? ?? '',
+        exitLat: (j['exit_lat'] as num).toDouble(),
+        exitLon: (j['exit_lon'] as num).toDouble(),
+        reentryGateName: j['reentry_gate_name'] as String? ?? '',
+        reentryLat: (j['reentry_lat'] as num).toDouble(),
+        reentryLon: (j['reentry_lon'] as num).toDouble(),
+        fullSectionEur: (j['full_section_eur'] as num).toDouble(),
+        bypassEur: (j['bypass_eur'] as num).toDouble(),
+        savingsEur: (j['savings_eur'] as num).toDouble(),
+        freeRoadKm: (j['free_road_km'] as num).toDouble(),
+        timePenaltyMinutes: (j['time_penalty_minutes'] as num).toDouble(),
+        worthIt: j['worth_it'] as bool? ?? false,
       );
 }
 
@@ -1456,6 +1506,7 @@ class TripPlanResponse {
     required this.adverseEvents,
     this.tollAlternative,
     this.partialTollSkips = const [],
+    this.intraSectionSkips = const [],
     this.optimizations,
     this.hourlyTollReport,
     this.savings = TripSavings.zero,
@@ -1488,6 +1539,7 @@ class TripPlanResponse {
   final List<AdverseEvent> adverseEvents;
   final TollAlternative? tollAlternative;
   final List<PartialTollSkip> partialTollSkips;
+  final List<IntraSectionSkip> intraSectionSkips;
   final Optimizations? optimizations;
   final HourlyTollReport? hourlyTollReport;
   final TripSavings savings;
@@ -1533,6 +1585,11 @@ class TripPlanResponse {
         partialTollSkips:
             (json['partial_toll_skips'] as List<dynamic>? ?? const [])
                 .map((s) => PartialTollSkip.fromJson(s as Map<String, dynamic>))
+                .toList(growable: false),
+        intraSectionSkips:
+            (json['intra_section_skips'] as List<dynamic>? ?? const [])
+                .map((s) =>
+                    IntraSectionSkip.fromJson(s as Map<String, dynamic>))
                 .toList(growable: false),
         optimizations: json['optimizations'] == null
             ? null

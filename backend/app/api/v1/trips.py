@@ -53,6 +53,8 @@ from app.services.time_window import (
     compute_time_windows,
     minutes_saved_vs_desired,
 )
+from app.providers.tolls_here import HereTollsProvider as _HereTollsProvider
+from app.services.intra_section_skips import compute as compute_intra_section_skips
 from app.services.partial_toll_skips import compute as compute_partial_skips
 from app.services.route_variants import compute_variants
 from app.services.toll_savings import compare as compare_toll
@@ -393,6 +395,22 @@ class PartialTollSkipOut(BaseModel):
     lon: float
 
 
+class IntraSectionSkipOut(BaseModel):
+    section_name: str
+    exit_gate_name: str
+    exit_lat: float
+    exit_lon: float
+    reentry_gate_name: str
+    reentry_lat: float
+    reentry_lon: float
+    full_section_eur: float
+    bypass_eur: float
+    savings_eur: float
+    free_road_km: float
+    time_penalty_minutes: float
+    worth_it: bool
+
+
 class FuelCostOut(BaseModel):
     total_cost_eur: float
     average_unit_price_eur: float
@@ -653,6 +671,7 @@ class TripPlanResponse(BaseModel):
     adverse_events: list[AdverseEventOut]
     toll_alternative: TollAlternativeOut | None = None
     partial_toll_skips: list[PartialTollSkipOut] = Field(default_factory=list)
+    intra_section_skips: list[IntraSectionSkipOut] = Field(default_factory=list)
     optimizations: OptimizationsOut | None = None
     hourly_toll_report: HourlyTollReportOut | None = None
     savings: SavingsSummaryOut = Field(default_factory=lambda: SavingsSummaryOut(
@@ -734,29 +753,41 @@ async def plan_trip(
             reason=scope.reason,
         )
 
-    # Real toll pricing via TollGuru when a key is set + we have real
-    # geometry to send. Replaces the heuristic toll_cost_eur and feeds
-    # per-booth data into partial_toll_skips below.
-    real_tolls = None
-    if providers.tollguru is not None and route.geometry:
-        quote = await providers.tollguru.quote(route)
-        if quote is not None:
-            real_tolls = quote.tolls
-            route = _dc_replace(route, toll_cost_eur=round(quote.total_eur, 2))
-    trip = Trip(
-        origin=origin,
-        destination=destination,
-        desired_departure_at=payload.desired_departure_at,
-        countries=route.countries_crossed,
+    # Fuel type from profile (used in the parallel fetch below).
+    _fuel_type = None
+    if profile is not None and profile.vehicle is not None:
+        ft = getattr(profile.vehicle, "fuel_type", None)
+        _fuel_type = ft.value if ft is not None else None
+
+    # Toll pricing, time windows, and fuel fetch are all independent
+    # after route computation — run them in parallel.
+    _tolls_coro = (
+        providers.tollguru.quote(route)
+        if providers.tollguru is not None and route.geometry
+        else asyncio.sleep(0, result=None)
     )
-    windows = await compute_time_windows(
+    _windows_coro = compute_time_windows(
         route=route,
-        desired_departure_at=trip.desired_departure_at,
+        desired_departure_at=payload.desired_departure_at,
         traffic=providers.traffic,
         config=TimeWindowConfig(
             window_span=timedelta(hours=payload.time_window_span_hours),
             top_n=payload.time_window_top_n,
         ),
+    )
+    _fuel_coro = providers.fuel.prices_along(route, fuel_type=_fuel_type)
+    _quote, windows, fuel = await asyncio.gather(
+        _tolls_coro, _windows_coro, _fuel_coro,
+    )
+    real_tolls = None
+    if _quote is not None:
+        real_tolls = _quote.tolls
+        route = _dc_replace(route, toll_cost_eur=round(_quote.total_eur, 2))
+    trip = Trip(
+        origin=origin,
+        destination=destination,
+        desired_departure_at=payload.desired_departure_at,
+        countries=route.countries_crossed,
     )
     # Effective departure: the recommended window when we have one,
     # else the user's original desired time. This anchor drives BOTH
@@ -814,15 +845,6 @@ async def plan_trip(
             _next_wake_at += timedelta(days=1)
         _day_start = _next_wake_at
     effective_arrival_at = _day_end
-    # Route to charging stations instead of liquid fuel when the
-    # driver's profile says electric — the whole fuel pipeline
-    # (map layer, list, cost card) still works because FuelPrice
-    # carries `unit_label` and `is_charging_station` flags.
-    _fuel_type = None
-    if profile is not None and profile.vehicle is not None:
-        ft = getattr(profile.vehicle, "fuel_type", None)
-        _fuel_type = ft.value if ft is not None else None
-    fuel = await providers.fuel.prices_along(route, fuel_type=_fuel_type)
 
     all_hotels_cache = None  # avoid re-hitting provider for optimizations
     hotels_out: list[HotelOut] = []
@@ -983,6 +1005,39 @@ async def plan_trip(
                     lon=skip.coordinate.lon,
                 )
             )
+
+    intra_skips_out: list[IntraSectionSkipOut] = []
+    if (
+        payload.include_toll_alternative
+        and real_tolls
+        and isinstance(providers.tollguru, _HereTollsProvider)
+    ):
+        try:
+            _raw_skips = await asyncio.wait_for(
+                compute_intra_section_skips(
+                    real_tolls, providers.osm_gates, providers.tollguru,
+                ),
+                timeout=20.0,
+            )
+        except asyncio.TimeoutError:
+            _log.warning("intra_section_skips timed out after 20s — skipping")
+            _raw_skips = []
+        for s in _raw_skips:
+            intra_skips_out.append(IntraSectionSkipOut(
+                section_name=s.section_name,
+                exit_gate_name=s.exit_gate_name,
+                exit_lat=s.exit_lat,
+                exit_lon=s.exit_lon,
+                reentry_gate_name=s.reentry_gate_name,
+                reentry_lat=s.reentry_lat,
+                reentry_lon=s.reentry_lon,
+                full_section_eur=s.full_section_eur,
+                bypass_eur=s.bypass_eur,
+                savings_eur=s.savings_eur,
+                free_road_km=s.free_road_km,
+                time_penalty_minutes=s.time_penalty_minutes,
+                worth_it=s.worth_it,
+            ))
 
     if payload.include_toll_alternative and alt_route_domain is not None:
         alt = compare_toll(route, alt_route_domain)
@@ -1553,6 +1608,21 @@ async def plan_trip(
                     attributes=dict(h.attributes),
                 ))
 
+    # Only surface genuine safety hazards — roadworks, strikes and
+    # protests are inconvenient but not dangerous; INFO-level events
+    # are informational noise that clutters the alert card.
+    _SERIOUS_EVENT_TYPES = {
+        AdverseEventType.FIRE,
+        AdverseEventType.WEATHER,
+        AdverseEventType.FLOOD,
+        AdverseEventType.SNOW,
+        AdverseEventType.EARTHQUAKE,
+        AdverseEventType.LANDSLIDE,
+        AdverseEventType.AVALANCHE,
+        AdverseEventType.HEATWAVE,
+        AdverseEventType.ACCIDENT,
+        AdverseEventType.CLOSURE,
+    }
     adverse_events_out: list[AdverseEventOut] = []
     if payload.include_adverse_events:
         now = datetime.now(timezone.utc)
@@ -1574,6 +1644,8 @@ async def plan_trip(
                 country=e.country,
             )
             for e in near
+            if e.type in _SERIOUS_EVENT_TYPES
+            and e.severity != AdverseEventSeverity.INFO
         ]
 
     variants_out: list[RouteVariantOut] = []
@@ -1802,6 +1874,7 @@ async def plan_trip(
         adverse_events=adverse_events_out,
         toll_alternative=toll_alternative_out,
         partial_toll_skips=partial_skips_out,
+        intra_section_skips=intra_skips_out,
         optimizations=optimizations_out,
         hourly_toll_report=hourly_toll_out,
         savings=savings,

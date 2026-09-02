@@ -42,7 +42,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get onboardBodyAlerts =>
-      'Brände, Streiks, Unwetter, Baustellen — du entscheidest, wann sie erscheinen, und nur wenn sie deine Route betreffen.';
+      'Brände, Überschwemmungen, Extremwetter, Erdbeben — nur echte Gefahren, und nur wenn sie deine Route betreffen.';
 
   @override
   String get onboardSkip => 'Überspringen';
@@ -891,7 +891,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get alertsAlongYourRouteDesc =>
-      'Brände, Streiks, Unwetter, Baustellen, Unfälle, Überschwemmungen, Schnee, Proteste — nach Schwere sortiert.';
+      'Brände, Überschwemmungen, Extremwetter, Schnee, Erdbeben, Erdrutsche — nach Schwere sortiert.';
 
   @override
   String get restStopsHint =>
@@ -1201,6 +1201,35 @@ class AppLocalizationsDe extends AppLocalizations {
   String get resultOptimizedEyebrow => 'Nach deinem Profil';
 
   @override
+  String dayTollsHeader(Object amount, int count) {
+    return 'Maut heute · $amount € ($count)';
+  }
+
+  @override
+  String dayTollsSavedSummary(Object amount, int count) {
+    return 'Du sparst $amount € beim Auslassen von $count.';
+  }
+
+  @override
+  String tollHourGoodToSkip(Object hh) {
+    return 'Gute Zeit zum Umfahren ($hh:00)';
+  }
+
+  @override
+  String tollHourAvoidSkip(Object hh) {
+    return 'Nicht umfahren — Peak $hh:00';
+  }
+
+  @override
+  String get partialTollsPerDayHint =>
+      'Du kannst sie auch pro Tag im Itinerar wählen ↓';
+
+  @override
+  String resultCityHint(Object city) {
+    return 'In der Nähe von $city';
+  }
+
+  @override
   String get resultOptimizedDescription =>
       'Mahlzeiten, Übernachtung und Kraftstoff passend zu deinem Profil.';
 
@@ -1218,6 +1247,14 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get resultSavingsNone =>
       'Noch keine Einsparungen für diese Route identifiziert.';
+
+  @override
+  String get resultBypassSavingsPrefix => 'Du könntest bis zu';
+
+  @override
+  String resultBypassSavingsSuffix(String minutes) {
+    return 'mit +$minutes Min. extra sparen';
+  }
 
   @override
   String get resultShift => 'VERSCHIEBUNG';
@@ -1892,7 +1929,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planOptAlertsSub =>
-      'Brände, Streiks, Wetter, Baustellen und mehr im Umkreis von 25 km um die Route.';
+      'Brände, Überschwemmungen, Extremwetter und ernste Gefahren im Umkreis von 25 km.';
 
   @override
   String get planOptTollFreeTitle => 'Mautfreie Alternative zeigen';
@@ -2047,6 +2084,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String dayHeaderCity(int index, String from, String to) {
+    return 'Tag $index · $from → $to';
+  }
+
+  @override
   String daySleepMarker(String time) {
     return 'Fahrtende gegen $time';
   }
@@ -2139,6 +2181,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Ziehen, um das Fenster zu erweitern und zu sehen, ob früher oder später fahren mehr Zeit spart.';
 
   @override
+  String get timeWindowTapHint =>
+      'Tippe auf einen Balken, um mit dieser Abfahrtszeit neu zu planen.';
+
+  @override
   String get planLoadingTitle => 'Deine Reise wird geplant';
 
   @override
@@ -2161,7 +2207,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planLoadingStepAlerts =>
-      'Brände, Baustellen, Wetter, Demos scannen…';
+      'Brände, Überschwemmungen, Extremwetter und Gefahren scannen…';
 
   @override
   String get planLoadingStepTolls =>
@@ -2200,11 +2246,11 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planErrorRetry => 'Nochmal versuchen';
 
   @override
-  String get emptyAlertsTitle => 'Route frei';
+  String get emptyAlertsTitle => 'Keine ernsten Gefahren erkannt';
 
   @override
   String get emptyAlertsBody =>
-      'Keine Brände, Baustellen oder Vorfälle auf deinem Korridor gemeldet. Gute Fahrt.';
+      'Keine Brände, Überschwemmungen oder ernsten Gefahren auf deinem Korridor gemeldet. Gute Fahrt.';
 
   @override
   String get emptyHotelsTitle => 'Keine Hotels in Routennähe';

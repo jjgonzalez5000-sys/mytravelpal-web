@@ -23,6 +23,7 @@ class TimeWindowChart extends StatelessWidget {
     required this.windows,
     required this.desiredDepartureAt,
     this.onSelect,
+    this.selectedWindow,
   });
 
   final List<TimeWindow> windows;
@@ -32,6 +33,10 @@ class TimeWindowChart extends StatelessWidget {
   /// read-only (older callers). The parent typically re-plans the
   /// trip with `window.departureAt` as the new desired departure.
   final ValueChanged<TimeWindow>? onSelect;
+
+  /// When set, highlights this window as the user's pending selection
+  /// (tapped but not yet confirmed).
+  final TimeWindow? selectedWindow;
 
   static const _barHeight = 8.0;
   static const _rowHeight = 30.0;
@@ -67,10 +72,8 @@ class TimeWindowChart extends StatelessWidget {
           _Row(
             window: sorted[i],
             isDesired: i == desiredIndex,
-            // Non-normalized: bar width is the raw ratio to the slowest
-            // slot. The recommended slot's colour + label do the
-            // signalling — bar widths honestly reflect total duration
-            // instead of magnifying tiny (~5 %) deltas.
+            isPending: selectedWindow != null &&
+                sorted[i].departureAt == selectedWindow!.departureAt,
             fillFraction: maxMinutes <= 0
                 ? 1.0
                 : sorted[i].estimatedMinutes / maxMinutes,
@@ -107,6 +110,7 @@ class _Row extends StatelessWidget {
   const _Row({
     required this.window,
     required this.isDesired,
+    required this.isPending,
     required this.fillFraction,
     required this.barHeight,
     required this.rowHeight,
@@ -122,6 +126,7 @@ class _Row extends StatelessWidget {
 
   final TimeWindow window;
   final bool isDesired;
+  final bool isPending;
   final double fillFraction;
   final double barHeight;
   final double rowHeight;
@@ -215,11 +220,21 @@ class _Row extends StatelessWidget {
         ],
       ),
     );
-    if (onTap == null) return row;
+    Widget result = row;
+    if (isPending) {
+      result = DecoratedBox(
+        decoration: BoxDecoration(
+          color: scheme.primary.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: row,
+      );
+    }
+    if (onTap == null) return result;
     // InkWell + Material so the ripple respects the chart's card.
     return Material(
       color: Colors.transparent,
-      child: InkWell(onTap: onTap, child: row),
+      child: InkWell(onTap: onTap, child: result),
     );
   }
 }

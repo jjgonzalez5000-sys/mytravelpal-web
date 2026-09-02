@@ -42,7 +42,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get onboardBodyAlerts =>
-      'Incendi, scioperi, maltempo, lavori — decidi tu quando compaiono, e solo quando toccano il tuo itinerario.';
+      'Incendi, alluvioni, maltempo estremo, terremoti — solo pericoli reali che toccano il tuo itinerario.';
 
   @override
   String get onboardSkip => 'Salta';
@@ -895,7 +895,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get alertsAlongYourRouteDesc =>
-      'Incendi, scioperi, maltempo, lavori, incidenti, alluvioni, neve, proteste — ordinate per gravità.';
+      'Incendi, alluvioni, maltempo estremo, neve, terremoti, frane — ordinate per gravità.';
 
   @override
   String get restStopsHint =>
@@ -1205,6 +1205,35 @@ class AppLocalizationsIt extends AppLocalizations {
   String get resultOptimizedEyebrow => 'Basato sul tuo profilo';
 
   @override
+  String dayTollsHeader(Object amount, int count) {
+    return 'Pedaggi di oggi · $amount € ($count)';
+  }
+
+  @override
+  String dayTollsSavedSummary(Object amount, int count) {
+    return 'Risparmi $amount € saltandone $count.';
+  }
+
+  @override
+  String tollHourGoodToSkip(Object hh) {
+    return 'Buon momento per saltarlo ($hh:00)';
+  }
+
+  @override
+  String tollHourAvoidSkip(Object hh) {
+    return 'Meglio pagarlo — picco $hh:00';
+  }
+
+  @override
+  String get partialTollsPerDayHint =>
+      'Puoi anche gestirli per giorno nell\'itinerario ↓';
+
+  @override
+  String resultCityHint(Object city) {
+    return 'Vicino a $city';
+  }
+
+  @override
   String get resultOptimizedDescription =>
       'Pasti, pernottamento e carburante scelti per il tuo profilo.';
 
@@ -1222,6 +1251,14 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get resultSavingsNone =>
       'Nessun risparmio identificato per questo percorso.';
+
+  @override
+  String get resultBypassSavingsPrefix => 'Potresti risparmiare fino a';
+
+  @override
+  String resultBypassSavingsSuffix(String minutes) {
+    return 'con +$minutes min in più';
+  }
 
   @override
   String get resultShift => 'SPOSTAMENTO';
@@ -1895,7 +1932,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get planOptAlertsSub =>
-      'Incendi, scioperi, meteo, lavori e altro entro 25 km dal percorso.';
+      'Incendi, alluvioni, maltempo estremo e pericoli gravi entro 25 km dal percorso.';
 
   @override
   String get planOptTollFreeTitle => 'Mostra alternativa senza pedaggi';
@@ -2050,6 +2087,11 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
+  String dayHeaderCity(int index, String from, String to) {
+    return 'Giorno $index · $from → $to';
+  }
+
+  @override
   String daySleepMarker(String time) {
     return 'Fine guida verso le $time';
   }
@@ -2141,6 +2183,10 @@ class AppLocalizationsIt extends AppLocalizations {
       'Trascina per allargare la finestra e vedere se partire prima o dopo fa risparmiare più tempo.';
 
   @override
+  String get timeWindowTapHint =>
+      'Tocca una barra per ricalcolare con quell\'orario di partenza.';
+
+  @override
   String get planLoadingTitle => 'Sto preparando il tuo viaggio';
 
   @override
@@ -2162,7 +2208,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get planLoadingStepAlerts =>
-      'Rilevo incendi, lavori, meteo, manifestazioni…';
+      'Rilevo incendi, alluvioni, maltempo estremo e pericoli…';
 
   @override
   String get planLoadingStepTolls => 'Confronto percorsi con pedaggio e senza…';
@@ -2198,11 +2244,11 @@ class AppLocalizationsIt extends AppLocalizations {
   String get planErrorRetry => 'Riprova';
 
   @override
-  String get emptyAlertsTitle => 'Percorso libero';
+  String get emptyAlertsTitle => 'Nessun pericolo grave rilevato';
 
   @override
   String get emptyAlertsBody =>
-      'Nessun incendio, lavori o evento avverso sul tuo corridoio. Buon viaggio.';
+      'Nessun incendio, alluvione o pericolo grave sul tuo corridoio. Buon viaggio.';
 
   @override
   String get emptyHotelsTitle => 'Nessun hotel vicino al percorso';

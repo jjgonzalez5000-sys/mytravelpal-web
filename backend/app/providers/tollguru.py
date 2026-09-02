@@ -45,8 +45,11 @@ class TollQuote:
 class TollBooth:
     name: str
     cost_eur: float
-    lat: float
+    lat: float        # entry gate position
     lon: float
+    exit_lat: float = 0.0   # exit gate position (section-level providers)
+    exit_lon: float = 0.0
+    operator: str = ""      # toll operator name (e.g. "ASF", "APRR") for gate filtering
 
 
 class TollProvider(Protocol):

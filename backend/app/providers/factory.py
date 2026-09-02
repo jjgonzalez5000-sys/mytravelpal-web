@@ -34,6 +34,7 @@ from app.providers.overpass import (
     OverpassHotelsProvider,
     OverpassRestaurantsProvider,
 )
+from app.providers.osm_toll_gates import OsmTollGateProvider
 from app.providers.tollguru import TollGuruProvider, TollProvider
 from app.providers.tolls_here import HereTollsProvider
 from app.providers.weather import OpenMeteoWeatherProvider
@@ -65,6 +66,7 @@ class Providers:
     user_marked_events: UserMarkedAdverseEventsProvider
     llm: LlmProvider
     tollguru: TollProvider | None
+    osm_gates: OsmTollGateProvider
 
 
 def get_providers() -> Providers:
@@ -201,4 +203,5 @@ _PROVIDERS_SINGLETON: Providers = Providers(
     user_marked_events=_USER_MARKED,
     llm=_LLM,
     tollguru=_tollguru_provider(),
+    osm_gates=OsmTollGateProvider(),
 )

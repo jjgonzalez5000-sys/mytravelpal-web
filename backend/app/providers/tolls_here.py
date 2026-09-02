@@ -23,17 +23,23 @@ from __future__ import annotations
 
 import logging
 import os
+import time
 from typing import Any
 
 import httpx
 
-from app.domain import Route
+from app.domain import Coordinate, Route
 from app.providers.tollguru import TollBooth, TollQuote
 
 _log = logging.getLogger(__name__)
 
 _ENDPOINT = "https://router.hereapi.com/v8/routes"
 _TIMEOUT_S = 8.0
+
+# In-memory cache for segment fares: (lat1_r3, lon1_r3, lat2_r3, lon2_r3) → (fare_eur, ts)
+# Key coords rounded to 3 decimal places (~100 m precision) to maximise cache hits.
+_SEGMENT_CACHE: dict[tuple[float, float, float, float], tuple[float, float]] = {}
+_SEGMENT_CACHE_TTL_S = 86400  # 24 h — fares change rarely
 
 
 def _api_key() -> str | None:
@@ -104,30 +110,10 @@ class HereTollsProvider:
             tolls = section.get("tolls") or []
             if not tolls:
                 continue
-            # Approximate the booth position at the midpoint of
-            # the section's polyline endpoints — HERE returns
-            # section-level fares, not booth-level.
-            dep = section.get("departure", {}).get("place", {}).get(
-                "location", {},
-            )
-            arr = section.get("arrival", {}).get("place", {}).get(
-                "location", {},
-            )
-            mid_lat: float | None = None
-            mid_lon: float | None = None
-            if dep and arr:
-                try:
-                    mid_lat = (float(dep["lat"]) + float(arr["lat"])) / 2
-                    mid_lon = (float(dep["lng"]) + float(arr["lng"])) / 2
-                except (TypeError, ValueError, KeyError):
-                    mid_lat = mid_lon = None
             for toll in tolls:
                 # HERE returns MULTIPLE `fares` per toll section —
-                # one per payment method (cash, tag, video). Emitting
-                # a TollBooth per fare produced the duplicate rows
-                # testers saw. Pick the MIN EUR fare (usually the
-                # tag / video price the driver would actually pay
-                # with a modern electronic system) and emit one
+                # one per payment method (cash, tag, video). Pick
+                # the MIN EUR fare (tag/video price) and emit one
                 # booth per section.
                 eur_fares = [
                     float((f.get("price") or {}).get("value"))
@@ -142,16 +128,124 @@ class HereTollsProvider:
                     continue
                 val = min(eur_fares)
                 total_eur += val
+
+                # tollCollectionLocations gives the real gate positions
+                # (entry + exit for système fermé, single barrier for
+                # système ouvert). Use these for accurate map pins and
+                # human-readable names instead of the section midpoint.
+                locs = toll.get("tollCollectionLocations") or []
+                operator = str(
+                    toll.get("tollSystem") or toll.get("name") or "Toll",
+                )
+                if len(locs) >= 2:
+                    entry_name = str(locs[0].get("name") or "").title()
+                    exit_name = str(locs[-1].get("name") or "").title()
+                    booth_name = f"{entry_name} → {exit_name}"
+                    entry_loc = locs[0].get("location") or {}
+                    exit_loc = locs[-1].get("location") or {}
+                    booth_lat = float(entry_loc.get("lat") or 0)
+                    booth_lon = float(entry_loc.get("lng") or 0)
+                    booth_exit_lat = float(exit_loc.get("lat") or 0)
+                    booth_exit_lon = float(exit_loc.get("lng") or 0)
+                elif len(locs) == 1:
+                    booth_name = str(locs[0].get("name") or operator).title()
+                    loc = locs[0].get("location") or {}
+                    booth_lat = float(loc.get("lat") or 0)
+                    booth_lon = float(loc.get("lng") or 0)
+                    booth_exit_lat = booth_exit_lon = 0.0
+                else:
+                    # Fallback: midpoint of section departure/arrival
+                    booth_name = operator
+                    dep = section.get("departure", {}).get("place", {}).get(
+                        "location", {},
+                    )
+                    arr = section.get("arrival", {}).get("place", {}).get(
+                        "location", {},
+                    )
+                    try:
+                        booth_lat = (float(dep["lat"]) + float(arr["lat"])) / 2
+                        booth_lon = (float(dep["lng"]) + float(arr["lng"])) / 2
+                    except (TypeError, ValueError, KeyError):
+                        booth_lat = booth_lon = 0.0
+                    booth_exit_lat = booth_exit_lon = 0.0
+
                 booths.append(TollBooth(
-                    name=str(
-                        toll.get("tollSystem") or toll.get("name")
-                        or "Toll section",
-                    ),
+                    name=booth_name,
                     cost_eur=round(val, 2),
-                    lat=mid_lat if mid_lat is not None else 0.0,
-                    lon=mid_lon if mid_lon is not None else 0.0,
+                    lat=booth_lat,
+                    lon=booth_lon,
+                    exit_lat=booth_exit_lat,
+                    exit_lon=booth_exit_lon,
+                    operator=operator,
                 ))
         return TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
+
+
+    async def quote_segment(
+        self,
+        origin: Coordinate,
+        dest: Coordinate,
+        *,
+        vehicle_class: str = "2AxlesAuto",
+    ) -> float | None:
+        """Fare in EUR for a single origin→dest segment, cached 24 h.
+
+        Used by the intra-section bypass service to price sub-sections
+        without repeating identical HERE requests across plan calls.
+        """
+        key = (
+            round(origin.lat, 3), round(origin.lon, 3),
+            round(dest.lat, 3), round(dest.lon, 3),
+        )
+        cached = _SEGMENT_CACHE.get(key)
+        if cached is not None:
+            val, ts = cached
+            if time.time() - ts < _SEGMENT_CACHE_TTL_S:
+                return val
+
+        key_api = _api_key()
+        if not key_api:
+            return None
+        params: dict[str, Any] = {
+            "transportMode": "car",
+            "origin": f"{origin.lat:.5f},{origin.lon:.5f}",
+            "destination": f"{dest.lat:.5f},{dest.lon:.5f}",
+            "return": "tolls,summary",
+            "currency": "EUR",
+            "apiKey": key_api,
+        }
+        try:
+            r = await self._client.get(_ENDPOINT, params=params)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("HERE segment quote failed: %r", exc)
+            return None
+        if r.status_code != 200:
+            _log.warning("HERE segment HTTP %s", r.status_code)
+            return None
+        try:
+            body = r.json()
+        except ValueError:
+            return None
+        routes = body.get("routes") or []
+        if not routes:
+            return None
+        total = 0.0
+        for section in routes[0].get("sections") or []:
+            for toll in section.get("tolls") or []:
+                eur_fares = [
+                    float((f.get("price") or {}).get("value"))
+                    for f in (toll.get("fares") or [])
+                    if str(((f.get("price") or {}).get("currency") or ""))
+                        .upper() == "EUR"
+                    and isinstance(
+                        (f.get("price") or {}).get("value"), (int, float),
+                    )
+                ]
+                if eur_fares:
+                    total += min(eur_fares)
+        fare = round(total, 2)
+        _SEGMENT_CACHE[key] = (fare, time.time())
+        return fare
 
 
 def _downsample_vias(route: Route) -> list:

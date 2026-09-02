@@ -93,7 +93,6 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
   }
 
   List<(IconData, String)> _longTailCaptions(AppLocalizations l) => [
-        (Icons.public, l.planLoadingLongCrossingCountries),
         (Icons.local_gas_station, l.planLoadingLongScanningFuel),
         (Icons.explore_outlined, l.planLoadingLongBigTrip),
         (Icons.check_circle_outline, l.planLoadingLongAlmostDone),

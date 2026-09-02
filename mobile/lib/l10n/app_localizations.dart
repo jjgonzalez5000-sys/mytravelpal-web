@@ -171,7 +171,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardBodyAlerts.
   ///
   /// In en, this message translates to:
-  /// **'Fires, strikes, adverse weather, roadworks — you decide when we surface them, and only when they actually touch your route.'**
+  /// **'Fires, floods, severe weather, earthquakes — serious hazards only, and only when they actually touch your route.'**
   String get onboardBodyAlerts;
 
   /// No description provided for @onboardSkip.
@@ -1731,7 +1731,7 @@ abstract class AppLocalizations {
   /// No description provided for @alertsAlongYourRouteDesc.
   ///
   /// In en, this message translates to:
-  /// **'Fires, strikes, adverse weather, roadworks, accidents, floods, snow, protests — sorted by severity.'**
+  /// **'Fires, floods, severe weather, snow, earthquakes, landslides — sorted by severity.'**
   String get alertsAlongYourRouteDesc;
 
   /// No description provided for @restStopsHint.
@@ -2299,6 +2299,42 @@ abstract class AppLocalizations {
   /// **'Profile-aware'**
   String get resultOptimizedEyebrow;
 
+  /// No description provided for @dayTollsHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Tolls today · {amount} € ({count})'**
+  String dayTollsHeader(Object amount, int count);
+
+  /// No description provided for @dayTollsSavedSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'ll save {amount} € by skipping {count}.'**
+  String dayTollsSavedSummary(Object amount, int count);
+
+  /// No description provided for @tollHourGoodToSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Good hour to skip ({hh}:00)'**
+  String tollHourGoodToSkip(Object hh);
+
+  /// No description provided for @tollHourAvoidSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Avoid skipping — peak at {hh}:00'**
+  String tollHourAvoidSkip(Object hh);
+
+  /// No description provided for @partialTollsPerDayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can also toggle these per day in the itinerary below ↓'**
+  String get partialTollsPerDayHint;
+
+  /// No description provided for @resultCityHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Near {city}'**
+  String resultCityHint(Object city);
+
   /// No description provided for @resultOptimizedDescription.
   ///
   /// In en, this message translates to:
@@ -2328,6 +2364,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No savings identified for this route yet.'**
   String get resultSavingsNone;
+
+  /// No description provided for @resultBypassSavingsPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'You could save up to'**
+  String get resultBypassSavingsPrefix;
+
+  /// No description provided for @resultBypassSavingsSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'with +{minutes} min extra'**
+  String resultBypassSavingsSuffix(String minutes);
 
   /// No description provided for @resultShift.
   ///
@@ -3508,7 +3556,7 @@ abstract class AppLocalizations {
   /// No description provided for @planOptAlertsSub.
   ///
   /// In en, this message translates to:
-  /// **'Fires, strikes, weather, roadworks, and more within 25 km of the route.'**
+  /// **'Fires, floods, severe weather, and serious hazards within 25 km of the route.'**
   String get planOptAlertsSub;
 
   /// No description provided for @planOptTollFreeTitle.
@@ -3752,6 +3800,12 @@ abstract class AppLocalizations {
   /// **'Day {index} · km {fromKm} → {toKm}'**
   String dayHeaderRange(int index, String fromKm, String toKm);
 
+  /// No description provided for @dayHeaderCity.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {index} · {from} → {to}'**
+  String dayHeaderCity(int index, String from, String to);
+
   /// No description provided for @daySleepMarker.
   ///
   /// In en, this message translates to:
@@ -3902,6 +3956,12 @@ abstract class AppLocalizations {
   /// **'Drag to widen the window and see if leaving earlier or later saves more time.'**
   String get timeWindowSpanHelper;
 
+  /// No description provided for @timeWindowTapHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a bar to replan with that departure time.'**
+  String get timeWindowTapHint;
+
   /// No description provided for @planLoadingTitle.
   ///
   /// In en, this message translates to:
@@ -3941,7 +4001,7 @@ abstract class AppLocalizations {
   /// No description provided for @planLoadingStepAlerts.
   ///
   /// In en, this message translates to:
-  /// **'Scanning for fires, roadworks, weather, protests…'**
+  /// **'Scanning for fires, floods, severe weather, and hazards…'**
   String get planLoadingStepAlerts;
 
   /// No description provided for @planLoadingStepTolls.
@@ -4001,13 +4061,13 @@ abstract class AppLocalizations {
   /// No description provided for @emptyAlertsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Route is clear'**
+  /// **'No serious hazards detected'**
   String get emptyAlertsTitle;
 
   /// No description provided for @emptyAlertsBody.
   ///
   /// In en, this message translates to:
-  /// **'No fires, roadworks or adverse events reported on your corridor. Safe travels.'**
+  /// **'No fires, floods or serious hazards reported on your corridor. Safe travels.'**
   String get emptyAlertsBody;
 
   /// No description provided for @emptyHotelsTitle.

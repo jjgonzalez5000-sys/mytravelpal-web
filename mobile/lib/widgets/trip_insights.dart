@@ -90,10 +90,19 @@ class DayPlanSection extends StatelessWidget {
     this.hotels = const [],
     this.destination,
     this.origin,
+    this.originName,
+    this.destinationName,
     this.routeGeometry = const [],
     this.selectedNightHotels = const {},
     this.onToggleNightHotel,
     this.showHotelSections = true,
+    this.partialTollSkips = const [],
+    this.enabledTollIndices = const {},
+    this.onToggleToll,
+    this.hourlyTollReport,
+    this.tripDepartureAt,
+    this.routeFreeFlowMinutes,
+    this.routeTotalKm,
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
@@ -111,6 +120,8 @@ class DayPlanSection extends StatelessWidget {
   /// Trip endpoints + geometry for POI detail sheet.
   final LatLon? destination;
   final LatLon? origin;
+  final String? originName;
+  final String? destinationName;
   final List<LatLon> routeGeometry;
 
   /// Which hotel the user has picked for each night, keyed by
@@ -123,6 +134,29 @@ class DayPlanSection extends StatelessWidget {
   /// row. Parent screen stores the pick and re-computes the
   /// total trip cost.
   final void Function(int dayIndex, Hotel hotel)? onToggleNightHotel;
+
+  /// Full plan-wide list of partial toll skips (booth-level).
+  /// The day card filters this list by its own `fromKm..toKm`
+  /// range so each day shows just the tolls that fall inside.
+  final List<PartialTollSkip> partialTollSkips;
+  /// Indices in [partialTollSkips] the driver keeps paying — the
+  /// COMPLEMENT of the "will skip" set. Kept as `enabled` (not
+  /// `skipped`) to match the existing `_tollSkipEnabled` state
+  /// naming in ResultScreen.
+  final Set<int> enabledTollIndices;
+  /// Called when the driver toggles a booth. `enabled = true`
+  /// means "keep paying it"; `false` means "skip it".
+  final void Function(int skipIndex, bool enabled)? onToggleToll;
+
+  /// Optional hourly toll verdicts (Premium). When supplied
+  /// together with [tripDepartureAt] / [routeFreeFlowMinutes] /
+  /// [routeTotalKm], each toll row shows a coloured hint chip
+  /// ("Buen momento para saltar" green / "Mala hora" amber)
+  /// based on the ETA at that booth's coord.
+  final HourlyTollReport? hourlyTollReport;
+  final DateTime? tripDepartureAt;
+  final double? routeFreeFlowMinutes;
+  final double? routeTotalKm;
 
   static const int _maxSleepHotels = 5;
 
@@ -152,6 +186,25 @@ class DayPlanSection extends StatelessWidget {
   // Ardèche) still surface at least a handful of overnight
   // options. The backend densifies with the same widened radius.
   static const double _maxHotelKmFromSleep = 90.0;
+
+  String _dayHeaderLabel(AppLocalizations l, DayPlan d, int totalDays) {
+    final isFirst = d.dayIndex == 1;
+    final isLast = d.dayIndex == totalDays;
+    if ((isFirst && originName != null) || (isLast && destinationName != null)) {
+      final from = isFirst && originName != null
+          ? originName!
+          : 'km ${d.fromKm.toStringAsFixed(0)}';
+      final to = isLast && destinationName != null
+          ? destinationName!
+          : 'km ${d.toKm.toStringAsFixed(0)}';
+      return l.dayHeaderCity(d.dayIndex, from, to);
+    }
+    return l.dayHeaderRange(
+      d.dayIndex,
+      d.fromKm.toStringAsFixed(0),
+      d.toKm.toStringAsFixed(0),
+    );
+  }
 
   String _slotLabel(AppLocalizations l, String slot) => switch (slot) {
         'breakfast' => l.profileBreakfast,
@@ -184,16 +237,8 @@ class DayPlanSection extends StatelessWidget {
               children: [
                 Text(
                   d.isDwellDay
-                      // Stay-put day at a user-picked waypoint —
-                      // render "Día N · <place>" instead of the
-                      // raw "km A → B" range that reads as
-                      // nonsense when A == B.
                       ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
-                      : l.dayHeaderRange(
-                          d.dayIndex,
-                          d.fromKm.toStringAsFixed(0),
-                          d.toKm.toStringAsFixed(0),
-                        ),
+                      : _dayHeaderLabel(l, d, days.length),
                   style: t.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -284,6 +329,36 @@ class DayPlanSection extends StatelessWidget {
                     onToggleHotel: onToggleNightHotel,
                   ),
                 ],
+                // Per-day tolls block. Rendered when this day's
+                // km range intersects any partial toll skips
+                // (booth-level). Same state as the standalone
+                // toll-skips card — toggling here reflects there
+                // and vice-versa because both write to the same
+                // Set at ResultScreenState level.
+                Builder(builder: (context) {
+                  final dayTolls = <(int, PartialTollSkip)>[];
+                  for (var i = 0;
+                      i < partialTollSkips.length; i++) {
+                    final s = partialTollSkips[i];
+                    if (s.distanceFromOriginKm >= d.fromKm &&
+                        s.distanceFromOriginKm <= d.toKm) {
+                      dayTolls.add((i, s));
+                    }
+                  }
+                  if (dayTolls.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: Tokens.space8),
+                    child: _DayTollsBlock(
+                      dayTolls: dayTolls,
+                      enabledTollIndices: enabledTollIndices,
+                      onToggleToll: onToggleToll,
+                      hourlyReport: hourlyTollReport,
+                      tripDepartureAt: tripDepartureAt,
+                      routeFreeFlowMinutes: routeFreeFlowMinutes,
+                      routeTotalKm: routeTotalKm,
+                    ),
+                  );
+                }),
               ],
             ),
           ),
@@ -292,6 +367,294 @@ class DayPlanSection extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Collapsible "Peajes de este día" block. Shows a summary row
+/// (total this day + count) that expands to a per-booth list
+/// with individual toggles + delta (+min, +km, savings).
+class _DayTollsBlock extends StatefulWidget {
+  const _DayTollsBlock({
+    required this.dayTolls,
+    required this.enabledTollIndices,
+    required this.onToggleToll,
+    this.hourlyReport,
+    this.tripDepartureAt,
+    this.routeFreeFlowMinutes,
+    this.routeTotalKm,
+  });
+  final List<(int, PartialTollSkip)> dayTolls;
+  final Set<int> enabledTollIndices;
+  final void Function(int index, bool enabled)? onToggleToll;
+  final HourlyTollReport? hourlyReport;
+  final DateTime? tripDepartureAt;
+  final double? routeFreeFlowMinutes;
+  final double? routeTotalKm;
+
+  /// Compute the local-hour ETA at a booth given the trip's
+  /// departure + free-flow minutes + total km. Returns null when
+  /// any required datum is missing (older Premium-off responses).
+  int? arrivalHourFor(PartialTollSkip s) {
+    final departure = tripDepartureAt;
+    final freeFlow = routeFreeFlowMinutes;
+    final total = routeTotalKm;
+    if (departure == null || freeFlow == null || total == null ||
+        total <= 0) {
+      return null;
+    }
+    final frac = (s.distanceFromOriginKm / total).clamp(0.0, 1.0);
+    final eta = departure.add(
+      Duration(minutes: (freeFlow * frac).round()),
+    );
+    return eta.toLocal().hour;
+  }
+
+  @override
+  State<_DayTollsBlock> createState() => _DayTollsBlockState();
+}
+
+class _DayTollsBlockState extends State<_DayTollsBlock> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    // Two computed totals so the collapsed header can preview the
+    // impact even without expanding: `total` = billed if the
+    // driver keeps ALL tolls, `savings` = what they'd save with
+    // the current selection.
+    var totalDayEur = 0.0;
+    var currentSavingsEur = 0.0;
+    var skippedCount = 0;
+    for (final (idx, s) in widget.dayTolls) {
+      totalDayEur += s.savingsEur; // savings_eur ≈ toll amount
+      if (!widget.enabledTollIndices.contains(idx)) {
+        currentSavingsEur += s.savingsEur;
+        skippedCount++;
+      }
+    }
+    return Container(
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Tokens.radiusMd),
+        border: Border.all(
+          color: scheme.outlineVariant, width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.circular(Tokens.radiusMd),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Tokens.space12, vertical: 10,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.toll_outlined,
+                      size: 18, color: scheme.tertiary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      l.dayTollsHeader(
+                        totalDayEur.toStringAsFixed(2),
+                        widget.dayTolls.length,
+                      ),
+                      style: t.labelLarge,
+                    ),
+                  ),
+                  if (currentSavingsEur > 0) ...[
+                    Text(
+                      '−${currentSavingsEur.toStringAsFixed(2)} €',
+                      style: t.labelLarge?.copyWith(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
+                  Icon(
+                    _expanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            Divider(color: scheme.outlineVariant, height: 1),
+            for (final (idx, s) in widget.dayTolls)
+              _DayTollRow(
+                skipIndex: idx,
+                skip: s,
+                skipped: !widget.enabledTollIndices.contains(idx),
+                onToggle: widget.onToggleToll,
+                arrivalHour: widget.arrivalHourFor(s),
+                bestHours:
+                    widget.hourlyReport?.bestHoursToSkip ?? const [],
+                worstHours:
+                    widget.hourlyReport?.worstHoursToSkip ?? const [],
+              ),
+            if (skippedCount > 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Tokens.space12, vertical: 8,
+                ),
+                child: Text(
+                  l.dayTollsSavedSummary(
+                    currentSavingsEur.toStringAsFixed(2),
+                    skippedCount,
+                  ),
+                  style: t.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DayTollRow extends StatelessWidget {
+  const _DayTollRow({
+    required this.skipIndex,
+    required this.skip,
+    required this.skipped,
+    required this.onToggle,
+    this.arrivalHour,
+    this.bestHours = const [],
+    this.worstHours = const [],
+  });
+  final int skipIndex;
+  final PartialTollSkip skip;
+  final bool skipped;
+  final void Function(int, bool)? onToggle;
+  final int? arrivalHour;
+  final List<int> bestHours;
+  final List<int> worstHours;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    // Hourly verdict badge: green if the ETA hour is in
+    // `bestHours` (good time to skip), amber if in `worstHours`
+    // (peak — better to pay). No chip if neither list contains
+    // the hour OR if we don't have an ETA to test against.
+    Widget? verdictChip;
+    if (arrivalHour != null) {
+      final hh = arrivalHour!.toString().padLeft(2, '0');
+      if (bestHours.contains(arrivalHour)) {
+        verdictChip = _TollHourChip(
+          icon: Icons.trending_down,
+          label: l.tollHourGoodToSkip(hh),
+          color: Colors.green.shade700,
+          bg: Colors.green.shade50,
+        );
+      } else if (worstHours.contains(arrivalHour)) {
+        verdictChip = _TollHourChip(
+          icon: Icons.trending_up,
+          label: l.tollHourAvoidSkip(hh),
+          color: Colors.orange.shade800,
+          bg: Colors.orange.shade50,
+        );
+      }
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space12, vertical: 6,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(Icons.alt_route,
+              size: 16,
+              color: skipped ? scheme.primary : scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  skip.label,
+                  style: t.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    decoration: skipped
+                        ? TextDecoration.lineThrough
+                        : null,
+                  ),
+                  maxLines: 1, overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${skip.savingsEur.toStringAsFixed(2)} €'
+                  '  ·  +${skip.timePenaltyMinutes.round()} min'
+                  '  ·  +${skip.extraDistanceKm.toStringAsFixed(1)} km',
+                  style: t.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+                if (verdictChip != null) ...[
+                  const SizedBox(height: 4),
+                  verdictChip,
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Switch.adaptive(
+            value: !skipped,   // switch ON = paying (kept)
+            onChanged: onToggle == null
+                ? null
+                : (v) => onToggle!(skipIndex, v),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TollHourChip extends StatelessWidget {
+  const _TollHourChip({
+    required this.icon, required this.label,
+    required this.color, required this.bg,
+  });
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color bg;
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 11, color: color),
+            const SizedBox(width: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: color,
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+          ],
+        ),
+      );
 }
 
 class _SleepHotelsBlock extends StatelessWidget {

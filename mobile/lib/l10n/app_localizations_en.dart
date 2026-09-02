@@ -42,7 +42,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardBodyAlerts =>
-      'Fires, strikes, adverse weather, roadworks — you decide when we surface them, and only when they actually touch your route.';
+      'Fires, floods, severe weather, earthquakes — serious hazards only, and only when they actually touch your route.';
 
   @override
   String get onboardSkip => 'Skip';
@@ -887,7 +887,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get alertsAlongYourRouteDesc =>
-      'Fires, strikes, adverse weather, roadworks, accidents, floods, snow, protests — sorted by severity.';
+      'Fires, floods, severe weather, snow, earthquakes, landslides — sorted by severity.';
 
   @override
   String get restStopsHint =>
@@ -1196,6 +1196,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultOptimizedEyebrow => 'Profile-aware';
 
   @override
+  String dayTollsHeader(Object amount, int count) {
+    return 'Tolls today · $amount € ($count)';
+  }
+
+  @override
+  String dayTollsSavedSummary(Object amount, int count) {
+    return 'You\'ll save $amount € by skipping $count.';
+  }
+
+  @override
+  String tollHourGoodToSkip(Object hh) {
+    return 'Good hour to skip ($hh:00)';
+  }
+
+  @override
+  String tollHourAvoidSkip(Object hh) {
+    return 'Avoid skipping — peak at $hh:00';
+  }
+
+  @override
+  String get partialTollsPerDayHint =>
+      'You can also toggle these per day in the itinerary below ↓';
+
+  @override
+  String resultCityHint(Object city) {
+    return 'Near $city';
+  }
+
+  @override
   String get resultOptimizedDescription =>
       'Meal, sleep and fuel picks that match your profile.';
 
@@ -1212,6 +1241,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultSavingsNone => 'No savings identified for this route yet.';
+
+  @override
+  String get resultBypassSavingsPrefix => 'You could save up to';
+
+  @override
+  String resultBypassSavingsSuffix(String minutes) {
+    return 'with +$minutes min extra';
+  }
 
   @override
   String get resultShift => 'SHIFT';
@@ -1885,7 +1922,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planOptAlertsSub =>
-      'Fires, strikes, weather, roadworks, and more within 25 km of the route.';
+      'Fires, floods, severe weather, and serious hazards within 25 km of the route.';
 
   @override
   String get planOptTollFreeTitle => 'Show toll-free alternative';
@@ -2040,6 +2077,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String dayHeaderCity(int index, String from, String to) {
+    return 'Day $index · $from → $to';
+  }
+
+  @override
   String daySleepMarker(String time) {
     return 'Finish driving around $time';
   }
@@ -2131,6 +2173,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Drag to widen the window and see if leaving earlier or later saves more time.';
 
   @override
+  String get timeWindowTapHint =>
+      'Tap a bar to replan with that departure time.';
+
+  @override
   String get planLoadingTitle => 'Building your road trip';
 
   @override
@@ -2154,7 +2200,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planLoadingStepAlerts =>
-      'Scanning for fires, roadworks, weather, protests…';
+      'Scanning for fires, floods, severe weather, and hazards…';
 
   @override
   String get planLoadingStepTolls =>
@@ -2193,11 +2239,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planErrorRetry => 'Retry';
 
   @override
-  String get emptyAlertsTitle => 'Route is clear';
+  String get emptyAlertsTitle => 'No serious hazards detected';
 
   @override
   String get emptyAlertsBody =>
-      'No fires, roadworks or adverse events reported on your corridor. Safe travels.';
+      'No fires, floods or serious hazards reported on your corridor. Safe travels.';
 
   @override
   String get emptyHotelsTitle => 'No hotels close to the route';
