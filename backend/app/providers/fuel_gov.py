@@ -41,7 +41,7 @@ _TTL_S = 12 * 3600
 # 8 s aren't going to respond, and every second past that is starving
 # the event loop for concurrent requests. Failure triggers the
 # `_failed_at` backoff so we don't hammer them.
-_TIMEOUT_S = 8.0
+_TIMEOUT = httpx.Timeout(connect=15.0, read=20.0, write=5.0, pool=5.0)
 _USER_AGENT = "MyTravelPal/1.0 (+https://mytravelpal.app)"
 
 # Off-corridor cap. Fuel stations further than this are dropped —
@@ -66,7 +66,7 @@ def _new_client() -> httpx.AsyncClient:
     )
     return httpx.AsyncClient(
         transport=transport,
-        timeout=_TIMEOUT_S,
+        timeout=_TIMEOUT,
         headers={"User-Agent": _USER_AGENT, "Accept": "*/*"},
         follow_redirects=True,
     )
