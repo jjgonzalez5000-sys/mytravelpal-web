@@ -45,6 +45,7 @@ _log = logging.getLogger(__name__)
 # up. All three are free / fair-use — no keys needed.
 _OVERPASS_URLS = (
     "https://overpass-api.de/api/interpreter",
+    "https://overpass.openstreetmap.fr/api/interpreter",
     "https://overpass.private.coffee/api/interpreter",
     "https://overpass.kumi.systems/api/interpreter",
 )
