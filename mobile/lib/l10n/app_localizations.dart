@@ -4019,8 +4019,14 @@ abstract class AppLocalizations {
   /// No description provided for @planLoadingHelper.
   ///
   /// In en, this message translates to:
-  /// **'This usually takes 5-15 seconds. Feel free to keep the phone in your pocket.'**
+  /// **'This can take up to a few minutes. Feel free to keep the phone in your pocket.'**
   String get planLoadingHelper;
+
+  /// No description provided for @timeWindowApplyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply · depart at {time}'**
+  String timeWindowApplyLabel(String time);
 
   /// No description provided for @planErrorAuth.
   ///
@@ -4725,6 +4731,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{brand} in {km} km · save {cts} ct/L'**
   String tripDashboardCheaperFuel(String brand, String km, String cts);
+
+  /// No description provided for @resultOptimalDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'Your departure time is optimal'**
+  String get resultOptimalDeparture;
+
+  /// No description provided for @shortLastDayWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Short last leg ({km} km) — you could arrive today if you push further the day before.'**
+  String shortLastDayWarning(String km);
 }
 
 class _AppLocalizationsDelegate

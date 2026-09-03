@@ -64,7 +64,7 @@ class MockParkingProvider:
                     lat=coord.lat + 0.001 * (i + 1),
                     lon=coord.lon + 0.001 * (i + 1),
                 ),
-                country=country or Country.es,
+                country=country or Country.ES,
                 distance_from_query_km=0.15 * (i + 1),
                 price_eur_per_hour=2.0 if i == 0 else None,
                 covered=(i % 2 == 0),
@@ -156,7 +156,7 @@ def _feature_to_parking(
     return Parking(
         name=str(name).strip() or "Parking",
         coordinate=coord,
-        country=country or Country.es,
+        country=country or Country.ES,
         distance_from_query_km=_haversine_km(query, coord),
         price_eur_per_hour=price,
         max_stay_hours=max_stay,

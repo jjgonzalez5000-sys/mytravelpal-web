@@ -24,6 +24,7 @@ Response shape: GeoJSON FeatureCollection where each feature has
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -54,7 +55,7 @@ from app.providers.restaurants import _classify_meal_price
 _log = logging.getLogger(__name__)
 
 _URL = "https://api.geoapify.com/v2/places"
-_TIMEOUT_S = 12.0
+_TIMEOUT_S = 20.0
 _LIMIT = 40
 _USER_AGENT = "MyTravelPal/1.0 (+https://mytravelpal.app)"
 
@@ -254,12 +255,15 @@ class GeoapifyHotelsProvider:
         cat = self._CATEGORY_ALL if include_other else self._CATEGORY_HOTEL_ONLY
         boxes = _corridor_viewboxes(route)
         reference = _route_reference_points(route)
+        results = await asyncio.gather(
+            *[_search(self._client, cat, _rect_filter(vb), key,
+                      conditions=conditions) for vb in boxes],
+            return_exceptions=True,
+        )
         features: list[dict[str, Any]] = []
-        for vb in boxes:
-            features.extend(await _search(
-                self._client, cat, _rect_filter(vb), key,
-                conditions=conditions,
-            ))
+        for r in results:
+            if isinstance(r, list):
+                features.extend(r)
         return tuple(self._hotels_from(features, route, reference))
 
     async def hotels_near(
@@ -376,12 +380,15 @@ class GeoapifyRestaurantsProvider:
             return ()
         boxes = _corridor_viewboxes(route)
         reference = _route_reference_points(route)
+        gathered = await asyncio.gather(
+            *[_search(self._client, self._CATEGORIES, _rect_filter(vb), key,
+                      conditions=conditions) for vb in boxes],
+            return_exceptions=True,
+        )
         features: list[dict[str, Any]] = []
-        for vb in boxes:
-            features.extend(await _search(
-                self._client, self._CATEGORIES, _rect_filter(vb), key,
-                conditions=conditions,
-            ))
+        for r in gathered:
+            if isinstance(r, list):
+                features.extend(r)
         result = tuple(self._restaurants_from(features, route, reference))
         _log.info(
             "restaurants_along: %d raw features → %d after corridor filter",

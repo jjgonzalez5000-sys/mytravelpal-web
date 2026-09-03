@@ -36,6 +36,7 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
   final _refineController = TextEditingController();
   bool _loading = false;
   bool _refining = false;
+  bool _converting = false;
   String? _error;
   InspireItinerary? _result;
   /// Conversation persisted alongside the itinerary. Each
@@ -174,7 +175,8 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
 
   Future<void> _convertToPlan() async {
     final it = _result;
-    if (it == null || it.days.isEmpty) return;
+    if (it == null || it.days.isEmpty || _converting) return;
+    setState(() => _converting = true);
     final first = it.days.first;
     final last = it.days.last;
     // Origin = first day's from_name; destination = last day's
@@ -307,11 +309,15 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       }
     }
 
-    if (!mounted) return;
+    if (!mounted) {
+      setState(() => _converting = false);
+      return;
+    }
     if (originResult == null || destResult == null) {
       // Nothing usable — fall back to just closing and letting the
       // user type manually. Rare (LLM would need to omit all
       // coords) but we shouldn't crash.
+      setState(() => _converting = false);
       Navigator.of(context).pop();
       return;
     }
@@ -341,6 +347,8 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
         it.suggestedDepartureDaysFromNow ?? 1, hour,
       );
     }
+    // _converting stays true — the route replacement makes this
+    // widget unmount so setState after would no-op anyway.
     Navigator.of(context).pushReplacement(
       MaterialPageRoute<void>(
         builder: (_) => PlanScreen(
@@ -401,6 +409,7 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
                         width: 18, height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
+                          color: Colors.white,
                         ),
                       )
                     : const Icon(Icons.auto_awesome),
@@ -408,6 +417,18 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
                     ? l.inspireGenerating
                     : l.inspireGenerate),
               ),
+              if (_loading) ...[
+                const SizedBox(height: Tokens.space12),
+                const LinearProgressIndicator(),
+                const SizedBox(height: Tokens.space8),
+                Text(
+                  l.planLoadingHelper,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
               if (_error != null) ...[
                 const SizedBox(height: Tokens.space12),
                 Container(
@@ -482,7 +503,8 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
               if (_result != null) ...[
                 _ResultBlock(
                   itinerary: _result!,
-                  onConvert: _convertToPlan,
+                  onConvert: _converting ? null : _convertToPlan,
+                  converting: _converting,
                   onSave: _saveInspiration,
                 ),
                 const SizedBox(height: Tokens.space20),
@@ -665,12 +687,14 @@ class _ExamplesBlock extends StatelessWidget {
 class _ResultBlock extends StatelessWidget {
   const _ResultBlock({
     required this.itinerary,
-    required this.onConvert,
     required this.onSave,
+    this.onConvert,
+    this.converting = false,
   });
   final InspireItinerary itinerary;
-  final VoidCallback onConvert;
+  final VoidCallback? onConvert;
   final VoidCallback onSave;
+  final bool converting;
 
   @override
   Widget build(BuildContext context) {
@@ -712,8 +736,16 @@ class _ResultBlock extends StatelessWidget {
           children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: onConvert,
-                icon: const Icon(Icons.play_arrow_rounded),
+                onPressed: converting ? null : onConvert,
+                icon: converting
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.play_arrow_rounded),
                 label: Text(l.inspireConvertToPlan),
               ),
             ),

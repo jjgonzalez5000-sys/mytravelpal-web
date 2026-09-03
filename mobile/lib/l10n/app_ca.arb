@@ -109,5 +109,12 @@
     "settingsTitle": "Configuració",
     "settingsLanguage": "Idioma",
     "localeSystem": "Sistema",
-    "dashboardSignOut": "Tancar sessió"
+    "dashboardSignOut": "Tancar sessió",
+    "resultOptimalDeparture": "La teva hora de sortida és òptima",
+    "shortLastDayWarning": "Últim tram curt ({km} km) — podries arribar avui si avances més l'endemà.",
+    "@shortLastDayWarning": {
+      "placeholders": {
+        "km": {"type": "String"}
+      }
+    }
 }

@@ -33,7 +33,7 @@ def _providers() -> Providers:
 
 @router.get("", response_model=GeocodeResponse)
 async def geocode(
-    q: str = Query(..., min_length=1, max_length=128, description="Search query"),
+    q: str = Query(..., min_length=1, max_length=512, description="Search query"),
     limit: int = Query(5, ge=1, le=20),
     providers: Providers = Depends(_providers),
 ) -> GeocodeResponse:

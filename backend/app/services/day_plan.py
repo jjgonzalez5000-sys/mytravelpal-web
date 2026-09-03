@@ -62,6 +62,13 @@ class DayPlan:
     # "Día 2 · Mendrisio" instead of an opaque "km 267 → 267"
     # range.
     dwell_label: str | None = None
+    # Human-readable city/place name at the start and end of this day.
+    # Populated from reverse-geocoded origin/destination + dwell chain.
+    from_name: str | None = None
+    to_name: str | None = None
+    # Labels of pass-through (non-dwell) waypoints that fall within
+    # this day's km range — the inspire-flow stops visible to the user.
+    waypoint_labels: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +87,8 @@ def compute(
     route_distance_km: float,
     route: Route | None = None,
     waypoints: tuple[Waypoint, ...] = (),
+    origin_label: str | None = None,
+    destination_label: str | None = None,
 ) -> MultiDayPlan | None:
     """Return `None` for single-day trips. For multi-day trips returns
     the per-day breakdown.
@@ -150,6 +159,18 @@ def compute(
                 continue
             dwell_anchors.append((km, wp))
     dwell_anchors.sort(key=lambda t: t[0])
+    # Pass-through waypoints (dwell=0) with a label — these are the
+    # inspire-flow stops the user wants to see in the day timeline.
+    pass_anchors: list[tuple[float, str]] = []
+    if route is not None:
+        for wp in waypoints:
+            if wp.dwell_nights >= 1 or not wp.label:
+                continue
+            km = _km_at_coord(route, wp.coordinate)
+            if km is None:
+                continue
+            pass_anchors.append((km, wp.label))
+    pass_anchors.sort(key=lambda t: t[0])
     dwell_idx = 0
     # Effective km / h at the trip's average speed. Guard against
     # zero-hour trips (shouldn't happen, defensive).
@@ -300,6 +321,18 @@ def compute(
             # geometry at the day's ending km. Clients use this to
             # rank nearby hotels for the overnight-stop section.
             sleep_coord = _coord_at_km(route, to_km)
+        # from_name: origin on day 1, previous dwell on later days.
+        prev_dwell = boundaries[idx - 1][5] if idx > 0 else None
+        day_from_name = origin_label if idx == 0 else prev_dwell
+        # to_name: dwell_label of this boundary, or destination on last day.
+        day_to_name = (
+            destination_label if idx + 1 == total else dwell_label
+        )
+        # Pass-through stops within this day's km range.
+        day_wp_labels = tuple(
+            label for km, label in pass_anchors
+            if km > from_km and km <= to_km
+        )
         days.append(
             DayPlan(
                 day_index=idx + 1,
@@ -312,6 +345,9 @@ def compute(
                 sleep_at=sleep_at,
                 sleep_coord=sleep_coord,
                 dwell_label=dwell_label,
+                from_name=day_from_name,
+                to_name=day_to_name,
+                waypoint_labels=day_wp_labels,
             )
         )
     return MultiDayPlan(days=tuple(days), total_days=total)

@@ -88,6 +88,12 @@ bool isPlausibleSleepTime(DateTime at) {
   return localHour >= 20 || localHour <= 6;
 }
 
+String _mealStopKey(MealStopOpt m) =>
+    'opt_meal:${m.distanceFromOriginKm.toStringAsFixed(1)}';
+
+String _sleepStopKey(SleepStopOpt s) =>
+    'opt_sleep:${s.distanceFromOriginKm.toStringAsFixed(1)}';
+
 class ResultScreen extends ConsumerStatefulWidget {
   const ResultScreen({
     super.key,
@@ -140,6 +146,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   // Coach-mark tutorial keys for result screen
   final _timeWindowKey = GlobalKey();
   final _tollKey = GlobalKey();
+  final _hotelKey = GlobalKey();
 
   _MapMode _mapMode = _MapMode.normal;
 
@@ -315,6 +322,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     setState(_addedStops.clear);
   }
 
+  /// Estimates km-from-origin for [coord] by finding the nearest point
+  /// in the route geometry and using its index fraction × totalKm.
+  double? _kmFromOrigin(LatLon coord) {
+    final geom = widget.response.route.geometry;
+    final totalKm = widget.response.route.distanceKm;
+    if (geom.isEmpty || totalKm <= 0) return null;
+    var bestIndex = 0;
+    var bestDist = double.infinity;
+    for (var i = 0; i < geom.length; i++) {
+      final dlat = geom[i].lat - coord.lat;
+      final dlon = geom[i].lon - coord.lon;
+      final d = dlat * dlat + dlon * dlon; // squared — no need for sqrt
+      if (d < bestDist) {
+        bestDist = d;
+        bestIndex = i;
+      }
+    }
+    return (bestIndex / (geom.length - 1)) * totalKm;
+  }
+
   /// Resolve the flat `_addedStops` map (keyed by string ids) into
   /// full `AddedStop` records with coord + label so the map sheet can
   /// plot markers. Order preserved from the API response so nearby
@@ -333,6 +360,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           subtitle: '+${h.detourMinutes.toStringAsFixed(0)} min · '
               '${h.priceEurPerNight.toStringAsFixed(0)} €',
           coordinate: h.coordinate,
+          distanceFromOriginKm: _kmFromOrigin(h.coordinate),
         ));
       }
     }
@@ -347,6 +375,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           subtitle: '+${r.detourMinutes.toStringAsFixed(0)} min · '
               '${r.priceEurPerMeal.toStringAsFixed(0)} €',
           coordinate: r.coordinate,
+          distanceFromOriginKm: _kmFromOrigin(r.coordinate),
         ));
       }
     }
@@ -365,11 +394,42 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   '${p.distanceFromOriginKm.toStringAsFixed(0)} km'
               : '${p.distanceFromOriginKm.toStringAsFixed(0)} km',
           coordinate: p.coordinate!,
+          distanceFromOriginKm: p.distanceFromOriginKm,
+        ));
+      }
+    }
+    // Meal + sleep stops the user pinned from the "Optimizado" section.
+    for (final m in widget.response.optimizations?.mealStops ?? const []) {
+      final key = _optMealKey(m);
+      if (_addedStops.containsKey(key) && m.coordinate != null) {
+        out.add(AddedStop(
+          kind: AddedStopKind.restaurant,
+          label: m.restaurantName ?? m.slot,
+          subtitle: m.cityHint ?? '${m.distanceFromOriginKm.toStringAsFixed(0)} km',
+          coordinate: m.coordinate!,
+          distanceFromOriginKm: _kmFromOrigin(m.coordinate!),
+        ));
+      }
+    }
+    final sleep = widget.response.optimizations?.sleepStop;
+    if (sleep != null) {
+      final key = _optSleepKey(sleep);
+      if (_addedStops.containsKey(key) && sleep.coordinate != null) {
+        out.add(AddedStop(
+          kind: AddedStopKind.hotel,
+          label: sleep.hotelName ?? 'Sleep stop',
+          subtitle: sleep.cityHint ?? '${sleep.distanceFromOriginKm.toStringAsFixed(0)} km',
+          coordinate: sleep.coordinate!,
+          distanceFromOriginKm: _kmFromOrigin(sleep.coordinate!),
         ));
       }
     }
     return out;
   }
+
+  static String _optMealKey(MealStopOpt m) => _mealStopKey(m);
+
+  static String _optSleepKey(SleepStopOpt s) => _sleepStopKey(s);
 
   void _openAddedStopsMap() {
     final stops = _resolveAddedStops();
@@ -476,16 +536,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         origin: widget.request.origin,
         destination: widget.request.destination,
         desiredDepartureAt: newDeparture,
+        waypoints: widget.request.waypoints,
         countries: widget.request.countries,
         hotelMaxDetourMinutes: widget.request.hotelMaxDetourMinutes,
         hotelPriceBand: widget.request.hotelPriceBand,
         hotelPriceBands: widget.request.hotelPriceBands,
         hotelMinStars: widget.request.hotelMinStars,
+        hotelIncludeOther: widget.request.hotelIncludeOther,
+        hotelDestinationRadiusKm: widget.request.hotelDestinationRadiusKm,
+        hotelConditions: widget.request.hotelConditions,
         restaurantMaxDetourMinutes:
             widget.request.restaurantMaxDetourMinutes,
         restaurantPriceBand: widget.request.restaurantPriceBand,
         restaurantPriceBands: widget.request.restaurantPriceBands,
         restaurantCuisines: widget.request.restaurantCuisines,
+        restaurantConditions: widget.request.restaurantConditions,
         includeAdverseEvents: widget.request.includeAdverseEvents,
         adverseEventsMaxDistanceKm:
             widget.request.adverseEventsMaxDistanceKm,
@@ -498,6 +563,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         timeWindowSpanHours: widget.request.timeWindowSpanHours,
         timeWindowTopN: widget.request.timeWindowTopN,
         tripProfile: widget.request.tripProfile,
+        includeParking: widget.request.includeParking,
       );
       final fresh = await api.planTrip(replan);
       if (!mounted) return;
@@ -874,10 +940,53 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   onTap: _openAddedStopsMap,
                 ),
               ],
+              if (widget.response.days.isNotEmpty) ...[
+                const SizedBox(height: Tokens.space12),
+                Divider(color: scheme.outlineVariant),
+                const SizedBox(height: Tokens.space4),
+                for (final d in widget.response.days)
+                  _DayStripRow(day: d),
+              ],
             ],
           ),
         ),
       ),
+      if (widget.response.days.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space16),
+        Container(
+          key: _tollKey,
+          child: DayPlanSection(
+            days: widget.response.days,
+            timeFormat: DateFormat.Hm(),
+            hotels: _filteredHotels,
+            destination: widget.request.destination,
+            origin: widget.request.origin,
+            originName: widget.origin.displayName,
+            destinationName: widget.destination.displayName,
+            routeGeometry: widget.response.route.geometry,
+            selectedNightHotels: _selectedNightHotels,
+            onToggleNightHotel: _toggleNightHotel,
+            showHotelSections:
+                widget.request.hotelMaxDetourMinutes != null &&
+                    widget.request.hotelMaxDetourMinutes! > 0,
+            partialTollSkips: widget.response.partialTollSkips,
+            enabledTollIndices: _tollSkipEnabled,
+            onToggleToll: (i, enabled) => setState(() {
+              if (enabled) {
+                _tollSkipEnabled.add(i);
+              } else {
+                _tollSkipEnabled.remove(i);
+              }
+            }),
+            hourlyTollReport: widget.response.hourlyTollReport,
+            tripDepartureAt: widget.desiredDepartureAt,
+            routeFreeFlowMinutes: widget.response.route.freeFlowMinutes,
+            routeTotalKm: widget.response.route.distanceKm,
+            addedStops: _resolveAddedStops(),
+            weatherSegments: widget.response.weatherSegments,
+          ),
+        ),
+      ],
       const SizedBox(height: Tokens.space24),
       if (widget.response.consistencyIssues.isNotEmpty)
         ConsistencyBanner(issues: widget.response.consistencyIssues),
@@ -894,6 +1003,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ? null
               : _selectedHotelsCostEur,
           pickedHotelsNights: _selectedNightHotels.length,
+          savings: widget.response.savings,
+          tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
+          intraSectionSkips: widget.response.intraSectionSkips,
         ),
         const SizedBox(height: Tokens.space16),
       ],
@@ -930,9 +1042,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           widget.response.optimizations!.mealStops.isNotEmpty) ...[
         Builder(builder: (context) {
           final meal = widget.response.optimizations!.mealStops.first;
+          final coordSuffix = meal.restaurantCoordinate == null
+              ? ':nocoord'
+              : ':${meal.restaurantCoordinate!.lat.toStringAsFixed(4)},'
+                  '${meal.restaurantCoordinate!.lon.toStringAsFixed(4)}';
+          final stopKey = 'restaurant:${meal.restaurantName ?? ""}$coordSuffix';
           return NextStopHero(
             mealStop: meal,
             timeFormat: DateFormat.Hm(),
+            isAdded: _isAdded(stopKey),
+            onAdd: () => _toggleStop(stopKey, 0),
             onTap: meal.restaurantCoordinate == null
                 ? null
                 : () => showPoiDetailSheet(
@@ -964,6 +1083,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           arrivalHour: scope.arrivalLocalHour,
           bedtimeHour: bedtimeHour,
           requiresOvernight: scope.requiresOvernight,
+          onTap: () {
+            final ctx = _hotelKey.currentContext;
+            if (ctx != null) {
+              Scrollable.ensureVisible(
+                ctx,
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeInOut,
+              );
+            }
+          },
         ),
         const SizedBox(height: Tokens.space16),
       ],
@@ -987,29 +1116,53 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space16),
       ],
-      if (widget.response.savings.timeSavedMinutesVsDesired > 0 ||
-          _tollSkipSavingsEur > 0) ...[
-        _SavingsSummaryCard(
-          savings: widget.response.savings,
-          tollSkipSavingsEur: _tollSkipSavingsEur,
-          tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
-          intraSectionSkips: widget.response.intraSectionSkips,
-        ),
-        const SizedBox(height: Tokens.space16),
-      ],
       // Departure section: recommendation hero + time window chart
       // merged into one visual block. The user sees "best time to
       // leave" + the chart rows they can tap to replan, all in one
       // place without a separate section header.
       if (recommended != null) ...[
         const SizedBox(height: Tokens.space24),
-        _RecommendationHero(
-          recommended: recommended,
-          desired: widget.desiredDepartureAt,
-          freeFlowMinutes: route.freeFlowMinutes,
-          savedMinutesVsDesired:
-              widget.response.savings.timeSavedMinutesVsDesired,
-        ),
+        () {
+          final diff = recommended.departureAt.toLocal()
+              .difference(widget.desiredDepartureAt.toLocal())
+              .abs();
+          if (diff.inMinutes < 10) {
+            // Desired departure is already optimal — compact green badge.
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Tokens.space16,
+                vertical: Tokens.space12,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(Tokens.radiusLg),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle,
+                      size: 18, color: Colors.green.shade700),
+                  const SizedBox(width: Tokens.space8),
+                  Text(
+                    l.resultOptimalDeparture,
+                    style: t.bodyMedium?.copyWith(
+                      color: Colors.green.shade800,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+          return _RecommendationHero(
+            recommended: recommended,
+            desired: widget.desiredDepartureAt,
+            freeFlowMinutes: route.freeFlowMinutes,
+            savedMinutesVsDesired:
+                widget.response.savings.timeSavedMinutesVsDesired,
+            onSelect: () => _replanWithDeparture(recommended),
+          );
+        }(),
       ],
       const SizedBox(height: Tokens.space12),
       Container(
@@ -1029,6 +1182,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (widget.response.optimizations != null) ...[
         const SizedBox(height: Tokens.space24),
         _OptimizationsSection(
+          key: _hotelKey,
           opts: widget.response.optimizations!,
           // Ship the full pool; the section shows 3 up-front and
           // hides the rest behind a "Ver más" expander so the
@@ -1040,48 +1194,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           originName: widget.origin.displayName,
           destinationName: widget.destination.displayName,
           routeGeometry: widget.response.route.geometry,
-        ),
-      ],
-      // Multi-day breakdown — only emitted by the backend for trips
-      // that exceed the driver's daily cap or cross their bedtime.
-      // Slotted between Optimisations and the Toll cards so the day
-      // structure stays visible above the details.
-      if (widget.response.days.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        Container(
-          key: _tollKey,
-          child: DayPlanSection(
-          days: widget.response.days,
-          timeFormat: DateFormat.Hm(),
-          hotels: _filteredHotels,
-          destination: widget.request.destination,
-          origin: widget.request.origin,
-          originName: widget.origin.displayName,
-          destinationName: widget.destination.displayName,
-          routeGeometry: widget.response.route.geometry,
-          selectedNightHotels: _selectedNightHotels,
-          onToggleNightHotel: _toggleNightHotel,
-          // Hide all hotel content per-day when the user didn't
-          // ask for hotel search on the plan form. Keeps the
-          // day cards focused on driving hours + meal times
-          // instead of promoting an empty hotel slot.
-          showHotelSections:
-              widget.request.hotelMaxDetourMinutes != null &&
-                  widget.request.hotelMaxDetourMinutes! > 0,
-          partialTollSkips: widget.response.partialTollSkips,
-          enabledTollIndices: _tollSkipEnabled,
-          onToggleToll: (i, enabled) => setState(() {
-            if (enabled) {
-              _tollSkipEnabled.add(i);
-            } else {
-              _tollSkipEnabled.remove(i);
-            }
-          }),
-          hourlyTollReport: widget.response.hourlyTollReport,
-          tripDepartureAt: widget.desiredDepartureAt,
-          routeFreeFlowMinutes: widget.response.route.freeFlowMinutes,
-          routeTotalKm: widget.response.route.distanceKm,
-        ),
+          addedKeys: _addedStops.keys.toSet(),
+          weatherSegments: widget.response.weatherSegments,
+          onAddMealStop: (m) => setState(() =>
+              _toggleStop(_optMealKey(m), 0)),
+          onAddSleepStop: (s) => setState(() =>
+              _toggleStop(_optSleepKey(s), 0)),
         ),
       ],
       // The former standalone "_DestinationHotelsSection" was
@@ -1129,10 +1247,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ],
       if (showRestaurants && widget.response.restaurants.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
-        SectionHeader(
-          title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
+        Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: EdgeInsets.zero,
+            initiallyExpanded: false,
+            title: Text(
+              l.resultRestaurants,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            subtitle: Text(
+              l.resultEyebrowNearRoute,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            leading: Icon(
+              Icons.restaurant_outlined,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            children: _restaurantSectionsBySlot(l),
+          ),
         ),
-        ..._restaurantSectionsBySlot(l),
       ],
       if (widget.response.fuelPrices.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
@@ -1811,6 +1946,9 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.travellers = 1,
     this.pickedHotelsCostEur,
     this.pickedHotelsNights = 0,
+    this.savings,
+    this.tollSkipPenaltyMinutes = 0,
+    this.intraSectionSkips = const [],
   });
   final double fuelCostEur;
   final double tollCostEur;
@@ -1818,6 +1956,9 @@ class _TotalTripCostCard extends ConsumerWidget {
   final SleepStopOpt? sleepStop;
   final double tollSkipSavingsEur;
   final int travellers;
+  final TripSavings? savings;
+  final double tollSkipPenaltyMinutes;
+  final List<IntraSectionSkip> intraSectionSkips;
 
   /// When non-null, overrides the algorithmic sleep_stop hotel
   /// cost with the user-picked hotels sum. Set when the user has
@@ -1937,6 +2078,83 @@ class _TotalTripCostCard extends ConsumerWidget {
               ),
             ],
           ),
+          if (savings != null) ...[
+            () {
+              final savedTime = savings!.timeSavedMinutesVsDesired -
+                  tollSkipPenaltyMinutes;
+              final savedEur = tollSkipSavingsEur;
+              if (savedTime <= 0 && savedEur <= 0) {
+                return const SizedBox.shrink();
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: Tokens.space8),
+                  Divider(color: scheme.outlineVariant),
+                  const SizedBox(height: Tokens.space8),
+                  Row(
+                    children: [
+                      Icon(Icons.savings_outlined, size: 14,
+                          color: scheme.tertiary),
+                      const SizedBox(width: 6),
+                      Text(
+                        l.resultTripSavings.toUpperCase(),
+                        style: t.labelSmall?.copyWith(
+                          color: scheme.tertiary,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Tokens.space8),
+                  Row(
+                    children: [
+                      if (savedTime > 0) ...[
+                        Icon(Icons.access_time, size: 13,
+                            color: Colors.green.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          durationCompact(savedTime),
+                          style: t.bodySmall?.copyWith(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      if (savedEur > 0) ...[
+                        Icon(Icons.savings_outlined, size: 13,
+                            color: Colors.green.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatMoney(savedEur, ccy),
+                          style: t.bodySmall?.copyWith(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
+                      // When toll detour adds net time (savedTime < 0),
+                      // show the time cost as a trade-off note so the
+                      // user understands why time isn't shown as a saving.
+                      if (tollSkipPenaltyMinutes > 0 && savedTime < 0) ...[
+                        Icon(Icons.timelapse, size: 13,
+                            color: scheme.onSurfaceVariant),
+                        const SizedBox(width: 4),
+                        Text(
+                          '+${durationCompact(tollSkipPenaltyMinutes)}',
+                          style: t.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              );
+            }(),
+          ],
         ],
       ),
     );
@@ -2192,12 +2410,14 @@ class _RecommendationHero extends StatelessWidget {
     required this.desired,
     required this.freeFlowMinutes,
     required this.savedMinutesVsDesired,
+    this.onSelect,
   });
 
   final TimeWindow recommended;
   final DateTime desired;
   final double freeFlowMinutes;
   final double savedMinutesVsDesired;
+  final VoidCallback? onSelect;
 
   @override
   Widget build(BuildContext context) {
@@ -2205,7 +2425,7 @@ class _RecommendationHero extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
 
-    final shift = recommended.departureAt.difference(desired);
+    final shift = recommended.departureAt.toLocal().difference(desired.toLocal());
     final savedVsDesired =
         _minutesShiftedForBetterTraffic(shift, recommended, l);
     final shiftLabel = _formatShift(shift);
@@ -2285,6 +2505,25 @@ class _RecommendationHero extends StatelessWidget {
               ),
             ],
           ),
+          if (onSelect != null) ...[
+            const SizedBox(height: Tokens.space12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.check_circle_outline, size: 18),
+                label: Text(l.timeWindowApplyLabel(
+                  DateFormat.Hm().format(recommended.departureAt.toLocal()),
+                )),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: scheme.onPrimaryContainer,
+                  side: BorderSide(
+                    color: scheme.onPrimaryContainer.withOpacity(0.5),
+                  ),
+                ),
+                onPressed: onSelect,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -2392,6 +2631,7 @@ class _HeroChip extends StatelessWidget {
 
 class _OptimizationsSection extends StatefulWidget {
   const _OptimizationsSection({
+    super.key,
     required this.opts,
     this.topHotels = const [],
     this.origin,
@@ -2399,6 +2639,10 @@ class _OptimizationsSection extends StatefulWidget {
     this.originName,
     this.destinationName,
     this.routeGeometry = const [],
+    this.addedKeys = const {},
+    this.weatherSegments = const [],
+    this.onAddMealStop,
+    this.onAddSleepStop,
   });
   final Optimizations opts;
   final List<(Hotel, double)> topHotels;
@@ -2411,6 +2655,10 @@ class _OptimizationsSection extends StatefulWidget {
   final String? originName;
   final String? destinationName;
   final List<LatLon> routeGeometry;
+  final Set<String> addedKeys;
+  final List<WeatherSegment> weatherSegments;
+  final void Function(MealStopOpt)? onAddMealStop;
+  final void Function(SleepStopOpt)? onAddSleepStop;
 
   @override
   State<_OptimizationsSection> createState() => _OptimizationsSectionState();
@@ -2458,6 +2706,12 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (widget.weatherSegments.isNotEmpty) ...[
+                _WeatherInlineRow(segments: widget.weatherSegments),
+                const SizedBox(height: Tokens.space12),
+                Divider(color: scheme.outlineVariant),
+                const SizedBox(height: Tokens.space12),
+              ],
               _FuelCostRow(cost: opts.fuelCost),
               if (opts.mealStops.isNotEmpty) ...[
                 const SizedBox(height: Tokens.space16),
@@ -2466,7 +2720,32 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
                 for (final m in opts.mealStops)
                   Padding(
                     padding: const EdgeInsets.only(bottom: Tokens.space12),
-                    child: _MealStopRow(stop: m),
+                    child: InkWell(
+                      onTap: m.coordinate == null ? null : () {
+                        showPoiDetailSheet(
+                          context,
+                          kind: PoiKind.restaurant,
+                          name: m.restaurantName ?? '—',
+                          subtitle: [
+                            if (m.restaurantPriceEurPerMeal != null)
+                              '${m.restaurantPriceEurPerMeal!.toStringAsFixed(0)} €/meal',
+                            if (m.cityHint != null) m.cityHint!,
+                          ].join(' · '),
+                          poi: m.coordinate!,
+                          origin: origin ?? m.coordinate!,
+                          destination: destination ?? m.coordinate!,
+                          routeGeometry: routeGeometry,
+                          attributes: const {},
+                          icon: Icons.restaurant_outlined,
+                          accent: scheme.tertiary,
+                          isAdded: widget.addedKeys.contains(_mealStopKey(m)),
+                          onAddToRoute: widget.onAddMealStop != null
+                              ? () => widget.onAddMealStop!(m)
+                              : null,
+                        );
+                      },
+                      child: _MealStopRow(stop: m),
+                    ),
                   ),
               ],
               // Only render the sleep row when the backend picked a
@@ -2479,7 +2758,34 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
                 const SizedBox(height: Tokens.space4),
                 Divider(color: scheme.outlineVariant),
                 const SizedBox(height: Tokens.space16),
-                _SleepStopRow(stop: opts.sleepStop!),
+                InkWell(
+                  onTap: opts.sleepStop!.coordinate == null ? null : () {
+                    showPoiDetailSheet(
+                      context,
+                      kind: PoiKind.hotel,
+                      name: opts.sleepStop!.hotelName ?? '—',
+                      subtitle: [
+                        if (opts.sleepStop!.hotelPriceEurPerNight != null)
+                          '${opts.sleepStop!.hotelPriceEurPerNight!.toStringAsFixed(0)} €/night',
+                        if (opts.sleepStop!.cityHint != null)
+                          opts.sleepStop!.cityHint!,
+                      ].join(' · '),
+                      poi: opts.sleepStop!.coordinate!,
+                      origin: origin ?? opts.sleepStop!.coordinate!,
+                      destination: destination ?? opts.sleepStop!.coordinate!,
+                      routeGeometry: routeGeometry,
+                      attributes: const {},
+                      icon: Icons.hotel_outlined,
+                      accent: scheme.tertiary,
+                      isAdded: widget.addedKeys.contains(
+                          _sleepStopKey(opts.sleepStop!)),
+                      onAddToRoute: widget.onAddSleepStop != null
+                          ? () => widget.onAddSleepStop!(opts.sleepStop!)
+                          : null,
+                    );
+                  },
+                  child: _SleepStopRow(stop: opts.sleepStop!),
+                ),
               ],
               const SizedBox(height: Tokens.space8),
               if (opts.fuelCost.notes.isNotEmpty) ...[
@@ -2810,10 +3116,9 @@ class _SleepStopRow extends StatelessWidget {
 }
 
 /// Tiny 72×72 map thumbnail with a single pin at [coord]. Uses
-/// the same OSM tile layer as the main route map so it renders
-/// consistently. Static — no interaction, taps do nothing (the
-/// row is not tappable yet; future POI detail sheet would open
-/// here).
+/// the same OSM tile layer as the main route map. `IgnorePointer`
+/// wraps the map so taps bubble up to a parent InkWell/GestureDetector
+/// rather than being consumed by the map widget.
 class _MiniMapThumb extends StatelessWidget {
   const _MiniMapThumb({required this.coord, required this.tint});
   final LatLon coord;
@@ -2823,6 +3128,7 @@ class _MiniMapThumb extends StatelessWidget {
   Widget build(BuildContext context) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
+      child: IgnorePointer(
       child: SizedBox(
         width: 72, height: 72,
         child: fmap.FlutterMap(
@@ -2850,6 +3156,7 @@ class _MiniMapThumb extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -3365,19 +3672,19 @@ class _DestinationParkingSection extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
-    return SoftCard(
-      padding: const EdgeInsets.all(Tokens.space16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        initiallyExpanded: false,
+        leading: Icon(Icons.local_parking_outlined, color: scheme.primary),
+        title: Text(l.parkingResultTitle, style: t.titleMedium),
+        subtitle: Text(
+          '${parkings.length} opciones',
+          style: t.bodySmall,
+        ),
         children: [
-          Row(
-            children: [
-              Icon(Icons.local_parking_outlined, color: scheme.primary),
-              const SizedBox(width: Tokens.space8),
-              Text(l.parkingResultTitle, style: t.titleMedium),
-            ],
-          ),
-          const SizedBox(height: Tokens.space12),
           for (final p in parkings)
             InkWell(
               onTap: () => _openMaps(p),
@@ -3474,6 +3781,53 @@ class _TinyChip extends StatelessWidget {
                 fontSize: 10,
                 color: scheme.onSurfaceVariant,
               )),
+        ],
+      ),
+    );
+  }
+}
+
+/// Compact horizontal row showing weather icons + temp per segment.
+/// Used inside the Optimizado card so weather is visible for all trip
+/// types (including single-day where DayPlanSection doesn't render).
+class _WeatherInlineRow extends StatelessWidget {
+  const _WeatherInlineRow({required this.segments});
+  final List<WeatherSegment> segments;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          Icon(Icons.wb_cloudy_outlined, size: 16, color: scheme.primary),
+          const SizedBox(width: 6),
+          for (int i = 0; i < segments.length; i++) ...[
+            if (i > 0) ...[
+              const SizedBox(width: 4),
+              Text('·', style: t.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant)),
+              const SizedBox(width: 4),
+            ],
+            Icon(segments[i].iconData, size: 15,
+                color: scheme.onSurface),
+            const SizedBox(width: 3),
+            Text(
+              segments[i].temperatureC != null
+                  ? '${segments[i].temperatureC!.round()}°'
+                  : segments[i].localizedLabel(l),
+              style: t.bodySmall,
+            ),
+            const SizedBox(width: 3),
+            Text(
+              'km ${segments[i].fromKm.toStringAsFixed(0)}-${segments[i].toKm.toStringAsFixed(0)}',
+              style: t.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant, fontSize: 10),
+            ),
+          ],
         ],
       ),
     );
@@ -3775,6 +4129,7 @@ class _TimeWindowExpandableCardState
   late List<TimeWindow> _windows;
   bool _loading = false;
   int _lastFetchedSpan = 0;
+  TimeWindow? _pendingWindow;
 
   @override
   void initState() {
@@ -3782,6 +4137,10 @@ class _TimeWindowExpandableCardState
     _span = widget.initialSpanHours.clamp(1, 12);
     _windows = widget.initialWindows;
     _lastFetchedSpan = _span;
+  }
+
+  void _onBarSelect(TimeWindow window) {
+    setState(() => _pendingWindow = window);
   }
 
   Future<void> _applySpan(int newSpan) async {
@@ -3807,60 +4166,81 @@ class _TimeWindowExpandableCardState
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     return SoftCard(
-      padding: const EdgeInsets.fromLTRB(
-        Tokens.space8, Tokens.space16, Tokens.space16, Tokens.space16,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Stack(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space16,
+            vertical: Tokens.space4,
+          ),
+          title: Row(
             children: [
-              TimeWindowChart(
-                windows: _windows,
-                desiredDepartureAt: widget.desiredDepartureAt,
-                onSelect: widget.onWindowSelect,
-              ),
-              if (_loading)
-                const Positioned(
-                  top: 0, right: 0,
-                  child: SizedBox(
-                    width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
+              Icon(Icons.schedule_outlined,
+                  size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Tokens.space8),
+              Text(
+                l.resultBestTimeToLeave,
+                style: t.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  letterSpacing: 1.2,
                 ),
+              ),
             ],
           ),
-          const SizedBox(height: Tokens.space8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Tokens.space8),
-            child: Row(
+          childrenPadding: const EdgeInsets.fromLTRB(
+            Tokens.space8, 0, Tokens.space16, Tokens.space16,
+          ),
+          children: [
+            Stack(
               children: [
-                Icon(Icons.access_time, size: 16,
-                    color: scheme.onSurfaceVariant),
-                const SizedBox(width: 6),
-                Text(
-                  l.timeWindowSpanLabel(_span),
-                  style: t.labelMedium?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                  ),
+                TimeWindowChart(
+                  windows: _windows,
+                  desiredDepartureAt: widget.desiredDepartureAt,
+                  onSelect: widget.onWindowSelect != null ? _onBarSelect : null,
+                  selectedWindow: _pendingWindow,
                 ),
+                if (_loading)
+                  const Positioned(
+                    top: 0, right: 0,
+                    child: SizedBox(
+                      width: 18, height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
               ],
             ),
-          ),
-          Slider(
-            value: _span.toDouble(),
-            min: 1, max: 12,
-            divisions: 11,
-            label: '±${_span}h',
-            onChanged: (v) => setState(() => _span = v.round()),
-            onChangeEnd: (v) => _applySpan(v.round()),
-          ),
+            const SizedBox(height: Tokens.space8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Tokens.space8),
+              child: Row(
+                children: [
+                  Icon(Icons.access_time, size: 16,
+                      color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 6),
+                  Text(
+                    l.timeWindowSpanLabel(_span),
+                    style: t.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Slider(
+              value: _span.toDouble(),
+              min: 1, max: 12,
+              divisions: 11,
+              label: '±${_span}h',
+              onChanged: (v) => setState(() => _span = v.round()),
+              onChangeEnd: (v) => _applySpan(v.round()),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Tokens.space8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (widget.onWindowSelect != null)
+                if (widget.onWindowSelect != null && _pendingWindow == null)
                   Row(
                     children: [
                       Icon(Icons.touch_app_outlined, size: 13,
@@ -3872,6 +4252,22 @@ class _TimeWindowExpandableCardState
                       ),
                     ],
                   ),
+                if (_pendingWindow != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Tokens.space8),
+                    child: FilledButton.icon(
+                      icon: const Icon(Icons.check, size: 18),
+                      label: Text(l.timeWindowApplyLabel(
+                        DateFormat.Hm().format(
+                          _pendingWindow!.departureAt.toLocal(),
+                        ),
+                      )),
+                      onPressed: () {
+                        widget.onWindowSelect!(_pendingWindow!);
+                        setState(() => _pendingWindow = null);
+                      },
+                    ),
+                  ),
                 Text(
                   l.timeWindowSpanHelper,
                   style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
@@ -3881,7 +4277,8 @@ class _TimeWindowExpandableCardState
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -3946,6 +4343,57 @@ class _AddToRouteButton extends StatelessWidget {
 /// Compact summary of the stops the user has added, rendered under the
 /// stats row. Explains where the "+X min" delta on the free-flow tile
 /// comes from and offers a one-tap reset.
+class _DayStripRow extends StatelessWidget {
+  const _DayStripRow({required this.day});
+  final DayPlan day;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final locale = Localizations.localeOf(context).toString();
+    final dateLabel = DateFormat('EEE d MMM', locale)
+        .format(day.startAt.toLocal());
+    final km = (day.toKm - day.fromKm).round();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              '${day.dayIndex}',
+              style: t.labelSmall?.copyWith(
+                color: scheme.onPrimaryContainer,
+                fontWeight: FontWeight.w700,
+                fontSize: 11,
+              ),
+            ),
+          ),
+          const SizedBox(width: Tokens.space8),
+          Expanded(
+            child: Text(
+              dateLabel,
+              style: t.bodySmall,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Text(
+            '$km km',
+            style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AddedStopsChip extends StatelessWidget {
   const _AddedStopsChip({
     required this.count,
@@ -4032,11 +4480,13 @@ class _ArrivalHintCard extends StatelessWidget {
     required this.arrivalHour,
     required this.bedtimeHour,
     required this.requiresOvernight,
+    this.onTap,
   });
 
   final int arrivalHour;
   final int bedtimeHour;
   final bool requiresOvernight;
+  final VoidCallback? onTap;
 
   String _fmt(int hour) => hour.toString().padLeft(2, '0');
 
@@ -4045,7 +4495,7 @@ class _ArrivalHintCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
-    return Container(
+    final card = Container(
       padding: const EdgeInsets.all(Tokens.space16),
       decoration: BoxDecoration(
         color: scheme.tertiaryContainer,
@@ -4081,8 +4531,22 @@ class _ArrivalHintCard extends StatelessWidget {
             const SizedBox(width: Tokens.space8),
             Icon(Icons.priority_high, color: scheme.error, size: 20),
           ],
+          if (onTap != null) ...[
+            const SizedBox(width: Tokens.space8),
+            Icon(Icons.hotel_outlined,
+                color: scheme.onTertiaryContainer, size: 20),
+          ],
         ],
       ),
+    );
+    if (onTap == null) return card;
+    return Material(
+      color: Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(onTap: onTap, child: card),
     );
   }
 }

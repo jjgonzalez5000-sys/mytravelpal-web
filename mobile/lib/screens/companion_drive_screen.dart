@@ -112,6 +112,10 @@ class _CompanionDriveScreenState
   void initState() {
     super.initState();
     _sessionStart = DateTime.now();
+    // Signal companion active so AppShell can show a taskbar badge.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(companionActiveProvider.notifier).state = true;
+    });
     _initTts();
     _initTracking();
     // Precompute the route reference + planned arrival once when
@@ -436,6 +440,8 @@ class _CompanionDriveScreenState
     if (_hasActiveTrip) {
       unawaited(CarBridge.instance.clearTrip());
     }
+    // Companion session ended — clear badge in AppShell.
+    ref.read(companionActiveProvider.notifier).state = false;
     super.dispose();
   }
 
@@ -460,16 +466,17 @@ class _CompanionDriveScreenState
         if (didPop) return;
         final leave = await showDialog<bool>(
           context: context,
-          builder: (_) => AlertDialog(
+          useRootNavigator: false,
+          builder: (dialogCtx) => AlertDialog(
             title: Text(l.companionEndTitle),
             content: Text(l.companionEndBody),
             actions: [
               TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
+                onPressed: () => Navigator.of(dialogCtx).pop(false),
                 child: Text(l.companionEndKeep),
               ),
               FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
+                onPressed: () => Navigator.of(dialogCtx).pop(true),
                 child: Text(l.companionEndConfirm),
               ),
             ],

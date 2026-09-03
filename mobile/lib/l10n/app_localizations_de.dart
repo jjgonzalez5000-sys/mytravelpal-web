@@ -2219,7 +2219,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planLoadingHelper =>
-      'Dauert normalerweise 5-15 Sekunden. Handy kann in die Tasche.';
+      'Kann einige Minuten dauern. Handy kann in die Tasche.';
+
+  @override
+  String timeWindowApplyLabel(String time) {
+    return 'Anwenden · Abfahrt um $time';
+  }
 
   @override
   String get planErrorAuth =>
@@ -2634,5 +2639,13 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String tripDashboardCheaperFuel(String brand, String km, String cts) {
     return '$brand in $km km · spare $cts ct/L';
+  }
+
+  @override
+  String get resultOptimalDeparture => 'Ihre Abfahrtszeit ist optimal';
+
+  @override
+  String shortLastDayWarning(String km) {
+    return 'Kurze letzte Etappe ($km km) — Sie könnten heute ankommen, wenn Sie am Vortag weiterfahren.';
   }
 }

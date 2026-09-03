@@ -836,6 +836,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                   initial: _stops[i].place,
                                 ),
                               ),
+                              if (_stops[i].place != null) ...[
+                                const SizedBox(width: Tokens.space4),
+                                WeatherChip(
+                                  lat: _stops[i].place!.coordinate.lat,
+                                  lon: _stops[i].place!.coordinate.lon,
+                                ),
+                              ],
                               IconButton(
                                 tooltip: l.planStopRemove,
                                 icon: const Icon(Icons.close),

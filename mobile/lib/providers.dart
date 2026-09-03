@@ -455,3 +455,8 @@ final favoritePlacesProvider = StateNotifierProvider<
     FavoritePlacesNotifier, List<FavoritePlace>>((ref) {
   return FavoritePlacesNotifier(ref.watch(appPrefsProvider));
 });
+
+/// True while [CompanionDriveScreen] is mounted. Read in [AppShell] to
+/// show a badge on the Companion tab when a session is running in the
+/// background.
+final companionActiveProvider = StateProvider<bool>((ref) => false);

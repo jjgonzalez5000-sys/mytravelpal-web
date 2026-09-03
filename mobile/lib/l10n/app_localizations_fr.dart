@@ -2222,7 +2222,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planLoadingHelper =>
-      'Généralement 5 à 15 secondes. Vous pouvez ranger le téléphone.';
+      'Peut prendre quelques minutes. Vous pouvez ranger le téléphone.';
+
+  @override
+  String timeWindowApplyLabel(String time) {
+    return 'Appliquer · départ à $time';
+  }
 
   @override
   String get planErrorAuth => 'Session expirée. Reconnectez-vous et réessayez.';
@@ -2636,5 +2641,13 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String tripDashboardCheaperFuel(String brand, String km, String cts) {
     return '$brand dans $km km · économisez $cts ct/L';
+  }
+
+  @override
+  String get resultOptimalDeparture => 'Votre heure de départ est optimale';
+
+  @override
+  String shortLastDayWarning(String km) {
+    return 'Dernière étape courte ($km km) — vous pourriez arriver aujourd\'hui en allant plus loin la veille.';
   }
 }

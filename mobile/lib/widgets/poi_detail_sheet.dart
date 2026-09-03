@@ -32,6 +32,7 @@ Future<void> showPoiDetailSheet(
   required Map<String, String> attributes,
   required IconData icon,
   required Color accent,
+  bool isAdded = false,
   VoidCallback? onAddToRoute,
 }) {
   return showModalBottomSheet<void>(
@@ -43,18 +44,20 @@ Future<void> showPoiDetailSheet(
       poi: poi, origin: origin, destination: destination,
       routeGeometry: routeGeometry, attributes: attributes,
       icon: icon, accent: accent,
+      isAdded: isAdded,
       onAddToRoute: onAddToRoute,
     ),
   );
 }
 
-class _PoiDetailSheet extends StatelessWidget {
+class _PoiDetailSheet extends StatefulWidget {
   const _PoiDetailSheet({
     required this.kind, required this.name, required this.subtitle,
     required this.poi, required this.origin, required this.destination,
     this.onAddToRoute,
     required this.routeGeometry, required this.attributes,
     required this.icon, required this.accent,
+    this.isAdded = false,
   });
 
   final PoiKind kind;
@@ -67,10 +70,31 @@ class _PoiDetailSheet extends StatelessWidget {
   final Map<String, String> attributes;
   final IconData icon;
   final Color accent;
+  final bool isAdded;
   final VoidCallback? onAddToRoute;
 
   @override
+  State<_PoiDetailSheet> createState() => _PoiDetailSheetState();
+}
+
+class _PoiDetailSheetState extends State<_PoiDetailSheet> {
+  late bool _isAdded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isAdded = widget.isAdded;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final kind = widget.kind;
+    final name = widget.name;
+    final subtitle = widget.subtitle;
+    final poi = widget.poi;
+    final attributes = widget.attributes;
+    final icon = widget.icon;
+    final accent = widget.accent;
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
@@ -188,17 +212,29 @@ class _PoiDetailSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 12),
               ],
-              if (onAddToRoute != null) ...[
+              if (widget.onAddToRoute != null) ...[
                 const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: FilledButton.icon(
                     onPressed: () {
-                      onAddToRoute!();
-                      Navigator.of(context).pop();
+                      setState(() => _isAdded = !_isAdded);
+                      widget.onAddToRoute!();
                     },
-                    icon: const Icon(Icons.add_location_alt_outlined),
-                    label: Text(l.addToRouteLabel),
+                    icon: Icon(_isAdded
+                        ? Icons.remove_circle_outline
+                        : Icons.add_location_alt_outlined),
+                    label: Text(_isAdded
+                        ? l.removeFromRouteTooltip
+                        : l.addToRouteLabel),
+                    style: _isAdded
+                        ? FilledButton.styleFrom(
+                            backgroundColor:
+                                Theme.of(context).colorScheme.errorContainer,
+                            foregroundColor:
+                                Theme.of(context).colorScheme.onErrorContainer,
+                          )
+                        : null,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -212,12 +248,12 @@ class _PoiDetailSheet extends StatelessWidget {
   }
 
   List<LatLng> _routePoints() {
-    if (routeGeometry.length >= 2) {
-      return routeGeometry.map((c) => LatLng(c.lat, c.lon)).toList();
+    if (widget.routeGeometry.length >= 2) {
+      return widget.routeGeometry.map((c) => LatLng(c.lat, c.lon)).toList();
     }
     return [
-      LatLng(origin.lat, origin.lon),
-      LatLng(destination.lat, destination.lon),
+      LatLng(widget.origin.lat, widget.origin.lon),
+      LatLng(widget.destination.lat, widget.destination.lon),
     ];
   }
 

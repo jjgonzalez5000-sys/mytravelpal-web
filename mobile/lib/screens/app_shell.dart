@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
+import '../providers.dart';
 import 'companion_screen.dart';
 import 'history_screen.dart';
 import 'plan_screen.dart';
@@ -63,7 +64,9 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
             _TabNavigator(
               navigatorKey: _navigatorKeys[2],
-              child: const HistoryScreen(),
+              child: HistoryScreen(
+                onSwitchToPlan: () => setState(() => _tab = 0),
+              ),
             ),
           ],
         ),
@@ -77,8 +80,26 @@ class _AppShellState extends ConsumerState<AppShell> {
               label: l.tabPlan,
             ),
             NavigationDestination(
-              icon: const Icon(Icons.explore_outlined),
-              selectedIcon: const Icon(Icons.explore),
+              icon: Consumer(
+                builder: (context, ref, _) {
+                  final active = ref.watch(companionActiveProvider);
+                  return Badge(
+                    isLabelVisible: active,
+                    smallSize: 8,
+                    child: const Icon(Icons.explore_outlined),
+                  );
+                },
+              ),
+              selectedIcon: Consumer(
+                builder: (context, ref, _) {
+                  final active = ref.watch(companionActiveProvider);
+                  return Badge(
+                    isLabelVisible: active,
+                    smallSize: 8,
+                    child: const Icon(Icons.explore),
+                  );
+                },
+              ),
               label: l.tabCompanion,
             ),
             NavigationDestination(

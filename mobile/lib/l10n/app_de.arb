@@ -994,5 +994,12 @@
         "km": {"type": "String"},
         "cts": {"type": "String"}
       }
+    },
+    "resultOptimalDeparture": "Ihre Abfahrtszeit ist optimal",
+    "shortLastDayWarning": "Kurze letzte Etappe ({km} km) — Sie könnten heute ankommen, wenn Sie am Vortag weiterfahren.",
+    "@shortLastDayWarning": {
+      "placeholders": {
+        "km": {"type": "String"}
+      }
     }
 }

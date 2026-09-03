@@ -1,11 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:intl/intl.dart';
+import 'package:latlong2/latlong.dart' as ll;
 
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
+import 'added_stops_map_sheet.dart';
 import 'poi_detail_sheet.dart';
 
 const double _earthRadiusKm = 6371.0088;
@@ -103,6 +106,8 @@ class DayPlanSection extends StatelessWidget {
     this.tripDepartureAt,
     this.routeFreeFlowMinutes,
     this.routeTotalKm,
+    this.addedStops = const [],
+    this.weatherSegments = const [],
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
@@ -157,6 +162,8 @@ class DayPlanSection extends StatelessWidget {
   final DateTime? tripDepartureAt;
   final double? routeFreeFlowMinutes;
   final double? routeTotalKm;
+  final List<AddedStop> addedStops;
+  final List<WeatherSegment> weatherSegments;
 
   static const int _maxSleepHotels = 5;
 
@@ -188,21 +195,95 @@ class DayPlanSection extends StatelessWidget {
   static const double _maxHotelKmFromSleep = 90.0;
 
   String _dayHeaderLabel(AppLocalizations l, DayPlan d, int totalDays) {
+    // Prefer backend-provided names (reverse-geocoded) over heuristics.
+    final backendFrom = d.fromName;
+    final backendTo = d.toName;
+    if (backendFrom != null && backendTo != null) {
+      return l.dayHeaderCity(d.dayIndex, backendFrom, backendTo);
+    }
     final isFirst = d.dayIndex == 1;
     final isLast = d.dayIndex == totalDays;
     if ((isFirst && originName != null) || (isLast && destinationName != null)) {
-      final from = isFirst && originName != null
-          ? originName!
-          : 'km ${d.fromKm.toStringAsFixed(0)}';
-      final to = isLast && destinationName != null
-          ? destinationName!
-          : 'km ${d.toKm.toStringAsFixed(0)}';
+      final from = backendFrom
+          ?? (isFirst && originName != null ? originName! : _cityFromDay(d, useTo: false))
+          ?? 'km ${d.fromKm.toStringAsFixed(0)}';
+      final to = backendTo
+          ?? (isLast && destinationName != null ? destinationName! : _cityFromDay(d, useTo: true))
+          ?? 'km ${d.toKm.toStringAsFixed(0)}';
       return l.dayHeaderCity(d.dayIndex, from, to);
+    }
+    // Intermediate day — try to name endpoints from meal stop city hints.
+    final toCity = backendTo ?? _cityFromDay(d, useTo: true);
+    if (toCity != null) {
+      final fromCity = backendFrom ?? _cityFromDay(d, useTo: false);
+      if (fromCity != null) {
+        return l.dayHeaderCity(d.dayIndex, fromCity, toCity);
+      }
+      return l.dayHeaderCity(
+        d.dayIndex,
+        'km ${d.fromKm.toStringAsFixed(0)}',
+        toCity,
+      );
     }
     return l.dayHeaderRange(
       d.dayIndex,
       d.fromKm.toStringAsFixed(0),
       d.toKm.toStringAsFixed(0),
+    );
+  }
+
+  /// Returns a rough city label for the start or end of a day, derived
+  /// from meal-stop city hints when the backend didn't provide named
+  /// endpoints. [useTo] = true picks from the last stop (day's end).
+  String? _cityFromDay(DayPlan d, {required bool useTo}) {
+    if (d.mealStops.isEmpty) return null;
+    final stop = useTo ? d.mealStops.last : d.mealStops.first;
+    return stop.cityHint;
+  }
+
+  void _showDayMap(BuildContext context, DayPlan d) {
+    final slice = _DayRouteThumb._sliceGeometry(routeGeometry, d.fromKm, d.toKm, days.last.toKm);
+    if (slice.isEmpty) return;
+    final center = slice[slice.length ~/ 2];
+    final scheme = Theme.of(context).colorScheme;
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => SizedBox(
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: fmap.FlutterMap(
+          options: fmap.MapOptions(
+            initialCenter: center,
+            initialZoom: 9,
+          ),
+          children: [
+            fmap.TileLayer(
+              urlTemplate:
+                  'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+            ),
+            fmap.PolylineLayer(
+              polylines: [
+                fmap.Polyline(
+                  points: slice,
+                  color: scheme.primary,
+                  strokeWidth: 3.5,
+                ),
+              ],
+            ),
+            if (d.sleepCoord != null)
+              fmap.MarkerLayer(
+                markers: [
+                  fmap.Marker(
+                    point: ll.LatLng(d.sleepCoord!.lat, d.sleepCoord!.lon),
+                    width: 28, height: 28,
+                    child: Icon(Icons.bedtime, color: scheme.primary, size: 28),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -235,14 +316,104 @@ class DayPlanSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  d.isDwellDay
-                      ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
-                      : _dayHeaderLabel(l, d, days.length),
-                  style: t.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            d.isDwellDay
+                                ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
+                                : _dayHeaderLabel(l, d, days.length),
+                            style: t.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            () {
+                              final date = DateFormat('EEE, d MMM',
+                                      Localizations.localeOf(context)
+                                          .toString())
+                                  .format(d.startAt.toLocal());
+                              if (d.isDwellDay) return date;
+                              final km = (d.toKm - d.fromKm).round();
+                              return '$date  ·  $km km';
+                            }(),
+                            style: t.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (!d.isDwellDay && routeGeometry.isNotEmpty) ...[
+                      const SizedBox(width: Tokens.space8),
+                      GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => _showDayMap(context, d),
+                        child: _DayRouteThumb(
+                          routeGeometry: routeGeometry,
+                          fromKm: d.fromKm,
+                          toKm: d.toKm,
+                          totalKm: days.last.toKm,
+                          pinCoord: d.sleepCoord,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
+                // Weather segments overlapping this day's km range.
+                Builder(builder: (context) {
+                  final dayWeather = weatherSegments.where((w) =>
+                    w.fromKm < d.toKm && w.toKm > d.fromKm,
+                  ).toList();
+                  if (dayWeather.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: Tokens.space8),
+                    child: Row(
+                      children: [
+                        for (final w in dayWeather) ...[
+                          if (dayWeather.indexOf(w) > 0)
+                            const SizedBox(width: Tokens.space12),
+                          Icon(w.iconData, size: 16,
+                              color: scheme.onSurfaceVariant),
+                          const SizedBox(width: 3),
+                          Text(
+                            w.temperatureC != null
+                                ? '${w.temperatureC!.round()}°'
+                                : w.localizedLabel(l),
+                            style: t.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }),
+                // Pass-through stops (inspire-flow waypoints in this day).
+                if (d.waypointLabels.isNotEmpty) ...[
+                  const SizedBox(height: Tokens.space8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.place_outlined, size: 14,
+                          color: scheme.secondary),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          d.waypointLabels.join('  ·  '),
+                          style: t.bodySmall?.copyWith(
+                            color: scheme.secondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 if (d.mealStops.isNotEmpty) ...[
                   const SizedBox(height: Tokens.space8),
                   for (final m in d.mealStops)
@@ -256,15 +427,15 @@ class DayPlanSection extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              // Km from origin gives the user a
-                              // spatial sense of where the meal
-                              // lands along the route — testers
-                              // asked for it after seeing the hero
-                              // hide it.
-                              '${_slotLabel(l, m.slot)}  ·  '
-                              '${timeFormat.format(m.at.toLocal())}  ·  '
-                              'km ${m.distanceFromOriginKm.toStringAsFixed(0)}'
-                              '${m.restaurantName != null ? "  ·  ${m.restaurantName}" : ""}',
+                              [
+                                '${_slotLabel(l, m.slot)}  ·  '
+                                    '${timeFormat.format(m.at.toLocal())}',
+                                if (m.cityHint != null)
+                                  l.resultCityHint(m.cityHint!)
+                                else
+                                  'km ${m.distanceFromOriginKm.toStringAsFixed(0)}',
+                                if (m.restaurantName != null) m.restaurantName!,
+                              ].join('  ·  '),
                               style: t.bodySmall,
                             ),
                           ),
@@ -356,6 +527,71 @@ class DayPlanSection extends StatelessWidget {
                       tripDepartureAt: tripDepartureAt,
                       routeFreeFlowMinutes: routeFreeFlowMinutes,
                       routeTotalKm: routeTotalKm,
+                    ),
+                  );
+                }),
+                // Short last-day warning: when the final leg is very
+                // short the planner may want to skip the extra hotel.
+                if (!d.isDwellDay && d.dayIndex == days.length) ...[
+                  Builder(builder: (ctx) {
+                    final km = (d.toKm - d.fromKm).round();
+                    if (km >= 150) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: Tokens.space8),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.info_outline, size: 14,
+                              color: scheme.primary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              l.shortLastDayWarning('$km'),
+                              style: t.bodySmall
+                                  ?.copyWith(color: scheme.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+                // User-added stops (hotels, restaurants, fuel)
+                // that fall within this day's km range.
+                Builder(builder: (context) {
+                  final dayAdded = addedStops.where((s) =>
+                    s.distanceFromOriginKm != null &&
+                    s.distanceFromOriginKm! >= d.fromKm &&
+                    s.distanceFromOriginKm! <= d.toKm,
+                  ).toList();
+                  if (dayAdded.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: Tokens.space8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final s in dayAdded)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Icon(s.icon, size: 14,
+                                    color: scheme.primary),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    s.label,
+                                    style: t.bodySmall?.copyWith(
+                                      color: scheme.primary,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
                     ),
                   );
                 }),
@@ -718,86 +954,103 @@ class _SleepHotelsBlock extends StatelessWidget {
     final label = isDestination
         ? l.daySleepHotelsLabelDestination
         : l.daySleepHotelsLabel;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label.toUpperCase(),
+    final hotelRows = [
+      for (final (h, km) in entries)
+        Builder(builder: (context) {
+          final picked = _isPicked(h);
+          final canPick = dayIndex != null && onToggleHotel != null;
+          return InkWell(
+            onTap: () => showPoiDetailSheet(
+              context,
+              kind: PoiKind.hotel,
+              name: h.name,
+              subtitle:
+                  '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
+                  '${km.toStringAsFixed(1)} km',
+              poi: h.coordinate,
+              origin: origin ?? h.coordinate,
+              destination: destination ?? h.coordinate,
+              routeGeometry: routeGeometry,
+              attributes: h.attributes,
+              icon: Icons.hotel_outlined,
+              accent: scheme.tertiary,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.hotel_outlined, size: 14,
+                      color: picked ? scheme.primary : scheme.tertiary),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      '${h.name}  ·  '
+                      '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
+                      '${isDestination ? l.hotelDistFromDestination(km.toStringAsFixed(1)) : l.hotelDistFromStop(km.toStringAsFixed(1))}',
+                      style: t.bodySmall?.copyWith(
+                        fontWeight:
+                            picked ? FontWeight.w700 : FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                  if (canPick) ...[
+                    const SizedBox(width: 4),
+                    InkResponse(
+                      onTap: () => onToggleHotel!(dayIndex!, h),
+                      radius: 18,
+                      child: Padding(
+                        padding: const EdgeInsets.all(4),
+                        child: Icon(
+                          picked
+                              ? Icons.check_circle
+                              : Icons.add_circle_outline,
+                          size: 20,
+                          color: picked
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ] else
+                    Icon(Icons.chevron_right, size: 16,
+                        color: scheme.onSurfaceVariant),
+                ],
+              ),
+            ),
+          );
+        }),
+    ];
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: EdgeInsets.zero,
+        initiallyExpanded: false,
+        leading: Icon(Icons.hotel_outlined, size: 16, color: scheme.tertiary),
+        title: Text(
+          label,
           style: t.labelSmall?.copyWith(
             color: scheme.onSurfaceVariant,
             letterSpacing: 1.1,
           ),
         ),
-        for (final (h, km) in entries)
-          Builder(builder: (context) {
-            final picked = _isPicked(h);
-            final canPick = dayIndex != null && onToggleHotel != null;
-            return InkWell(
-              onTap: () => showPoiDetailSheet(
-                context,
-                kind: PoiKind.hotel,
-                name: h.name,
-                subtitle:
-                    '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
-                    '${km.toStringAsFixed(1)} km',
-                poi: h.coordinate,
-                origin: origin ?? h.coordinate,
-                destination: destination ?? h.coordinate,
-                routeGeometry: routeGeometry,
-                attributes: h.attributes,
-                icon: Icons.hotel_outlined,
-                accent: scheme.tertiary,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.hotel_outlined, size: 14,
-                        color: picked ? scheme.primary : scheme.tertiary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        '${h.name}  ·  '
-                        '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
-                        '${isDestination ? l.hotelDistFromDestination(km.toStringAsFixed(1)) : l.hotelDistFromStop(km.toStringAsFixed(1))}',
-                        style: t.bodySmall?.copyWith(
-                          fontWeight:
-                              picked ? FontWeight.w700 : FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                    // "Add / picked" toggle: filled check when this
-                    // hotel is the night's pick, outline plus when
-                    // available to add. Tapping FIRES the parent's
-                    // toggle so the cost card updates the same tick.
-                    if (canPick) ...[
-                      const SizedBox(width: 4),
-                      InkResponse(
-                        onTap: () => onToggleHotel!(dayIndex!, h),
-                        radius: 18,
-                        child: Padding(
-                          padding: const EdgeInsets.all(4),
-                          child: Icon(
-                            picked
-                                ? Icons.check_circle
-                                : Icons.add_circle_outline,
-                            size: 20,
-                            color: picked
-                                ? scheme.primary
-                                : scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ] else
-                      Icon(Icons.chevron_right, size: 16,
-                          color: scheme.onSurfaceVariant),
-                  ],
+        subtitle: selectedHotel != null
+            ? Text(
+                selectedHotel!.name,
+                style: t.bodySmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              )
+            : Text(
+                '${entries.length} opciones',
+                style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
-            );
-          }),
-      ],
+        children: hotelRows,
+      ),
     );
   }
 }
@@ -811,10 +1064,14 @@ class NextStopHero extends StatelessWidget {
     required this.mealStop,
     required this.timeFormat,
     this.onTap,
+    this.onAdd,
+    this.isAdded = false,
   });
   final MealStopOpt mealStop;
   final DateFormat timeFormat;
   final VoidCallback? onTap;
+  final VoidCallback? onAdd;
+  final bool isAdded;
 
   String _slotLabel(AppLocalizations l) {
     // Backend enum values map to plain strings ("breakfast" / "lunch"
@@ -845,41 +1102,71 @@ class NextStopHero extends StatelessWidget {
     final canOpen = onTap != null && mealStop.restaurantCoordinate != null;
     final content = Padding(
       padding: const EdgeInsets.all(Tokens.space16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.restaurant_menu, color: scheme.primary, size: 22),
-          const SizedBox(width: Tokens.space12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  l.nextStopHeroLabel.toUpperCase(),
-                  style: t.labelSmall?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                    letterSpacing: 1.2,
-                  ),
+          Row(
+            children: [
+              Icon(Icons.restaurant_menu, color: scheme.primary, size: 22),
+              const SizedBox(width: Tokens.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      l.nextStopHeroLabel.toUpperCase(),
+                      style: t.labelSmall?.copyWith(
+                        color: scheme.onPrimaryContainer,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      l.nextStopHeroBody(
+                        _slotLabel(l),
+                        name,
+                        timeFormat.format(mealStop.at.toLocal()),
+                      ),
+                      style: t.bodyMedium?.copyWith(
+                        color: scheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  l.nextStopHeroBody(
-                    _slotLabel(l),
-                    name,
-                    timeFormat.format(mealStop.at.toLocal()),
-                  ),
-                  style: t.bodyMedium?.copyWith(
-                    color: scheme.onPrimaryContainer,
-                    fontWeight: FontWeight.w600,
-                  ),
+              ),
+              if (canOpen)
+                Icon(
+                  Icons.map_outlined,
+                  color: scheme.onPrimaryContainer, size: 18,
                 ),
-              ],
-            ),
+            ],
           ),
-          if (canOpen)
-            Icon(
-              Icons.map_outlined,
-              color: scheme.onPrimaryContainer, size: 18,
+          if (onAdd != null) ...[
+            const SizedBox(height: Tokens.space8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: Icon(
+                  isAdded ? Icons.check : Icons.add_location_alt_outlined,
+                  size: 16,
+                ),
+                label: Text(isAdded ? l.addToRouteTooltip : l.addToRouteLabel),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: scheme.onPrimaryContainer,
+                  side: BorderSide(
+                    color: scheme.onPrimaryContainer.withOpacity(0.5),
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Tokens.space12,
+                    vertical: 6,
+                  ),
+                  textStyle: t.labelMedium,
+                ),
+                onPressed: onAdd,
+              ),
             ),
+          ],
         ],
       ),
     );
@@ -901,6 +1188,93 @@ class NextStopHero extends StatelessWidget {
       child: Ink(
         decoration: decoration,
         child: InkWell(onTap: onTap, child: content),
+      ),
+    );
+  }
+}
+
+/// 80×56 px non-interactive route thumbnail for a single day's segment.
+/// Extracts the polyline slice between [fromKm] and [toKm] proportionally,
+/// fits the camera to those points, and optionally drops a pin at [pinCoord].
+class _DayRouteThumb extends StatelessWidget {
+  const _DayRouteThumb({
+    required this.routeGeometry,
+    required this.fromKm,
+    required this.toKm,
+    required this.totalKm,
+    this.pinCoord,
+  });
+
+  final List<LatLon> routeGeometry;
+  final double fromKm;
+  final double toKm;
+  final double totalKm;
+  final LatLon? pinCoord;
+
+  static List<ll.LatLng> _sliceGeometry(
+    List<LatLon> geom, double fromKm, double toKm, double totalKm,
+  ) {
+    if (geom.isEmpty || totalKm <= 0) return [];
+    final fromFrac = (fromKm / totalKm).clamp(0.0, 1.0);
+    final toFrac = (toKm / totalKm).clamp(0.0, 1.0);
+    final start = (fromFrac * (geom.length - 1)).round();
+    final end = (toFrac * (geom.length - 1)).round();
+    return geom
+        .sublist(start.clamp(0, geom.length - 1),
+            (end + 1).clamp(0, geom.length))
+        .map((p) => ll.LatLng(p.lat, p.lon))
+        .toList();
+  }
+
+  List<ll.LatLng> _slice() =>
+      _sliceGeometry(routeGeometry, fromKm, toKm, totalKm);
+
+  @override
+  Widget build(BuildContext context) {
+    final slice = _slice();
+    if (slice.isEmpty) return const SizedBox.shrink();
+    final scheme = Theme.of(context).colorScheme;
+    final center = slice[slice.length ~/ 2];
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: IgnorePointer(
+      child: SizedBox(
+        width: 80, height: 56,
+        child: fmap.FlutterMap(
+          options: fmap.MapOptions(
+            initialCenter: center,
+            initialZoom: 8,
+            interactionOptions: const fmap.InteractionOptions(
+              flags: fmap.InteractiveFlag.none,
+            ),
+          ),
+          children: [
+            fmap.TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+            ),
+            fmap.PolylineLayer(
+              polylines: [
+                fmap.Polyline(
+                  points: slice,
+                  color: scheme.primary,
+                  strokeWidth: 2.5,
+                ),
+              ],
+            ),
+            if (pinCoord != null)
+              fmap.MarkerLayer(
+                markers: [
+                  fmap.Marker(
+                    point: ll.LatLng(pinCoord!.lat, pinCoord!.lon),
+                    width: 18, height: 18,
+                    child: Icon(Icons.bedtime, color: scheme.primary, size: 18),
+                  ),
+                ],
+              ),
+          ],
+        ),
+      ),
       ),
     );
   }

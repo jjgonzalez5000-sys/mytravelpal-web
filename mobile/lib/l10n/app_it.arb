@@ -989,5 +989,12 @@
         "km": {"type": "String"},
         "cts": {"type": "String"}
       }
+    },
+    "resultOptimalDeparture": "Il tuo orario di partenza è ottimale",
+    "shortLastDayWarning": "Ultima tappa breve ({km} km) — potresti arrivare oggi se avanzi di più il giorno prima.",
+    "@shortLastDayWarning": {
+      "placeholders": {
+        "km": {"type": "String"}
+      }
     }
 }

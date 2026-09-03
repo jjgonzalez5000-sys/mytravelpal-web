@@ -972,5 +972,12 @@
         "km": {"type": "String"},
         "cts": {"type": "String"}
       }
+    },
+    "resultOptimalDeparture": "Your departure time is optimal",
+    "shortLastDayWarning": "Short last leg ({km} km) — you could arrive today if you push further the day before.",
+    "@shortLastDayWarning": {
+      "placeholders": {
+        "km": {"type": "String"}
+      }
     }
 }

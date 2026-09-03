@@ -109,5 +109,12 @@
     "settingsTitle": "Definições",
     "settingsLanguage": "Idioma",
     "localeSystem": "Sistema",
-    "dashboardSignOut": "Terminar sessão"
+    "dashboardSignOut": "Terminar sessão",
+    "resultOptimalDeparture": "A sua hora de partida é óptima",
+    "shortLastDayWarning": "Último troço curto ({km} km) — pode chegar hoje se avançar mais no dia anterior.",
+    "@shortLastDayWarning": {
+      "placeholders": {
+        "km": {"type": "String"}
+      }
+    }
 }

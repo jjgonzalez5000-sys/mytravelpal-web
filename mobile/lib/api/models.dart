@@ -1782,6 +1782,9 @@ class DayPlan {
     this.sleepAt,
     this.sleepCoord,
     this.dwellLabel,
+    this.fromName,
+    this.toName,
+    this.waypointLabels = const [],
   });
 
   final int dayIndex;
@@ -1804,6 +1807,14 @@ class DayPlan {
   /// header instead of the raw "km A → B" range which reads as
   /// nonsense for stay-put days.
   final String? dwellLabel;
+
+  /// Reverse-geocoded city name at the start/end of this day.
+  final String? fromName;
+  final String? toName;
+
+  /// Labels of pass-through (non-dwell) waypoints within this day's
+  /// km range — e.g. inspire-flow stops like "Como - Duomo".
+  final List<String> waypointLabels;
 
   /// True when this day is a stay-put day (no driving) at a dwell
   /// waypoint — same fromKm/toKm and a dwellLabel present.
@@ -1832,6 +1843,10 @@ class DayPlan {
                 lon: (j['sleep_lon'] as num).toDouble(),
               ),
         dwellLabel: j['dwell_label'] as String?,
+        fromName: j['from_name'] as String?,
+        toName: j['to_name'] as String?,
+        waypointLabels: (j['waypoint_labels'] as List<dynamic>? ?? const [])
+            .cast<String>(),
       );
 }
 

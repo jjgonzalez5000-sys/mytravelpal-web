@@ -17,7 +17,10 @@ import 'plan_screen.dart';
 import 'result_screen.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
-  const HistoryScreen({super.key});
+  const HistoryScreen({super.key, this.onSwitchToPlan});
+
+  /// Called when the user taps the "plan a trip" CTA from the empty state.
+  final VoidCallback? onSwitchToPlan;
 
   @override
   ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
@@ -205,7 +208,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               title: l.historyEmptyTitle,
               description: l.historyEmptyBody,
               action: OutlinedButton(
-                onPressed: () => Navigator.of(context).pop(),
+                onPressed: widget.onSwitchToPlan ?? () => Navigator.of(context).maybePop(),
                 child: Text(l.historyPlanCta),
               ),
             );

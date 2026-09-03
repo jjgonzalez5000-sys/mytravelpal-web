@@ -88,7 +88,7 @@ class WaypointIn(BaseModel):
     lat: float = Field(ge=-90.0, le=90.0)
     lon: float = Field(ge=-180.0, le=180.0)
     dwell_nights: int = Field(default=0, ge=0, le=14)
-    label: str | None = Field(default=None, max_length=120)
+    label: str | None = Field(default=None, max_length=512)
 
 
 class VehicleIn(BaseModel):
@@ -523,6 +523,9 @@ class DayPlanOut(BaseModel):
     # this in the day header instead of the raw "km 267 → 267"
     # range that reads as nonsense for a stay-put day.
     dwell_label: str | None = None
+    from_name: str | None = None
+    to_name: str | None = None
+    waypoint_labels: list[str] = Field(default_factory=list)
 
 
 class HotelOut(BaseModel):
@@ -1084,6 +1087,8 @@ async def plan_trip(
     opt_domain = None
     fuel_cost_domain = None
     fuel_prices_domain: tuple = ()
+    _origin_label: str | None = None
+    _dest_label: str | None = None
     if profile is not None:
         # Meal stops (with or without a picked restaurant) live
         # under the "Añadir restaurantes en la ruta" toggle — the
@@ -1483,9 +1488,23 @@ async def plan_trip(
         meal_city_hints = await asyncio.gather(*(
             _city(m.rest_stop.coordinate) for m in opt.meal_stops
         ))
+        # Lookup dict keyed by distance so day-plan meal stops (which
+        # are the same stops, just sliced per day) can reuse hints
+        # without a second round of reverse-geocode calls.
+        _meal_hint_by_km: dict[float, str | None] = {
+            m.rest_stop.distance_from_origin_km: meal_city_hints[i]
+            for i, m in enumerate(opt.meal_stops)
+        }
         sleep_city_hint = await _city(
             opt.sleep_stop.rest_stop.coordinate
             if opt.sleep_stop is not None else None
+        )
+        # Reverse-geocode origin + destination for day-plan headers.
+        _origin_coord = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
+        _dest_coord = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
+        _origin_label, _dest_label = await asyncio.gather(
+            _city(_origin_coord),
+            _city(_dest_coord),
         )
         optimizations_out = OptimizationsOut(
             meal_stops=[
@@ -1727,9 +1746,37 @@ async def plan_trip(
             route_distance_km=route.distance_km,
             route=route,
             waypoints=dwell_waypoints,
+            origin_label=_origin_label,
+            destination_label=_dest_label,
         )
         if multiday is not None:
+            # Reverse-geocode overnight sleep coords for intermediate
+            # days that lack a label (regular algorithm stops, not user
+            # waypoints). Fills the "Día 1 → <sleep city>" header gap.
+            _n = len(multiday.days)
+            _sleep_city: list[str | None] = [None] * _n
+            _missing = [
+                (i, d) for i, d in enumerate(multiday.days)
+                if d.sleep_at is not None
+                and d.to_name is None
+                and d.sleep_coord is not None
+            ]
+            if _missing:
+                _geocoded = await asyncio.gather(*(
+                    _city(d.sleep_coord) for _, d in _missing
+                ))
+                for (i, _), city in zip(_missing, _geocoded):
+                    _sleep_city[i] = city
             for d in multiday.days:
+                _i = d.day_index - 1  # 0-based
+                # Fill to_name from sleep geocode when not already set
+                _to_name = d.to_name or (
+                    _sleep_city[_i] if d.sleep_at is not None else None
+                )
+                # Fill from_name from previous day's sleep geocode
+                _from_name = d.from_name or (
+                    _sleep_city[_i - 1] if _i > 0 else None
+                )
                 days_out.append(
                     DayPlanOut(
                         day_index=d.day_index,
@@ -1759,6 +1806,19 @@ async def plan_trip(
                                     m.restaurant.coordinate.lon
                                     if m.restaurant else None
                                 ),
+                                city_hint=_meal_hint_by_km.get(
+                                    m.rest_stop.distance_from_origin_km
+                                ),
+                                lat=(
+                                    m.restaurant.coordinate.lat
+                                    if m.restaurant
+                                    else m.rest_stop.coordinate.lat
+                                ),
+                                lon=(
+                                    m.restaurant.coordinate.lon
+                                    if m.restaurant
+                                    else m.rest_stop.coordinate.lon
+                                ),
                             )
                             for m in d.meal_stops
                         ],
@@ -1776,6 +1836,9 @@ async def plan_trip(
                         sleep_lat=d.sleep_coord.lat if d.sleep_coord else None,
                         sleep_lon=d.sleep_coord.lon if d.sleep_coord else None,
                         dwell_label=d.dwell_label,
+                        from_name=_from_name,
+                        to_name=_to_name,
+                        waypoint_labels=list(d.waypoint_labels),
                     )
                 )
 

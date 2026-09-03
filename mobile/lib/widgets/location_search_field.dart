@@ -106,6 +106,8 @@ class _LocationSearchFieldState extends ConsumerState<LocationSearchField> {
       _picked = null;
       widget.onSelected(null);
     }
+    // A result is already locked in — don't re-search.
+    if (_picked != null) return;
     final query = _controller.text.trim();
     _debounce?.cancel();
     if (query.length < 2) {

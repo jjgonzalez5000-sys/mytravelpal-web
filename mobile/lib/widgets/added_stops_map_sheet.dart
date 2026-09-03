@@ -18,12 +18,18 @@ class AddedStop {
     required this.label,
     required this.subtitle,
     required this.coordinate,
+    this.distanceFromOriginKm,
   });
 
   final AddedStopKind kind;
   final String label;
   final String subtitle;
   final LatLon coordinate;
+
+  /// Approximate km from trip origin along the route. Used by
+  /// [DayPlanSection] to slot this stop into the correct day card.
+  /// Null when it can't be estimated (no geometry available).
+  final double? distanceFromOriginKm;
 
   IconData get icon => switch (kind) {
         AddedStopKind.hotel => Icons.hotel_outlined,
