@@ -285,6 +285,7 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
     // 8 waypoints + destination = 10, OSRM's soft cap).
     const significantKinds = {
       'restaurant', 'landmark', 'museum', 'viewpoint',
+      'nature', 'beach', 'village',
     };
     const maxTotalStops = 8;
     final knownStopKeys = <String>{
