@@ -664,6 +664,8 @@
     "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
 
     "addToRouteTooltip": "Añadir a la ruta",
+    "addedToRouteLabel": "AÑADIDO",
+    "replanWithStops": "Recalcular ruta con paradas",
     "removeFromRouteTooltip": "Quitar de la ruta",
     "addedStopsChip": "{count, plural, =1{1 parada añadida · +{minutes} min} other{{count} paradas añadidas · +{minutes} min}}",
     "@addedStopsChip": {"placeholders": {"count": {"type": "int"}, "minutes": {"type": "String"}}},

@@ -283,10 +283,11 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
     // the real router instead of only living in the itinerary
     // preview. Cap total stops at 8 (backend limit — origin +
     // 8 waypoints + destination = 10, OSRM's soft cap).
-    const significantKinds = {
-      'restaurant', 'landmark', 'museum', 'viewpoint',
-      'nature', 'beach', 'village',
-    };
+    // Include all POI kinds except 'hotel' (those are already resolved
+    // as overnight stops). Cities from/to are day boundaries — including
+    // them as pass-through waypoints lets the router visit them and
+    // surfaces their names in the day timeline card.
+    const excludedKinds = {'hotel'};
     const maxTotalStops = 8;
     final knownStopKeys = <String>{
       for (final s in stops) s.place.displayName.trim().toLowerCase(),
@@ -295,7 +296,7 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       if (stops.length >= maxTotalStops) break;
       for (final w in d.waypoints) {
         if (stops.length >= maxTotalStops) break;
-        if (!significantKinds.contains(w.kind.toLowerCase())) continue;
+        if (excludedKinds.contains(w.kind.toLowerCase())) continue;
         final key = w.name.trim().toLowerCase();
         if (key.isEmpty || knownStopKeys.contains(key)) continue;
         knownStopKeys.add(key);

@@ -3445,6 +3445,18 @@ abstract class AppLocalizations {
   /// **'Toll booth {index}'**
   String tollBoothLabel(int index);
 
+  /// No description provided for @addedToRouteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ADDED'**
+  String get addedToRouteLabel;
+
+  /// No description provided for @replanWithStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculate route with stops'**
+  String get replanWithStops;
+
   /// No description provided for @addToRouteTooltip.
   ///
   /// In en, this message translates to:

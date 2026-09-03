@@ -676,6 +676,8 @@
     "tollBoothLabel": "Mautstelle {index}",
     "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
 
+    "addedToRouteLabel": "HINZUGEFÜGT",
+    "replanWithStops": "Route mit Stopps neu berechnen",
     "addToRouteTooltip": "Zur Route hinzufügen",
     "removeFromRouteTooltip": "Aus Route entfernen",
     "addedStopsChip": "{count, plural, =1{1 Stopp hinzugefügt · +{minutes} Min} other{{count} Stopps hinzugefügt · +{minutes} Min}}",

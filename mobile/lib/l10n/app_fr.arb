@@ -676,6 +676,8 @@
     "tollBoothLabel": "Péage {index}",
     "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
 
+    "addedToRouteLabel": "AJOUTÉ",
+    "replanWithStops": "Recalculer l'itinéraire avec les arrêts",
     "addToRouteTooltip": "Ajouter à l'itinéraire",
     "removeFromRouteTooltip": "Retirer de l'itinéraire",
     "addedStopsChip": "{count, plural, =1{1 arrêt ajouté · +{minutes} min} other{{count} arrêts ajoutés · +{minutes} min}}",

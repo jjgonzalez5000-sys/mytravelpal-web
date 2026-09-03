@@ -250,6 +250,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// detour field on the backend yet).
   final Map<String, double> _addedStops = <String, double>{};
 
+  /// Coordinates + labels of added stops that can be inserted as
+  /// routing waypoints (restaurants, fuel — not hotels which are
+  /// overnight anchors, not via-points).
+  final Map<String, (LatLon, String)> _addedRouteWaypoints =
+      <String, (LatLon, String)>{};
+
   /// Hotels the user "booked" for each night of the trip. Keyed by
   /// day index (1-based). When set, the total cost card sums these
   /// prices instead of just the backend-picked sleep_stop hotel,
@@ -267,14 +273,93 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   bool _isAdded(String key) => _addedStops.containsKey(key);
 
-  void _toggleStop(String key, double minutes) {
+  void _toggleStop(String key, double minutes,
+      {LatLon? coord, String? label}) {
     setState(() {
       if (_addedStops.containsKey(key)) {
         _addedStops.remove(key);
+        _addedRouteWaypoints.remove(key);
       } else {
         _addedStops[key] = minutes;
+        if (coord != null && label != null) {
+          _addedRouteWaypoints[key] = (coord, label);
+        }
       }
     });
+  }
+
+  /// Build sorted waypoints from added routeable stops to include in replan.
+  List<TripWaypoint> _buildAddedWaypoints() {
+    final geometry = widget.response.route.geometry;
+    final routeKm = widget.response.route.distanceKm;
+    double kmAt(LatLon c) {
+      if (geometry.isEmpty || routeKm <= 0) return 0;
+      double bestD = double.infinity;
+      int bestI = 0;
+      for (var i = 0; i < geometry.length; i++) {
+        final p = geometry[i];
+        final dlat = p.lat - c.lat;
+        final dlon = p.lon - c.lon;
+        final d = dlat * dlat + dlon * dlon;
+        if (d < bestD) {
+          bestD = d;
+          bestI = i;
+        }
+      }
+      return (bestI / (geometry.length - 1).clamp(1, 999999)) * routeKm;
+    }
+
+    final stops = _addedRouteWaypoints.entries
+        .map((e) => (km: kmAt(e.value.$1), coord: e.value.$1, label: e.value.$2))
+        .toList()
+      ..sort((a, b) => a.km.compareTo(b.km));
+    return stops
+        .map((s) => TripWaypoint(
+              coordinate: s.coord,
+              dwellNights: 0,
+              label: s.label,
+            ))
+        .toList();
+  }
+
+  Future<void> _replanWithAddedStops() async {
+    final extra = _buildAddedWaypoints();
+    if (extra.isEmpty) return;
+    final combined = [...widget.request.waypoints, ...extra];
+    final replan = TripPlanRequest(
+      origin: widget.request.origin,
+      destination: widget.request.destination,
+      desiredDepartureAt: widget.desiredDepartureAt,
+      waypoints: combined,
+      countries: widget.request.countries,
+      hotelMaxDetourMinutes: widget.request.hotelMaxDetourMinutes,
+      hotelPriceBand: widget.request.hotelPriceBand,
+      hotelPriceBands: widget.request.hotelPriceBands,
+      hotelMinStars: widget.request.hotelMinStars,
+      hotelIncludeOther: widget.request.hotelIncludeOther,
+      hotelDestinationRadiusKm: widget.request.hotelDestinationRadiusKm,
+      hotelConditions: widget.request.hotelConditions,
+      restaurantMaxDetourMinutes: widget.request.restaurantMaxDetourMinutes,
+      restaurantPriceBand: widget.request.restaurantPriceBand,
+      restaurantPriceBands: widget.request.restaurantPriceBands,
+      restaurantCuisines: widget.request.restaurantCuisines,
+      restaurantConditions: widget.request.restaurantConditions,
+      includeAdverseEvents: widget.request.includeAdverseEvents,
+      adverseEventsMaxDistanceKm: widget.request.adverseEventsMaxDistanceKm,
+      includeTollAlternative: widget.request.includeTollAlternative,
+      includeRouteComparison: widget.request.includeRouteComparison,
+      includeHourlyTollAnalysis: widget.request.includeHourlyTollAnalysis,
+      avoidMotorways: widget.request.avoidMotorways,
+      preferScenic: widget.request.preferScenic,
+      timeWindowSpanHours: widget.request.timeWindowSpanHours,
+      timeWindowTopN: widget.request.timeWindowTopN,
+      tripProfile: widget.request.tripProfile,
+      includeParking: widget.request.includeParking,
+    );
+    await _replan(
+        newDeparture: widget.desiredDepartureAt,
+        avoidMotorways: widget.request.avoidMotorways,
+        overrideRequest: replan);
   }
 
   /// Toggle a night's picked hotel. Only one hotel per day — tapping
@@ -319,7 +404,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   void _clearAddedStops() {
     if (_addedStops.isEmpty) return;
-    setState(_addedStops.clear);
+    setState(() {
+      _addedStops.clear();
+      _addedRouteWaypoints.clear();
+    });
   }
 
   /// Estimates km-from-origin for [coord] by finding the nearest point
@@ -514,6 +602,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   Future<void> _replan({
     required DateTime newDeparture,
     required bool avoidMotorways,
+    TripPlanRequest? overrideRequest,
   }) async {
     // Root navigator so a mid-flight MaterialApp rebuild
     // (DynamicColorBuilder returning wallpaper colours) cannot
@@ -529,10 +618,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     ));
     try {
       final api = ref.read(apiClientWithPremiumProvider);
-      // Reuse the exact request that landed us here; only the
-      // desired departure changes. Downstream sections (POI,
-      // optimisations, day plan) recompute against the new time.
-      final replan = TripPlanRequest(
+      final replan = overrideRequest ?? TripPlanRequest(
         origin: widget.request.origin,
         destination: widget.request.destination,
         desiredDepartureAt: newDeparture,
@@ -687,7 +773,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return _RestaurantTile(
       restaurant: r,
       isAdded: _isAdded(key),
-      onToggleAdd: () => _toggleStop(key, r.detourMinutes),
+      onToggleAdd: () => _toggleStop(key, r.detourMinutes,
+          coord: r.coordinate, label: r.name),
       onTap: () => showPoiDetailSheet(
         context,
         kind: PoiKind.restaurant,
@@ -939,6 +1026,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   onClear: _clearAddedStops,
                   onTap: _openAddedStopsMap,
                 ),
+                if (_addedRouteWaypoints.isNotEmpty) ...[
+                  const SizedBox(height: Tokens.space8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _replanWithAddedStops,
+                      icon: const Icon(Icons.route, size: 18),
+                      label: Text(
+                        AppLocalizations.of(context).replanWithStops,
+                      ),
+                    ),
+                  ),
+                ],
               ],
               if (widget.response.days.isNotEmpty) ...[
                 const SizedBox(height: Tokens.space12),
@@ -4322,7 +4422,7 @@ class _SavingsChip extends StatelessWidget {
 }
 
 /// Round icon button on the right of an add-to-route-capable tile.
-/// Filled when the POI is already added so state is obvious at a glance.
+/// Shows "AÑADIDO" chip when added, add icon when not.
 class _AddToRouteButton extends StatelessWidget {
   const _AddToRouteButton({required this.isAdded, required this.onPressed});
   final bool isAdded;
@@ -4332,12 +4432,38 @@ class _AddToRouteButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
+    if (isAdded) {
+      return GestureDetector(
+        onTap: onPressed,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: scheme.primaryContainer,
+            borderRadius: BorderRadius.circular(999),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check, size: 13, color: scheme.onPrimaryContainer),
+              const SizedBox(width: 4),
+              Text(
+                l.addedToRouteLabel,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: scheme.onPrimaryContainer,
+                      fontWeight: FontWeight.w700,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     return IconButton(
-      tooltip: isAdded ? l.removeFromRouteTooltip : l.addToRouteTooltip,
+      tooltip: l.addToRouteTooltip,
       visualDensity: VisualDensity.compact,
       icon: Icon(
-        isAdded ? Icons.check_circle : Icons.add_circle_outline,
-        color: isAdded ? scheme.primary : scheme.onSurfaceVariant,
+        Icons.add_circle_outline,
+        color: scheme.onSurfaceVariant,
       ),
       onPressed: onPressed,
     );

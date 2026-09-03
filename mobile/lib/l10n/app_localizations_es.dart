@@ -1869,6 +1869,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get addedToRouteLabel => 'AÑADIDO';
+
+  @override
+  String get replanWithStops => 'Recalcular ruta con paradas';
+
+  @override
   String get addToRouteTooltip => 'Añadir a la ruta';
 
   @override

@@ -1864,6 +1864,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get addedToRouteLabel => 'AJOUTÉ';
+
+  @override
+  String get replanWithStops => 'Recalculer l\'itinéraire avec les arrêts';
+
+  @override
   String get addToRouteTooltip => 'Ajouter à l\'itinéraire';
 
   @override

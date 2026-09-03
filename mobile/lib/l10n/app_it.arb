@@ -671,6 +671,8 @@
     "tollBoothLabel": "Casello {index}",
     "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
 
+    "addedToRouteLabel": "AGGIUNTO",
+    "replanWithStops": "Ricalcola percorso con soste",
     "addToRouteTooltip": "Aggiungi al percorso",
     "removeFromRouteTooltip": "Rimuovi dal percorso",
     "addedStopsChip": "{count, plural, =1{1 sosta aggiunta · +{minutes} min} other{{count} soste aggiunte · +{minutes} min}}",
