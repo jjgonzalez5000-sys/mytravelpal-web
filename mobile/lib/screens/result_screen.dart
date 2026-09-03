@@ -1051,6 +1051,43 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ),
+      // Adverse events right after stats — driver must see these
+      // before anything else.
+      if (widget.response.adverseEvents.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space16),
+        for (final e in widget.response.adverseEvents)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Tokens.space8),
+            child: _AdverseEventTile(
+              event: e,
+              onTap: () => showAdverseEventSheet(
+                context,
+                event: e,
+                origin: widget.request.origin,
+                destination: widget.request.destination,
+                routeGeometry: widget.response.route.geometry,
+              ),
+            ),
+          ),
+      ] else if (widget.request.includeAdverseEvents) ...[
+        const SizedBox(height: Tokens.space16),
+        EmptyStateCard(
+          icon: Icons.check_circle_outline,
+          title: l.emptyAlertsTitle,
+          body: l.emptyAlertsBody,
+          tint: scheme.tertiary,
+        ),
+      ],
+      // Toll-free alternative: let the driver choose before scrolling
+      // to cost and day breakdown.
+      if (widget.response.tollAlternative != null) ...[
+        const SizedBox(height: Tokens.space16),
+        _TollAlternativeCard(
+          alt: widget.response.tollAlternative!,
+          skipEnabled: widget.request.avoidMotorways,
+          onToggleSkip: _replanWithSkipTolls,
+        ),
+      ],
       if (widget.response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -1108,32 +1145,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           intraSectionSkips: widget.response.intraSectionSkips,
         ),
         const SizedBox(height: Tokens.space16),
-      ],
-      // Alerts at the top — the driver needs to know about fires,
-      // strikes, weather before anything else.
-      if (widget.response.adverseEvents.isNotEmpty) ...[
-        for (final e in widget.response.adverseEvents)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Tokens.space8),
-            child: _AdverseEventTile(
-              event: e,
-              onTap: () => showAdverseEventSheet(
-                context,
-                event: e,
-                origin: widget.request.origin,
-                destination: widget.request.destination,
-                routeGeometry: widget.response.route.geometry,
-              ),
-            ),
-          ),
-      ] else if (widget.request.includeAdverseEvents) ...[
-        EmptyStateCard(
-          icon: Icons.check_circle_outline,
-          title: l.emptyAlertsTitle,
-          body: l.emptyAlertsBody,
-          tint: scheme.tertiary,
-        ),
-        const SizedBox(height: Tokens.space8),
       ],
       // Next-stop hero: pulls the first meal stop of the trip so the
       // driver always sees "next planned stop" up top without hunting
