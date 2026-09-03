@@ -1255,6 +1255,9 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get resultArrival => 'ARRIVAL';
+
+  @override
   String get resultShift => 'SHIFT';
 
   @override

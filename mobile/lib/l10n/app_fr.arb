@@ -456,6 +456,7 @@
             "minutes": {"type": "String"}
         }
     },
+    "resultArrival": "ARRIVÉE",
     "resultShift": "DÉCALAGE",
     "resultTraffic": "TRAFIC",
     "resultTotal": "TOTAL",

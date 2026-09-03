@@ -456,6 +456,7 @@
             "minutes": {"type": "String"}
         }
     },
+    "resultArrival": "ANKUNFT",
     "resultShift": "VERSCHIEBUNG",
     "resultTraffic": "VERKEHR",
     "resultTotal": "GESAMT",

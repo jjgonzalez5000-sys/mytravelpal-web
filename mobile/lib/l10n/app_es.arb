@@ -443,6 +443,7 @@
             "minutes": {"type": "String"}
         }
     },
+    "resultArrival": "LLEGADA",
     "resultShift": "CAMBIO",
     "resultTraffic": "TRÁFICO",
     "resultTotal": "TOTAL",

@@ -2487,8 +2487,12 @@ class _RecommendationHero extends StatelessWidget {
           Row(
             children: [
               _HeroChip(
-                label: l.resultShift,
-                value: shiftLabel,
+                label: l.resultArrival,
+                value: DateFormat.Hm().format(
+                  recommended.departureAt.toLocal().add(
+                    Duration(minutes: recommended.estimatedMinutes.round()),
+                  ),
+                ),
                 fg: scheme.onPrimaryContainer,
               ),
               const SizedBox(width: Tokens.space16),

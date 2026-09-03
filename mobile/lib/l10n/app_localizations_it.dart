@@ -1261,6 +1261,9 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
+  String get resultArrival => 'ARRIVO';
+
+  @override
   String get resultShift => 'SPOSTAMENTO';
 
   @override

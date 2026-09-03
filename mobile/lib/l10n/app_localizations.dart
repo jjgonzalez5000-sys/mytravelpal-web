@@ -2377,6 +2377,12 @@ abstract class AppLocalizations {
   /// **'with +{minutes} min extra'**
   String resultBypassSavingsSuffix(String minutes);
 
+  /// No description provided for @resultArrival.
+  ///
+  /// In en, this message translates to:
+  /// **'ARRIVAL'**
+  String get resultArrival;
+
   /// No description provided for @resultShift.
   ///
   /// In en, this message translates to:

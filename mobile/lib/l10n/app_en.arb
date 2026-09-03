@@ -434,6 +434,7 @@
             "minutes": {"type": "String"}
         }
     },
+    "resultArrival": "ARRIVAL",
     "resultShift": "SHIFT",
     "resultTraffic": "TRAFFIC",
     "resultTotal": "TOTAL",

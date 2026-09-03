@@ -1259,6 +1259,9 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get resultArrival => 'ARRIVÉE';
+
+  @override
   String get resultShift => 'DÉCALAGE';
 
   @override
