@@ -55,7 +55,7 @@ from app.providers.restaurants import _classify_meal_price
 _log = logging.getLogger(__name__)
 
 _URL = "https://api.geoapify.com/v2/places"
-_TIMEOUT_S = 20.0
+_TIMEOUT = httpx.Timeout(connect=10.0, read=40.0, write=10.0, pool=5.0)
 _LIMIT = 40
 _USER_AGENT = "MyTravelPal/1.0 (+https://mytravelpal.app)"
 
@@ -66,7 +66,7 @@ def _api_key() -> str | None:
 
 def _new_client() -> httpx.AsyncClient:
     return httpx.AsyncClient(
-        timeout=_TIMEOUT_S,
+        timeout=_TIMEOUT,
         headers={
             "User-Agent": _USER_AGENT,
             "Accept": "application/json",
@@ -108,10 +108,20 @@ async def _search(
     }
     if conditions:
         params["conditions"] = conditions
-    try:
-        response = await client.get(_URL, params=params)
-    except httpx.HTTPError as exc:
-        _log.warning("Geoapify %s failed: %r", categories, exc)
+    for attempt in range(2):
+        try:
+            response = await client.get(_URL, params=params)
+            break
+        except httpx.TimeoutException as exc:
+            if attempt == 0:
+                _log.warning("Geoapify %s timeout, retrying: %r", categories, exc)
+                continue
+            _log.warning("Geoapify %s timeout after retry: %r", categories, exc)
+            return []
+        except httpx.HTTPError as exc:
+            _log.warning("Geoapify %s failed: %r", categories, exc)
+            return []
+    else:
         return []
     if response.status_code >= 400:
         _log.warning(
