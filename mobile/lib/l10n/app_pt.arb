@@ -116,5 +116,19 @@
       "placeholders": {
         "km": {"type": "String"}
       }
+    },
+    "adverseEventsBannerCount": "{count} alerta(s) na sua rota",
+    "@adverseEventsBannerCount": {
+      "placeholders": {
+        "count": {"type": "int"}
+      }
+    },
+    "pricePerMeal": "{price} €/refeição",
+    "@pricePerMeal": {
+      "placeholders": { "price": {"type": "String"} }
+    },
+    "kmFromOrigin": "{km} km desde a origem",
+    "@kmFromOrigin": {
+      "placeholders": { "km": {"type": "String"} }
     }
 }

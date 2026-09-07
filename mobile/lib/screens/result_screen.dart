@@ -574,6 +574,42 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// TripSession, share prefs) is tied to the response's identity;
   /// swapping fields in place risks stale references. The loading
   /// dialog gives the driver feedback while the request runs.
+  void _showAdverseEventsSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => ListView(
+          controller: scrollController,
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.space20),
+          children: [
+            for (final e in widget.response.adverseEvents)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Tokens.space8),
+                child: _AdverseEventTile(
+                  event: e,
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    showAdverseEventSheet(
+                      context,
+                      event: e,
+                      origin: widget.request.origin,
+                      destination: widget.request.destination,
+                      routeGeometry: widget.response.route.geometry,
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Flip `avoidMotorways` and replan. Same shape as
   /// `_replanWithDeparture` — the toll toggle in the alternative
   /// card fires this, and the driver lands on a fresh plan whose
@@ -780,7 +816,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         kind: PoiKind.restaurant,
         name: r.name,
         subtitle: '${r.country.displayName} · '
-            '${r.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
+            '${AppLocalizations.of(context).pricePerMeal(r.priceEurPerMeal.toStringAsFixed(0))} · '
             '+${r.detourMinutes.toStringAsFixed(0)} min',
         poi: r.coordinate,
         origin: widget.request.origin,
@@ -960,6 +996,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final bedtimeHour = widget.request.tripProfile?.bedtimeHour ?? 22;
 
     final sections = <Widget>[
+      if (widget.response.adverseEvents.isNotEmpty)
+        _AdverseEventsBanner(
+          events: widget.response.adverseEvents,
+          onTap: () => _showAdverseEventsSheet(context),
+        ),
       _InteractiveMapCard(
         origin: widget.request.origin,
         destination: widget.request.destination,
@@ -978,10 +1019,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         mode: _mapMode,
         onModeChange: (m) => setState(() => _mapMode = m),
       ),
-      const SizedBox(height: Tokens.space16),
-      // Trip stats sit RIGHT below the map (moved 2026-08-30 per
-      // tester feedback — "distance / sin trafico / peajes" reads
-      // as a caption to the map, not part of the savings block).
+      const SizedBox(height: Tokens.space12),
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Tokens.space4),
+        child: Row(
+          children: [
+            Icon(Icons.trip_origin, size: 14, color: Colors.green.shade700),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                widget.origin.displayName,
+                style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Icon(Icons.arrow_forward, size: 14,
+                  color: scheme.onSurfaceVariant),
+            ),
+            Icon(Icons.location_on, size: 14, color: Colors.red.shade700),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                widget.destination.displayName,
+                style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.end,
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: Tokens.space12),
       InkWell(
         onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
         borderRadius: BorderRadius.circular(Tokens.radiusLg),
@@ -1051,25 +1121,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ),
-      // Adverse events right after stats — driver must see these
-      // before anything else.
-      if (widget.response.adverseEvents.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space16),
-        for (final e in widget.response.adverseEvents)
-          Padding(
-            padding: const EdgeInsets.only(bottom: Tokens.space8),
-            child: _AdverseEventTile(
-              event: e,
-              onTap: () => showAdverseEventSheet(
-                context,
-                event: e,
-                origin: widget.request.origin,
-                destination: widget.request.destination,
-                routeGeometry: widget.response.route.geometry,
-              ),
-            ),
-          ),
-      ] else if (widget.request.includeAdverseEvents) ...[
+      if (widget.response.adverseEvents.isEmpty &&
+          widget.request.includeAdverseEvents) ...[
         const SizedBox(height: Tokens.space16),
         EmptyStateCard(
           icon: Icons.check_circle_outline,
@@ -1136,6 +1189,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           sleepStop: widget.response.optimizations!.sleepStop,
           tollSkipSavingsEur: _tollSkipSavingsEur,
           travellers: widget.request.tripProfile?.travellers ?? 1,
+          tripDays: widget.response.days.length,
           pickedHotelsCostEur: _selectedNightHotels.isEmpty
               ? null
               : _selectedHotelsCostEur,
@@ -1172,10 +1226,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       subtitle: [
                         DateFormat.Hm().format(meal.at.toLocal()),
                         if (meal.restaurantPriceEurPerMeal != null)
-                          '${meal.restaurantPriceEurPerMeal!
-                                  .toStringAsFixed(0)} €/meal',
-                        '${meal.distanceFromOriginKm
-                                .toStringAsFixed(0)} km from origin',
+                          AppLocalizations.of(context).pricePerMeal(
+                              meal.restaurantPriceEurPerMeal!.toStringAsFixed(0)),
+                        AppLocalizations.of(context).kmFromOrigin(
+                            meal.distanceFromOriginKm.toStringAsFixed(0)),
                       ].join(' · '),
                       poi: meal.restaurantCoordinate!,
                       origin: widget.request.origin,
@@ -2055,6 +2109,7 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.sleepStop,
     this.tollSkipSavingsEur = 0,
     this.travellers = 1,
+    this.tripDays = 1,
     this.pickedHotelsCostEur,
     this.pickedHotelsNights = 0,
     this.savings,
@@ -2067,6 +2122,7 @@ class _TotalTripCostCard extends ConsumerWidget {
   final SleepStopOpt? sleepStop;
   final double tollSkipSavingsEur;
   final int travellers;
+  final int tripDays;
   final TripSavings? savings;
   final double tollSkipPenaltyMinutes;
   final List<IntraSectionSkip> intraSectionSkips;
@@ -2090,11 +2146,12 @@ class _TotalTripCostCard extends ConsumerWidget {
     final ccy = ref.watch(currencyCodeProvider);
 
     final pax = travellers.clamp(1, 20);
-    // Per-person meal cost × number of travellers × number of meals
-    final mealsCostPerPerson = mealStops.fold<double>(
+    final lunchCostPerPerson = mealStops.fold<double>(
       0.0, (sum, m) => sum + (m.restaurantPriceEurPerMeal ?? 15.0),
     );
-    final mealsCost = mealsCostPerPerson * pax;
+    final extraMealsPerDay = tripDays > 1 ? 2 : 0;
+    final extraMealsCostPerPerson = extraMealsPerDay * 12.0 * (tripDays - 1);
+    final mealsCost = (lunchCostPerPerson + extraMealsCostPerPerson) * pax;
     // Hotel line: user picks (multi-night) override the
     // algorithmic single-night sleep_stop. Falls back to the
     // sleep_stop estimate when the user hasn't picked anything —
@@ -2148,9 +2205,13 @@ class _TotalTripCostCard extends ConsumerWidget {
           ),
           if (mealsCost > 0)
             _CostRow(
-              label: pax > 1
-                  ? '${l.tripCostMeals} (${mealStops.length} × $pax)'
-                  : '${l.tripCostMeals} (×${mealStops.length})',
+              label: () {
+                final totalMeals = mealStops.length +
+                    (tripDays > 1 ? extraMealsPerDay * (tripDays - 1) : 0);
+                return pax > 1
+                    ? '${l.tripCostMeals} ($totalMeals × $pax)'
+                    : '${l.tripCostMeals} (×$totalMeals)';
+              }(),
               value: mealsCost, scheme: scheme, t: t,
             ),
           if (hotelCost > 0)
@@ -2843,7 +2904,8 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
                           name: m.restaurantName ?? '—',
                           subtitle: [
                             if (m.restaurantPriceEurPerMeal != null)
-                              '${m.restaurantPriceEurPerMeal!.toStringAsFixed(0)} €/meal',
+                              AppLocalizations.of(context).pricePerMeal(
+                                  m.restaurantPriceEurPerMeal!.toStringAsFixed(0)),
                             if (m.cityHint != null) m.cityHint!,
                           ].join(' · '),
                           poi: m.coordinate!,
@@ -3158,7 +3220,7 @@ class _MealStopRow extends StatelessWidget {
               Text(
                 stop.restaurantName != null
                     ? '${stop.restaurantName} · '
-                        '${stop.restaurantPriceEurPerMeal?.toStringAsFixed(0)} €/meal · '
+                        '${AppLocalizations.of(context).pricePerMeal(stop.restaurantPriceEurPerMeal?.toStringAsFixed(0) ?? '?')} · '
                         '$locationLine'
                     : locationLine,
                 style: t.bodySmall,
@@ -3713,6 +3775,62 @@ class _SkipMetricRow extends StatelessWidget {
   }
 }
 
+class _AdverseEventsBanner extends StatelessWidget {
+  const _AdverseEventsBanner({required this.events, this.onTap});
+  final List<AdverseEvent> events;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    final hasCritical =
+        events.any((e) => e.severity == AdverseEventSeverity.critical);
+    final bg = hasCritical
+        ? scheme.errorContainer
+        : scheme.tertiaryContainer;
+    final fg = hasCritical
+        ? scheme.onErrorContainer
+        : scheme.onTertiaryContainer;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Tokens.space8),
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(Tokens.radiusLg),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: Tokens.space16, vertical: Tokens.space12),
+            child: Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, size: 18, color: fg),
+                const SizedBox(width: Tokens.space8),
+                Expanded(
+                  child: Text(
+                    l.adverseEventsBannerCount(events.length),
+                    style: t.bodySmall?.copyWith(
+                        color: fg, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                for (final e in events.take(4))
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4),
+                    child: Icon(e.type.icon, size: 16, color: fg),
+                  ),
+                const SizedBox(width: Tokens.space8),
+                Icon(Icons.chevron_right, size: 18, color: fg),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _AdverseEventTile extends StatelessWidget {
   const _AdverseEventTile({required this.event, this.onTap});
   final AdverseEvent event;
@@ -4119,7 +4237,7 @@ class _RestaurantTile extends StatelessWidget {
       title: Text(restaurant.name),
       subtitle: Text(
         '${restaurant.country.displayName} · '
-        '${restaurant.priceEurPerMeal.toStringAsFixed(0)} €/meal · '
+        '${AppLocalizations.of(context).pricePerMeal(restaurant.priceEurPerMeal.toStringAsFixed(0))} · '
         '${AppLocalizations.of(context).poiDistanceKm(
           restaurant.distanceFromRouteKm.toStringAsFixed(1),
           restaurant.detourMinutes.toStringAsFixed(0),
@@ -4164,9 +4282,9 @@ class _FuelTile extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final subtitle = price.priceAvailable
         ? '${price.priceEurPerL.toStringAsFixed(3)} ${price.unitLabel} · '
-              '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin'
+              '${l.kmFromOrigin(price.distanceFromOriginKm.toStringAsFixed(0))}'
         : '${l.fuelPriceUnavailable} · '
-              '${price.distanceFromOriginKm.toStringAsFixed(0)} km from origin';
+              '${l.kmFromOrigin(price.distanceFromOriginKm.toStringAsFixed(0))}';
     // Show a small green (cheap) / red (dear) chip when the backend
     // computed a per-country delta. Threshold of 2 cents avoids
     // shouting about noise-level differences.

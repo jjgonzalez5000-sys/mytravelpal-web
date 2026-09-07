@@ -195,35 +195,22 @@ class DayPlanSection extends StatelessWidget {
   static const double _maxHotelKmFromSleep = 90.0;
 
   String _dayHeaderLabel(AppLocalizations l, DayPlan d, int totalDays) {
-    // Prefer backend-provided names (reverse-geocoded) over heuristics.
-    final backendFrom = d.fromName;
-    final backendTo = d.toName;
-    if (backendFrom != null && backendTo != null) {
-      return l.dayHeaderCity(d.dayIndex, backendFrom, backendTo);
-    }
     final isFirst = d.dayIndex == 1;
     final isLast = d.dayIndex == totalDays;
-    if ((isFirst && originName != null) || (isLast && destinationName != null)) {
-      final from = backendFrom
-          ?? (isFirst && originName != null ? originName! : _cityFromDay(d, useTo: false))
-          ?? 'km ${d.fromKm.toStringAsFixed(0)}';
-      final to = backendTo
-          ?? (isLast && destinationName != null ? destinationName! : _cityFromDay(d, useTo: true))
-          ?? 'km ${d.toKm.toStringAsFixed(0)}';
+    final from = d.fromName
+        ?? (isFirst ? originName : null)
+        ?? _cityFromDay(d, useTo: false);
+    final to = d.toName
+        ?? (isLast ? destinationName : null)
+        ?? _cityFromDay(d, useTo: true);
+    if (from != null && to != null) {
       return l.dayHeaderCity(d.dayIndex, from, to);
     }
-    // Intermediate day — try to name endpoints from meal stop city hints.
-    final toCity = backendTo ?? _cityFromDay(d, useTo: true);
-    if (toCity != null) {
-      final fromCity = backendFrom ?? _cityFromDay(d, useTo: false);
-      if (fromCity != null) {
-        return l.dayHeaderCity(d.dayIndex, fromCity, toCity);
-      }
-      return l.dayHeaderCity(
-        d.dayIndex,
-        'km ${d.fromKm.toStringAsFixed(0)}',
-        toCity,
-      );
+    if (from != null) {
+      return l.dayHeaderCity(d.dayIndex, from, 'km ${d.toKm.toStringAsFixed(0)}');
+    }
+    if (to != null) {
+      return l.dayHeaderCity(d.dayIndex, 'km ${d.fromKm.toStringAsFixed(0)}', to);
     }
     return l.dayHeaderRange(
       d.dayIndex,
@@ -244,8 +231,11 @@ class DayPlanSection extends StatelessWidget {
   void _showDayMap(BuildContext context, DayPlan d) {
     final slice = _DayRouteThumb._sliceGeometry(routeGeometry, d.fromKm, d.toKm, days.last.toKm);
     if (slice.isEmpty) return;
-    final center = slice[slice.length ~/ 2];
     final scheme = Theme.of(context).colorScheme;
+    final boundsPoints = <ll.LatLng>[...slice];
+    if (d.sleepCoord != null) {
+      boundsPoints.add(ll.LatLng(d.sleepCoord!.lat, d.sleepCoord!.lon));
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -253,8 +243,13 @@ class DayPlanSection extends StatelessWidget {
         height: MediaQuery.of(context).size.height * 0.6,
         child: fmap.FlutterMap(
           options: fmap.MapOptions(
-            initialCenter: center,
-            initialZoom: 9,
+            initialCameraFit: fmap.CameraFit.bounds(
+              bounds: fmap.LatLngBounds.fromPoints(boundsPoints),
+              padding: const EdgeInsets.all(40),
+            ),
+            interactionOptions: const fmap.InteractionOptions(
+              flags: fmap.InteractiveFlag.pinchZoom | fmap.InteractiveFlag.drag,
+            ),
           ),
           children: [
             fmap.TileLayer(
@@ -266,8 +261,8 @@ class DayPlanSection extends StatelessWidget {
               polylines: [
                 fmap.Polyline(
                   points: slice,
-                  color: scheme.primary,
-                  strokeWidth: 3.5,
+                  color: Colors.blue.shade700,
+                  strokeWidth: 4.0,
                 ),
               ],
             ),

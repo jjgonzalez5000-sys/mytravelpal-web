@@ -116,5 +116,19 @@
       "placeholders": {
         "km": {"type": "String"}
       }
+    },
+    "adverseEventsBannerCount": "{count} alerta/es a la teva ruta",
+    "@adverseEventsBannerCount": {
+      "placeholders": {
+        "count": {"type": "int"}
+      }
+    },
+    "pricePerMeal": "{price} €/àpat",
+    "@pricePerMeal": {
+      "placeholders": { "price": {"type": "String"} }
+    },
+    "kmFromOrigin": "{km} km des de l'origen",
+    "@kmFromOrigin": {
+      "placeholders": { "km": {"type": "String"} }
     }
 }

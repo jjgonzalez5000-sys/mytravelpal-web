@@ -2648,4 +2648,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String shortLastDayWarning(String km) {
     return 'Short last leg ($km km) — you could arrive today if you push further the day before.';
   }
+
+  @override
+  String adverseEventsBannerCount(int count) {
+    return '$count alert(s) on your route';
+  }
+
+  @override
+  String pricePerMeal(String price) {
+    return '$price €/meal';
+  }
+
+  @override
+  String kmFromOrigin(String km) {
+    return '$km km from origin';
+  }
 }

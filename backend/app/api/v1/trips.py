@@ -1733,6 +1733,11 @@ async def plan_trip(
     # --- Multi-day breakdown ---
     days_out: list[DayPlanOut] = []
     if profile is not None:
+        _log.info(
+            "day_plan input: %d waypoints, labels=%s",
+            len(dwell_waypoints),
+            [(w.label, w.dwell_nights) for w in dwell_waypoints],
+        )
         multiday = compute_day_plan(
             # Same anchor as `compute_optimizations` above — anything
             # else desynchronises day boundaries from meal times.
@@ -1750,6 +1755,11 @@ async def plan_trip(
             destination_label=_dest_label,
         )
         if multiday is not None:
+            _log.info(
+                "day_plan output: %d days, wp_labels=%s",
+                multiday.total_days,
+                [list(d.waypoint_labels) for d in multiday.days],
+            )
             # Reverse-geocode overnight sleep coords for intermediate
             # days that lack a label (regular algorithm stops, not user
             # waypoints). Fills the "Día 1 → <sleep city>" header gap.

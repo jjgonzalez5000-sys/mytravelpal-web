@@ -2657,4 +2657,19 @@ class AppLocalizationsDe extends AppLocalizations {
   String shortLastDayWarning(String km) {
     return 'Kurze letzte Etappe ($km km) — Sie könnten heute ankommen, wenn Sie am Vortag weiterfahren.';
   }
+
+  @override
+  String adverseEventsBannerCount(int count) {
+    return '$count Warnung(en) auf Ihrer Route';
+  }
+
+  @override
+  String pricePerMeal(String price) {
+    return '$price €/Mahlzeit';
+  }
+
+  @override
+  String kmFromOrigin(String km) {
+    return '$km km vom Start';
+  }
 }

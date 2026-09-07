@@ -991,5 +991,17 @@
       "placeholders": {
         "km": {"type": "String"}
       }
+    },
+    "adverseEventsBannerCount": "{count} alerta(s) en tu ruta",
+    "@adverseEventsBannerCount": {
+      "placeholders": { "count": {"type": "int"} }
+    },
+    "pricePerMeal": "{price} €/comida",
+    "@pricePerMeal": {
+      "placeholders": { "price": {"type": "String"} }
+    },
+    "kmFromOrigin": "{km} km desde el origen",
+    "@kmFromOrigin": {
+      "placeholders": { "km": {"type": "String"} }
     }
 }

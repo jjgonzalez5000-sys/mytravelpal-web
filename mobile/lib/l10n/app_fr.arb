@@ -1004,5 +1004,19 @@
       "placeholders": {
         "km": {"type": "String"}
       }
+    },
+    "adverseEventsBannerCount": "{count} alerte(s) sur votre trajet",
+    "@adverseEventsBannerCount": {
+      "placeholders": {
+        "count": {"type": "int"}
+      }
+    },
+    "pricePerMeal": "{price} €/repas",
+    "@pricePerMeal": {
+      "placeholders": { "price": {"type": "String"} }
+    },
+    "kmFromOrigin": "{km} km depuis l'origine",
+    "@kmFromOrigin": {
+      "placeholders": { "km": {"type": "String"} }
     }
 }
