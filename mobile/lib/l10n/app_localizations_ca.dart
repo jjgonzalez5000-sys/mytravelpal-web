@@ -2100,6 +2100,11 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String dayArrivalMarker(String time) {
+    return 'Arribes al destí cap a les $time';
+  }
+
+  @override
   String daySleepMarker(String time) {
     return 'Finish driving around $time';
   }

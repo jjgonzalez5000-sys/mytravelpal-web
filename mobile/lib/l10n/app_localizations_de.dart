@@ -2103,6 +2103,11 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String dayArrivalMarker(String time) {
+    return 'Ankunft am Ziel gegen $time';
+  }
+
+  @override
   String daySleepMarker(String time) {
     return 'Fahrtende gegen $time';
   }

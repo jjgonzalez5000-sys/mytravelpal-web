@@ -133,5 +133,7 @@
       "placeholders": { "km": {"type": "String"} }
     },
     "planStopDwellHours": "{n} hores",
-    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}}
+    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
+    "dayArrivalMarker": "Arribes al destí cap a les {time}",
+    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}}
 }

@@ -756,6 +756,8 @@
     "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
     "dayHeaderCity": "Giorno {index} · {from} → {to}",
     "@dayHeaderCity": {"placeholders": {"index": {"type": "int"}, "from": {"type": "String"}, "to": {"type": "String"}}},
+    "dayArrivalMarker": "Arrivo a destinazione verso le {time}",
+    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
     "daySleepMarker": "Fine guida verso le {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
     "dayHeaderDwell": "Giorno {index} · {place}",

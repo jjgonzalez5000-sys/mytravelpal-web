@@ -761,6 +761,8 @@
     "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
     "dayHeaderCity": "Tag {index} · {from} → {to}",
     "@dayHeaderCity": {"placeholders": {"index": {"type": "int"}, "from": {"type": "String"}, "to": {"type": "String"}}},
+    "dayArrivalMarker": "Ankunft am Ziel gegen {time}",
+    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
     "daySleepMarker": "Fahrtende gegen {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
     "dayHeaderDwell": "Tag {index} · {place}",

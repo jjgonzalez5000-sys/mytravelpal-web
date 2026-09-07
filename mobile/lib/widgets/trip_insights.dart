@@ -427,25 +427,33 @@ class DayPlanSection extends StatelessWidget {
                 ],
                 if (d.sleepAt != null) ...[
                   const SizedBox(height: Tokens.space8),
-                  Row(
-                    children: [
-                      Icon(Icons.bedtime, size: 14, color: scheme.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        // Stay-put days shouldn't claim "terminas
-                        // de conducir hacia las 22:00" — the driver
-                        // never drove. Show a stay marker instead.
-                        d.isDwellDay
-                            ? l.daySleepStay(d.dwellLabel!)
+                  () {
+                    final isLastDay = d.dayIndex == days.length;
+                    final icon = d.isDwellDay
+                        ? Icons.hotel
+                        : isLastDay
+                            ? Icons.location_on
+                            : Icons.bedtime;
+                    final text = d.isDwellDay
+                        ? l.daySleepStay(d.dwellLabel!)
+                        : isLastDay
+                            ? l.dayArrivalMarker(
+                                timeFormat.format(d.sleepAt!.toLocal()))
                             : l.daySleepMarker(
-                                timeFormat.format(d.sleepAt!.toLocal()),
-                              ),
-                        style: t.labelMedium?.copyWith(
-                          color: scheme.primary,
+                                timeFormat.format(d.sleepAt!.toLocal()));
+                    return Row(
+                      children: [
+                        Icon(icon, size: 14, color: scheme.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          text,
+                          style: t.labelMedium?.copyWith(
+                            color: scheme.primary,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    );
+                  }(),
                   if (d.sleepCoord != null && showHotelSections) ...[
                     const SizedBox(height: Tokens.space8),
                     _SleepHotelsBlock(

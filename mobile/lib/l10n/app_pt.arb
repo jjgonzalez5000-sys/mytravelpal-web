@@ -133,5 +133,7 @@
       "placeholders": { "km": {"type": "String"} }
     },
     "planStopDwellHours": "{n} horas",
-    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}}
+    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
+    "dayArrivalMarker": "Chega ao destino por volta das {time}",
+    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}}
 }

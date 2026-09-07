@@ -3830,6 +3830,12 @@ abstract class AppLocalizations {
   /// **'Day {index} · {from} → {to}'**
   String dayHeaderCity(int index, String from, String to);
 
+  /// No description provided for @dayArrivalMarker.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrive at your destination around {time}'**
+  String dayArrivalMarker(String time);
+
   /// No description provided for @daySleepMarker.
   ///
   /// In en, this message translates to:
