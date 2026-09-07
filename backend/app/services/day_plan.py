@@ -66,9 +66,19 @@ class DayPlan:
     # Populated from reverse-geocoded origin/destination + dwell chain.
     from_name: str | None = None
     to_name: str | None = None
-    # Labels of pass-through (non-dwell) waypoints that fall within
-    # this day's km range — the inspire-flow stops visible to the user.
-    waypoint_labels: tuple[str, ...] = ()
+    waypoint_anchors: tuple["WaypointAnchor", ...] = ()
+
+    @property
+    def waypoint_labels(self) -> tuple[str, ...]:
+        return tuple(a.label for a in self.waypoint_anchors)
+
+
+@dataclass(frozen=True, slots=True)
+class WaypointAnchor:
+    label: str
+    km: float
+    lat: float
+    lon: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,7 +171,7 @@ def compute(
     dwell_anchors.sort(key=lambda t: t[0])
     # Pass-through waypoints (dwell=0) with a label — these are the
     # inspire-flow stops the user wants to see in the day timeline.
-    pass_anchors: list[tuple[float, str]] = []
+    pass_anchors: list[WaypointAnchor] = []
     if route is not None:
         for wp in waypoints:
             if wp.dwell_nights >= 1 or not wp.label:
@@ -169,8 +179,11 @@ def compute(
             km = _km_at_coord(route, wp.coordinate)
             if km is None:
                 continue
-            pass_anchors.append((km, wp.label))
-    pass_anchors.sort(key=lambda t: t[0])
+            pass_anchors.append(WaypointAnchor(
+                label=wp.label, km=round(km, 1),
+                lat=wp.coordinate.lat, lon=wp.coordinate.lon,
+            ))
+    pass_anchors.sort(key=lambda a: a.km)
     dwell_idx = 0
     # Effective km / h at the trip's average speed. Guard against
     # zero-hour trips (shouldn't happen, defensive).
@@ -328,10 +341,9 @@ def compute(
         day_to_name = (
             destination_label if idx + 1 == total else dwell_label
         )
-        # Pass-through stops within this day's km range.
-        day_wp_labels = tuple(
-            label for km, label in pass_anchors
-            if km > from_km and km <= to_km
+        day_anchors = tuple(
+            a for a in pass_anchors
+            if a.km > from_km and a.km <= to_km
         )
         days.append(
             DayPlan(
@@ -347,7 +359,7 @@ def compute(
                 dwell_label=dwell_label,
                 from_name=day_from_name,
                 to_name=day_to_name,
-                waypoint_labels=day_wp_labels,
+                waypoint_anchors=day_anchors,
             )
         )
     return MultiDayPlan(days=tuple(days), total_days=total)

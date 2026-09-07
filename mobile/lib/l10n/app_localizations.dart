@@ -4768,17 +4768,17 @@ abstract class AppLocalizations {
   /// **'Short last leg ({km} km) — you could arrive today if you push further the day before.'**
   String shortLastDayWarning(String km);
 
-  /// No description provided for @adverseEventsBannerCount.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} alert(s) on your route'**
-  String adverseEventsBannerCount(int count);
-
   /// No description provided for @prepareDepartureNow.
   ///
   /// In en, this message translates to:
   /// **'Leave now'**
   String get prepareDepartureNow;
+
+  /// No description provided for @adverseEventsBannerCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} alert(s) on your route'**
+  String adverseEventsBannerCount(int count);
 
   /// No description provided for @pricePerMeal.
   ///

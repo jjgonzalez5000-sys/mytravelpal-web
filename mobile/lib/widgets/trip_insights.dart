@@ -389,24 +389,11 @@ class DayPlanSection extends StatelessWidget {
                     ),
                   );
                 }),
-                // Pass-through stops (inspire-flow waypoints in this day).
-                if (d.waypointLabels.isNotEmpty) ...[
-                  const SizedBox(height: Tokens.space8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(Icons.place_outlined, size: 14,
-                          color: scheme.secondary),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          d.waypointLabels.join('  ·  '),
-                          style: t.bodySmall?.copyWith(
-                            color: scheme.secondary,
-                          ),
-                        ),
-                      ),
-                    ],
+                if (d.waypointAnchors.isNotEmpty) ...[
+                  const SizedBox(height: Tokens.space12),
+                  _WaypointTimeline(
+                    anchors: d.waypointAnchors,
+                    dayFromKm: d.fromKm,
                   ),
                 ],
                 if (d.mealStops.isNotEmpty) ...[
@@ -1270,6 +1257,201 @@ class _DayRouteThumb extends StatelessWidget {
           ],
         ),
       ),
+      ),
+    );
+  }
+}
+
+class _WaypointTimeline extends StatelessWidget {
+  const _WaypointTimeline({
+    required this.anchors,
+    required this.dayFromKm,
+  });
+
+  final List<WaypointAnchor> anchors;
+  final double dayFromKm;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < anchors.length; i++)
+          _WaypointTimelineRow(
+            anchor: anchors[i],
+            deltaKm: i == 0
+                ? (anchors[i].km - dayFromKm).round()
+                : (anchors[i].km - anchors[i - 1].km).round(),
+            isFirst: i == 0,
+            isLast: i == anchors.length - 1,
+            lineColor: scheme.secondary,
+            textStyle: t.bodySmall!,
+            scheme: scheme,
+          ),
+      ],
+    );
+  }
+}
+
+class _WaypointTimelineRow extends StatelessWidget {
+  const _WaypointTimelineRow({
+    required this.anchor,
+    required this.deltaKm,
+    required this.isFirst,
+    required this.isLast,
+    required this.lineColor,
+    required this.textStyle,
+    required this.scheme,
+  });
+
+  final WaypointAnchor anchor;
+  final int deltaKm;
+  final bool isFirst;
+  final bool isLast;
+  final Color lineColor;
+  final TextStyle textStyle;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    const dotSize = 10.0;
+    const lineWidth = 2.0;
+    const leftColumnWidth = 28.0;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => _showWaypointSheet(context),
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: leftColumnWidth,
+              child: Column(
+                children: [
+                  if (!isFirst)
+                    Expanded(
+                      child: Container(
+                        width: lineWidth,
+                        color: lineColor.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  Container(
+                    width: dotSize,
+                    height: dotSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: scheme.surface,
+                      border: Border.all(color: lineColor, width: 2),
+                    ),
+                  ),
+                  if (!isLast)
+                    Expanded(
+                      child: Container(
+                        width: lineWidth,
+                        color: lineColor.withValues(alpha: 0.4),
+                      ),
+                    ),
+                  if (isLast) const Expanded(child: SizedBox.shrink()),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      anchor.label,
+                      style: textStyle.copyWith(
+                        color: scheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (deltaKm > 0)
+                      Text(
+                        '+$deltaKm km',
+                        style: textStyle.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 11,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, size: 16,
+                color: scheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showWaypointSheet(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => Padding(
+        padding: const EdgeInsets.fromLTRB(
+            Tokens.space20, 0, Tokens.space20, Tokens.space24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.place, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(anchor.label, style: t.titleMedium),
+                ),
+              ],
+            ),
+            const SizedBox(height: Tokens.space12),
+            Text(
+              'km ${anchor.km.toStringAsFixed(0)}',
+              style: t.bodyMedium,
+            ),
+            if (anchor.lat != 0 && anchor.lon != 0) ...[
+              const SizedBox(height: Tokens.space16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(Tokens.radiusMd),
+                child: SizedBox(
+                  height: 180,
+                  child: fmap.FlutterMap(
+                    options: fmap.MapOptions(
+                      initialCenter: ll.LatLng(anchor.lat, anchor.lon),
+                      initialZoom: 13,
+                    ),
+                    children: [
+                      fmap.TileLayer(
+                        urlTemplate:
+                            'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.mytravelpal.mytravelpal',
+                      ),
+                      fmap.MarkerLayer(
+                        markers: [
+                          fmap.Marker(
+                            point: ll.LatLng(anchor.lat, anchor.lon),
+                            width: 32, height: 32,
+                            child: const Icon(Icons.place,
+                                color: Colors.red, size: 32),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

@@ -1784,7 +1784,7 @@ class DayPlan {
     this.dwellLabel,
     this.fromName,
     this.toName,
-    this.waypointLabels = const [],
+    this.waypointAnchors = const [],
   });
 
   final int dayIndex;
@@ -1812,9 +1812,10 @@ class DayPlan {
   final String? fromName;
   final String? toName;
 
-  /// Labels of pass-through (non-dwell) waypoints within this day's
-  /// km range — e.g. inspire-flow stops like "Como - Duomo".
-  final List<String> waypointLabels;
+  final List<WaypointAnchor> waypointAnchors;
+
+  List<String> get waypointLabels =>
+      waypointAnchors.map((a) => a.label).toList();
 
   /// True when this day is a stay-put day (no driving) at a dwell
   /// waypoint — same fromKm/toKm and a dwellLabel present.
@@ -1845,8 +1846,38 @@ class DayPlan {
         dwellLabel: j['dwell_label'] as String?,
         fromName: j['from_name'] as String?,
         toName: j['to_name'] as String?,
-        waypointLabels: (j['waypoint_labels'] as List<dynamic>? ?? const [])
-            .cast<String>(),
+        waypointAnchors: (j['waypoint_anchors'] as List<dynamic>?)
+                ?.map((a) =>
+                    WaypointAnchor.fromJson(a as Map<String, dynamic>))
+                .toList(growable: false) ??
+            (j['waypoint_labels'] as List<dynamic>? ?? const [])
+                .cast<String>()
+                .map((l) => WaypointAnchor(label: l, km: 0, lat: 0, lon: 0))
+                .toList(growable: false),
+      );
+}
+
+@immutable
+class WaypointAnchor {
+  const WaypointAnchor({
+    required this.label,
+    required this.km,
+    required this.lat,
+    required this.lon,
+  });
+
+  final String label;
+  final double km;
+  final double lat;
+  final double lon;
+
+  LatLon get coordinate => LatLon(lat: lat, lon: lon);
+
+  factory WaypointAnchor.fromJson(Map<String, dynamic> j) => WaypointAnchor(
+        label: j['label'] as String,
+        km: (j['km'] as num).toDouble(),
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
       );
 }
 

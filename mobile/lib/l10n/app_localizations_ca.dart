@@ -2659,12 +2659,12 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get prepareDepartureNow => 'Sortir ara';
+
+  @override
   String adverseEventsBannerCount(int count) {
     return '$count alerta/es a la teva ruta';
   }
-
-  @override
-  String get prepareDepartureNow => 'Sortir ara';
 
   @override
   String pricePerMeal(String price) {

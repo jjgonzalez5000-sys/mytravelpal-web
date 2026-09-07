@@ -526,6 +526,14 @@ class DayPlanOut(BaseModel):
     from_name: str | None = None
     to_name: str | None = None
     waypoint_labels: list[str] = Field(default_factory=list)
+    waypoint_anchors: list["WaypointAnchorOut"] = Field(default_factory=list)
+
+
+class WaypointAnchorOut(BaseModel):
+    label: str
+    km: float
+    lat: float
+    lon: float
 
 
 class HotelOut(BaseModel):
@@ -1733,11 +1741,6 @@ async def plan_trip(
     # --- Multi-day breakdown ---
     days_out: list[DayPlanOut] = []
     if profile is not None:
-        _log.info(
-            "day_plan input: %d waypoints, labels=%s",
-            len(dwell_waypoints),
-            [(w.label, w.dwell_nights) for w in dwell_waypoints],
-        )
         multiday = compute_day_plan(
             # Same anchor as `compute_optimizations` above — anything
             # else desynchronises day boundaries from meal times.
@@ -1755,11 +1758,6 @@ async def plan_trip(
             destination_label=_dest_label,
         )
         if multiday is not None:
-            _log.info(
-                "day_plan output: %d days, wp_labels=%s",
-                multiday.total_days,
-                [list(d.waypoint_labels) for d in multiday.days],
-            )
             # Reverse-geocode overnight sleep coords for intermediate
             # days that lack a label (regular algorithm stops, not user
             # waypoints). Fills the "Día 1 → <sleep city>" header gap.
@@ -1849,6 +1847,13 @@ async def plan_trip(
                         from_name=_from_name,
                         to_name=_to_name,
                         waypoint_labels=list(d.waypoint_labels),
+                        waypoint_anchors=[
+                            WaypointAnchorOut(
+                                label=a.label, km=a.km,
+                                lat=a.lat, lon=a.lon,
+                            )
+                            for a in d.waypoint_anchors
+                        ],
                     )
                 )
 
