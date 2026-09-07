@@ -1000,6 +1000,49 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _AdverseEventsBanner(
           events: widget.response.adverseEvents,
           onTap: () => _showAdverseEventsSheet(context),
+        )
+      else if (widget.request.includeAdverseEvents)
+        Padding(
+          padding: const EdgeInsets.only(bottom: Tokens.space8),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle, size: 16,
+                  color: Colors.green.shade600),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  l.emptyAlertsTitle,
+                  style: t.bodySmall?.copyWith(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => showModalBottomSheet<void>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (_) => Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                        Tokens.space20, 0, Tokens.space20, Tokens.space24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(l.emptyAlertsTitle,
+                            style: t.titleMedium),
+                        const SizedBox(height: Tokens.space8),
+                        Text(l.emptyAlertsBody,
+                            style: t.bodyMedium),
+                      ],
+                    ),
+                  ),
+                ),
+                child: Icon(Icons.info_outline, size: 16,
+                    color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ),
         ),
       _InteractiveMapCard(
         origin: widget.request.origin,
@@ -1121,26 +1164,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ),
-      if (widget.response.adverseEvents.isEmpty &&
-          widget.request.includeAdverseEvents) ...[
-        const SizedBox(height: Tokens.space16),
-        EmptyStateCard(
-          icon: Icons.check_circle_outline,
-          title: l.emptyAlertsTitle,
-          body: l.emptyAlertsBody,
-          tint: scheme.tertiary,
-        ),
-      ],
-      // Toll-free alternative: let the driver choose before scrolling
-      // to cost and day breakdown.
-      if (widget.response.tollAlternative != null) ...[
-        const SizedBox(height: Tokens.space16),
-        _TollAlternativeCard(
-          alt: widget.response.tollAlternative!,
-          skipEnabled: widget.request.avoidMotorways,
-          onToggleSkip: _replanWithSkipTolls,
-        ),
-      ],
       if (widget.response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -1281,64 +1304,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space16),
       ],
-      // Departure section: recommendation hero + time window chart
-      // merged into one visual block. The user sees "best time to
-      // leave" + the chart rows they can tap to replan, all in one
-      // place without a separate section header.
-      if (recommended != null) ...[
-        const SizedBox(height: Tokens.space24),
-        () {
-          final diff = recommended.departureAt.toLocal()
-              .difference(widget.desiredDepartureAt.toLocal())
-              .abs();
-          if (diff.inMinutes < 10) {
-            // Desired departure is already optimal — compact green badge.
-            return Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Tokens.space16,
-                vertical: Tokens.space12,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(Tokens.radiusLg),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.check_circle,
-                      size: 18, color: Colors.green.shade700),
-                  const SizedBox(width: Tokens.space8),
-                  Text(
-                    l.resultOptimalDeparture,
-                    style: t.bodyMedium?.copyWith(
-                      color: Colors.green.shade800,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-          return _RecommendationHero(
-            recommended: recommended,
-            desired: widget.desiredDepartureAt,
-            freeFlowMinutes: route.freeFlowMinutes,
-            savedMinutesVsDesired:
-                widget.response.savings.timeSavedMinutesVsDesired,
-            onSelect: () => _replanWithDeparture(recommended),
-          );
-        }(),
-      ],
-      const SizedBox(height: Tokens.space12),
-      Container(
+      const SizedBox(height: Tokens.space16),
+      _DepartureTimingSection(
         key: _timeWindowKey,
-        child: _TimeWindowExpandableCard(
-          initialWindows: widget.response.timeWindows,
-          desiredDepartureAt: widget.desiredDepartureAt,
-          initialSpanHours: widget.request.timeWindowSpanHours,
-          onFetch: _refetchWindows,
-          onWindowSelect: _replanWithDeparture,
-        ),
+        recommended: recommended,
+        desiredDepartureAt: widget.desiredDepartureAt,
+        freeFlowMinutes: route.freeFlowMinutes,
+        savedMinutesVsDesired:
+            widget.response.savings.timeSavedMinutesVsDesired,
+        initialWindows: widget.response.timeWindows,
+        initialSpanHours: widget.request.timeWindowSpanHours,
+        onFetch: _refetchWindows,
+        onWindowSelect: _replanWithDeparture,
+        onSelectRecommended: recommended != null
+            ? () => _replanWithDeparture(recommended)
+            : null,
       ),
       if (widget.response.routeVariants.length >= 2) ...[
         const SizedBox(height: Tokens.space24),
@@ -4329,6 +4309,136 @@ class _FuelTile extends StatelessWidget {
 
 /// Departure-window card with an inline slider that lets the driver
 /// widen the sampled range beyond the default ±3h up to ±12h. On
+class _DepartureTimingSection extends StatelessWidget {
+  const _DepartureTimingSection({
+    super.key,
+    required this.recommended,
+    required this.desiredDepartureAt,
+    required this.freeFlowMinutes,
+    required this.savedMinutesVsDesired,
+    required this.initialWindows,
+    required this.initialSpanHours,
+    required this.onFetch,
+    this.onWindowSelect,
+    this.onSelectRecommended,
+  });
+
+  final TimeWindow? recommended;
+  final DateTime desiredDepartureAt;
+  final double freeFlowMinutes;
+  final double savedMinutesVsDesired;
+  final List<TimeWindow> initialWindows;
+  final int initialSpanHours;
+  final Future<List<TimeWindow>> Function(int spanHours) onFetch;
+  final ValueChanged<TimeWindow>? onWindowSelect;
+  final VoidCallback? onSelectRecommended;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    final isOptimal = recommended != null &&
+        recommended!.departureAt.toLocal()
+                .difference(desiredDepartureAt.toLocal())
+                .abs()
+                .inMinutes <
+            10;
+    final savedMin = savedMinutesVsDesired.abs().round();
+    final summaryText = isOptimal
+        ? l.resultOptimalDeparture
+        : savedMin > 0
+            ? '${l.resultBestTimeToLeave} · ${durationCompact(savedMinutesVsDesired.abs())} ${l.resultTimeSavedLabel}'
+            : l.resultBestTimeToLeave;
+    final summaryColor = isOptimal ? Colors.green.shade700 : scheme.primary;
+
+    return SoftCard(
+      padding: EdgeInsets.zero,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(
+              horizontal: Tokens.space16, vertical: Tokens.space4),
+          title: Row(
+            children: [
+              Icon(
+                isOptimal ? Icons.check_circle : Icons.schedule_outlined,
+                size: 18,
+                color: summaryColor,
+              ),
+              const SizedBox(width: Tokens.space8),
+              Expanded(
+                child: Text(
+                  summaryText,
+                  style: t.bodyMedium?.copyWith(
+                    color: summaryColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              if (!isOptimal && savedMin > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '-${durationCompact(savedMinutesVsDesired.abs())}',
+                    style: t.labelSmall?.copyWith(
+                      color: Colors.green.shade700,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+              Tokens.space16, 0, Tokens.space16, Tokens.space16),
+          children: [
+            if (recommended != null && !isOptimal) ...[
+              _RecommendationHero(
+                recommended: recommended!,
+                desired: desiredDepartureAt,
+                freeFlowMinutes: freeFlowMinutes,
+                savedMinutesVsDesired: savedMinutesVsDesired,
+                onSelect: onSelectRecommended,
+              ),
+              const SizedBox(height: Tokens.space16),
+            ],
+            if (isOptimal)
+              Padding(
+                padding: const EdgeInsets.only(bottom: Tokens.space12),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle,
+                        size: 16, color: Colors.green.shade700),
+                    const SizedBox(width: 6),
+                    Text(
+                      l.resultOptimalDeparture,
+                      style: t.bodySmall?.copyWith(
+                        color: Colors.green.shade800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            _TimeWindowExpandableCard(
+              initialWindows: initialWindows,
+              desiredDepartureAt: desiredDepartureAt,
+              initialSpanHours: initialSpanHours,
+              onFetch: onFetch,
+              onWindowSelect: onWindowSelect,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// slider release we refetch the plan's `time_windows` slice (nothing
 /// else is re-computed) so the chart updates in ~1-2 s. The current
 /// slots are kept visible during the fetch with a subtle progress
@@ -4398,33 +4508,24 @@ class _TimeWindowExpandableCardState
     final l = AppLocalizations.of(context);
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
-    return SoftCard(
-      padding: EdgeInsets.zero,
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          tilePadding: const EdgeInsets.symmetric(
-            horizontal: Tokens.space16,
-            vertical: Tokens.space4,
-          ),
-          title: Row(
-            children: [
-              Icon(Icons.schedule_outlined,
-                  size: 16, color: scheme.onSurfaceVariant),
-              const SizedBox(width: Tokens.space8),
-              Text(
-                l.resultBestTimeToLeave,
-                style: t.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                  letterSpacing: 1.2,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+            Row(
+              children: [
+                Icon(Icons.bar_chart_rounded,
+                    size: 16, color: scheme.onSurfaceVariant),
+                const SizedBox(width: Tokens.space8),
+                Text(
+                  l.resultBestTimeToLeave,
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    letterSpacing: 1.2,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          childrenPadding: const EdgeInsets.fromLTRB(
-            Tokens.space8, 0, Tokens.space16, Tokens.space16,
-          ),
-          children: [
+              ],
+            ),
+            const SizedBox(height: Tokens.space8),
             Stack(
               children: [
                 TimeWindowChart(
@@ -4509,8 +4610,6 @@ class _TimeWindowExpandableCardState
             ),
           ),
         ],
-      ),
-    ),
   );
   }
 }

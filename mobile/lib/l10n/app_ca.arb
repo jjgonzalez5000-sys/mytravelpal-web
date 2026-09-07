@@ -117,6 +117,7 @@
         "km": {"type": "String"}
       }
     },
+    "prepareDepartureNow": "Sortir ara",
     "adverseEventsBannerCount": "{count} alerta/es a la teva ruta",
     "@adverseEventsBannerCount": {
       "placeholders": {
@@ -130,5 +131,7 @@
     "kmFromOrigin": "{km} km des de l'origen",
     "@kmFromOrigin": {
       "placeholders": { "km": {"type": "String"} }
-    }
+    },
+    "planStopDwellHours": "{n} hores",
+    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}}
 }

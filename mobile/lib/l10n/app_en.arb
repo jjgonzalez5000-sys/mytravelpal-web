@@ -201,6 +201,8 @@
     "planStopDwellOneNight": "1 night",
     "planStopDwellNights": "{n} nights",
     "@planStopDwellNights": {"placeholders": {"n": {"type": "int"}}},
+    "planStopDwellHours": "{n} hours",
+    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
     "planStopDwellTitle": "How long at {name}?",
     "@planStopDwellTitle": {"placeholders": {"name": {}}},
     "planAddStopTitle": "New stop",
@@ -983,6 +985,7 @@
         "km": {"type": "String"}
       }
     },
+    "prepareDepartureNow": "Leave now",
     "adverseEventsBannerCount": "{count} alert(s) on your route",
     "@adverseEventsBannerCount": {
       "placeholders": {

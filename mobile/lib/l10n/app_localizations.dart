@@ -1230,6 +1230,12 @@ abstract class AppLocalizations {
   /// **'{n} nights'**
   String planStopDwellNights(int n);
 
+  /// No description provided for @planStopDwellHours.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} hours'**
+  String planStopDwellHours(int n);
+
   /// No description provided for @planStopDwellTitle.
   ///
   /// In en, this message translates to:
@@ -4767,6 +4773,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} alert(s) on your route'**
   String adverseEventsBannerCount(int count);
+
+  /// No description provided for @prepareDepartureNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave now'**
+  String get prepareDepartureNow;
 
   /// No description provided for @pricePerMeal.
   ///

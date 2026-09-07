@@ -323,6 +323,22 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     await _submit();
   }
 
+  Future<void> _prepareDepartureNow() async {
+    final l = AppLocalizations.of(context);
+    final res = await ref.read(currentLocationServiceProvider).resolve();
+    if (!mounted) return;
+    if (res.place == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.locationUnavailable)),
+      );
+      return;
+    }
+    setState(() {
+      _origin = res.place;
+      _departure = DateTime.now();
+    });
+  }
+
   /// Show a lightweight bottom sheet with a location picker so
   /// the driver adds an intermediate stop without leaving the
   /// plan form.
@@ -395,7 +411,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         waypoints: _stops
             .map((s) => TripWaypoint(
                   coordinate: s.place.coordinate,
-                  dwellNights: s.dwellNights,
+                  dwellNights: s.dwellNights < 0 ? 0 : s.dwellNights,
                   label: s.place.displayName,
                 ))
             .toList(),
@@ -573,17 +589,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final dateFmt = DateFormat('EEE, d MMM · HH:mm', locale);
 
     return Scaffold(
-      // Progressive disclosure: "Salir ya" lives as a FAB now
-      // instead of a big card in the hero. The card was eating
-      // premium above-the-fold real estate for a Premium-gated
-      // shortcut; the FAB stays thumb-reachable and doesn't
-      // distract the first-time user learning what MyTravelPal
-      // actually does.
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _leaveNowQuickPlan,
-        icon: const Icon(Icons.bolt),
-        label: Text(l.planLeaveNowFabTitle),
-      ),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -690,17 +695,24 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   // itinerary from a free-form prompt"; result
                   // hands off to this same PlanScreen with
                   // origin/destination/waypoints pre-filled.
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.auto_awesome, size: 18),
-                      label: Text(l.inspireTitle),
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const InspireScreen(),
+                  Row(
+                    children: [
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.auto_awesome, size: 18),
+                        label: Text(l.inspireTitle),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const InspireScreen(),
+                          ),
                         ),
                       ),
-                    ),
+                      const SizedBox(width: Tokens.space8),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.my_location, size: 18),
+                        label: Text(l.prepareDepartureNow),
+                        onPressed: _prepareDepartureNow,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: Tokens.space16),
                   // Note: "Salir ya" quick-plan lives as a FAB
@@ -859,9 +871,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             alignment: Alignment.centerLeft,
                             child: TextButton.icon(
                               icon: Icon(
-                                _stops[i].dwellNights == 0
-                                    ? Icons.arrow_forward
-                                    : Icons.hotel_outlined,
+                                _dwellIcon(_stops[i].dwellNights),
                                 size: 16,
                               ),
                               label: Text(_dwellLabel(l, _stops[i].dwellNights)),
@@ -1311,15 +1321,22 @@ class PlannedStop {
       );
 }
 
-String _dwellLabel(AppLocalizations l, int nights) {
-  if (nights == 0) return l.planStopDwellPassThrough;
-  if (nights == 1) return l.planStopDwellOneNight;
-  return l.planStopDwellNights(nights);
+String _dwellLabel(AppLocalizations l, int dwell) {
+  if (dwell == 0) return l.planStopDwellPassThrough;
+  if (dwell < 0) return l.planStopDwellHours(-dwell);
+  if (dwell == 1) return l.planStopDwellOneNight;
+  return l.planStopDwellNights(dwell);
+}
+
+IconData _dwellIcon(int dwell) {
+  if (dwell == 0) return Icons.arrow_forward;
+  if (dwell < 0) return Icons.schedule_outlined;
+  return Icons.hotel_outlined;
 }
 
 Future<int?> _pickDwellNights(BuildContext context, PlannedStop stop) async {
   final l = AppLocalizations.of(context);
-  final options = <int>[0, 1, 2, 3, 4, 5, 7];
+  final options = <int>[0, -1, -2, -4, -6, 1, 2, 3, 4, 5, 7];
   return showModalBottomSheet<int>(
     context: context,
     builder: (_) => SafeArea(
@@ -1336,9 +1353,7 @@ Future<int?> _pickDwellNights(BuildContext context, PlannedStop stop) async {
           ),
           for (final n in options)
             ListTile(
-              leading: Icon(
-                n == 0 ? Icons.arrow_forward : Icons.hotel_outlined,
-              ),
+              leading: Icon(_dwellIcon(n)),
               title: Text(_dwellLabel(l, n)),
               trailing: n == stop.dwellNights
                   ? const Icon(Icons.check)

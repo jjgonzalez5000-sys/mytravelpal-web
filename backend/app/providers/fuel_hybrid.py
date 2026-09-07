@@ -64,7 +64,7 @@ class HybridFuelProvider:
                 _log.warning("Geoapify EV fetch failed: %r", exc)
                 return ()
 
-        gov = await self._gov.prices_along(route)
+        gov = await self._gov.prices_along(route, fuel_type=fuel_type)
 
         # Figure out which countries the route crosses but we DON'T have
         # a real-price feed for. If every country is covered we skip the

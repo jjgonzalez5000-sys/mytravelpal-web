@@ -147,14 +147,31 @@ class _Station:
         self.prices = prices
 
 
-def _pick_primary_price(prices: dict[str, float]) -> tuple[str, float] | None:
+_FUEL_TYPE_MAP: dict[str, tuple[str, ...]] = {
+    "diesel": ("diesel",),
+    "petrol": ("sp95", "e10", "sp98"),
+    "lpg": ("lpg",),
+    "electric": (),
+}
+_DEFAULT_ORDER = ("diesel", "sp95", "e10", "sp98", "lpg", "e85")
+
+
+def _pick_primary_price(
+    prices: dict[str, float],
+    preferred: str | None = None,
+) -> tuple[str, float] | None:
     """Choose which fuel type to expose as `price_eur_per_l`.
 
-    Diesel first (60 % of the European fleet), then SP95/E10, then
-    SP98. Never returns 0.0 — if the station has no valid price at
-    all the record is skipped upstream.
+    When `preferred` matches a profile fuel type, try those keys
+    first. Falls back to the default order so a diesel station
+    still appears (with its diesel price) for a petrol driver.
     """
-    for key in ("diesel", "sp95", "e10", "sp98", "lpg", "e85"):
+    order = _DEFAULT_ORDER
+    if preferred:
+        pref_keys = _FUEL_TYPE_MAP.get(preferred.lower(), ())
+        if pref_keys:
+            order = (*pref_keys, *(k for k in _DEFAULT_ORDER if k not in pref_keys))
+    for key in order:
         val = prices.get(key)
         if val and val > 0:
             return (key, val)
@@ -163,8 +180,9 @@ def _pick_primary_price(prices: dict[str, float]) -> tuple[str, float] | None:
 
 def _station_to_fuel_price(
     st: _Station, route: Route, distance_km: float, country: Country,
+    preferred_fuel: str | None = None,
 ) -> FuelPrice | None:
-    primary = _pick_primary_price(st.prices)
+    primary = _pick_primary_price(st.prices, preferred=preferred_fuel)
     if primary is None:
         return None
     fuel_type_key, unit = primary
@@ -553,7 +571,9 @@ class GovFuelProvider:
     Nominatim (which has station coordinates but no prices).
     """
 
-    async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
+    async def prices_along(
+        self, route: Route, *, fuel_type: str | None = None,
+    ) -> tuple[FuelPrice, ...]:
         datasets: list[tuple[Country, SpainMinisterioFuelDataset
                               | FranceRoulezEcoFuelDataset
                               | ItalyMimitFuelDataset]] = []
@@ -586,6 +606,8 @@ class GovFuelProvider:
             stations = await ds.stations()
             gathered.append((country, stations))
 
+        _pref = fuel_type
+
         def _filter_and_dedupe() -> list[FuelPrice]:
             seen_coords: set[tuple[int, int]] = set()
             per_country: dict[str, list[FuelPrice]] = {}
@@ -604,6 +626,7 @@ class GovFuelProvider:
                     seen_coords.add(key)
                     fp = _station_to_fuel_price(
                         st, route, distance_km, country,
+                        preferred_fuel=_pref,
                     )
                     if fp is not None:
                         bucket.append(fp)

@@ -117,6 +117,7 @@
         "km": {"type": "String"}
       }
     },
+    "prepareDepartureNow": "Sair agora",
     "adverseEventsBannerCount": "{count} alerta(s) na sua rota",
     "@adverseEventsBannerCount": {
       "placeholders": {
@@ -130,5 +131,7 @@
     "kmFromOrigin": "{km} km desde a origem",
     "@kmFromOrigin": {
       "placeholders": { "km": {"type": "String"} }
-    }
+    },
+    "planStopDwellHours": "{n} horas",
+    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}}
 }

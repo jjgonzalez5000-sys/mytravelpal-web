@@ -631,6 +631,11 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String planStopDwellHours(int n) {
+    return '$n horas';
+  }
+
+  @override
   String planStopDwellTitle(Object name) {
     return '¿Cuánto tiempo en $name?';
   }
@@ -2667,6 +2672,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String adverseEventsBannerCount(int count) {
     return '$count alerta(s) en tu ruta';
   }
+
+  @override
+  String get prepareDepartureNow => 'Salir ahora';
 
   @override
   String pricePerMeal(String price) {
