@@ -487,7 +487,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
     }
     // Meal + sleep stops the user pinned from the "Optimizado" section.
-    for (final m in widget.response.optimizations?.mealStops ?? const []) {
+    for (final m in widget.response.optimizations?.mealStops
+        ?? const <MealStopOpt>[]) {
       final key = _optMealKey(m);
       if (_addedStops.containsKey(key) && m.coordinate != null) {
         out.add(AddedStop(
@@ -1445,14 +1446,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               color: Theme.of(context).colorScheme.primary,
             ),
             children: [
-              // Sort ascending by price so the "cheapest X" copy
-              // is truthful — backend order is roughly by
-              // distance-from-origin which would surface expensive
-              // near-departure stations first.
+              // Sort by distance-from-origin so the list follows the
+              // trip order — the driver sees stations in the sequence
+              // they'll actually pass, not shuffled by price.
               ..._separated(
                 (List<FuelPrice>.from(widget.response.fuelPrices)
-                      ..sort((a, b) =>
-                          a.priceEurPerL.compareTo(b.priceEurPerL)))
+                      ..sort((a, b) => a.distanceFromOriginKm
+                          .compareTo(b.distanceFromOriginKm)))
                     .map((p) {
                   final coordSuffix = p.coordinate == null
                       ? ':nocoord'

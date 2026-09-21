@@ -825,67 +825,101 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             ],
                           ],
                         ),
-                        // Intermediate stops — inserted between
-                        // origin and destination in the given
-                        // order. The router visits them in
-                        // sequence. Each row has its own picker
-                        // + delete button. "+ Añadir parada"
-                        // sits at the bottom.
-                        for (var i = 0; i < _stops.length; i++) ...[
-                          const SizedBox(height: Tokens.space12),
-                          Row(
+                        // Intermediate stops — long-press + drag to
+                        // reorder (like Google Maps). Uses
+                        // ReorderableListView with shrinkWrap since
+                        // it lives inside a Column, not a scrollable.
+                        if (_stops.isNotEmpty)
+                          ReorderableListView(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            buildDefaultDragHandles: false,
+                            onReorder: (oldIndex, newIndex) {
+                              setState(() {
+                                if (newIndex > oldIndex) newIndex -= 1;
+                                final moved = _stops.removeAt(oldIndex);
+                                _stops.insert(newIndex, moved);
+                              });
+                            },
+                            proxyDecorator: (child, index, animation) =>
+                                Material(
+                                  color: Colors.transparent,
+                                  child: child,
+                                ),
                             children: [
-                              Expanded(
-                                child: LocationSearchField(
-                                  key: ValueKey('stop-$i'),
-                                  label: l.planStopLabel(i + 1),
-                                  geocode: api.geocode,
-                                  onSelected: (r) {
-                                    if (r == null) return;
-                                    setState(() => _stops[i] =
-                                        _stops[i].copyWith(place: r));
-                                  },
-                                  initial: _stops[i].place,
+                              for (var i = 0; i < _stops.length; i++)
+                                Padding(
+                                  key: ValueKey('stop-row-$i-${_stops[i].place?.coordinate.lat}'),
+                                  padding: const EdgeInsets.only(
+                                      top: Tokens.space12),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          ReorderableDragStartListener(
+                                            index: i,
+                                            child: const Padding(
+                                              padding: EdgeInsets.only(
+                                                  right: Tokens.space4),
+                                              child: Icon(
+                                                Icons.drag_indicator,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: LocationSearchField(
+                                              key: ValueKey('stop-field-$i'),
+                                              label: l.planStopLabel(i + 1),
+                                              geocode: api.geocode,
+                                              onSelected: (r) {
+                                                if (r == null) return;
+                                                setState(() => _stops[i] =
+                                                    _stops[i].copyWith(place: r));
+                                              },
+                                              initial: _stops[i].place,
+                                            ),
+                                          ),
+                                          if (_stops[i].place != null) ...[
+                                            const SizedBox(width: Tokens.space4),
+                                            WeatherChip(
+                                              lat: _stops[i].place!.coordinate.lat,
+                                              lon: _stops[i].place!.coordinate.lon,
+                                            ),
+                                          ],
+                                          IconButton(
+                                            tooltip: l.planStopRemove,
+                                            icon: const Icon(Icons.close),
+                                            onPressed: () {
+                                              setState(() => _stops.removeAt(i));
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: TextButton.icon(
+                                          icon: Icon(
+                                            _dwellIcon(_stops[i].dwellNights),
+                                            size: 16,
+                                          ),
+                                          label: Text(
+                                              _dwellLabel(l, _stops[i].dwellNights)),
+                                          onPressed: () async {
+                                            final picked = await _pickDwellNights(
+                                                context, _stops[i]);
+                                            if (picked == null) return;
+                                            setState(() => _stops[i] =
+                                                _stops[i].copyWith(
+                                                    dwellNights: picked));
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              if (_stops[i].place != null) ...[
-                                const SizedBox(width: Tokens.space4),
-                                WeatherChip(
-                                  lat: _stops[i].place!.coordinate.lat,
-                                  lon: _stops[i].place!.coordinate.lon,
-                                ),
-                              ],
-                              IconButton(
-                                tooltip: l.planStopRemove,
-                                icon: const Icon(Icons.close),
-                                onPressed: () {
-                                  setState(() => _stops.removeAt(i));
-                                },
-                              ),
                             ],
                           ),
-                          // Dwell picker under each stop — tap to
-                          // change nights. Default 0 = pass-through
-                          // (label "Solo paso"). ≥1 = "N noche(s)".
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              icon: Icon(
-                                _dwellIcon(_stops[i].dwellNights),
-                                size: 16,
-                              ),
-                              label: Text(_dwellLabel(l, _stops[i].dwellNights)),
-                              onPressed: () async {
-                                final picked =
-                                    await _pickDwellNights(context, _stops[i]);
-                                if (picked == null) return;
-                                setState(() =>
-                                    _stops[i] = _stops[i].copyWith(
-                                        dwellNights: picked));
-                              },
-                            ),
-                          ),
-                        ],
                         if (_stops.length < _maxStops) ...[
                           const SizedBox(height: Tokens.space8),
                           Align(
