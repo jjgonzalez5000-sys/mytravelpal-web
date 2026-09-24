@@ -16,23 +16,35 @@ String buildNavUrl(
   NavApp app, {
   required LatLon destination,
   LatLon? origin,
+  List<LatLon> waypoints = const [],
 }) {
   final d = '${destination.lat},${destination.lon}';
   switch (app) {
     case NavApp.googleMaps:
       // The universal `dir?api=1` URL opens the app when installed,
       // otherwise the web app. `travelmode=driving` skips the mode
-      // picker Google would otherwise show.
+      // picker Google would otherwise show. Google caps waypoints
+      // at 9 (10 total with destination); we hard-cap to 9 to match
+      // — extras are silently dropped rather than 400'd.
       final origPart =
           origin == null ? '' : '&origin=${origin.lat},${origin.lon}';
+      final wpPart = waypoints.isEmpty
+          ? ''
+          : '&waypoints=${waypoints
+              .take(9)
+              .map((w) => '${w.lat},${w.lon}')
+              .join('|')}';
       return 'https://www.google.com/maps/dir/?api=1'
-          '&destination=$d$origPart&travelmode=driving';
+          '&destination=$d$origPart$wpPart&travelmode=driving';
     case NavApp.waze:
-      // Waze doesn't accept an origin (always uses current position).
+      // Waze doesn't accept an origin (always uses current position)
+      // and has no multi-stop URL — waypoints ignored.
       return 'https://waze.com/ul?ll=$d&navigate=yes';
     case NavApp.appleMaps:
       // Apple Maps universal link — opens the native app on iOS and
       // shows the web equivalent everywhere else. `dirflg=d` = drive.
+      // No stable waypoint syntax in the universal URL, so we ignore
+      // them for Apple Maps.
       final origPart = origin == null ? '' : '&saddr=${origin.lat},${origin.lon}';
       return 'https://maps.apple.com/?daddr=$d&dirflg=d$origPart';
   }
@@ -45,9 +57,15 @@ Future<bool> openInNav(
   NavApp app, {
   required LatLon destination,
   LatLon? origin,
+  List<LatLon> waypoints = const [],
 }) {
   return launchUrl(
-    Uri.parse(buildNavUrl(app, destination: destination, origin: origin)),
+    Uri.parse(buildNavUrl(
+      app,
+      destination: destination,
+      origin: origin,
+      waypoints: waypoints,
+    )),
     mode: LaunchMode.externalApplication,
   );
 }

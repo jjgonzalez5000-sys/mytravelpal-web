@@ -20,6 +20,7 @@ import '../services/currency_service.dart';
 import '../services/notifications.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
+import '../services/trip_export.dart';
 import '../services/trip_share_image.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
@@ -1090,6 +1091,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
                 overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.end,
+              ),
+            ),
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(
+                minWidth: 32, minHeight: 32,
+              ),
+              visualDensity: VisualDensity.compact,
+              tooltip: l.exportShareTitle,
+              icon: const Icon(Icons.ios_share, size: 18),
+              onPressed: () => showExportSheet(
+                context,
+                origin: widget.request.origin,
+                destination: widget.request.destination,
+                waypoints: [
+                  for (final w in widget.request.waypoints) w.coordinate,
+                ],
               ),
             ),
           ],

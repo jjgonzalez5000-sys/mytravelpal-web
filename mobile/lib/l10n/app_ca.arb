@@ -118,6 +118,19 @@
       }
     },
     "prepareDepartureNow": "Sortir ara",
+    "exportShareTitle": "Compartir ruta",
+    "exportOpenInMaps": "Obrir a Google Maps",
+    "exportCopyLink": "Copiar enllaç",
+    "exportLinkCopied": "Enllaç copiat al porta-retalls",
+    "exportShareOs": "Compartir…",
+    "exportShareSubject": "La meva ruta a MyTravelPal",
+    "importFromMaps": "Importar de Maps",
+    "importFromMapsTitle": "Importar ruta de Google Maps",
+    "importFromMapsHint": "Enganxa aquí l'enllaç de Google Maps",
+    "importFromMapsPaste": "Enganxar",
+    "importFromMapsImport": "Importar",
+    "importFromMapsError": "URL no reconeguda",
+    "importFromMapsLoading": "Analitzant l'enllaç…",
     "adverseEventsBannerCount": "{count} alerta/es a la teva ruta",
     "@adverseEventsBannerCount": {
       "placeholders": {

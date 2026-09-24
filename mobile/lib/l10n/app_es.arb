@@ -997,6 +997,19 @@
       }
     },
     "prepareDepartureNow": "Salir ahora",
+    "exportShareTitle": "Compartir ruta",
+    "exportOpenInMaps": "Abrir en Google Maps",
+    "exportCopyLink": "Copiar enlace",
+    "exportLinkCopied": "Enlace copiado al portapapeles",
+    "exportShareOs": "Compartir…",
+    "exportShareSubject": "Mi ruta en MyTravelPal",
+    "importFromMaps": "Importar de Maps",
+    "importFromMapsTitle": "Importar ruta de Google Maps",
+    "importFromMapsHint": "Pega aquí el enlace de Google Maps",
+    "importFromMapsPaste": "Pegar",
+    "importFromMapsImport": "Importar",
+    "importFromMapsError": "URL no reconocida",
+    "importFromMapsLoading": "Analizando enlace…",
     "adverseEventsBannerCount": "{count} alerta(s) en tu ruta",
     "@adverseEventsBannerCount": {
       "placeholders": { "count": {"type": "int"} }

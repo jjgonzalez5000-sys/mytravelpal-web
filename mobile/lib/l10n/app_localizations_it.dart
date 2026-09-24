@@ -2668,6 +2668,45 @@ class AppLocalizationsIt extends AppLocalizations {
   String get prepareDepartureNow => 'Partire ora';
 
   @override
+  String get exportShareTitle => 'Condividi il percorso';
+
+  @override
+  String get exportOpenInMaps => 'Apri in Google Maps';
+
+  @override
+  String get exportCopyLink => 'Copia link';
+
+  @override
+  String get exportLinkCopied => 'Link copiato negli appunti';
+
+  @override
+  String get exportShareOs => 'Condividi…';
+
+  @override
+  String get exportShareSubject => 'Il mio percorso su MyTravelPal';
+
+  @override
+  String get importFromMaps => 'Importa da Maps';
+
+  @override
+  String get importFromMapsTitle => 'Importa un percorso da Google Maps';
+
+  @override
+  String get importFromMapsHint => 'Incolla qui il link di Google Maps';
+
+  @override
+  String get importFromMapsPaste => 'Incolla';
+
+  @override
+  String get importFromMapsImport => 'Importa';
+
+  @override
+  String get importFromMapsError => 'URL non riconosciuto';
+
+  @override
+  String get importFromMapsLoading => 'Analisi del link in corso…';
+
+  @override
   String adverseEventsBannerCount(int count) {
     return '$count avviso/i sul percorso';
   }

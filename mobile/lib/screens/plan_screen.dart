@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +14,7 @@ import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/maps_url_parser.dart';
 import '../services/trip_sharing.dart';
 import '../widgets/hotel_preferences.dart';
 import '../widgets/location_search_field.dart';
@@ -142,6 +144,23 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         country: _guessCountry(incoming.destination) ?? Country.fr,
       );
       _departure = incoming.departureAt.toLocal();
+      // Waypoints piggybacked on the shared trip (from a Google Maps
+      // import, etc.) become pass-through stops. Names may be null
+      // when the parser only had coords — fall back to a coord label.
+      for (var i = 0; i < incoming.waypoints.length && i < _maxStops; i++) {
+        final coord = incoming.waypoints[i];
+        final name = i < incoming.waypointNames.length
+            ? incoming.waypointNames[i]
+            : null;
+        _stops.add(PlannedStop(
+          place: GeocodeResult(
+            displayName: name
+                ?? '${coord.lat.toStringAsFixed(3)}, ${coord.lon.toStringAsFixed(3)}',
+            coordinate: coord,
+            country: _guessCountry(coord) ?? Country.fr,
+          ),
+        ));
+      }
       // Note: we don't auto-submit — user confirms with the CTA.
     }
     if (widget.initialStops.isNotEmpty) {
@@ -336,6 +355,132 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     setState(() {
       _origin = res.place;
       _departure = DateTime.now();
+    });
+  }
+
+  /// Prompt the user for a Google Maps URL (optionally pre-filled from
+  /// clipboard), parse it, and prefill the form with the resulting
+  /// origin / stops / destination. Non-blocking on errors — a bad URL
+  /// just surfaces a snackbar.
+  Future<void> _importFromMaps() async {
+    final l = AppLocalizations.of(context);
+    final api = ref.read(apiClientWithPremiumProvider);
+    final controller = TextEditingController();
+    try {
+      final clip = await Clipboard.getData('text/plain');
+      final text = clip?.text?.trim() ?? '';
+      if (text.contains('google.') || text.contains('goo.gl')) {
+        controller.text = text;
+      }
+    } catch (_) {
+      // Clipboard access can fail on some Android configurations —
+      // no big deal, user pastes manually.
+    }
+    if (!mounted) {
+      controller.dispose();
+      return;
+    }
+    final url = await showDialog<String>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(l.importFromMapsTitle),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: InputDecoration(
+            hintText: l.importFromMapsHint,
+            border: const OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              final clip = await Clipboard.getData('text/plain');
+              if (clip?.text != null) {
+                controller.text = clip!.text!;
+              }
+            },
+            child: Text(l.importFromMapsPaste),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(),
+            child: Text(l.commonCancel),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(dialogCtx).pop(controller.text.trim()),
+            child: Text(l.importFromMapsImport),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (url == null || url.isEmpty || !mounted) return;
+
+    // Show a lightweight loading indicator — parsing may need a
+    // shortlink expansion + a geocode round-trip each, ~1-3s total.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 20, height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: Tokens.space16),
+            Expanded(child: Text(l.importFromMapsLoading)),
+          ],
+        ),
+      ),
+    );
+
+    SharedTrip? trip;
+    try {
+      trip = await parseGoogleMapsUrl(url, geocode: api.geocode);
+    } catch (_) {
+      trip = null;
+    }
+    if (!mounted) return;
+    Navigator.of(context, rootNavigator: true).pop();
+
+    if (trip == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.importFromMapsError)),
+      );
+      return;
+    }
+
+    // Prefill directly rather than pushing a new PlanScreen — the
+    // driver stays on the same form, just filled in.
+    setState(() {
+      _origin = GeocodeResult(
+        displayName: trip!.originName ?? 'Origin',
+        coordinate: trip.origin,
+        country: _guessCountry(trip.origin) ?? Country.fr,
+      );
+      _destination = GeocodeResult(
+        displayName: trip.destinationName ?? 'Destination',
+        coordinate: trip.destination,
+        country: _guessCountry(trip.destination) ?? Country.fr,
+      );
+      _stops.clear();
+      for (var i = 0; i < trip.waypoints.length && i < _maxStops; i++) {
+        final coord = trip.waypoints[i];
+        final name = i < trip.waypointNames.length
+            ? trip.waypointNames[i]
+            : null;
+        _stops.add(PlannedStop(
+          place: GeocodeResult(
+            displayName: name
+                ?? '${coord.lat.toStringAsFixed(3)}, ${coord.lon.toStringAsFixed(3)}',
+            coordinate: coord,
+            country: _guessCountry(coord) ?? Country.fr,
+          ),
+        ));
+      }
     });
   }
 
@@ -695,7 +840,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   // itinerary from a free-form prompt"; result
                   // hands off to this same PlanScreen with
                   // origin/destination/waypoints pre-filled.
-                  Row(
+                  Wrap(
+                    spacing: Tokens.space8,
+                    runSpacing: Tokens.space8,
                     children: [
                       OutlinedButton.icon(
                         icon: const Icon(Icons.auto_awesome, size: 18),
@@ -706,11 +853,15 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: Tokens.space8),
                       OutlinedButton.icon(
                         icon: const Icon(Icons.my_location, size: 18),
                         label: Text(l.prepareDepartureNow),
                         onPressed: _prepareDepartureNow,
+                      ),
+                      OutlinedButton.icon(
+                        icon: const Icon(Icons.link, size: 18),
+                        label: Text(l.importFromMaps),
+                        onPressed: _importFromMaps,
                       ),
                     ],
                   ),

@@ -988,6 +988,19 @@
       }
     },
     "prepareDepartureNow": "Leave now",
+    "exportShareTitle": "Share route",
+    "exportOpenInMaps": "Open in Google Maps",
+    "exportCopyLink": "Copy link",
+    "exportLinkCopied": "Link copied to clipboard",
+    "exportShareOs": "Share…",
+    "exportShareSubject": "My route on MyTravelPal",
+    "importFromMaps": "Import from Maps",
+    "importFromMapsTitle": "Import a Google Maps route",
+    "importFromMapsHint": "Paste a Google Maps link here",
+    "importFromMapsPaste": "Paste",
+    "importFromMapsImport": "Import",
+    "importFromMapsError": "URL not recognised",
+    "importFromMapsLoading": "Parsing link…",
     "adverseEventsBannerCount": "{count} alert(s) on your route",
     "@adverseEventsBannerCount": {
       "placeholders": {

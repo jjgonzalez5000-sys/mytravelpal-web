@@ -2667,6 +2667,45 @@ class AppLocalizationsCa extends AppLocalizations {
   String get prepareDepartureNow => 'Sortir ara';
 
   @override
+  String get exportShareTitle => 'Compartir ruta';
+
+  @override
+  String get exportOpenInMaps => 'Obrir a Google Maps';
+
+  @override
+  String get exportCopyLink => 'Copiar enllaç';
+
+  @override
+  String get exportLinkCopied => 'Enllaç copiat al porta-retalls';
+
+  @override
+  String get exportShareOs => 'Compartir…';
+
+  @override
+  String get exportShareSubject => 'La meva ruta a MyTravelPal';
+
+  @override
+  String get importFromMaps => 'Importar de Maps';
+
+  @override
+  String get importFromMapsTitle => 'Importar ruta de Google Maps';
+
+  @override
+  String get importFromMapsHint => 'Enganxa aquí l\'enllaç de Google Maps';
+
+  @override
+  String get importFromMapsPaste => 'Enganxar';
+
+  @override
+  String get importFromMapsImport => 'Importar';
+
+  @override
+  String get importFromMapsError => 'URL no reconeguda';
+
+  @override
+  String get importFromMapsLoading => 'Analitzant l\'enllaç…';
+
+  @override
   String adverseEventsBannerCount(int count) {
     return '$count alerta/es a la teva ruta';
   }

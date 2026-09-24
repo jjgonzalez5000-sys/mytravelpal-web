@@ -12,6 +12,7 @@ import '../providers.dart';
 import '../widgets/skeleton.dart';
 import '../services/notifications.dart';
 import '../storage/saved_trip.dart';
+import '../services/trip_export.dart';
 import '../services/trip_sharing.dart';
 import 'plan_screen.dart';
 import 'result_screen.dart';
@@ -235,6 +236,11 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   onOpen: () => _reopen(trip),
                   onRepeat: () => _repeat(trip),
                   onDelete: () => _delete(trip),
+                  onExport: () => showExportSheet(
+                    context,
+                    origin: trip.origin.coordinate,
+                    destination: trip.destination.coordinate,
+                  ),
                 )
                     .animate()
                     .fadeIn(
@@ -257,12 +263,14 @@ class _TripCard extends StatelessWidget {
     required this.onOpen,
     required this.onRepeat,
     required this.onDelete,
+    required this.onExport,
   });
 
   final SavedTrip trip;
   final VoidCallback onOpen;
   final VoidCallback onRepeat;
   final VoidCallback onDelete;
+  final VoidCallback onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -290,6 +298,12 @@ class _TripCard extends StatelessWidget {
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                icon: Icon(Icons.ios_share, color: scheme.onSurfaceVariant,
+                    size: 20),
+                tooltip: l.exportShareTitle,
+                onPressed: onExport,
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: scheme.onSurfaceVariant),

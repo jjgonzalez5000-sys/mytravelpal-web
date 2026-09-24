@@ -4780,6 +4780,84 @@ abstract class AppLocalizations {
   /// **'Leave now'**
   String get prepareDepartureNow;
 
+  /// No description provided for @exportShareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Share route'**
+  String get exportShareTitle;
+
+  /// No description provided for @exportOpenInMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Google Maps'**
+  String get exportOpenInMaps;
+
+  /// No description provided for @exportCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get exportCopyLink;
+
+  /// No description provided for @exportLinkCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Link copied to clipboard'**
+  String get exportLinkCopied;
+
+  /// No description provided for @exportShareOs.
+  ///
+  /// In en, this message translates to:
+  /// **'Share…'**
+  String get exportShareOs;
+
+  /// No description provided for @exportShareSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'My route on MyTravelPal'**
+  String get exportShareSubject;
+
+  /// No description provided for @importFromMaps.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from Maps'**
+  String get importFromMaps;
+
+  /// No description provided for @importFromMapsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import a Google Maps route'**
+  String get importFromMapsTitle;
+
+  /// No description provided for @importFromMapsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste a Google Maps link here'**
+  String get importFromMapsHint;
+
+  /// No description provided for @importFromMapsPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get importFromMapsPaste;
+
+  /// No description provided for @importFromMapsImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get importFromMapsImport;
+
+  /// No description provided for @importFromMapsError.
+  ///
+  /// In en, this message translates to:
+  /// **'URL not recognised'**
+  String get importFromMapsError;
+
+  /// No description provided for @importFromMapsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Parsing link…'**
+  String get importFromMapsLoading;
+
   /// No description provided for @adverseEventsBannerCount.
   ///
   /// In en, this message translates to:

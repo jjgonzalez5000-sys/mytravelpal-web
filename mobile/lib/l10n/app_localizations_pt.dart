@@ -2667,6 +2667,45 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prepareDepartureNow => 'Sair agora';
 
   @override
+  String get exportShareTitle => 'Partilhar rota';
+
+  @override
+  String get exportOpenInMaps => 'Abrir no Google Maps';
+
+  @override
+  String get exportCopyLink => 'Copiar ligação';
+
+  @override
+  String get exportLinkCopied => 'Ligação copiada para a área de transferência';
+
+  @override
+  String get exportShareOs => 'Partilhar…';
+
+  @override
+  String get exportShareSubject => 'A minha rota no MyTravelPal';
+
+  @override
+  String get importFromMaps => 'Importar de Maps';
+
+  @override
+  String get importFromMapsTitle => 'Importar rota do Google Maps';
+
+  @override
+  String get importFromMapsHint => 'Cola aqui a ligação do Google Maps';
+
+  @override
+  String get importFromMapsPaste => 'Colar';
+
+  @override
+  String get importFromMapsImport => 'Importar';
+
+  @override
+  String get importFromMapsError => 'URL não reconhecido';
+
+  @override
+  String get importFromMapsLoading => 'A analisar a ligação…';
+
+  @override
   String adverseEventsBannerCount(int count) {
     return '$count alerta(s) na sua rota';
   }

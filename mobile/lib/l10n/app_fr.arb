@@ -1010,6 +1010,19 @@
       }
     },
     "prepareDepartureNow": "Partir maintenant",
+    "exportShareTitle": "Partager l'itinéraire",
+    "exportOpenInMaps": "Ouvrir dans Google Maps",
+    "exportCopyLink": "Copier le lien",
+    "exportLinkCopied": "Lien copié dans le presse-papiers",
+    "exportShareOs": "Partager…",
+    "exportShareSubject": "Mon itinéraire sur MyTravelPal",
+    "importFromMaps": "Importer depuis Maps",
+    "importFromMapsTitle": "Importer un itinéraire Google Maps",
+    "importFromMapsHint": "Colle un lien Google Maps ici",
+    "importFromMapsPaste": "Coller",
+    "importFromMapsImport": "Importer",
+    "importFromMapsError": "URL non reconnue",
+    "importFromMapsLoading": "Analyse du lien…",
     "adverseEventsBannerCount": "{count} alerte(s) sur votre trajet",
     "@adverseEventsBannerCount": {
       "placeholders": {

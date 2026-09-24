@@ -1010,6 +1010,19 @@
       }
     },
     "prepareDepartureNow": "Jetzt losfahren",
+    "exportShareTitle": "Route teilen",
+    "exportOpenInMaps": "In Google Maps öffnen",
+    "exportCopyLink": "Link kopieren",
+    "exportLinkCopied": "Link in Zwischenablage kopiert",
+    "exportShareOs": "Teilen…",
+    "exportShareSubject": "Meine Route auf MyTravelPal",
+    "importFromMaps": "Aus Maps importieren",
+    "importFromMapsTitle": "Google-Maps-Route importieren",
+    "importFromMapsHint": "Google-Maps-Link hier einfügen",
+    "importFromMapsPaste": "Einfügen",
+    "importFromMapsImport": "Importieren",
+    "importFromMapsError": "URL nicht erkannt",
+    "importFromMapsLoading": "Link wird analysiert…",
     "adverseEventsBannerCount": "{count} Warnung(en) auf Ihrer Route",
     "@adverseEventsBannerCount": {
       "placeholders": {

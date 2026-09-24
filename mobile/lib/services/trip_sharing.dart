@@ -77,6 +77,8 @@ class SharedTrip {
     required this.departureAt,
     this.originName,
     this.destinationName,
+    this.waypoints = const [],
+    this.waypointNames = const [],
   });
 
   final LatLon origin;
@@ -84,6 +86,13 @@ class SharedTrip {
   final DateTime departureAt;
   final String? originName;
   final String? destinationName;
+
+  /// Intermediate stops, in order. Empty when the incoming link only
+  /// carried an origin/destination pair. Parallel to [waypointNames]
+  /// — indices match when a name is known, otherwise the name slot
+  /// is null.
+  final List<LatLon> waypoints;
+  final List<String?> waypointNames;
 }
 
 /// Turn a trip into a short, human-readable share message. No deep link

@@ -2674,6 +2674,45 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prepareDepartureNow => 'Partir maintenant';
 
   @override
+  String get exportShareTitle => 'Partager l\'itinéraire';
+
+  @override
+  String get exportOpenInMaps => 'Ouvrir dans Google Maps';
+
+  @override
+  String get exportCopyLink => 'Copier le lien';
+
+  @override
+  String get exportLinkCopied => 'Lien copié dans le presse-papiers';
+
+  @override
+  String get exportShareOs => 'Partager…';
+
+  @override
+  String get exportShareSubject => 'Mon itinéraire sur MyTravelPal';
+
+  @override
+  String get importFromMaps => 'Importer depuis Maps';
+
+  @override
+  String get importFromMapsTitle => 'Importer un itinéraire Google Maps';
+
+  @override
+  String get importFromMapsHint => 'Colle un lien Google Maps ici';
+
+  @override
+  String get importFromMapsPaste => 'Coller';
+
+  @override
+  String get importFromMapsImport => 'Importer';
+
+  @override
+  String get importFromMapsError => 'URL non reconnue';
+
+  @override
+  String get importFromMapsLoading => 'Analyse du lien…';
+
+  @override
   String adverseEventsBannerCount(int count) {
     return '$count alerte(s) sur votre trajet';
   }

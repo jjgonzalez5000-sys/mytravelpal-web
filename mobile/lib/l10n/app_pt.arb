@@ -118,6 +118,19 @@
       }
     },
     "prepareDepartureNow": "Sair agora",
+    "exportShareTitle": "Partilhar rota",
+    "exportOpenInMaps": "Abrir no Google Maps",
+    "exportCopyLink": "Copiar ligação",
+    "exportLinkCopied": "Ligação copiada para a área de transferência",
+    "exportShareOs": "Partilhar…",
+    "exportShareSubject": "A minha rota no MyTravelPal",
+    "importFromMaps": "Importar de Maps",
+    "importFromMapsTitle": "Importar rota do Google Maps",
+    "importFromMapsHint": "Cola aqui a ligação do Google Maps",
+    "importFromMapsPaste": "Colar",
+    "importFromMapsImport": "Importar",
+    "importFromMapsError": "URL não reconhecido",
+    "importFromMapsLoading": "A analisar a ligação…",
     "adverseEventsBannerCount": "{count} alerta(s) na sua rota",
     "@adverseEventsBannerCount": {
       "placeholders": {
