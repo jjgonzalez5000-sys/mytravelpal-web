@@ -989,6 +989,11 @@
     },
     "prepareDepartureNow": "Leave now",
     "replanNewDepartureTitle": "Recalculating with new departure time…",
+    "recentTripsTitle": "Recent trips",
+    "recentTripsSubtitle": "{count} saved — tap to reuse",
+    "@recentTripsSubtitle": {
+      "placeholders": { "count": {"type": "int"} }
+    },
     "exportShareTitle": "Share route",
     "exportOpenInMaps": "Open in Google Maps",
     "exportCopyLink": "Copy link",

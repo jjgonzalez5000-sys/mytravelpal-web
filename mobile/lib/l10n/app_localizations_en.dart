@@ -2667,6 +2667,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Recalculating with new departure time…';
 
   @override
+  String get recentTripsTitle => 'Recent trips';
+
+  @override
+  String recentTripsSubtitle(int count) {
+    return '$count saved — tap to reuse';
+  }
+
+  @override
   String get exportShareTitle => 'Share route';
 
   @override

@@ -4786,6 +4786,18 @@ abstract class AppLocalizations {
   /// **'Recalculating with new departure time…'**
   String get replanNewDepartureTitle;
 
+  /// No description provided for @recentTripsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent trips'**
+  String get recentTripsTitle;
+
+  /// No description provided for @recentTripsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} saved — tap to reuse'**
+  String recentTripsSubtitle(int count);
+
   /// No description provided for @exportShareTitle.
   ///
   /// In en, this message translates to:

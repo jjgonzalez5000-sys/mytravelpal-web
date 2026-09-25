@@ -119,6 +119,11 @@
     },
     "prepareDepartureNow": "Sortir ara",
     "replanNewDepartureTitle": "Recalculant amb la nova hora de sortida…",
+    "recentTripsTitle": "Viatges recents",
+    "recentTripsSubtitle": "{count} desats — toca per reutilitzar",
+    "@recentTripsSubtitle": {
+      "placeholders": { "count": {"type": "int"} }
+    },
     "exportShareTitle": "Compartir ruta",
     "exportOpenInMaps": "Obrir a Google Maps",
     "exportCopyLink": "Copiar enllaç",

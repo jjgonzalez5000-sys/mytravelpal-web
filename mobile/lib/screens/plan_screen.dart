@@ -14,6 +14,7 @@ import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../storage/saved_trip.dart';
 import '../services/maps_url_parser.dart';
 import '../services/trip_sharing.dart';
 import '../widgets/hotel_preferences.dart';
@@ -865,6 +866,33 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: Tokens.space12),
+                  _RecentTripsDropdown(
+                    onPick: (trip) {
+                      // Prefill the form with the picked saved trip.
+                      // Same shape as HistoryScreen._repeat but inline
+                      // (no new PlanScreen push, just setState).
+                      final now = DateTime.now();
+                      var departure = trip.desiredDepartureAt;
+                      if (departure.isBefore(now)) {
+                        final target = departure;
+                        var candidate = DateTime(
+                          now.year, now.month, now.day,
+                          target.hour, target.minute,
+                        );
+                        while (candidate.weekday != target.weekday
+                            || candidate.isBefore(now)) {
+                          candidate = candidate.add(const Duration(days: 1));
+                        }
+                        departure = candidate;
+                      }
+                      setState(() {
+                        _origin = trip.origin;
+                        _destination = trip.destination;
+                        _departure = departure;
+                      });
+                    },
+                  ),
                   const SizedBox(height: Tokens.space16),
                   // Note: "Salir ya" quick-plan lives as a FAB
                   // now (see Scaffold.floatingActionButton) — the
@@ -1668,6 +1696,123 @@ class _DepartureButton extends StatelessWidget {
             const SizedBox(width: Tokens.space12),
             Expanded(child: Text(label, style: t.bodyLarge)),
             Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Collapsible list of the last 5 saved trips. Tapping a row prefills
+/// the plan form with the trip's origin, destination and departure —
+/// same shape as HistoryScreen._repeat, no navigation. Empty state
+/// hides the whole card so a first-time user doesn't see clutter.
+class _RecentTripsDropdown extends ConsumerStatefulWidget {
+  const _RecentTripsDropdown({required this.onPick});
+  final void Function(SavedTrip trip) onPick;
+
+  @override
+  ConsumerState<_RecentTripsDropdown> createState() =>
+      _RecentTripsDropdownState();
+}
+
+class _RecentTripsDropdownState extends ConsumerState<_RecentTripsDropdown> {
+  late Future<List<SavedTrip>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = ref.read(tripStorageProvider).list();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return FutureBuilder<List<SavedTrip>>(
+      future: _future,
+      builder: (context, snapshot) {
+        final trips = snapshot.data ?? const <SavedTrip>[];
+        if (trips.isEmpty) return const SizedBox.shrink();
+        final recent = trips.take(5).toList();
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: scheme.outlineVariant),
+            borderRadius: BorderRadius.circular(Tokens.radiusLg),
+          ),
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              dividerColor: Colors.transparent,
+            ),
+            child: ExpansionTile(
+              leading: Icon(Icons.history, color: scheme.primary, size: 20),
+              title: Text(
+                l.recentTripsTitle,
+                style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                l.recentTripsSubtitle(recent.length),
+                style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+              tilePadding: const EdgeInsets.symmetric(
+                horizontal: Tokens.space16,
+                vertical: 2,
+              ),
+              childrenPadding: const EdgeInsets.only(bottom: Tokens.space8),
+              children: [
+                for (final trip in recent)
+                  _RecentTripRow(
+                    trip: trip,
+                    onTap: () => widget.onPick(trip),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RecentTripRow extends StatelessWidget {
+  const _RecentTripRow({required this.trip, required this.onTap});
+  final SavedTrip trip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    final dateFmt = DateFormat('d MMM · HH:mm', l.localeName);
+    final originShort = trip.origin.displayName.split(',').first;
+    final destShort = trip.destination.displayName.split(',').first;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16,
+          vertical: Tokens.space8,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.trip_origin, size: 12, color: scheme.primary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '$originShort  →  $destShort',
+                style: t.bodyMedium,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: Tokens.space8),
+            Text(
+              dateFmt.format(trip.desiredDepartureAt),
+              style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.chevron_right, size: 18, color: scheme.onSurfaceVariant),
           ],
         ),
       ),

@@ -2672,6 +2672,14 @@ class AppLocalizationsIt extends AppLocalizations {
       'Ricalcolo con il nuovo orario di partenza…';
 
   @override
+  String get recentTripsTitle => 'Viaggi recenti';
+
+  @override
+  String recentTripsSubtitle(int count) {
+    return '$count salvati — tocca per riutilizzare';
+  }
+
+  @override
   String get exportShareTitle => 'Condividi il percorso';
 
   @override

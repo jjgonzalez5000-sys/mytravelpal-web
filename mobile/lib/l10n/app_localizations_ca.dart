@@ -2671,6 +2671,14 @@ class AppLocalizationsCa extends AppLocalizations {
       'Recalculant amb la nova hora de sortida…';
 
   @override
+  String get recentTripsTitle => 'Viatges recents';
+
+  @override
+  String recentTripsSubtitle(int count) {
+    return '$count desats — toca per reutilitzar';
+  }
+
+  @override
   String get exportShareTitle => 'Compartir ruta';
 
   @override

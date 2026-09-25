@@ -1011,6 +1011,11 @@
     },
     "prepareDepartureNow": "Jetzt losfahren",
     "replanNewDepartureTitle": "Neue Abfahrtszeit wird berechnet…",
+    "recentTripsTitle": "Letzte Fahrten",
+    "recentTripsSubtitle": "{count} gespeichert — tippen zum Wiederverwenden",
+    "@recentTripsSubtitle": {
+      "placeholders": { "count": {"type": "int"} }
+    },
     "exportShareTitle": "Route teilen",
     "exportOpenInMaps": "In Google Maps öffnen",
     "exportCopyLink": "Link kopieren",

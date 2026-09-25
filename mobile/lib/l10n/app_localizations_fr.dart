@@ -2678,6 +2678,14 @@ class AppLocalizationsFr extends AppLocalizations {
       'Recalcul avec le nouvel horaire de départ…';
 
   @override
+  String get recentTripsTitle => 'Trajets récents';
+
+  @override
+  String recentTripsSubtitle(int count) {
+    return '$count enregistrés — tape pour réutiliser';
+  }
+
+  @override
   String get exportShareTitle => 'Partager l\'itinéraire';
 
   @override

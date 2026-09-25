@@ -998,6 +998,11 @@
     },
     "prepareDepartureNow": "Salir ahora",
     "replanNewDepartureTitle": "Calculando con nueva hora de salida…",
+    "recentTripsTitle": "Viajes recientes",
+    "recentTripsSubtitle": "{count} guardados — toca para reutilizar",
+    "@recentTripsSubtitle": {
+      "placeholders": { "count": {"type": "int"} }
+    },
     "exportShareTitle": "Compartir ruta",
     "exportOpenInMaps": "Abrir en Google Maps",
     "exportCopyLink": "Copiar enlace",

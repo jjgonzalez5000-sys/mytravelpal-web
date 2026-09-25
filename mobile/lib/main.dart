@@ -59,18 +59,29 @@ Future<void> _boot() async {
   // ignore: unawaited_futures
   CurrencyService.instance.rates();
 
-  final deepLinks = DeepLinkHandler(rootNavigatorKey);
+  // Build the Riverpod container explicitly so services outside the
+  // widget tree (the deep-link handler needs the API's geocode for
+  // parsing Google Maps shares) can `read` providers on demand.
+  final container = ProviderContainer(
+    overrides: [
+      tripStorageProvider.overrideWithValue(storage),
+      appPrefsProvider.overrideWithValue(prefs),
+      inspirationStorageProvider.overrideWithValue(inspirations),
+    ],
+  );
+
+  final deepLinks = DeepLinkHandler(
+    rootNavigatorKey,
+    geocodeResolver: () =>
+        container.read(apiClientWithPremiumProvider).geocode,
+  );
   WidgetsBinding.instance.addPostFrameCallback((_) {
     deepLinks.start();
   });
 
   runApp(
-    ProviderScope(
-      overrides: [
-        tripStorageProvider.overrideWithValue(storage),
-        appPrefsProvider.overrideWithValue(prefs),
-        inspirationStorageProvider.overrideWithValue(inspirations),
-      ],
+    UncontrolledProviderScope(
+      container: container,
       child: const MyTravelPalApp(),
     ),
   );
