@@ -27,20 +27,30 @@ class NarrativeScreen extends ConsumerStatefulWidget {
 }
 
 class _NarrativeScreenState extends ConsumerState<NarrativeScreen> {
-  late Future<NarrativeResponse> _future;
+  Future<NarrativeResponse>? _future;
 
   @override
-  void initState() {
-    super.initState();
-    _future = _load();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Defer the initial load here (not initState) so
+    // `Localizations.localeOf(context)` is safe — inherited widgets
+    // aren't wired up in initState.
+    _future ??= _load();
   }
 
-  Future<NarrativeResponse> _load() =>
-      ref.read(apiClientWithPremiumProvider).tripNarrative(
-            planRequest: widget.planRequest,
-            originName: widget.originName,
-            destinationName: widget.destinationName,
-          );
+  Future<NarrativeResponse> _load() {
+    // Pass the current app locale so the LLM writes the narrative
+    // in Spanish/French/German/etc. rather than defaulting to
+    // English regardless of the user's Settings pick. Mirrors the
+    // pattern used by geocode() / reverseGeocode().
+    final locale = Localizations.localeOf(context).languageCode;
+    return ref.read(apiClientWithPremiumProvider).tripNarrative(
+          planRequest: widget.planRequest,
+          originName: widget.originName,
+          destinationName: widget.destinationName,
+          locale: locale,
+        );
+  }
 
   void _retry() => setState(() => _future = _load());
 

@@ -28,13 +28,74 @@ import json
 import logging
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel, Field
 
 from app.api.ai_quota import require_inspire_quota
 from app.auth.jwt import AuthUser
 from app.providers import get_providers
 from app.providers.factory import Providers
+
+
+# Mapping used by every LLM endpoint to force the model to answer in
+# the driver's language. Kept explicit (not just BCP-47 codes) because
+# Claude follows named-language directives noticeably more reliably
+# than 2-letter codes buried in prose.
+_LANGUAGE_NAMES: dict[str, str] = {
+    "en": "English",
+    "es": "Spanish",
+    "fr": "French",
+    "de": "German",
+    "it": "Italian",
+    "ca": "Catalan",
+    "pt": "Portuguese",
+}
+
+
+def _language_instruction(lang: str | None) -> str:
+    """Return a strong, top-of-prompt directive telling the LLM which
+    language to use for every user-facing string in its JSON output.
+
+    Empty when `lang` is null/blank/unsupported — the caller then
+    inherits the historical English default so old clients keep
+    working unchanged.
+    """
+    if not lang:
+        return ""
+    code = lang.strip().lower().split("-")[0]
+    name = _LANGUAGE_NAMES.get(code)
+    if name is None:
+        return ""
+    return (
+        f"IMPORTANT: Write ALL user-facing text (summary, highlights, "
+        f"note, from_name, to_name, hotel_area, assistant_note) in "
+        f"{name}. Never mix languages. Place names may stay in their "
+        f"native form when there is no common {name} exonym."
+    )
+
+
+def _resolve_locale(
+    body_locale: str | None,
+    query_lang: str | None,
+    accept_language: str | None,
+) -> str | None:
+    """Pick a locale from the three redundant channels the client can
+    use. Body field wins (explicit intent), then the ?lang= query
+    param, then the Accept-Language header. Returns the raw 2-letter
+    code (lowercased) or None when nothing usable came through.
+    """
+    for candidate in (body_locale, query_lang, accept_language):
+        if not candidate:
+            continue
+        # Accept-Language may look like "es-ES,es;q=0.9,en;q=0.8" —
+        # take the first token before either comma or semicolon.
+        primary = candidate.split(",")[0].split(";")[0].strip()
+        if not primary:
+            continue
+        code = primary.lower().split("-")[0]
+        if len(code) == 2 and code.isalpha():
+            return code
+    return None
 
 router = APIRouter(prefix="/trips", tags=["inspire"])
 _log = logging.getLogger(__name__)
@@ -238,6 +299,11 @@ async def inspire(
     # the reset time embedded in the payload so the mobile UI can
     # show a helpful message rather than a raw error.
     user: AuthUser = Depends(require_inspire_quota),
+    # Redundant locale channels: body field wins, ?lang=xx and
+    # Accept-Language act as fallbacks so a client that only sets
+    # the standard HTTP header still gets a translated response.
+    lang: str | None = Query(default=None, max_length=16),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ) -> InspireResponse:
     """Generate a proposed itinerary from a free-form prompt."""
     origin_line = (
@@ -261,10 +327,20 @@ async def inspire(
     today_line = (
         f"Today: {today.isoformat()} ({weekday_names[today.weekday()]})\n"
     )
+    # Body field defaults to "en", so treat that as "no explicit
+    # request" and let the header/query fallbacks contribute.
+    body_locale = payload.locale if payload.locale != "en" else None
+    resolved_lang = (
+        _resolve_locale(body_locale, lang, accept_language)
+        or payload.locale
+    )
+    language_line = _language_instruction(resolved_lang)
+    language_block = f"{language_line}\n\n" if language_line else ""
     user_prompt = (
         f"{_SYSTEM_PROMPT}\n\n"
+        f"{language_block}"
         f"{today_line}"
-        f"Locale: {payload.locale}\n"
+        f"Locale: {resolved_lang}\n"
         f"{origin_line}"
         f"Prompt: {payload.prompt}"
     )
@@ -372,6 +448,8 @@ async def inspire_refine(
     payload: InspireRefineRequest,
     providers: Providers = Depends(get_providers),
     user: AuthUser = Depends(require_inspire_quota),
+    lang: str | None = Query(default=None, max_length=16),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ) -> InspireResponse:
     """Turn-by-turn refinement of an existing itinerary."""
     from datetime import date as _date
@@ -401,10 +479,18 @@ async def inspire_refine(
             role = "User" if m.role == "user" else "Assistant"
             turns.append(f"{role}: {m.content}")
         history_block = "Conversation so far:\n" + "\n".join(turns) + "\n\n"
+    body_locale = payload.locale if payload.locale != "en" else None
+    resolved_lang = (
+        _resolve_locale(body_locale, lang, accept_language)
+        or payload.locale
+    )
+    language_line = _language_instruction(resolved_lang)
+    language_block = f"{language_line}\n\n" if language_line else ""
     user_prompt = (
         f"{_REFINE_SYSTEM_PROMPT}\n\n"
+        f"{language_block}"
         f"{today_line}"
-        f"Locale: {payload.locale}\n\n"
+        f"Locale: {resolved_lang}\n\n"
         f"Previous itinerary:\n{json.dumps(prev, ensure_ascii=False)}\n\n"
         f"{history_block}"
         f"New user request: {payload.prompt}\n\n"

@@ -12,11 +12,12 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header, Query
 from pydantic import BaseModel
 
 from app.api.ai_quota import require_narrative_quota
 from app.api.premium import require_premium
+from app.api.v1.inspire import _language_instruction, _resolve_locale
 from app.auth.jwt import AuthUser
 from app.api.v1.trips import TripPlanRequest, plan_trip
 from app.domain import Coordinate
@@ -31,6 +32,10 @@ class NarrativeRequest(BaseModel):
     plan_request: TripPlanRequest
     origin_name: str = "your origin"
     destination_name: str = "your destination"
+    # BCP-47-ish 2-letter code. Optional so old mobile builds keep
+    # working (default English). When present, the LLM is instructed
+    # to write the narrative + recommendations in this language.
+    lang: str | None = None
 
 
 class NarrativeResponse(BaseModel):
@@ -53,6 +58,11 @@ async def trip_narrative(
     # existing `require_premium` gates the FEATURE; this dep gates
     # the per-user COST.
     _user: AuthUser = Depends(require_narrative_quota),
+    # Locale channels — body `lang` field is primary, ?lang= query
+    # and Accept-Language header as redundant fallbacks. Old clients
+    # sending none of the three inherit the historical English default.
+    lang: str | None = Query(default=None, max_length=16),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
 ) -> NarrativeResponse:
     # Plan first (uses the same DI, so hotels/restaurants/adverse events
     # honor the flags the client passed in the plan_request).
@@ -143,6 +153,7 @@ async def trip_narrative(
         for e in plan.adverse_events
     )
 
+    resolved_lang = _resolve_locale(payload.lang, lang, accept_language)
     narrative = await generate_trip_narrative(
         llm=providers.llm,
         origin_name=payload.origin_name,
@@ -154,6 +165,7 @@ async def trip_narrative(
         hotels=hotels,
         restaurants=restaurants,
         adverse_events=adverse_events,
+        language_directive=_language_instruction(resolved_lang),
     )
 
     return NarrativeResponse(

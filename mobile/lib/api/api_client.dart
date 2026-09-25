@@ -159,15 +159,28 @@ class ApiClient {
     required TripPlanRequest planRequest,
     required String originName,
     required String destinationName,
+    String? locale,
   }) async {
-    final uri = Uri.parse('$_baseUrl/v1/trips/narrative');
+    // Locale is sent on three redundant channels so the backend can
+    // localise the LLM output no matter which one an intermediate
+    // proxy might strip: Accept-Language header, ?lang= query param,
+    // and a `lang` field in the JSON body. Tester bug: Spanish user
+    // was getting English narratives because none of the channels
+    // was populated. Pattern mirrors `geocode()` / `reverseGeocode()`.
+    final normalizedLocale = _normalizeLocale(locale);
+    final uri = Uri.parse('$_baseUrl/v1/trips/narrative').replace(
+      queryParameters: {
+        if (normalizedLocale != null) 'lang': normalizedLocale,
+      },
+    );
     final response = await _http.post(
       uri,
-      headers: _headers(),
+      headers: _headers(acceptLanguage: normalizedLocale),
       body: jsonEncode({
         'plan_request': planRequest.toJson(),
         'origin_name': originName,
         'destination_name': destinationName,
+        if (normalizedLocale != null) 'lang': normalizedLocale,
       }),
     );
     if (response.statusCode != 200) {
@@ -350,7 +363,12 @@ class ApiClient {
     List<InspireChatTurn> history = const [],
     String? locale,
   }) async {
-    final uri = Uri.parse('$_baseUrl/v1/trips/inspire/refine');
+    final normalizedLocale = _normalizeLocale(locale);
+    final uri = Uri.parse('$_baseUrl/v1/trips/inspire/refine').replace(
+      queryParameters: {
+        if (normalizedLocale != null) 'lang': normalizedLocale,
+      },
+    );
     final now = DateTime.now();
     final todayIso =
         '${now.year.toString().padLeft(4, '0')}-'
@@ -360,11 +378,11 @@ class ApiClient {
       'prompt': prompt,
       'previous_itinerary': previous.toJson(),
       'history': history.map((m) => m.toJson()).toList(),
-      if (locale != null) 'locale': locale,
+      if (normalizedLocale != null) 'locale': normalizedLocale,
       'today_iso': todayIso,
     });
     final response = await _http
-        .post(uri, headers: _headers(), body: body)
+        .post(uri, headers: _headers(acceptLanguage: normalizedLocale), body: body)
         .timeout(const Duration(seconds: 60));
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
@@ -379,7 +397,12 @@ class ApiClient {
     LatLon? origin,
     String? locale,
   }) async {
-    final uri = Uri.parse('$_baseUrl/v1/trips/inspire');
+    final normalizedLocale = _normalizeLocale(locale);
+    final uri = Uri.parse('$_baseUrl/v1/trips/inspire').replace(
+      queryParameters: {
+        if (normalizedLocale != null) 'lang': normalizedLocale,
+      },
+    );
     // Send the client's LOCAL date as ISO. Prevents the LLM from
     // treating server-UTC date as "today" when the user is
     // planning late at night in a west-of-UTC locale.
@@ -391,11 +414,11 @@ class ApiClient {
     final body = jsonEncode({
       'prompt': prompt,
       if (origin != null) 'origin': origin.toJson(),
-      if (locale != null) 'locale': locale,
+      if (normalizedLocale != null) 'locale': normalizedLocale,
       'today_iso': todayIso,
     });
     final response = await _http
-        .post(uri, headers: _headers(), body: body)
+        .post(uri, headers: _headers(acceptLanguage: normalizedLocale), body: body)
         .timeout(const Duration(seconds: 45));
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);

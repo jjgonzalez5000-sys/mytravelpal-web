@@ -48,14 +48,23 @@ def build_prompt(
     hotels: tuple[Hotel, ...],
     restaurants: tuple[Restaurant, ...],
     adverse_events: tuple[AdverseEvent, ...],
+    language_directive: str = "",
 ) -> str:
     """Render the structured prompt sent to the LLM.
 
     Deterministic pure function — trivially unit-testable, and keeps
     prompt engineering out of the provider so we can tune it without
     touching the API-integration code.
+
+    `language_directive` is inserted directly under the system intro
+    so Claude sees the language requirement before any factual data.
+    Empty string (the default) keeps the historical English output
+    for older callers that don't pass a locale.
     """
-    lines: list[str] = [_SYSTEM_INTRO, "", "Trip:"]
+    lines: list[str] = [_SYSTEM_INTRO]
+    if language_directive:
+        lines.extend(["", language_directive])
+    lines.extend(["", "Trip:"])
     lines.append(f"- From: {origin_name}")
     lines.append(f"- To: {destination_name}")
     lines.append(f"- Desired departure: {desired_departure_at.isoformat()}")
@@ -141,6 +150,7 @@ async def generate_trip_narrative(
     hotels: tuple[Hotel, ...],
     restaurants: tuple[Restaurant, ...],
     adverse_events: tuple[AdverseEvent, ...],
+    language_directive: str = "",
 ) -> str:
     prompt = build_prompt(
         origin_name=origin_name,
@@ -152,6 +162,7 @@ async def generate_trip_narrative(
         hotels=hotels,
         restaurants=restaurants,
         adverse_events=adverse_events,
+        language_directive=language_directive,
     )
     return await llm.generate_narrative(prompt)
 
