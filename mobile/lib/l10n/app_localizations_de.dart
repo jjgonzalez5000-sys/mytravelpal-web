@@ -2678,6 +2678,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get planStopReorderHint => 'Griff halten, um umzuordnen';
 
   @override
+  String get planStopMoveUp => 'Nach oben';
+
+  @override
+  String get planStopMoveDown => 'Nach unten';
+
+  @override
   String get recentTripsTitle => 'Letzte Fahrten';
 
   @override

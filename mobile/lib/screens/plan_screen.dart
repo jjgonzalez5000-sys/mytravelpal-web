@@ -1044,80 +1044,65 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         // ReorderableDelayedDragStartListener made the
                         // drag never fire. Explicit handle-only drag,
                         // per Material spec.
-                        if (_stops.isNotEmpty)
-                          ReorderableListView(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            buildDefaultDragHandles: false,
-                            onReorder: (oldIndex, newIndex) {
-                              setState(() {
-                                if (newIndex > oldIndex) newIndex -= 1;
-                                final moved = _stops.removeAt(oldIndex);
-                                _stops.insert(newIndex, moved);
-                              });
-                            },
-                            proxyDecorator: (child, index, animation) =>
-                                Material(
-                                  color: Colors.transparent,
-                                  child: child,
-                                ),
-                            children: [
-                              for (var i = 0; i < _stops.length; i++)
-                                // Key sits on the DIRECT child of
-                                // ReorderableListView.children. Uses
-                                // the stop's stable id (not its list
-                                // index and not the coordinate — the
-                                // former swaps on reorder, the latter
-                                // collides when two stops share a lat).
-                                Padding(
-                                  key: ValueKey('stop-${_stops[i].id}'),
-                                  padding: const EdgeInsets.only(
-                                      top: Tokens.space12),
-                                  child: Column(
-                                    children: [
-                                      Row(
-                                        children: [
-                                          // Google-Maps-style drag chip
-                                          // on the far left. Long-press
-                                          // to grab (wins gesture arena
-                                          // over the surrounding scroll
-                                          // view; the immediate
-                                          // ReorderableDragStartListener
-                                          // was losing to VerticalDrag
-                                          // and never firing).
-                                          ReorderableDelayedDragStartListener(
-                                            index: i,
-                                            child: MouseRegion(
-                                              cursor: SystemMouseCursors.grab,
-                                              child: Container(
-                                                width: 44,
-                                                height: 56,
-                                                alignment: Alignment.center,
-                                                margin: const EdgeInsets.only(
-                                                    right: Tokens.space8),
-                                                decoration: BoxDecoration(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .primaryContainer,
-                                                  borderRadius:
-                                                      BorderRadius.circular(8),
-                                                  border: Border.all(
-                                                    color: Theme.of(context)
-                                                        .colorScheme
-                                                        .outlineVariant,
-                                                  ),
-                                                ),
-                                                child: Icon(
-                                                  Icons.drag_handle,
-                                                  size: 24,
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onPrimaryContainer,
-                                                ),
-                                              ),
-                                            ),
+                        // Intermediate stops — explicit ↑/↓ buttons
+                        // instead of drag-to-reorder. The Reorderable
+                        // family fought the CustomScrollView + TextField
+                        // gesture arena and kept losing (tap-and-hold
+                        // never fired). Arrow buttons work everywhere
+                        // including emulator without ambiguity.
+                        for (var i = 0; i < _stops.length; i++)
+                          Padding(
+                            key: ValueKey('stop-${_stops[i].id}'),
+                            padding: const EdgeInsets.only(
+                                top: Tokens.space12),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    // Move-up / move-down stacked column
+                                    // on the far left. Disabled state
+                                    // (top / bottom of list) greys out.
+                                    Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        SizedBox(
+                                          width: 28, height: 24,
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: 20,
+                                            tooltip: l.planStopMoveUp,
+                                            icon: const Icon(
+                                                Icons.keyboard_arrow_up),
+                                            onPressed: i == 0
+                                                ? null
+                                                : () => setState(() {
+                                                      final s =
+                                                          _stops.removeAt(i);
+                                                      _stops.insert(i - 1, s);
+                                                    }),
                                           ),
-                                          Expanded(
+                                        ),
+                                        SizedBox(
+                                          width: 28, height: 24,
+                                          child: IconButton(
+                                            padding: EdgeInsets.zero,
+                                            iconSize: 20,
+                                            tooltip: l.planStopMoveDown,
+                                            icon: const Icon(
+                                                Icons.keyboard_arrow_down),
+                                            onPressed: i == _stops.length - 1
+                                                ? null
+                                                : () => setState(() {
+                                                      final s =
+                                                          _stops.removeAt(i);
+                                                      _stops.insert(i + 1, s);
+                                                    }),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(width: Tokens.space4),
+                                    Expanded(
                                             child: LocationSearchField(
                                               key: ValueKey('stop-field-$i'),
                                               label: l.planStopLabel(i + 1),
@@ -1168,21 +1153,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                     ],
                                   ),
                                 ),
-                            ],
-                          ),
-                        if (_stops.length >= 2) ...[
-                          const SizedBox(height: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(left: Tokens.space4),
-                            child: Text(
-                              l.planStopReorderHint,
-                              style: t.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ],
                         if (_stops.length < _maxStops) ...[
                           const SizedBox(height: Tokens.space8),
                           Align(

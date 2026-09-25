@@ -999,6 +999,8 @@
     "prepareDepartureNow": "Salir ahora",
     "replanNewDepartureTitle": "Calculando con nueva hora de salida…",
     "planStopReorderHint": "Mantén pulsado el asa para reordenar",
+    "planStopMoveUp": "Mover arriba",
+    "planStopMoveDown": "Mover abajo",
     "recentTripsTitle": "Viajes recientes",
     "recentTripsSubtitle": "{count} guardados — toca para reutilizar",
     "@recentTripsSubtitle": {

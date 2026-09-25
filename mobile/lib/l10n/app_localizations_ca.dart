@@ -2674,6 +2674,12 @@ class AppLocalizationsCa extends AppLocalizations {
   String get planStopReorderHint => 'Manté premuda la nansa per reordenar';
 
   @override
+  String get planStopMoveUp => 'Mou amunt';
+
+  @override
+  String get planStopMoveDown => 'Mou avall';
+
+  @override
   String get recentTripsTitle => 'Viatges recents';
 
   @override

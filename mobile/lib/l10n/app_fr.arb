@@ -1012,6 +1012,8 @@
     "prepareDepartureNow": "Partir maintenant",
     "replanNewDepartureTitle": "Recalcul avec le nouvel horaire de départ…",
     "planStopReorderHint": "Maintiens la poignée pour réorganiser",
+    "planStopMoveUp": "Monter",
+    "planStopMoveDown": "Descendre",
     "recentTripsTitle": "Trajets récents",
     "recentTripsSubtitle": "{count} enregistrés — tape pour réutiliser",
     "@recentTripsSubtitle": {

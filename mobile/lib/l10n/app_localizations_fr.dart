@@ -2681,6 +2681,12 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planStopReorderHint => 'Maintiens la poignée pour réorganiser';
 
   @override
+  String get planStopMoveUp => 'Monter';
+
+  @override
+  String get planStopMoveDown => 'Descendre';
+
+  @override
   String get recentTripsTitle => 'Trajets récents';
 
   @override

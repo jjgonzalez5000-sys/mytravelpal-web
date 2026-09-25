@@ -2670,6 +2670,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get planStopReorderHint => 'Long-press the handle to reorder';
 
   @override
+  String get planStopMoveUp => 'Move up';
+
+  @override
+  String get planStopMoveDown => 'Move down';
+
+  @override
   String get recentTripsTitle => 'Recent trips';
 
   @override

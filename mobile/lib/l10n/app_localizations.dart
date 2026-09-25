@@ -4792,6 +4792,18 @@ abstract class AppLocalizations {
   /// **'Long-press the handle to reorder'**
   String get planStopReorderHint;
 
+  /// No description provided for @planStopMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get planStopMoveUp;
+
+  /// No description provided for @planStopMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get planStopMoveDown;
+
   /// No description provided for @recentTripsTitle.
   ///
   /// In en, this message translates to:

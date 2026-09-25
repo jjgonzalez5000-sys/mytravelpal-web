@@ -120,6 +120,8 @@
     "prepareDepartureNow": "Sortir ara",
     "replanNewDepartureTitle": "Recalculant amb la nova hora de sortida…",
     "planStopReorderHint": "Manté premuda la nansa per reordenar",
+    "planStopMoveUp": "Mou amunt",
+    "planStopMoveDown": "Mou avall",
     "recentTripsTitle": "Viatges recents",
     "recentTripsSubtitle": "{count} desats — toca per reutilitzar",
     "@recentTripsSubtitle": {
