@@ -19,6 +19,14 @@
          need a manifest-only rebuild. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- FOREGROUND_SERVICE_DATA_SYNC covers the "planificando tu viaje"
+         ongoing notification we show while /plan is in flight (network
+         data sync). Android 14+ rejects starting a foreground service
+         without a matching typed permission — without this the plugin's
+         `startForeground(..., FOREGROUND_SERVICE_TYPE_MANIFEST)` call
+         throws MissingForegroundServiceTypeException and the tray
+         notification never appears. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <!-- WakeLock is required by wakelock_plus to keep the screen on
          while the trip dashboard is foregrounded. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -135,6 +143,23 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/next_trip_widget_info" />
         </receiver>
+
+        <!-- flutter_foreground_task's own service. The plugin's manifest
+             only declares FOREGROUND_SERVICE permission, but the actual
+             <service> element MUST live in the app manifest — otherwise
+             `startForeground(id, notif, FOREGROUND_SERVICE_TYPE_MANIFEST)`
+             finds no serviceType on Android 14+ and the start fails
+             silently (wrapped in a ServiceRequestFailure). Types combine
+             the two use-cases we drive through this single service:
+             `dataSync` for the /plan HTTP call held open while the app
+             is backgrounded, and `location` for the companion drive
+             GPS tracking. Do NOT rename the service class — the plugin
+             hard-codes this fully-qualified name. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="dataSync|location"
+            android:exported="false"
+            android:stopWithTask="false" />
 
         <service
             android:name="com.mytravelpal.mytravelpal.car.MyTravelPalCarAppService"

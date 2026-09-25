@@ -1034,10 +1034,16 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             ],
                           ],
                         ),
-                        // Intermediate stops — long-press + drag to
-                        // reorder (like Google Maps). Uses
-                        // ReorderableListView with shrinkWrap since
-                        // it lives inside a Column, not a scrollable.
+                        // Intermediate stops — drag the handle to
+                        // reorder. Google-Maps-style long-press-anywhere
+                        // does NOT work here: the row contains a
+                        // TextField (LocationSearchField) plus a
+                        // TextButton, both of which claim long-press
+                        // for their own gestures (text selection /
+                        // splash), so wrapping the row in a
+                        // ReorderableDelayedDragStartListener made the
+                        // drag never fire. Explicit handle-only drag,
+                        // per Material spec.
                         if (_stops.isNotEmpty)
                           ReorderableListView(
                             shrinkWrap: true,
@@ -1057,14 +1063,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                 ),
                             children: [
                               for (var i = 0; i < _stops.length; i++)
-                                // Long-press anywhere on the row starts the
-                                // drag — mirrors Google Maps' behaviour on
-                                // its destination picker. The explicit drag
-                                // handle stays for accessibility + discovery.
-                                ReorderableDelayedDragStartListener(
-                                  key: ValueKey('stop-row-$i-${_stops[i].place?.coordinate.lat}'),
-                                  index: i,
-                                  child: Padding(
+                                // Key sits on the DIRECT child of
+                                // ReorderableListView.children. Uses
+                                // the stop's stable id (not its list
+                                // index and not the coordinate — the
+                                // former swaps on reorder, the latter
+                                // collides when two stops share a lat).
+                                Padding(
+                                  key: ValueKey('stop-${_stops[i].id}'),
                                   padding: const EdgeInsets.only(
                                       top: Tokens.space12),
                                   child: Column(
@@ -1073,24 +1079,34 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                         children: [
                                           ReorderableDragStartListener(
                                             index: i,
-                                            child: Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6, vertical: 10),
-                                              margin: const EdgeInsets.only(
-                                                  right: Tokens.space4),
-                                              decoration: BoxDecoration(
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .surfaceContainerHighest,
-                                                borderRadius:
-                                                    BorderRadius.circular(6),
-                                              ),
-                                              child: Icon(
-                                                Icons.drag_indicator,
-                                                size: 22,
-                                                color: Theme.of(context)
-                                                    .colorScheme
-                                                    .onSurfaceVariant,
+                                            child: MouseRegion(
+                                              cursor: SystemMouseCursors.grab,
+                                              child: Container(
+                                                // 48x48 Material tap
+                                                // target so the handle
+                                                // is not swallowed by
+                                                // the neighbouring
+                                                // LocationSearchField
+                                                // hit area on touch.
+                                                width: 48,
+                                                height: 48,
+                                                alignment: Alignment.center,
+                                                margin: const EdgeInsets.only(
+                                                    right: Tokens.space4),
+                                                decoration: BoxDecoration(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .surfaceContainerHighest,
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Icon(
+                                                  Icons.drag_indicator,
+                                                  size: 22,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -1144,7 +1160,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                       ),
                                     ],
                                   ),
-                                ),
                                 ),
                             ],
                           ),
@@ -1710,12 +1725,23 @@ enum _LeaveNowChoice { go, change }
 /// [GeocodeResult] (place info) plus `dwellNights`. Pass-through
 /// stops have `dwellNights == 0`; overnight anchors have `>= 1`.
 class PlannedStop {
-  const PlannedStop({required this.place, this.dwellNights = 0});
+  PlannedStop({required this.place, this.dwellNights = 0, String? id})
+      : id = id ?? 'stop-${DateTime.now().microsecondsSinceEpoch}-${_seq++}';
+
+  // Monotonic tie-breaker so two stops created inside the same
+  // microsecond still get distinct ids (matters for reorder keys
+  // — duplicate keys silently break ReorderableListView).
+  static int _seq = 0;
+
+  // Stable identity, survives copyWith. ReorderableListView needs
+  // keys that follow the item, not its list index.
+  final String id;
   final GeocodeResult place;
   final int dwellNights;
 
   PlannedStop copyWith({GeocodeResult? place, int? dwellNights}) =>
       PlannedStop(
+        id: id,
         place: place ?? this.place,
         dwellNights: dwellNights ?? this.dwellNights,
       );

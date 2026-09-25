@@ -79,6 +79,30 @@ class _LocationSearchFieldState extends ConsumerState<LocationSearchField> {
   }
 
   @override
+  void didUpdateWidget(covariant LocationSearchField oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Parent handed us a new prefill (e.g. "Recent trips" dropdown). The
+    // TextEditingController is owned by this state, so a change on
+    // widget.initial after mount is otherwise invisible.
+    if (widget.initial != oldWidget.initial) {
+      _picked = widget.initial;
+      final newText = widget.initial?.displayName ?? '';
+      if (_controller.text != newText) {
+        _controller.text = newText;
+        _controller.selection =
+            TextSelection.collapsed(offset: newText.length);
+      }
+      // Clear any stale search state and dismiss the suggestions panel so
+      // the user sees a clean, prefilled field.
+      _debounce?.cancel();
+      _results = const [];
+      _loading = false;
+      if (_overlayController.isShowing) _overlayController.hide();
+      if (_focusNode.hasFocus) _focusNode.unfocus();
+    }
+  }
+
+  @override
   void dispose() {
     _debounce?.cancel();
     _focusNode.removeListener(_onFocusChange);

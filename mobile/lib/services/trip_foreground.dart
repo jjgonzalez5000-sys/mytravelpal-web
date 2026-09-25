@@ -66,10 +66,34 @@ class TripForegroundService {
   }) async {
     if (!_isAndroid) return;
     if (await FlutterForegroundTask.isRunningService) return;
-    await FlutterForegroundTask.startService(
+    // Android 13+ needs POST_NOTIFICATIONS granted at runtime, or the
+    // ongoing FGS notification is created but never rendered — which
+    // on Android 12L+ ALSO trips the "ForegroundServiceDidNotStart"
+    // watchdog because the system considers the service invisible.
+    // Ask through the plugin so it uses the same channel/prompt path
+    // as the notification we're about to raise.
+    try {
+      final perm = await FlutterForegroundTask.checkNotificationPermission();
+      if (perm != NotificationPermission.granted) {
+        await FlutterForegroundTask.requestNotificationPermission();
+      }
+    } catch (e) {
+      debugPrint('TripForegroundService: permission probe failed: $e');
+    }
+    final result = await FlutterForegroundTask.startService(
       notificationTitle: title,
       notificationText: body,
     );
+    if (result is ServiceRequestFailure) {
+      // Common causes: missing <service> in AndroidManifest, missing
+      // FOREGROUND_SERVICE_* typed permission for the declared
+      // foregroundServiceType, or user permanently denied
+      // POST_NOTIFICATIONS. Log so future breakage is visible in
+      // `adb logcat` instead of silently no-oping.
+      debugPrint(
+        'TripForegroundService.start failed: ${result.error}',
+      );
+    }
   }
 
   Future<void> updateNotification({
@@ -78,16 +102,24 @@ class TripForegroundService {
   }) async {
     if (!_isAndroid) return;
     if (!await FlutterForegroundTask.isRunningService) return;
-    await FlutterForegroundTask.updateService(
+    final result = await FlutterForegroundTask.updateService(
       notificationTitle: title,
       notificationText: body,
     );
+    if (result is ServiceRequestFailure) {
+      debugPrint(
+        'TripForegroundService.updateNotification failed: ${result.error}',
+      );
+    }
   }
 
   Future<void> stop() async {
     if (!_isAndroid) return;
     if (!await FlutterForegroundTask.isRunningService) return;
-    await FlutterForegroundTask.stopService();
+    final result = await FlutterForegroundTask.stopService();
+    if (result is ServiceRequestFailure) {
+      debugPrint('TripForegroundService.stop failed: ${result.error}');
+    }
   }
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;

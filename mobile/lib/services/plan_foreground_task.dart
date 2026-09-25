@@ -38,18 +38,31 @@ Future<T> runInForeground<T>(
   // Grab the localized title synchronously before any await, so
   // we never touch a stale BuildContext across an async gap.
   final title = AppLocalizations.of(context).planLoadingTitle;
-  final wasRunning = await FlutterForegroundTask.isRunningService;
-  if (!wasRunning) {
-    await TripForegroundService.instance.start(title: title, body: label);
-  } else {
-    await TripForegroundService.instance
-        .updateNotification(title: title, body: label);
+  bool wasRunning = false;
+  try {
+    wasRunning = await FlutterForegroundTask.isRunningService;
+    if (!wasRunning) {
+      await TripForegroundService.instance.start(title: title, body: label);
+    } else {
+      await TripForegroundService.instance
+          .updateNotification(title: title, body: label);
+    }
+  } catch (e, st) {
+    // Never let a foreground-service hiccup abort the actual plan
+    // request — the /plan call must still fire even if the tray
+    // notification can't be shown (e.g. user permanently denied
+    // POST_NOTIFICATIONS, or the OEM ROM kill-listed the service).
+    debugPrint('runInForeground: start/update failed: $e\n$st');
   }
   try {
     return await work();
   } finally {
     if (!wasRunning) {
-      await TripForegroundService.instance.stop();
+      try {
+        await TripForegroundService.instance.stop();
+      } catch (e) {
+        debugPrint('runInForeground: stop failed: $e');
+      }
     }
   }
 }

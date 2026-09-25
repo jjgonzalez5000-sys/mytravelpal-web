@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -36,6 +37,12 @@ Future<void> main() async {
 
 Future<void> _boot() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Required by flutter_foreground_task so the main isolate can
+  // receive messages from a background TaskHandler. Even if we don't
+  // ship a TaskHandler yet, the plugin's own start/stop bookkeeping
+  // uses this port — skipping it makes `startService` throw on hot
+  // restart and can wedge the tray notification on some ROMs.
+  FlutterForegroundTask.initCommunicationPort();
   // Load locale-specific date symbol data so DateFormat with a
   // non-'en_US' locale (weekday + month names) renders correctly
   // — otherwise the first render throws LocaleDataException on
