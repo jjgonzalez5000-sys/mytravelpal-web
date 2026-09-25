@@ -2674,7 +2674,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get prepareDepartureNow => 'Partir maintenant';
 
   @override
-  String get replanNewDepartureTitle => 'Recalcul avec le nouvel horaire de départ…';
+  String get replanNewDepartureTitle =>
+      'Recalcul avec le nouvel horaire de départ…';
 
   @override
   String get exportShareTitle => 'Partager l\'itinéraire';

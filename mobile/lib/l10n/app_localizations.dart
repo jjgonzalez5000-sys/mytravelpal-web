@@ -4780,6 +4780,10 @@ abstract class AppLocalizations {
   /// **'Leave now'**
   String get prepareDepartureNow;
 
+  /// No description provided for @replanNewDepartureTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculating with new departure time…'**
   String get replanNewDepartureTitle;
 
   /// No description provided for @exportShareTitle.

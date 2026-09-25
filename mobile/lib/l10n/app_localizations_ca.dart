@@ -2667,7 +2667,8 @@ class AppLocalizationsCa extends AppLocalizations {
   String get prepareDepartureNow => 'Sortir ara';
 
   @override
-  String get replanNewDepartureTitle => 'Recalculant amb la nova hora de sortida…';
+  String get replanNewDepartureTitle =>
+      'Recalculant amb la nova hora de sortida…';
 
   @override
   String get exportShareTitle => 'Compartir ruta';
