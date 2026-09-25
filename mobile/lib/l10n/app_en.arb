@@ -988,6 +988,7 @@
       }
     },
     "prepareDepartureNow": "Leave now",
+    "replanNewDepartureTitle": "Recalculating with new departure time…",
     "exportShareTitle": "Share route",
     "exportOpenInMaps": "Open in Google Maps",
     "exportCopyLink": "Copy link",

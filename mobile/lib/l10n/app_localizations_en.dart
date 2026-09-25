@@ -2663,6 +2663,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prepareDepartureNow => 'Leave now';
 
   @override
+  String get replanNewDepartureTitle => 'Recalculating with new departure time…';
+
+  @override
   String get exportShareTitle => 'Share route';
 
   @override

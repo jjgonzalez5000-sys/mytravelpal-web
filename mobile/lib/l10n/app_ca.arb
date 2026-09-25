@@ -118,6 +118,7 @@
       }
     },
     "prepareDepartureNow": "Sortir ara",
+    "replanNewDepartureTitle": "Recalculant amb la nova hora de sortida…",
     "exportShareTitle": "Compartir ruta",
     "exportOpenInMaps": "Obrir a Google Maps",
     "exportCopyLink": "Copiar enllaç",

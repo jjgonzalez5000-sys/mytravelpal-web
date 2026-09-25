@@ -1010,6 +1010,7 @@
       }
     },
     "prepareDepartureNow": "Jetzt losfahren",
+    "replanNewDepartureTitle": "Neue Abfahrtszeit wird berechnet…",
     "exportShareTitle": "Route teilen",
     "exportOpenInMaps": "In Google Maps öffnen",
     "exportCopyLink": "Link kopieren",

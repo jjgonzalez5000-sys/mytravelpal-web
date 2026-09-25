@@ -2667,6 +2667,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get prepareDepartureNow => 'Sair agora';
 
   @override
+  String get replanNewDepartureTitle => 'A recalcular com o novo horário de partida…';
+
+  @override
   String get exportShareTitle => 'Partilhar rota';
 
   @override

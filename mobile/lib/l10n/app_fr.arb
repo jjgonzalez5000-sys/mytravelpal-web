@@ -1010,6 +1010,7 @@
       }
     },
     "prepareDepartureNow": "Partir maintenant",
+    "replanNewDepartureTitle": "Recalcul avec le nouvel horaire de départ…",
     "exportShareTitle": "Partager l'itinéraire",
     "exportOpenInMaps": "Ouvrir dans Google Maps",
     "exportCopyLink": "Copier le lien",

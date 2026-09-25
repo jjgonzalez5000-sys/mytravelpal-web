@@ -2672,6 +2672,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get prepareDepartureNow => 'Jetzt losfahren';
 
   @override
+  String get replanNewDepartureTitle => 'Neue Abfahrtszeit wird berechnet…';
+
+  @override
   String get exportShareTitle => 'Route teilen';
 
   @override

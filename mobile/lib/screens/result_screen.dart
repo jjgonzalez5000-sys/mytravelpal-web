@@ -634,6 +634,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     await _replan(
       newDeparture: window.departureAt,
       avoidMotorways: widget.request.avoidMotorways,
+      loadingTitle: AppLocalizations.of(context).replanNewDepartureTitle,
     );
   }
 
@@ -641,6 +642,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     required DateTime newDeparture,
     required bool avoidMotorways,
     TripPlanRequest? overrideRequest,
+    String? loadingTitle,
   }) async {
     // Root navigator so a mid-flight MaterialApp rebuild
     // (DynamicColorBuilder returning wallpaper colours) cannot
@@ -652,7 +654,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => const PlanLoadingDialog(),
+      builder: (_) => PlanLoadingDialog(title: loadingTitle),
     ));
     try {
       final api = ref.read(apiClientWithPremiumProvider);

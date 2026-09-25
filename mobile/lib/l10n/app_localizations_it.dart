@@ -2668,6 +2668,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get prepareDepartureNow => 'Partire ora';
 
   @override
+  String get replanNewDepartureTitle => 'Ricalcolo con il nuovo orario di partenza…';
+
+  @override
   String get exportShareTitle => 'Condividi il percorso';
 
   @override

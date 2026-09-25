@@ -2677,6 +2677,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get prepareDepartureNow => 'Salir ahora';
 
   @override
+  String get replanNewDepartureTitle => 'Calculando con nueva hora de salida…';
+
+  @override
   String get exportShareTitle => 'Compartir ruta';
 
   @override

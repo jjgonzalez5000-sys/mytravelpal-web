@@ -30,11 +30,20 @@ import '../l10n/app_localizations.dart';
 enum PlanStep { routing, traffic, fuel, hotels, restaurants, alerts, tolls }
 
 class PlanLoadingDialog extends StatefulWidget {
-  const PlanLoadingDialog({super.key, this.steps = PlanStep.values});
+  const PlanLoadingDialog({
+    super.key,
+    this.steps = PlanStep.values,
+    this.title,
+  });
 
   /// Ordered list of steps to cycle through. Defaults to every step —
   /// callers with request context should pass a filtered subset.
   final List<PlanStep> steps;
+
+  /// Custom header. Falls back to `l.planLoadingTitle`. Useful for
+  /// replan flows ("Calculating with new departure time…") where the
+  /// default "Planning your trip" reads as if we're starting fresh.
+  final String? title;
 
   @override
   State<PlanLoadingDialog> createState() => _PlanLoadingDialogState();
@@ -188,7 +197,7 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
                   const SizedBox(width: Tokens.space12),
                   Expanded(
                     child: Text(
-                      l.planLoadingTitle,
+                      widget.title ?? l.planLoadingTitle,
                       style: t.titleMedium?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
