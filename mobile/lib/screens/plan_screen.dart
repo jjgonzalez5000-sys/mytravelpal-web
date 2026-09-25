@@ -999,8 +999,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                 ),
                             children: [
                               for (var i = 0; i < _stops.length; i++)
-                                Padding(
+                                // Long-press anywhere on the row starts the
+                                // drag — mirrors Google Maps' behaviour on
+                                // its destination picker. The explicit drag
+                                // handle stays for accessibility + discovery.
+                                ReorderableDelayedDragStartListener(
                                   key: ValueKey('stop-row-$i-${_stops[i].place?.coordinate.lat}'),
+                                  index: i,
+                                  child: Padding(
                                   padding: const EdgeInsets.only(
                                       top: Tokens.space12),
                                   child: Column(
@@ -1009,12 +1015,24 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                         children: [
                                           ReorderableDragStartListener(
                                             index: i,
-                                            child: const Padding(
-                                              padding: EdgeInsets.only(
+                                            child: Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 6, vertical: 10),
+                                              margin: const EdgeInsets.only(
                                                   right: Tokens.space4),
+                                              decoration: BoxDecoration(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .surfaceContainerHighest,
+                                                borderRadius:
+                                                    BorderRadius.circular(6),
+                                              ),
                                               child: Icon(
                                                 Icons.drag_indicator,
-                                                size: 20,
+                                                size: 22,
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
                                               ),
                                             ),
                                           ),
@@ -1068,6 +1086,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                       ),
                                     ],
                                   ),
+                                ),
                                 ),
                             ],
                           ),
