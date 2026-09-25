@@ -218,7 +218,9 @@ class _NarrativeBodyState extends State<_NarrativeBody> {
             Text(
               l.narrativeTitle.toUpperCase(),
               style: t.labelSmall?.copyWith(
-                color: scheme.tertiary, letterSpacing: 1.4,
+                color: scheme.tertiary,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w700,
               ),
             ),
             const Spacer(),

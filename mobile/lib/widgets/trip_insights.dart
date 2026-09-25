@@ -1107,7 +1107,8 @@ class NextStopHero extends StatelessWidget {
                       l.nextStopHeroLabel.toUpperCase(),
                       style: t.labelSmall?.copyWith(
                         color: scheme.onPrimaryContainer,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 2),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import 'tokens.dart';
 
@@ -40,7 +41,8 @@ class SectionHeader extends StatelessWidget {
                       eyebrow!.toUpperCase(),
                       style: t.labelSmall?.copyWith(
                         color: scheme.tertiary,
-                        letterSpacing: 1.2,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
@@ -86,12 +88,25 @@ class SoftCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // Subtle default drop shadow so cards read as gently elevated
+    // above the scaffold surface. Dark mode gets a firmer alpha
+    // because a 6% black shadow disappears against a near-black
+    // surface; ~24% keeps the same perceived lift.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final defaultShadow = <BoxShadow>[
+      BoxShadow(
+        color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.06),
+        offset: const Offset(0, 4),
+        blurRadius: 12,
+        spreadRadius: -2,
+      ),
+    ];
     final container = DecoratedBox(
       decoration: BoxDecoration(
         color: background ?? scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(Tokens.radiusLg),
         border: Border.all(color: borderColor ?? scheme.outlineVariant),
-        boxShadow: elevated ? Tokens.shadowMd : null,
+        boxShadow: elevated ? Tokens.shadowMd : defaultShadow,
       ),
       child: Padding(padding: padding, child: child),
     );
@@ -130,7 +145,10 @@ class StatTile extends StatelessWidget {
       children: [
         Text(
           label.toUpperCase(),
-          style: t.labelSmall?.copyWith(letterSpacing: 1.1),
+          style: t.labelSmall?.copyWith(
+            letterSpacing: 1.4,
+            fontWeight: FontWeight.w700,
+          ),
         ),
         const SizedBox(height: Tokens.space4),
         Text(
@@ -264,15 +282,28 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Hero icon container — 96x96 rounded rectangle in the
+            // scheme's primary container tint. Bigger + more color
+            // than the previous 72x72 pill so the empty state feels
+            // deliberate rather than a fallback. Subtle scale-in
+            // gives it a soft entrance the first time it renders.
             Container(
-              width: 72,
-              height: 72,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
                 color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(Tokens.radiusPill),
+                borderRadius: BorderRadius.circular(16),
               ),
-              child: Icon(icon, size: 32, color: scheme.onPrimaryContainer),
-            ),
+              child: Icon(icon, size: 56, color: scheme.onPrimaryContainer),
+            )
+                .animate()
+                .scale(
+                  begin: const Offset(0.9, 0.9),
+                  end: const Offset(1.0, 1.0),
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutBack,
+                )
+                .fadeIn(duration: const Duration(milliseconds: 300)),
             const SizedBox(height: Tokens.space16),
             Text(title, style: t.titleLarge, textAlign: TextAlign.center),
             const SizedBox(height: Tokens.space8),

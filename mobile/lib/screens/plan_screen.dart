@@ -35,6 +35,59 @@ import 'profile_screen.dart';
 import 'result_screen.dart';
 import '../services/app_tutorial.dart';
 
+// Time-of-day gradient anchors. Each anchor sits at the midpoint of
+// a named window (dawn / morning / midday / dusk / evening / night)
+// so we can linearly interpolate between the two adjacent anchors —
+// 07:59 fades continuously into 08:00 with no visible jump. The
+// hours wrap around midnight (night <-> evening).
+const _todAnchors = <({double hour, Color top, Color bottom})>[
+  // 00:00-05:00 night — evening but darker (RGB ~x0.5).
+  (hour: 2.5,  top: Color(0xFF1F2545), bottom: Color(0xFF0F122B)),
+  // 05:00-08:00 dawn — rose to amber.
+  (hour: 6.5,  top: Color(0xFFFFB199), bottom: Color(0xFFFFE29C)),
+  // 08:00-12:00 morning — soft blue to cyan.
+  (hour: 10.0, top: Color(0xFFB4D6FF), bottom: Color(0xFFE6F5FF)),
+  // 12:00-17:00 midday — warm cream.
+  (hour: 14.5, top: Color(0xFFFFF5D9), bottom: Color(0xFFFFEAB0)),
+  // 17:00-20:00 dusk — coral to purple.
+  (hour: 18.5, top: Color(0xFFFF9A76), bottom: Color(0xFFB58FEB)),
+  // 20:00-24:00 evening — indigo to deep-blue.
+  (hour: 22.0, top: Color(0xFF3E4A8A), bottom: Color(0xFF1E2456)),
+];
+
+/// Returns the (top, bottom) gradient colours for the current
+/// wall-clock hour. Interpolates linearly between adjacent anchors
+/// with midnight wraparound so transitions between windows are
+/// seamless.
+({Color top, Color bottom}) _timeOfDayColors() {
+  final now = DateTime.now();
+  final h = now.hour + now.minute / 60.0;
+  ({double hour, Color top, Color bottom}) prev = _todAnchors.last;
+  ({double hour, Color top, Color bottom}) next = _todAnchors.first;
+  var found = false;
+  for (var i = 0; i < _todAnchors.length; i++) {
+    final a = _todAnchors[i];
+    if (h < a.hour) {
+      next = a;
+      prev = _todAnchors[(i - 1 + _todAnchors.length) % _todAnchors.length];
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    // h is past the last anchor — wrap around to the first.
+    prev = _todAnchors.last;
+    next = _todAnchors.first;
+  }
+  final span = ((next.hour - prev.hour) + 24) % 24;
+  final delta = ((h - prev.hour) + 24) % 24;
+  final t = span == 0 ? 0.0 : (delta / span).clamp(0.0, 1.0);
+  return (
+    top: Color.lerp(prev.top, next.top, t)!,
+    bottom: Color.lerp(prev.bottom, next.bottom, t)!,
+  );
+}
+
 class PlanScreen extends ConsumerStatefulWidget {
   const PlanScreen({
     super.key,
@@ -764,13 +817,35 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final locale = Localizations.localeOf(context).toString();
     final dateFmt = DateFormat('EEE, d MMM · HH:mm', locale);
 
+    // Time-of-day gradient: shifts palette across dawn / morning /
+    // midday / dusk / evening / night so the top of the form feels
+    // like ambient light. Fades into scheme.surface by 70% down so
+    // form fields sit on the neutral background. Dark theme uses a
+    // fixed deep-indigo→black gradient for coherence.
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tod = isDark
+        ? (top: const Color(0xFF1A1B2E), bottom: const Color(0xFF05060F))
+        : _timeOfDayColors();
     return Scaffold(
-      body: SafeArea(
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [tod.top, tod.bottom, scheme.surface],
+            stops: const [0.0, 0.35, 0.7],
+          ),
+        ),
+        child: SafeArea(
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
               pinned: false,
               floating: true,
+              backgroundColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              scrolledUnderElevation: 0,
               expandedHeight: 40,
               titleSpacing: Tokens.space20,
               title: Row(
@@ -846,7 +921,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   // Hero
                   Text(l.planEyebrow,
                       style: t.labelSmall?.copyWith(
-                        color: scheme.tertiary, letterSpacing: 1.4,
+                        color: scheme.tertiary,
+                        letterSpacing: 1.4,
+                        fontWeight: FontWeight.w700,
                       )),
                   const SizedBox(height: Tokens.space8),
                   Builder(builder: (context) {
@@ -1351,6 +1428,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               ),
             ),
           ],
+        ),
         ),
       ),
     );
@@ -1944,8 +2022,11 @@ class _ProfileChip extends StatelessWidget {
         if (isOverride)
           Text(
             l.planProfileOverrideActive,
-            style: t.labelSmall
-                ?.copyWith(color: scheme.tertiary, letterSpacing: 1.2),
+            style: t.labelSmall?.copyWith(
+              color: scheme.tertiary,
+              letterSpacing: 1.4,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         Text(
           bits.join(' · '),

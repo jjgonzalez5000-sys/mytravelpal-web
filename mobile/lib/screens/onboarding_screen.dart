@@ -176,7 +176,9 @@ class _SlideView extends StatelessWidget {
           Text(
             slide.eyebrow,
             style: t.labelSmall?.copyWith(
-              color: scheme.tertiary, letterSpacing: 1.2,
+              color: scheme.tertiary,
+              letterSpacing: 1.4,
+              fontWeight: FontWeight.w700,
             ),
           )
               .animate(key: ValueKey('${slide.title}-eyebrow'))

@@ -766,7 +766,8 @@ class _NextStopCard extends StatelessWidget {
                   l.tripDashboardNextStopLabel(_slotLabel(l)),
                   style: t.labelSmall?.copyWith(
                     color: scheme.onPrimaryContainer,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),

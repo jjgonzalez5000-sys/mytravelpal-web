@@ -7,6 +7,7 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../widgets/location_search_field.dart';
+import '../widgets/skeleton.dart';
 
 /// Standalone parking search. Entry point for "I'm going to an
 /// event and need to park my car" — pick destination, get a
@@ -289,7 +290,7 @@ class _ParkingSearchScreenState
               const SizedBox(height: Tokens.space8),
               Expanded(
                 child: _loading
-                    ? const Center(child: CircularProgressIndicator())
+                    ? const _ParkingListSkeleton()
                     : _error != null
                         ? Center(
                             child: Text(
@@ -456,6 +457,62 @@ class _Chip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Skeleton list rendered while the parking search backend runs.
+/// Six rows echo `_ParkingTile`'s icon + title + chips shape so the
+/// eventual list slots in without a jumpy reflow.
+class _ParkingListSkeleton extends StatelessWidget {
+  const _ParkingListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      itemCount: 6,
+      separatorBuilder: (_, __) => const Divider(height: 1),
+      itemBuilder: (_, __) => Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16, vertical: Tokens.space12,
+        ),
+        child: Row(
+          children: [
+            const Skeleton(width: 32, height: 32),
+            const SizedBox(width: Tokens.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Skeleton(
+                    width: 200, height: 14,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Skeleton(
+                        width: 60, height: 20,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      const SizedBox(width: 6),
+                      Skeleton(
+                        width: 70, height: 20,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Tokens.space12),
+            Skeleton(
+              width: 48, height: 12,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ],
+        ),
       ),
     );
   }

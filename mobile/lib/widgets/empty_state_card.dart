@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../design/tokens.dart';
 
@@ -42,6 +43,11 @@ class EmptyStateCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final color = tint ?? scheme.outlineVariant;
+    // Compact tinted icon container — keeps the row layout because
+    // this card lives inline inside result-screen sections (hotels,
+    // restaurants, fuel) where a full-page hero would break the
+    // vertical rhythm. Still visibly elevated vs the previous flat
+    // 22px icon: a colored rounded square that reads as a badge.
     return Container(
       padding: const EdgeInsets.all(Tokens.space16),
       decoration: BoxDecoration(
@@ -50,9 +56,25 @@ class EmptyStateCard extends StatelessWidget {
         border: Border.all(color: color.withValues(alpha: 0.6)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 22),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: scheme.primaryContainer,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, size: 28, color: scheme.onPrimaryContainer),
+          )
+              .animate()
+              .scale(
+                begin: const Offset(0.9, 0.9),
+                end: const Offset(1.0, 1.0),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutBack,
+              )
+              .fadeIn(duration: const Duration(milliseconds: 300)),
           const SizedBox(width: Tokens.space12),
           Expanded(
             child: Column(

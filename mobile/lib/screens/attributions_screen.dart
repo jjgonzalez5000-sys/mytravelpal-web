@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../widgets/skeleton.dart';
 
 /// Renders the attribution catalogue served by `GET /v1/attributions`
 /// grouped by section, plus a link into Flutter's built-in
@@ -46,7 +47,9 @@ class _AttributionsScreenState extends ConsumerState<AttributionsScreen> {
         future: _future,
         builder: (context, snap) {
           if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            // Skeleton list — 5 grouped tiles preserve the shape
+            // of the eventual attribution cards.
+            return const _AttributionsSkeleton();
           }
           if (snap.hasError || snap.data == null) {
             return _ErrorState(
@@ -127,7 +130,8 @@ class _SectionHeader extends StatelessWidget {
         child: Text(
           title.toUpperCase(),
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.1,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
@@ -213,6 +217,73 @@ class _AttributionCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Skeleton placeholder for the attributions list — one section
+/// header, then a stack of tiles that echo `_AttributionCard`'s
+/// title + description + license row.
+class _AttributionsSkeleton extends StatelessWidget {
+  const _AttributionsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space16, vertical: Tokens.space16,
+      ),
+      children: [
+        Skeleton(
+          width: double.infinity, height: 14,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: 6),
+        Skeleton(
+          width: 220, height: 14,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: Tokens.space24),
+        Skeleton(
+          width: 100, height: 12,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: Tokens.space12),
+        for (var i = 0; i < 5; i++) ...[
+          Container(
+            padding: const EdgeInsets.all(Tokens.space16),
+            margin: const EdgeInsets.only(bottom: Tokens.space8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Skeleton(
+                  width: 180, height: 16,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                const SizedBox(height: 8),
+                Skeleton(
+                  width: double.infinity, height: 12,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                const SizedBox(height: 6),
+                Skeleton(
+                  width: 240, height: 12,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                const SizedBox(height: 10),
+                Skeleton(
+                  width: 120, height: 10,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

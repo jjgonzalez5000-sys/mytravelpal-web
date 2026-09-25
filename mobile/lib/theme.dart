@@ -328,56 +328,64 @@ class AppTheme {
     );
   }
 
-  // -- Typography (Inter) --------------------------------------------------
+  // -- Typography (Manrope headings + Inter body) --------------------------
+  //
+  // Manrope carries the display/headline/title/label ranges — its
+  // slightly rounder terminals feel warmer than Inter at large sizes
+  // while its geometric skeleton keeps eyebrows crisp. Body copy
+  // stays on Inter because it was tuned specifically for legibility
+  // at 12–16 pt on screen and small caption sizes still need every
+  // last hint of x-height that Inter gives us.
 
   static TextTheme _buildTextTheme(Color body, Color muted) {
-    final base = GoogleFonts.interTextTheme();
+    final heading = GoogleFonts.manropeTextTheme();
+    final text = GoogleFonts.interTextTheme();
     return TextTheme(
-      displayLarge: base.displayLarge?.copyWith(
+      displayLarge: heading.displayLarge?.copyWith(
         fontSize: 40, height: 1.15, fontWeight: FontWeight.w600,
         letterSpacing: -0.5, color: body,
       ),
-      displayMedium: base.displayMedium?.copyWith(
+      displayMedium: heading.displayMedium?.copyWith(
         fontSize: 32, height: 1.2, fontWeight: FontWeight.w600,
         letterSpacing: -0.3, color: body,
       ),
-      displaySmall: base.displaySmall?.copyWith(
+      displaySmall: heading.displaySmall?.copyWith(
         fontSize: 26, height: 1.25, fontWeight: FontWeight.w600, color: body,
       ),
-      headlineLarge: base.headlineLarge?.copyWith(
+      headlineLarge: heading.headlineLarge?.copyWith(
         fontSize: 24, height: 1.3, fontWeight: FontWeight.w600, color: body,
       ),
-      headlineMedium: base.headlineMedium?.copyWith(
+      headlineMedium: heading.headlineMedium?.copyWith(
         fontSize: 20, height: 1.35, fontWeight: FontWeight.w600, color: body,
       ),
-      headlineSmall: base.headlineSmall?.copyWith(
+      headlineSmall: heading.headlineSmall?.copyWith(
         fontSize: 18, height: 1.35, fontWeight: FontWeight.w600, color: body,
       ),
-      titleLarge: base.titleLarge?.copyWith(
+      titleLarge: heading.titleLarge?.copyWith(
         fontSize: 18, height: 1.4, fontWeight: FontWeight.w600, color: body,
       ),
-      titleMedium: base.titleMedium?.copyWith(
+      titleMedium: heading.titleMedium?.copyWith(
         fontSize: 16, height: 1.4, fontWeight: FontWeight.w600, color: body,
       ),
-      titleSmall: base.titleSmall?.copyWith(
+      titleSmall: heading.titleSmall?.copyWith(
         fontSize: 14, height: 1.4, fontWeight: FontWeight.w600, color: body,
       ),
-      bodyLarge: base.bodyLarge?.copyWith(
+      bodyLarge: text.bodyLarge?.copyWith(
         fontSize: 16, height: 1.5, color: body,
       ),
-      bodyMedium: base.bodyMedium?.copyWith(
+      bodyMedium: text.bodyMedium?.copyWith(
         fontSize: 14, height: 1.5, color: body,
       ),
-      bodySmall: base.bodySmall?.copyWith(
+      bodySmall: text.bodySmall?.copyWith(
         fontSize: 12, height: 1.4, color: muted,
       ),
-      labelLarge: base.labelLarge?.copyWith(
+      labelLarge: heading.labelLarge?.copyWith(
         fontSize: 14, height: 1.3, fontWeight: FontWeight.w600, color: body,
       ),
-      labelMedium: base.labelMedium?.copyWith(
+      labelMedium: heading.labelMedium?.copyWith(
         fontSize: 12, height: 1.3, fontWeight: FontWeight.w500, color: body,
       ),
-      labelSmall: base.labelSmall?.copyWith(
+      labelSmall: heading.labelSmall?.copyWith(
         fontSize: 11, height: 1.3, fontWeight: FontWeight.w500,
         letterSpacing: 0.5, color: muted,
       ),

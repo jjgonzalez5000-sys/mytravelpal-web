@@ -141,6 +141,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _saved = false;
   bool _saving = false;
 
+  // Hero landing moment: on the very first build after the plan
+  // arrives, the top sections play a small staggered entrance and a
+  // "plan ready" chip pops in for ~2s. Both are strictly one-shot —
+  // any subsequent setState (toll toggle, hotel pick, replan) skips
+  // the animations by checking `_firstShow`, so the UI never
+  // re-teases the reward.
+  bool _firstShow = true;
+  bool _showSuccessChip = true;
+  Timer? _successChipTimer;
+  Timer? _firstShowResetTimer;
+
   /// Partial toll skip selection — held here so scroll recycling
   /// doesn't reset the user's picks (the old StatefulWidget inside
   /// the list re-ran initState on re-mount). Seeded from
@@ -244,6 +255,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         );
       }
     });
+    // Success chip auto-dismiss after ~2s. AnimatedSwitcher below
+    // handles the fade-out visual.
+    _successChipTimer = Timer(const Duration(milliseconds: 2000), () {
+      if (!mounted) return;
+      setState(() => _showSuccessChip = false);
+    });
+    // Flip `_firstShow` off once the hero entrance has had time to
+    // play (fadeIn 240ms + max delay 350ms + safety margin). After
+    // that, further rebuilds render the sections without the
+    // Animate wrapper so nothing re-teases.
+    _firstShowResetTimer =
+        Timer(const Duration(milliseconds: 800), () {
+      if (!mounted || !_firstShow) return;
+      setState(() => _firstShow = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _successChipTimer?.cancel();
+    _firstShowResetTimer?.cancel();
+    super.dispose();
   }
 
   /// User-added POI stops keyed by a stable id (name+coord for hotels
@@ -803,7 +836,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         child: Text(
           title.toUpperCase(),
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.1,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
@@ -1004,12 +1038,162 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     // User-selected display currency. Backend prices are EUR;
     // `formatMoney` converts and appends the right symbol.
     final ccy = ref.watch(currencyCodeProvider);
+    // Honour the OS "reduce motion" preference — keeps the fadeIn
+    // (it's cheap and low-vestibular) but drops the moveY / scale
+    // choreography so the entrance isn't jarring for users who opted
+    // out of animations.
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     // Scope tells the client which sections to surface. When absent
     // (request had no TripProfile), fall through to a permissive default.
     final scope = widget.response.recommendationScope;
     final showRestaurants = scope?.showRestaurants ?? true;
     final bedtimeHour = widget.request.tripProfile?.bedtimeHour ?? 22;
+
+    // Hero widgets captured as locals so the ListView wrapper below
+    // can identity-match them and apply the staggered landing
+    // animation only to these four (not to spacers or later
+    // sections). Keeping identity checks (vs. index bookkeeping)
+    // stays robust when the sections list gets re-ordered.
+    final Widget heroMapCard = _InteractiveMapCard(
+      origin: widget.request.origin,
+      destination: widget.request.destination,
+      route: route,
+      alternativeGeometry:
+          widget.response.tollAlternative?.geometry ?? const [],
+      hotels: _filteredHotels,
+      restaurants: widget.response.restaurants,
+      tollSkips: widget.response.partialTollSkips,
+      fuelStations: _topCheapestFuel(widget.response.fuelPrices, 10),
+      adverseEvents: widget.response.adverseEvents,
+      mode: _mapMode,
+      onModeChange: (m) => setState(() => _mapMode = m),
+    );
+    final Widget heroOriginDestRow = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.space4),
+      child: Row(
+        children: [
+          Icon(Icons.trip_origin, size: 14, color: Colors.green.shade700),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              widget.origin.displayName,
+              style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Icon(Icons.arrow_forward, size: 14,
+                color: scheme.onSurfaceVariant),
+          ),
+          Icon(Icons.location_on, size: 14, color: Colors.red.shade700),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              widget.destination.displayName,
+              style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.end,
+            ),
+          ),
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(
+              minWidth: 32, minHeight: 32,
+            ),
+            visualDensity: VisualDensity.compact,
+            tooltip: l.exportShareTitle,
+            icon: const Icon(Icons.ios_share, size: 18),
+            onPressed: () => showExportSheet(
+              context,
+              origin: widget.request.origin,
+              destination: widget.request.destination,
+              waypoints: [
+                for (final w in widget.request.waypoints) w.coordinate,
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    final Widget heroCompanionButton = SizedBox(
+      width: double.infinity,
+      child: FilledButton.tonalIcon(
+        icon: const Icon(Icons.assistant_navigation, size: 20),
+        label: Text(l.resultStartCompanion),
+        onPressed: _startCompanion,
+      ),
+    );
+    final Widget heroStatsCard = InkWell(
+      onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
+      borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      child: SoftCard(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space20, vertical: Tokens.space20,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Builder(builder: (context) {
+                  final fmt = ref.watch(unitFormatterProvider);
+                  return StatTile(
+                    label: l.resultStatDistance,
+                    value: fmt.distance(route.distanceKm),
+                  );
+                }),
+                StatTile(
+                  label: l.resultStatFreeFlow,
+                  value: _hhmm(
+                    route.freeFlowMinutes + _addedMinutesTotal,
+                  ),
+                ),
+                StatTile(
+                  label: l.resultStatTolls,
+                  value: formatMoney(
+                    (route.tollCostEur - _tollSkipSavingsEur)
+                        .clamp(0.0, route.tollCostEur),
+                    ccy,
+                  ),
+                ),
+              ],
+            ),
+            if (_addedStops.isNotEmpty) ...[
+              const SizedBox(height: Tokens.space12),
+              _AddedStopsChip(
+                count: _addedStops.length,
+                minutes: _addedMinutesTotal,
+                onClear: _clearAddedStops,
+                onTap: _openAddedStopsMap,
+              ),
+              if (_addedRouteWaypoints.isNotEmpty) ...[
+                const SizedBox(height: Tokens.space8),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _replanWithAddedStops,
+                    icon: const Icon(Icons.route, size: 18),
+                    label: Text(
+                      AppLocalizations.of(context).replanWithStops,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+            if (widget.response.days.isNotEmpty) ...[
+              const SizedBox(height: Tokens.space12),
+              Divider(color: scheme.outlineVariant),
+              const SizedBox(height: Tokens.space4),
+              for (final d in widget.response.days)
+                _DayStripRow(day: d),
+            ],
+          ],
+        ),
+      ),
+    );
 
     final sections = <Widget>[
       if (widget.response.adverseEvents.isNotEmpty)
@@ -1060,155 +1244,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             ],
           ),
         ),
-      _InteractiveMapCard(
-        origin: widget.request.origin,
-        destination: widget.request.destination,
-        route: route,
-        alternativeGeometry:
-            widget.response.tollAlternative?.geometry ?? const [],
-        hotels: _filteredHotels,
-        restaurants: widget.response.restaurants,
-        tollSkips: widget.response.partialTollSkips,
-        // Top 10 cheapest fuel stations on the map — the layer
-        // picker in the top-right toggles them off. Filtered to
-        // stations with known prices (the "no price available"
-        // pins are noise for a "cheapest fuel" overlay).
-        fuelStations: _topCheapestFuel(widget.response.fuelPrices, 10),
-        adverseEvents: widget.response.adverseEvents,
-        mode: _mapMode,
-        onModeChange: (m) => setState(() => _mapMode = m),
-      ),
+      heroMapCard,
       const SizedBox(height: Tokens.space12),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Tokens.space4),
-        child: Row(
-          children: [
-            Icon(Icons.trip_origin, size: 14, color: Colors.green.shade700),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Text(
-                widget.origin.displayName,
-                style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: Icon(Icons.arrow_forward, size: 14,
-                  color: scheme.onSurfaceVariant),
-            ),
-            Icon(Icons.location_on, size: 14, color: Colors.red.shade700),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-                widget.destination.displayName,
-                style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-              ),
-            ),
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(
-                minWidth: 32, minHeight: 32,
-              ),
-              visualDensity: VisualDensity.compact,
-              tooltip: l.exportShareTitle,
-              icon: const Icon(Icons.ios_share, size: 18),
-              onPressed: () => showExportSheet(
-                context,
-                origin: widget.request.origin,
-                destination: widget.request.destination,
-                waypoints: [
-                  for (final w in widget.request.waypoints) w.coordinate,
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
+      heroOriginDestRow,
       // Inline Companion CTA — same behaviour as the bottom FAB, but
       // reachable without scrolling to the bottom. Testers wanted a
       // one-tap entry near the trip summary.
       const SizedBox(height: Tokens.space8),
-      SizedBox(
-        width: double.infinity,
-        child: FilledButton.tonalIcon(
-          icon: const Icon(Icons.assistant_navigation, size: 20),
-          label: Text(l.resultStartCompanion),
-          onPressed: _startCompanion,
-        ),
-      ),
+      heroCompanionButton,
       const SizedBox(height: Tokens.space12),
-      InkWell(
-        onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
-        borderRadius: BorderRadius.circular(Tokens.radiusLg),
-        child: SoftCard(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Tokens.space20, vertical: Tokens.space20,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Builder(builder: (context) {
-                    final fmt = ref.watch(unitFormatterProvider);
-                    return StatTile(
-                      label: l.resultStatDistance,
-                      value: fmt.distance(route.distanceKm),
-                    );
-                  }),
-                  StatTile(
-                    label: l.resultStatFreeFlow,
-                    value: _hhmm(
-                      route.freeFlowMinutes + _addedMinutesTotal,
-                    ),
-                  ),
-                  StatTile(
-                    label: l.resultStatTolls,
-                    value: formatMoney(
-                      (route.tollCostEur - _tollSkipSavingsEur)
-                          .clamp(0.0, route.tollCostEur),
-                      ccy,
-                    ),
-                  ),
-                ],
-              ),
-              if (_addedStops.isNotEmpty) ...[
-                const SizedBox(height: Tokens.space12),
-                _AddedStopsChip(
-                  count: _addedStops.length,
-                  minutes: _addedMinutesTotal,
-                  onClear: _clearAddedStops,
-                  onTap: _openAddedStopsMap,
-                ),
-                if (_addedRouteWaypoints.isNotEmpty) ...[
-                  const SizedBox(height: Tokens.space8),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _replanWithAddedStops,
-                      icon: const Icon(Icons.route, size: 18),
-                      label: Text(
-                        AppLocalizations.of(context).replanWithStops,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-              if (widget.response.days.isNotEmpty) ...[
-                const SizedBox(height: Tokens.space12),
-                Divider(color: scheme.outlineVariant),
-                const SizedBox(height: Tokens.space4),
-                for (final d in widget.response.days)
-                  _DayStripRow(day: d),
-              ],
-            ],
-          ),
-        ),
-      ),
+      heroStatsCard,
       if (widget.response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -1613,24 +1658,58 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           const SizedBox(width: Tokens.space8),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(
-          Tokens.space20,
-          Tokens.space16,
-          Tokens.space20,
-          // Extra bottom padding so the "Start trip" FAB doesn't
-          // cover the last card in the section list.
-          Tokens.space64 + Tokens.space16,
-        ),
+      body: Stack(
         children: [
-          for (var i = 0; i < sections.length; i++)
-            sections[i]
-                .animate()
-                .fadeIn(
-                  delay: Duration(milliseconds: 40 * i),
+          Positioned.fill(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(
+                Tokens.space20,
+                Tokens.space16,
+                Tokens.space20,
+                // Extra bottom padding so the "Start trip" FAB doesn't
+                // cover the last card in the section list.
+                Tokens.space64 + Tokens.space16,
+              ),
+              children: [
+                for (var i = 0; i < sections.length; i++)
+                  _wrapSectionAnimated(
+                    sections[i],
+                    index: i,
+                    reduceMotion: reduceMotion,
+                    heroMap: sections[i] == heroMapCard,
+                    heroOriginDest: sections[i] == heroOriginDestRow,
+                    heroCompanion: sections[i] == heroCompanionButton,
+                    heroStats: sections[i] == heroStatsCard,
+                  ),
+              ],
+            ),
+          ),
+          // One-shot "plan ready" pill. Sits above the ListView so it
+          // fades in/out without shifting the layout. IgnorePointer so
+          // the taps on the AppBar / body still land.
+          Positioned(
+            top: Tokens.space8,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Center(
+                child: AnimatedSwitcher(
                   duration: Tokens.motionBase,
-                )
-                .moveY(begin: 4, end: 0, curve: Tokens.curveOut),
+                  switchInCurve: Tokens.curveOut,
+                  switchOutCurve: Tokens.curveOut,
+                  child: _showSuccessChip
+                      ? _PlanReadyChip(
+                          key: const ValueKey('plan_ready_chip'),
+                          distanceKm: route.distanceKm,
+                          minutes: route.freeFlowMinutes,
+                        )
+                      : const SizedBox.shrink(
+                          key: ValueKey('plan_ready_chip_gone'),
+                        ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -1643,6 +1722,55 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         onPressed: _startCompanion,
       ),
     );
+  }
+
+  /// Wraps a section in a one-shot entrance animation on the first
+  /// build after landing. Any subsequent rebuild (setState from a
+  /// toll toggle, hotel pick, replan) short-circuits the wrapper by
+  /// returning the child directly — that way the whole staircase
+  /// doesn't re-play every time the driver taps something.
+  ///
+  /// The hero widgets (map, origin→destination row, stats card, and
+  /// the inline Companion CTA) get their own delays so the landing
+  /// reads like a staggered reveal instead of a synchronous blink.
+  /// Non-hero sections keep the pre-existing 40*i cascade so nothing
+  /// downstream regresses.
+  Widget _wrapSectionAnimated(
+    Widget child, {
+    required int index,
+    required bool reduceMotion,
+    bool heroMap = false,
+    bool heroOriginDest = false,
+    bool heroCompanion = false,
+    bool heroStats = false,
+  }) {
+    if (!_firstShow) return child;
+    final Duration delay = heroMap
+        ? Duration.zero
+        : heroOriginDest
+            ? const Duration(milliseconds: 100)
+            : heroStats
+                ? const Duration(milliseconds: 200)
+                : heroCompanion
+                    ? const Duration(milliseconds: 350)
+                    : Duration(milliseconds: 40 * index);
+    final base = child.animate().fadeIn(
+          delay: delay,
+          duration: Tokens.motionBase,
+        );
+    if (reduceMotion) return base;
+    if (heroCompanion) {
+      return base.scale(
+        begin: const Offset(0.94, 0.94),
+        end: const Offset(1.0, 1.0),
+        duration: Tokens.motionBase,
+        curve: Tokens.curveOut,
+      );
+    }
+    if (heroMap) {
+      return base.moveY(begin: 12, end: 0, curve: Tokens.curveOut);
+    }
+    return base.moveY(begin: 4, end: 0, curve: Tokens.curveOut);
   }
 
   /// Extracted so the same behaviour can be triggered from both the
@@ -1730,6 +1858,67 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 // ---------------------------------------------------------------------------
 // Sub-widgets
 // ---------------------------------------------------------------------------
+
+/// Small one-shot "plan ready" pill shown at the top of the
+/// ResultScreen for ~2s after landing. Kept intentionally tiny —
+/// the point is a subtle reward, not a splash. The parent
+/// `AnimatedSwitcher` fades this in and out; the chip itself only
+/// worries about its own visuals + a quick spring on entry.
+class _PlanReadyChip extends StatelessWidget {
+  const _PlanReadyChip({
+    super.key,
+    required this.distanceKm,
+    required this.minutes,
+  });
+
+  final double distanceKm;
+  final double minutes;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final km = distanceKm.round();
+    final h = (minutes / 60).floor();
+    final m = (minutes % 60).round();
+    final label = 'Plan listo  ·  ${km} km  ·  ${h}h ${m}m';
+    final chip = Material(
+      color: const Color(0xFF16A34A), // green-600
+      elevation: 4,
+      shadowColor: Colors.black26,
+      borderRadius: BorderRadius.circular(999),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 14, vertical: 8,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle,
+                size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (reduceMotion) return chip;
+    return chip
+        .animate()
+        .scale(
+          begin: const Offset(0.9, 0.9),
+          end: const Offset(1.0, 1.0),
+          duration: Tokens.motionBase,
+          curve: Tokens.curveOut,
+        );
+  }
+}
 
 enum _MapMode { collapsed, normal, fullscreen }
 
@@ -2114,7 +2303,9 @@ class _RouteVariantRow extends StatelessWidget {
                       Text(
                         '· PRIMARY',
                         style: t.labelSmall?.copyWith(
-                          color: scheme.primary, letterSpacing: 1.1,
+                          color: scheme.primary,
+                          letterSpacing: 1.4,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -2222,6 +2413,7 @@ class _TotalTripCostCard extends ConsumerWidget {
                 style: t.labelSmall?.copyWith(
                   color: scheme.primary,
                   letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -2308,8 +2500,9 @@ class _TotalTripCostCard extends ConsumerWidget {
                       Text(
                         l.resultTripSavings.toUpperCase(),
                         style: t.labelSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
                           color: scheme.tertiary,
-                          letterSpacing: 1.2,
+                          letterSpacing: 1.4,
                         ),
                       ),
                     ],
@@ -2477,7 +2670,9 @@ class _SavingsSummaryCard extends StatelessWidget {
               Text(
                 l.resultTripSavings,
                 style: t.labelSmall?.copyWith(
-                  color: scheme.tertiary, letterSpacing: 1.4,
+                  color: scheme.tertiary,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -2604,7 +2799,8 @@ class _SavingsStat extends StatelessWidget {
           label.toUpperCase(),
           style: t.labelSmall?.copyWith(
             color: foreground,
-            letterSpacing: 1.1,
+            letterSpacing: 1.4,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
@@ -2668,6 +2864,7 @@ class _RecommendationHero extends StatelessWidget {
                 style: t.labelSmall?.copyWith(
                   color: scheme.onPrimaryContainer,
                   letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
               const Spacer(),
@@ -3032,7 +3229,8 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
                     l.daySleepHotelsLabelDestination.toUpperCase(),
                     style: t.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant,
-                      letterSpacing: 1.1,
+                      letterSpacing: 1.4,
+                      fontWeight: FontWeight.w700,
                     ),
                   );
                 }),
@@ -3395,7 +3593,10 @@ class _HourlyTollCard extends StatelessWidget {
               const SizedBox(width: Tokens.space8),
               Text(l.resultHourlyTollEyebrow,
                   style: t.labelSmall?.copyWith(
-                      color: scheme.tertiary, letterSpacing: 1.4)),
+                    color: scheme.tertiary,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
+                  )),
               const Spacer(),
               SoftBadge(
                 label: l.narrativePremiumBadge,
@@ -3532,7 +3733,9 @@ class _PartialTollSkipsCard extends ConsumerWidget {
                 child: Text(
                   l.partialTollSkipsTitle.toUpperCase(),
                   style: t.labelSmall?.copyWith(
-                    color: scheme.tertiary, letterSpacing: 1.4,
+                    color: scheme.tertiary,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -4125,7 +4328,9 @@ class _WeatherStripCard extends StatelessWidget {
               Text(
                 l.weatherAlongRouteTitle,
                 style: t.labelSmall?.copyWith(
-                  color: scheme.primary, letterSpacing: 1.4,
+                  color: scheme.primary,
+                  letterSpacing: 1.4,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ],
@@ -4201,7 +4406,8 @@ class _DestinationHotelsSection extends StatelessWidget {
           l.daySleepHotelsLabelDestination.toUpperCase(),
           style: t.labelSmall?.copyWith(
             color: scheme.onSurfaceVariant,
-            letterSpacing: 1.1,
+            letterSpacing: 1.4,
+            fontWeight: FontWeight.w700,
           ),
         ),
         const SizedBox(height: Tokens.space8),
@@ -4576,7 +4782,8 @@ class _TimeWindowExpandableCardState
                   l.resultBestTimeToLeave,
                   style: t.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant,
-                    letterSpacing: 1.2,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ],
@@ -5025,7 +5232,9 @@ class _MultiDaySleepPreview extends StatelessWidget {
                 Text(
                   l.multiDaySleepLabel.toUpperCase(),
                   style: t.labelSmall?.copyWith(
-                    color: scheme.onTertiaryContainer, letterSpacing: 1.2,
+                    color: scheme.onTertiaryContainer,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 2),

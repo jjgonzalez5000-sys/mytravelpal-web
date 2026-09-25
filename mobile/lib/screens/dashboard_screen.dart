@@ -9,6 +9,7 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../storage/saved_trip.dart';
+import '../widgets/skeleton.dart';
 import 'login_screen.dart';
 
 /// Personal dashboard: aggregates the user's saved trips into a small
@@ -44,7 +45,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         future: _trips,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
+            // Skeleton dashboard — mimics the eventual header +
+            // stat card + savings row + section headers, so the
+            // real content lands into the same layout without a
+            // jarring reflow.
+            return const _DashboardSkeleton();
           }
           final trips = snapshot.data ?? const <SavedTrip>[];
           final stats = _Stats.from(trips);
@@ -145,8 +150,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(l.dashboardFuelBudget,
-                                style: t.labelSmall
-                                    ?.copyWith(letterSpacing: 1.1)),
+                                style: t.labelSmall?.copyWith(
+                                  letterSpacing: 1.4,
+                                  fontWeight: FontWeight.w700,
+                                )),
                             const SizedBox(height: 2),
                             Text(
                               '€${stats.totalFuelEur.toStringAsFixed(0)}',
@@ -521,6 +528,94 @@ class _CountryRow extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Placeholder that mimics the shape of the settled dashboard so
+/// the eventual FutureBuilder swap doesn't cause a layout jump.
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(Tokens.space20),
+      children: [
+        // Greeting line.
+        Skeleton(
+          width: 220, height: 28,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        const SizedBox(height: 6),
+        Skeleton(
+          width: 160, height: 14,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: Tokens.space24),
+        // Section header.
+        Skeleton(
+          width: 180, height: 20,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: Tokens.space12),
+        // Stat card row.
+        Skeleton(
+          width: double.infinity, height: 92,
+          borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        ),
+        const SizedBox(height: Tokens.space16),
+        // Savings cards row.
+        Row(
+          children: [
+            Expanded(
+              child: Skeleton(
+                width: double.infinity, height: 120,
+                borderRadius: BorderRadius.circular(Tokens.radiusLg),
+              ),
+            ),
+            const SizedBox(width: Tokens.space12),
+            Expanded(
+              child: Skeleton(
+                width: double.infinity, height: 120,
+                borderRadius: BorderRadius.circular(Tokens.radiusLg),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: Tokens.space24),
+        // Second section header.
+        Skeleton(
+          width: 200, height: 20,
+          borderRadius: BorderRadius.circular(4),
+        ),
+        const SizedBox(height: Tokens.space12),
+        for (var i = 0; i < 4; i++) ...[
+          Row(
+            children: [
+              const Skeleton(width: 40, height: 40),
+              const SizedBox(width: Tokens.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Skeleton(
+                      width: 200, height: 12,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    const SizedBox(height: 6),
+                    Skeleton(
+                      width: 120, height: 10,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space12),
+        ],
+      ],
     );
   }
 }

@@ -375,7 +375,8 @@ class _LocationSearchFieldState extends ConsumerState<LocationSearchField> {
         child: Text(
           text.toUpperCase(),
           style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                letterSpacing: 1.1,
+                letterSpacing: 1.4,
+                fontWeight: FontWeight.w700,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
         ),
