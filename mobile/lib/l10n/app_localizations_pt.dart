@@ -1588,6 +1588,15 @@ class AppLocalizationsPt extends AppLocalizations {
   String get settingsSectionAppearance => 'Appearance';
 
   @override
+  String get settingsDensityLabel => 'Densidade';
+
+  @override
+  String get settingsDensityComfortable => 'Confortável';
+
+  @override
+  String get settingsDensityCompact => 'Compacta';
+
+  @override
   String get settingsLanguage => 'Idioma';
 
   @override

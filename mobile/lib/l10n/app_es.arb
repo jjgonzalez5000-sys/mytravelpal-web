@@ -563,6 +563,9 @@
 
     "settingsTitle": "Ajustes",
     "settingsSectionAppearance": "Apariencia",
+    "settingsDensityLabel": "Densidad",
+    "settingsDensityComfortable": "Cómoda",
+    "settingsDensityCompact": "Compacta",
     "settingsLanguage": "Idioma",
     "settingsTheme": "Tema",
     "settingsSectionUnits": "Unidades",

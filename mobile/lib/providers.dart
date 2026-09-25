@@ -111,6 +111,24 @@ final themeOledProvider =
   return ThemeOledNotifier(ref.watch(appPrefsProvider));
 });
 
+/// Global UI density (comfortable / compact). Persisted so the
+/// preference survives restarts and applies before the first frame
+/// paints (Splash reads it via the theme builder).
+class UiDensityNotifier extends StateNotifier<UiDensity> {
+  UiDensityNotifier(this._prefs) : super(_prefs.uiDensity);
+  final AppPrefs _prefs;
+
+  Future<void> set(UiDensity value) async {
+    state = value;
+    await _prefs.setUiDensity(value);
+  }
+}
+
+final uiDensityProvider =
+    StateNotifierProvider<UiDensityNotifier, UiDensity>((ref) {
+  return UiDensityNotifier(ref.watch(appPrefsProvider));
+});
+
 /// User-picked locale override — null means "follow system".
 ///
 /// The MaterialApp reads this and passes it as `locale:`. When null,

@@ -554,6 +554,9 @@
 
     "settingsTitle": "Settings",
     "settingsSectionAppearance": "Appearance",
+    "settingsDensityLabel": "Density",
+    "settingsDensityComfortable": "Comfortable",
+    "settingsDensityCompact": "Compact",
     "settingsLanguage": "Language",
     "settingsTheme": "Theme",
     "settingsSectionUnits": "Units",

@@ -1593,6 +1593,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsSectionAppearance => 'Apparence';
 
   @override
+  String get settingsDensityLabel => 'Densité';
+
+  @override
+  String get settingsDensityComfortable => 'Confortable';
+
+  @override
+  String get settingsDensityCompact => 'Compacte';
+
+  @override
   String get settingsLanguage => 'Langue';
 
   @override

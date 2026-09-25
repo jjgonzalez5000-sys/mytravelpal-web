@@ -571,6 +571,9 @@
 
     "settingsTitle": "Impostazioni",
     "settingsSectionAppearance": "Aspetto",
+    "settingsDensityLabel": "Densità",
+    "settingsDensityComfortable": "Comoda",
+    "settingsDensityCompact": "Compatta",
     "settingsLanguage": "Lingua",
     "settingsTheme": "Tema",
     "settingsSectionUnits": "Unità",

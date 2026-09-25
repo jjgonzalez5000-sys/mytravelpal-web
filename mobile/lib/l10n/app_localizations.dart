@@ -2941,6 +2941,24 @@ abstract class AppLocalizations {
   /// **'Appearance'**
   String get settingsSectionAppearance;
 
+  /// No description provided for @settingsDensityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Density'**
+  String get settingsDensityLabel;
+
+  /// No description provided for @settingsDensityComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get settingsDensityComfortable;
+
+  /// No description provided for @settingsDensityCompact.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get settingsDensityCompact;
+
   /// No description provided for @settingsLanguage.
   ///
   /// In en, this message translates to:

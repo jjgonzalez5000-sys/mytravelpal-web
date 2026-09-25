@@ -12,6 +12,7 @@ import '../providers.dart';
 import '../services/app_tutorial.dart';
 import '../services/biometric_auth.dart';
 import '../services/currency_service.dart';
+import '../storage/app_prefs.dart';
 import '../theme.dart';
 import 'attributions_screen.dart';
 import 'inspire_history_screen.dart';
@@ -90,6 +91,7 @@ class SettingsScreen extends ConsumerWidget {
                   ref.read(themeOledProvider.notifier).set(v),
             );
           }),
+          const _DensityPicker(),
           const Divider(height: Tokens.space32),
           _Section(title: l.settingsSectionUnits),
           Padding(
@@ -579,6 +581,60 @@ class _ColorPresetPicker extends ConsumerWidget {
                   },
                 ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Two-segment picker for global UI density. Wired to
+/// [uiDensityProvider] — flips `visualDensity`, card margins,
+/// chip padding, and body-text scale across the whole app.
+class _DensityPicker extends ConsumerWidget {
+  const _DensityPicker();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final current = ref.watch(uiDensityProvider);
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space16, vertical: Tokens.space8,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: Tokens.space8),
+            child: Row(
+              children: [
+                Icon(Icons.density_medium,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+                const SizedBox(width: Tokens.space12),
+                Text(
+                  l.settingsDensityLabel,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+          ),
+          SegmentedButton<UiDensity>(
+            segments: [
+              ButtonSegment(
+                value: UiDensity.comfortable,
+                label: Text(l.settingsDensityComfortable),
+                icon: const Icon(Icons.density_large),
+              ),
+              ButtonSegment(
+                value: UiDensity.compact,
+                label: Text(l.settingsDensityCompact),
+                icon: const Icon(Icons.density_small),
+              ),
+            ],
+            selected: {current},
+            onSelectionChanged: (s) =>
+                ref.read(uiDensityProvider.notifier).set(s.first),
           ),
         ],
       ),

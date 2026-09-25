@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'design/tokens.dart';
+import 'storage/app_prefs.dart';
 
 /// User-selectable colour preset. Each maps to a seed colour we
 /// feed to [ColorScheme.fromSeed] so light + dark stay balanced.
@@ -42,7 +43,7 @@ class AppTheme {
   /// Legacy entry points — kept for tests and any leftover call
   /// sites. Prefer [buildLight] / [buildDark] with a preset.
   static ThemeData light() => _build(_lightScheme, brightness: Brightness.light);
-  static ThemeData dark() => _build(_darkScheme, brightness: Brightness.dark);
+  static ThemeData dark() => _build(_darkColorScheme(), brightness: Brightness.dark);
 
   /// Build a light-mode [ThemeData] for the requested [preset].
   /// When [dynamicScheme] is non-null (Material You on Android
@@ -50,16 +51,18 @@ class AppTheme {
   static ThemeData buildLight({
     required ThemePreset preset,
     ColorScheme? dynamicScheme,
+    UiDensity density = UiDensity.comfortable,
   }) {
     if (preset == ThemePreset.forest && dynamicScheme == null) {
-      return _build(_lightScheme, brightness: Brightness.light);
+      return _build(_lightScheme,
+          brightness: Brightness.light, density: density);
     }
     final scheme = dynamicScheme?.harmonized() ??
         ColorScheme.fromSeed(
           seedColor: preset.seed,
           brightness: Brightness.light,
         );
-    return _build(scheme, brightness: Brightness.light);
+    return _build(scheme, brightness: Brightness.light, density: density);
   }
 
   /// Build a dark-mode [ThemeData] for the requested [preset].
@@ -69,12 +72,17 @@ class AppTheme {
     required ThemePreset preset,
     ColorScheme? dynamicScheme,
     bool oled = false,
+    UiDensity density = UiDensity.comfortable,
   }) {
     ColorScheme scheme;
     if (dynamicScheme != null) {
       scheme = dynamicScheme.harmonized();
     } else if (preset == ThemePreset.forest) {
-      scheme = _darkScheme;
+      // Brand-tuned dark palette matches the compass-M logo (deep
+      // indigo primary, warm amber tertiary, muted teal secondary).
+      // Users on the historical Forest preset get the polished
+      // hand-picked scheme instead of Material's generated one.
+      scheme = _darkColorScheme();
     } else {
       scheme = ColorScheme.fromSeed(
         seedColor: preset.seed,
@@ -91,7 +99,7 @@ class AppTheme {
         surfaceContainerHighest: const Color(0xFF161616),
       );
     }
-    return _build(scheme, brightness: Brightness.dark);
+    return _build(scheme, brightness: Brightness.dark, density: density);
   }
 
   // -- Color schemes -------------------------------------------------------
@@ -131,53 +139,69 @@ class AppTheme {
     scrim: Colors.black,
   );
 
-  static const ColorScheme _darkScheme = ColorScheme(
-    brightness: Brightness.dark,
-    primary: Color(0xFF9BC2B0),
-    onPrimary: Color(0xFF0F2A22),
-    primaryContainer: Color(0xFF1F4638),
-    onPrimaryContainer: Color(0xFFB8DBC9),
-    secondary: Color(0xFFA8C3B0),
-    onSecondary: Color(0xFF102A1E),
-    secondaryContainer: Color(0xFF2A4133),
-    onSecondaryContainer: Color(0xFFC5DDCB),
-    tertiary: Color(0xFFF0A57F),
-    onTertiary: Color(0xFF3B1C0A),
-    tertiaryContainer: Color(0xFF6E3A1E),
-    onTertiaryContainer: Color(0xFFFCDCC7),
-    error: Color(0xFFF2B8B5),
-    onError: Color(0xFF601410),
-    errorContainer: Color(0xFF8C1D18),
-    onErrorContainer: Color(0xFFF9DEDC),
-    surface: BrandColors.surfaceDark,
-    onSurface: BrandColors.onSurfaceDark,
-    surfaceContainerLowest: BrandColors.surfaceDarkLow,
-    surfaceContainerLow: BrandColors.surfaceDarkLow,
-    surfaceContainer: BrandColors.surfaceDarkContainer,
-    surfaceContainerHigh: BrandColors.surfaceDarkContainerHigh,
-    surfaceContainerHighest: BrandColors.surfaceDarkHigh,
-    onSurfaceVariant: BrandColors.onSurfaceDarkMuted,
-    outline: BrandColors.outlineDark,
-    outlineVariant: BrandColors.outlineDarkSoft,
-    inverseSurface: BrandColors.surface,
-    onInverseSurface: BrandColors.onSurface,
-    inversePrimary: BrandColors.forest,
-    shadow: Colors.black,
-    scrim: Colors.black,
-  );
+  /// Brand-tuned dark palette. Hand-picked to match the compass-M
+  /// logo — deep indigo primary, muted teal secondary, warm amber
+  /// tertiary for CTAs. Contrast ratios on text pairs verified
+  /// against WCAG AA (≥4.5:1 for body text).
+  static ColorScheme _darkColorScheme() => const ColorScheme(
+        brightness: Brightness.dark,
+        primary: Color(0xFF7C8FF7),
+        onPrimary: Color(0xFF0F1633),
+        primaryContainer: Color(0xFF2A2D5B),
+        onPrimaryContainer: Color(0xFFDFE1FF),
+        secondary: Color(0xFF7ECCC0),
+        onSecondary: Color(0xFF0A2A28),
+        secondaryContainer: Color(0xFF274543),
+        onSecondaryContainer: Color(0xFFB4E9DE),
+        tertiary: Color(0xFFF5B678),
+        onTertiary: Color(0xFF3A2004),
+        tertiaryContainer: Color(0xFF5C3510),
+        onTertiaryContainer: Color(0xFFFFDBB0),
+        error: Color(0xFFFF9B9B),
+        onError: Color(0xFF420000),
+        errorContainer: Color(0xFF8C1D18),
+        onErrorContainer: Color(0xFFFFDAD5),
+        surface: Color(0xFF12142B),
+        onSurface: Color(0xFFE4E1F1),
+        surfaceContainerLowest: Color(0xFF0B0D22),
+        surfaceContainerLow: Color(0xFF161832),
+        surfaceContainer: Color(0xFF1B1D3A),
+        surfaceContainerHigh: Color(0xFF242749),
+        surfaceContainerHighest: Color(0xFF2E325A),
+        onSurfaceVariant: Color(0xFFC4C2D6),
+        outline: Color(0xFF5A5E80),
+        outlineVariant: Color(0xFF3B3E60),
+        inverseSurface: Color(0xFFE4E1F1),
+        onInverseSurface: Color(0xFF12142B),
+        inversePrimary: Color(0xFF3B4CB5),
+        shadow: Colors.black,
+        scrim: Colors.black,
+      );
 
   // -- Theme builder --------------------------------------------------------
 
-  static ThemeData _build(ColorScheme scheme, {required Brightness brightness}) {
+  static ThemeData _build(
+    ColorScheme scheme, {
+    required Brightness brightness,
+    UiDensity density = UiDensity.comfortable,
+  }) {
+    final isCompact = density == UiDensity.compact;
     final base = ThemeData(
       brightness: brightness,
       colorScheme: scheme,
       useMaterial3: true,
       scaffoldBackgroundColor: scheme.surface,
       canvasColor: scheme.surface,
+      visualDensity: isCompact
+          ? VisualDensity.compact
+          : VisualDensity.comfortable,
     );
 
-    final textTheme = _buildTextTheme(scheme.onSurface, scheme.onSurfaceVariant);
+    final textTheme = _buildTextTheme(
+      scheme.onSurface,
+      scheme.onSurfaceVariant,
+      compact: isCompact,
+    );
 
     return base.copyWith(
       textTheme: textTheme,
@@ -196,7 +220,13 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: scheme.surfaceContainerLow,
         elevation: 0,
-        margin: EdgeInsets.zero,
+        // Compact mode leaves a small vertical breathing room so
+        // stacked cards don't visually collide even without the
+        // outline. Comfortable keeps the historical zero margin —
+        // parent widgets already inject their own gap.
+        margin: isCompact
+            ? const EdgeInsets.symmetric(vertical: 4)
+            : EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Tokens.radiusLg),
           side: BorderSide(color: scheme.outlineVariant),
@@ -207,13 +237,16 @@ class AppTheme {
         selectedColor: scheme.primary,
         secondarySelectedColor: scheme.primary,
         labelStyle: textTheme.labelMedium?.copyWith(color: scheme.onSurface),
+        labelPadding: isCompact
+            ? const EdgeInsets.symmetric(horizontal: 4)
+            : null,
         side: BorderSide(color: scheme.outlineVariant),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Tokens.radiusPill),
         ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: Tokens.space12,
-          vertical: Tokens.space4,
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? Tokens.space8 : Tokens.space12,
+          vertical: isCompact ? 2 : Tokens.space4,
         ),
       ),
       dividerTheme: DividerThemeData(
@@ -337,9 +370,19 @@ class AppTheme {
   // at 12–16 pt on screen and small caption sizes still need every
   // last hint of x-height that Inter gives us.
 
-  static TextTheme _buildTextTheme(Color body, Color muted) {
+  static TextTheme _buildTextTheme(
+    Color body,
+    Color muted, {
+    bool compact = false,
+  }) {
     final heading = GoogleFonts.manropeTextTheme();
     final text = GoogleFonts.interTextTheme();
+    // Body/label copy scales by 0.94, titles/headlineSmall by 0.90
+    // in compact mode. The bigger displays keep their weight so
+    // hero moments still hit; the middle titles shrink hardest
+    // because that's where card headers eat vertical space.
+    final bodyScale = compact ? 0.94 : 1.0;
+    final titleScale = compact ? 0.90 : 1.0;
     return TextTheme(
       displayLarge: heading.displayLarge?.copyWith(
         fontSize: 40, height: 1.15, fontWeight: FontWeight.w600,
@@ -359,10 +402,12 @@ class AppTheme {
         fontSize: 20, height: 1.35, fontWeight: FontWeight.w600, color: body,
       ),
       headlineSmall: heading.headlineSmall?.copyWith(
-        fontSize: 18, height: 1.35, fontWeight: FontWeight.w600, color: body,
+        fontSize: 18 * titleScale,
+        height: 1.35, fontWeight: FontWeight.w600, color: body,
       ),
       titleLarge: heading.titleLarge?.copyWith(
-        fontSize: 18, height: 1.4, fontWeight: FontWeight.w600, color: body,
+        fontSize: 18 * titleScale,
+        height: 1.4, fontWeight: FontWeight.w600, color: body,
       ),
       titleMedium: heading.titleMedium?.copyWith(
         fontSize: 16, height: 1.4, fontWeight: FontWeight.w600, color: body,
@@ -371,10 +416,10 @@ class AppTheme {
         fontSize: 14, height: 1.4, fontWeight: FontWeight.w600, color: body,
       ),
       bodyLarge: text.bodyLarge?.copyWith(
-        fontSize: 16, height: 1.5, color: body,
+        fontSize: 16 * bodyScale, height: 1.5, color: body,
       ),
       bodyMedium: text.bodyMedium?.copyWith(
-        fontSize: 14, height: 1.5, color: body,
+        fontSize: 14 * bodyScale, height: 1.5, color: body,
       ),
       bodySmall: text.bodySmall?.copyWith(
         fontSize: 12, height: 1.4, color: muted,

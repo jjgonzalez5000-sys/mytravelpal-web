@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lottie/lottie.dart';
 import 'package:latlong2/latlong.dart' as fmap show LatLng;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
@@ -951,8 +952,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
       if (!mounted) return;
       setState(() => _saved = true);
+      // Snackbar augmented with a tiny Lottie check circle that
+      // plays once (~1.5s). `errorBuilder` swaps in an inline icon
+      // so a broken asset can't hide the confirmation copy.
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.resultTripSaved)),
+        SnackBar(
+          duration: const Duration(milliseconds: 1800),
+          content: Row(
+            children: [
+              SizedBox(
+                width: 28, height: 28,
+                child: Lottie.asset(
+                  'assets/lottie/saved_check.json',
+                  width: 28, height: 28,
+                  repeat: false,
+                  errorBuilder: (context, error, stack) =>
+                      const Icon(Icons.check_circle, color: Colors.white),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Text(l.resultTripSaved)),
+            ],
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

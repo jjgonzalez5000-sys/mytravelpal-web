@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
@@ -187,11 +188,23 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
             children: [
               Row(
                 children: [
+                  // Lottie bouncing-dot micro-animation replaces the
+                  // stock spinner. `errorBuilder` falls back to the
+                  // CircularProgressIndicator so a bad/missing asset
+                  // never blocks the dialog rendering.
                   SizedBox(
-                    width: 24, height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3,
-                      color: scheme.primary,
+                    width: 48, height: 48,
+                    child: Lottie.asset(
+                      'assets/lottie/planning.json',
+                      width: 48, height: 48,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stack) => SizedBox(
+                        width: 24, height: 24,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3,
+                          color: scheme.primary,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: Tokens.space12),

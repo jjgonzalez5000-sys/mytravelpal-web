@@ -576,6 +576,9 @@
 
     "settingsTitle": "Paramètres",
     "settingsSectionAppearance": "Apparence",
+    "settingsDensityLabel": "Densité",
+    "settingsDensityComfortable": "Confortable",
+    "settingsDensityCompact": "Compacte",
     "settingsLanguage": "Langue",
     "settingsTheme": "Thème",
     "settingsSectionUnits": "Unités",

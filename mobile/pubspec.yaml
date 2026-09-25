@@ -60,6 +60,10 @@ dependencies:
   # manually. Requires READ_CONTACTS permission (added to the
   # Android manifest) and a runtime prompt on first use.
   flutter_contacts: ^1.1.9+2
+  # Lottie micro-animations for key moments (plan loading, trip
+  # saved toast, arriving hint). Keeps binary size small — JSON
+  # vector animations, not video.
+  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:
@@ -69,3 +73,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/lottie/

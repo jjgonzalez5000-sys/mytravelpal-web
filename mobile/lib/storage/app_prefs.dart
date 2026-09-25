@@ -10,6 +10,22 @@ import '../domain/favorite_place.dart';
 import '../domain/trip_profile.dart';
 import '../domain/units.dart';
 
+/// UI spacing tier — controls global `visualDensity`, card margins,
+/// chip padding and body-font scaling so power users can pack more
+/// information on-screen without switching to a smaller device font.
+enum UiDensity {
+  comfortable,
+  compact,
+  ;
+
+  String get slug => name;
+
+  static UiDensity fromSlug(String? s) => switch (s) {
+        'compact' => UiDensity.compact,
+        _ => UiDensity.comfortable,
+      };
+}
+
 /// One-liner preferences that don't fit the trip-storage abstraction.
 ///
 /// The onboarding flag lives here so `SplashScreen` can synchronously
@@ -26,6 +42,7 @@ class AppPrefs {
   static const _themePresetKey = 'theme_preset.v1';
   static const _themeDynamicKey = 'theme_dynamic.v1';
   static const _themeOledKey = 'theme_oled.v1';
+  static const _uiDensityKey = 'ui_density.v1';
   static const _localeKey = 'locale.v1';
   static const _unitSystemKey = 'unit_system.v1';
   static const _tripProfileKey = 'trip_profile.v1';
@@ -92,6 +109,14 @@ class AppPrefs {
   bool get themeOledEnabled => _prefs.getBool(_themeOledKey) ?? false;
   Future<void> setThemeOledEnabled(bool value) =>
       _prefs.setBool(_themeOledKey, value);
+
+  /// Global UI density. `comfortable` matches Material defaults;
+  /// `compact` tightens vertical padding on cards + chips and scales
+  /// body/title fonts down slightly so more content fits per screen
+  /// without switching to a smaller system font.
+  UiDensity get uiDensity => UiDensity.fromSlug(_prefs.getString(_uiDensityKey));
+  Future<void> setUiDensity(UiDensity value) =>
+      _prefs.setString(_uiDensityKey, value.slug);
 
   /// User-picked locale override, or null meaning "follow system".
   /// Stored as a plain BCP-47 language tag (`en`, `es`, `fr`, `it`, `de`).

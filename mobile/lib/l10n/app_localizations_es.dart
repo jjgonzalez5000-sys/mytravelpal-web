@@ -1598,6 +1598,15 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsSectionAppearance => 'Apariencia';
 
   @override
+  String get settingsDensityLabel => 'Densidad';
+
+  @override
+  String get settingsDensityComfortable => 'Cómoda';
+
+  @override
+  String get settingsDensityCompact => 'Compacta';
+
+  @override
   String get settingsLanguage => 'Idioma';
 
   @override

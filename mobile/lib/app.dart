@@ -21,6 +21,7 @@ class MyTravelPalApp extends ConsumerWidget {
     final preset = ref.watch(themePresetProvider);
     final wantsDynamic = ref.watch(themeDynamicProvider);
     final oled = ref.watch(themeOledProvider);
+    final density = ref.watch(uiDensityProvider);
     // DynamicColorBuilder runs the wallpaper-colour probe once per
     // context; on iOS + Android <12 both schemes come back null so
     // we fall back to the picked preset transparently.
@@ -34,11 +35,13 @@ class MyTravelPalApp extends ConsumerWidget {
           theme: AppTheme.buildLight(
             preset: preset,
             dynamicScheme: effectiveLight,
+            density: density,
           ),
           darkTheme: AppTheme.buildDark(
             preset: preset,
             dynamicScheme: effectiveDark,
             oled: oled,
+            density: density,
           ),
           themeMode: mode,
           locale: localeOverride,
