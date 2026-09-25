@@ -196,3 +196,48 @@ class TestSubmitEndpoint:
             "lat": 45, "lon": 4, "description": "",
         })
         assert r.status_code == 422
+
+
+class TestAdverseEventEnum:
+    """Post-2026-08-28 additions (tester ask): landslide, earthquake,
+    avalanche, road closure, heatwave. These must be present so mobile
+    clients that reference them by string code (`type=heatwave`) round-trip
+    cleanly through the pydantic serialiser.
+    """
+
+    def test_enum_carries_all_new_types(self) -> None:
+        codes = {t.value for t in AdverseEventType}
+        for expected in (
+            "earthquake", "landslide", "avalanche",
+            "closure", "heatwave", "strike",
+        ):
+            assert expected in codes, f"missing AdverseEventType.{expected}"
+
+
+class TestNewStubProviders:
+    """Copernicus EMS + road-closure stubs must be silent (return ())
+    until wired. Kept as a smoke test so accidental production wiring
+    doesn't ship without a corresponding test update.
+    """
+
+    @pytest.mark.asyncio
+    async def test_copernicus_stub_returns_empty(self) -> None:
+        from app.providers.copernicus_ems import CopernicusEmsProvider
+        p = CopernicusEmsProvider()
+        route = Route(
+            origin=_PARIS, destination=_MADRID, distance_km=1000,
+            free_flow_duration=timedelta(hours=10), polyline="p",
+            toll_cost_eur=0, countries_crossed=(Country.FR, Country.ES),
+        )
+        assert await p.events_along(route, now=_NOW) == ()
+
+    @pytest.mark.asyncio
+    async def test_road_closure_stub_returns_empty(self) -> None:
+        from app.providers.road_closures import RoadClosureProvider
+        p = RoadClosureProvider()
+        route = Route(
+            origin=_PARIS, destination=_MADRID, distance_km=1000,
+            free_flow_duration=timedelta(hours=10), polyline="p",
+            toll_cost_eur=0, countries_crossed=(Country.FR, Country.ES),
+        )
+        assert await p.events_along(route, now=_NOW) == ()

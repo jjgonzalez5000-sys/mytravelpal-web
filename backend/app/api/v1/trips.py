@@ -38,6 +38,7 @@ from app.providers.here_places import HerePlacesEnricher
 from app.services.adverse_events_filter import filter_events_near_route
 from app.services.day_plan import compute as compute_day_plan
 from app.services.fuel_cost import FuelCostEstimate, estimate as estimate_fuel
+from app.services.fuel_curator import _bucketed_top_cheapest
 from app.services.fuel_savings import (
     cross_country_arbitrage as compute_fuel_arbitrage,
     curate_stations as curate_fuel_stations,
@@ -1729,6 +1730,15 @@ async def plan_trip(
     fuel = curate_fuel_stations(
         stamp_fuel_savings(fuel, vehicle=vehicle_for_savings),
     )
+    # Spatial distribution guardrail: even after per-country balancing
+    # in `curate_fuel_stations`, ranking by savings tends to cluster
+    # the final picks near country entry points (Spain-heavy at the
+    # origin end of a Madrid→Rome trip). Bucket the corridor into
+    # equal km segments and keep the cheapest per bucket so the
+    # "cheapest fuel" list actually spans the whole route.
+    fuel = tuple(_bucketed_top_cheapest(
+        list(fuel), route_km=route.distance_km,
+    ))
     arbitrage_out = None if arbitrage_domain is None else FuelArbitrageOut(
         cheaper_country=arbitrage_domain.cheaper_country,
         cheaper_median_eur_per_l=arbitrage_domain.cheaper_median_eur_per_l,

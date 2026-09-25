@@ -630,13 +630,26 @@ class GovFuelProvider:
                     )
                     if fp is not None:
                         bucket.append(fp)
-            # Per-country cap sorted by distance so the raw list is
-            # balanced across countries. Curator downstream picks the
-            # final N per country by savings.
+            # Per-country cap: sample EVENLY along each country's leg
+            # instead of taking the first-N-by-distance. The naive
+            # `sort by distance asc then [:N]` dropped the entire tail
+            # of every long leg — on Madrid→Rome, only Spanish
+            # stations in the first ~100 km survived because Spain
+            # alone had 800+ corridor stations. Even sampling
+            # preserves the far end of each leg so the downstream
+            # bucketed curator has candidates in every km segment.
             out: list[FuelPrice] = []
             for bucket in per_country.values():
                 bucket.sort(key=lambda p: p.distance_from_origin_km)
-                out.extend(bucket[:_PER_COUNTRY_RAW_CAP])
+                if len(bucket) <= _PER_COUNTRY_RAW_CAP:
+                    out.extend(bucket)
+                    continue
+                step = len(bucket) / _PER_COUNTRY_RAW_CAP
+                sampled = [
+                    bucket[int(i * step)]
+                    for i in range(_PER_COUNTRY_RAW_CAP)
+                ]
+                out.extend(sampled)
             return out
 
         result = await asyncio.to_thread(_filter_and_dedupe)

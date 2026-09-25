@@ -26,6 +26,7 @@ import '../services/trip_share_image.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
 import '../widgets/added_stops_map_sheet.dart';
+import '../widgets/companion_preflight_sheet.dart';
 import '../widgets/plan_loading_dialog.dart';
 import '../widgets/aa_coach_dialog.dart';
 import '../widgets/adverse_event_sheet.dart';
@@ -33,6 +34,7 @@ import '../widgets/battery_whitelist_dialog.dart';
 import '../widgets/consistency_banner.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/hotel_preferences.dart' show HotelPreferences;
+import '../widgets/restaurant_preferences.dart' show RestaurantPreferences;
 import '../widgets/trip_insights.dart';
 import '../widgets/favorite_star_button.dart';
 import '../widgets/poi_detail_sheet.dart';
@@ -1125,6 +1127,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ],
         ),
       ),
+      // Inline Companion CTA — same behaviour as the bottom FAB, but
+      // reachable without scrolling to the bottom. Testers wanted a
+      // one-tap entry near the trip summary.
+      const SizedBox(height: Tokens.space8),
+      SizedBox(
+        width: double.infinity,
+        child: FilledButton.tonalIcon(
+          icon: const Icon(Icons.assistant_navigation, size: 20),
+          label: Text(l.resultStartCompanion),
+          onPressed: _startCompanion,
+        ),
+      ),
       const SizedBox(height: Tokens.space12),
       InkWell(
         onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
@@ -1620,55 +1634,67 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      floatingActionButton: ref.watch(premiumProvider)
-          ? FloatingActionButton.extended(
-              icon: const Icon(Icons.play_arrow),
-              label: Text(l.resultStartTrip),
-              onPressed: () async {
-                // Show the AA discoverability coach the first time
-                // the user starts a trip. Testers repeatedly missed
-                // that MyTravelPal lives in the POI category on AA,
-                // not next to Google Maps — one dialog saves the
-                // support ticket.
-                await AaCoachDialog.maybeShow(context);
-                if (!context.mounted) return;
-                // Second nag: battery-optimisation whitelist. Only
-                // fires once per install (own SharedPreferences
-                // flag) so we don't spam the driver every trip.
-                await BatteryWhitelistDialog.maybeShow(context);
-                if (!context.mounted) return;
-                // Unified drive experience: open Companion with
-                // the plan attached instead of the standalone
-                // dashboard. Companion renders speed + drive-time
-                // AND the trip-progress hero (ETA, km remaining,
-                // next stop). Profile-driven alert defaults keep
-                // the assistant sensible even without going
-                // through the Companion setup screen first.
-                final profile = widget.request.tripProfile;
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => CompanionDriveScreen(
-                      breakIntervalHours: 2.0,
-                      suggestBreak: true,
-                      fatigueStopSuggestion: false,
-                      alertCriticalAdverse: true,
-                      alertWeather: true,
-                      alertFuel: true,
-                      alertBorder: true,
-                      alertToll: false,
-                      alertHotel: true,
-                      hasKids: profile?.hasKids ?? false,
-                      hasPets: profile?.hasPets ?? false,
-                      bedtimeHour: profile?.bedtimeHour ?? 23,
-                      activeTrip: widget.response,
-                      tripOrigin: widget.origin,
-                      tripDestination: widget.destination,
-                    ),
-                  ),
-                );
-              },
-            )
-          : null,
+      // Premium gate temporarily removed so we can dogfood Companion
+      // during closed testing. Re-add `ref.watch(premiumProvider) ? … : null`
+      // before public release / Play beta.
+      floatingActionButton: FloatingActionButton.extended(
+        icon: const Icon(Icons.assistant_navigation),
+        label: Text(l.resultStartCompanion),
+        onPressed: _startCompanion,
+      ),
+    );
+  }
+
+  /// Extracted so the same behaviour can be triggered from both the
+  /// bottom FAB and any inline CTA (e.g. the button next to the
+  /// origin→destination row).
+  Future<void> _startCompanion() async {
+    // 1) Pre-flight sheet — driver reviews meal times, detour tolerance,
+    // budget bands before we push the drive screen. Cancelling the sheet
+    // aborts the flow.
+    final overrides = await showCompanionPreflightSheet(
+      context,
+      initialHotel: widget.hotelPrefs ?? HotelPreferences.enabledDefault,
+      initialRestaurant: RestaurantPreferences(
+        enabled: true,
+        maxDetourMinutes:
+            widget.request.restaurantMaxDetourMinutes ?? 20,
+        priceBands: {
+          ...?widget.request.restaurantPriceBands,
+        }..removeWhere((b) => false),
+      ),
+      initialProfile: widget.request.tripProfile,
+    );
+    if (!mounted || overrides == null) return;
+
+    // 2) One-time discoverability nags: Android Auto category coach +
+    // battery whitelist. Each fires at most once per install.
+    await AaCoachDialog.maybeShow(context);
+    if (!mounted) return;
+    await BatteryWhitelistDialog.maybeShow(context);
+    if (!mounted) return;
+
+    final profile = widget.request.tripProfile;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => CompanionDriveScreen(
+          breakIntervalHours: 2.0,
+          suggestBreak: true,
+          fatigueStopSuggestion: false,
+          alertCriticalAdverse: true,
+          alertWeather: true,
+          alertFuel: true,
+          alertBorder: true,
+          alertToll: false,
+          alertHotel: true,
+          hasKids: profile?.hasKids ?? false,
+          hasPets: profile?.hasPets ?? false,
+          bedtimeHour: profile?.bedtimeHour ?? 23,
+          activeTrip: widget.response,
+          tripOrigin: widget.origin,
+          tripDestination: widget.destination,
+        ),
+      ),
     );
   }
 

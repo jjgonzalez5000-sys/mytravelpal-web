@@ -2559,6 +2559,39 @@ class AppLocalizationsIt extends AppLocalizations {
   String get resultStartTrip => 'Inizia il viaggio';
 
   @override
+  String get resultStartCompanion => 'Avvia modalità Companion';
+
+  @override
+  String get companionPreflightTitle => 'Impostazioni pre-guida';
+
+  @override
+  String get companionPreflightMealWindows => 'Orari dei pasti';
+
+  @override
+  String get companionPreflightDetourTolerance => 'Deviazione max';
+
+  @override
+  String get companionPreflightMealBudget => 'Budget per pasto';
+
+  @override
+  String get companionPreflightHotelBudget => 'Budget per notte';
+
+  @override
+  String get companionPreflightSaveToProfile => 'Salva nel mio profilo';
+
+  @override
+  String get companionPreflightStart => 'Inizia a guidare';
+
+  @override
+  String get companionPreflightBreakfast => 'Colazione';
+
+  @override
+  String get companionPreflightLunch => 'Pranzo';
+
+  @override
+  String get companionPreflightDinner => 'Cena';
+
+  @override
   String get navPickerTitle => 'Continua su…';
 
   @override

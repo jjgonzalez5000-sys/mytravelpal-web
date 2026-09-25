@@ -160,5 +160,23 @@
     "planStopDwellHours": "{n} hores",
     "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
     "dayArrivalMarker": "Arribes al destí cap a les {time}",
-    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}}
+    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
+
+    "resultStartCompanion": "Iniciar mode Companion",
+    "companionPreflightTitle": "Ajustos abans de conduir",
+    "companionPreflightMealWindows": "Horaris dels àpats",
+    "companionPreflightDetourTolerance": "Desviament màxim",
+    "companionPreflightMealBudget": "Pressupost per àpat",
+    "companionPreflightHotelBudget": "Pressupost per nit",
+    "companionPreflightSaveToProfile": "Desar al meu perfil",
+    "companionPreflightStart": "Comença a conduir",
+    "companionPreflightBreakfast": "Esmorzar",
+    "companionPreflightLunch": "Dinar",
+    "companionPreflightDinner": "Sopar",
+
+    "eventTypeEarthquake": "Terratrèmol",
+    "eventTypeLandslide": "Esllavissada",
+    "eventTypeAvalanche": "Allau",
+    "eventTypeClosure": "Carretera tallada",
+    "eventTypeHeatwave": "Onada de calor"
 }

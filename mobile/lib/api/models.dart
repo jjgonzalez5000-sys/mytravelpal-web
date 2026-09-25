@@ -67,10 +67,10 @@ enum AdverseEventType {
         AdverseEventType.snow => Icons.ac_unit,
         AdverseEventType.protest => Icons.groups,
         AdverseEventType.earthquake => Icons.vibration,
-        AdverseEventType.landslide => Icons.terrain,
-        AdverseEventType.avalanche => Icons.landscape,
+        AdverseEventType.landslide => Icons.landscape,
+        AdverseEventType.avalanche => Icons.ac_unit,
         AdverseEventType.closure => Icons.block,
-        AdverseEventType.heatwave => Icons.whatshot,
+        AdverseEventType.heatwave => Icons.wb_sunny,
         AdverseEventType.other => Icons.warning,
       };
 

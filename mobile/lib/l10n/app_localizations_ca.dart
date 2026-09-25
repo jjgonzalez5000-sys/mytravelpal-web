@@ -1836,19 +1836,19 @@ class AppLocalizationsCa extends AppLocalizations {
   String get eventTypeProtest => 'Protest';
 
   @override
-  String get eventTypeEarthquake => 'Earthquake';
+  String get eventTypeEarthquake => 'Terratrèmol';
 
   @override
-  String get eventTypeLandslide => 'Landslide';
+  String get eventTypeLandslide => 'Esllavissada';
 
   @override
-  String get eventTypeAvalanche => 'Avalanche';
+  String get eventTypeAvalanche => 'Allau';
 
   @override
-  String get eventTypeClosure => 'Road closure';
+  String get eventTypeClosure => 'Carretera tallada';
 
   @override
-  String get eventTypeHeatwave => 'Heatwave';
+  String get eventTypeHeatwave => 'Onada de calor';
 
   @override
   String get eventTypeOther => 'Other';
@@ -2556,6 +2556,39 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get resultStartTrip => 'Start trip';
+
+  @override
+  String get resultStartCompanion => 'Iniciar mode Companion';
+
+  @override
+  String get companionPreflightTitle => 'Ajustos abans de conduir';
+
+  @override
+  String get companionPreflightMealWindows => 'Horaris dels àpats';
+
+  @override
+  String get companionPreflightDetourTolerance => 'Desviament màxim';
+
+  @override
+  String get companionPreflightMealBudget => 'Pressupost per àpat';
+
+  @override
+  String get companionPreflightHotelBudget => 'Pressupost per nit';
+
+  @override
+  String get companionPreflightSaveToProfile => 'Desar al meu perfil';
+
+  @override
+  String get companionPreflightStart => 'Comença a conduir';
+
+  @override
+  String get companionPreflightBreakfast => 'Esmorzar';
+
+  @override
+  String get companionPreflightLunch => 'Dinar';
+
+  @override
+  String get companionPreflightDinner => 'Sopar';
 
   @override
   String get navPickerTitle => 'Continue in…';

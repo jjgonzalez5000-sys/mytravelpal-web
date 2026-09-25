@@ -160,5 +160,23 @@
     "planStopDwellHours": "{n} horas",
     "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
     "dayArrivalMarker": "Chega ao destino por volta das {time}",
-    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}}
+    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
+
+    "resultStartCompanion": "Iniciar modo Companion",
+    "companionPreflightTitle": "Ajustes antes de conduzir",
+    "companionPreflightMealWindows": "Horários das refeições",
+    "companionPreflightDetourTolerance": "Desvio máximo",
+    "companionPreflightMealBudget": "Orçamento por refeição",
+    "companionPreflightHotelBudget": "Orçamento por noite",
+    "companionPreflightSaveToProfile": "Guardar no meu perfil",
+    "companionPreflightStart": "Começar a conduzir",
+    "companionPreflightBreakfast": "Pequeno-almoço",
+    "companionPreflightLunch": "Almoço",
+    "companionPreflightDinner": "Jantar",
+
+    "eventTypeEarthquake": "Terramoto",
+    "eventTypeLandslide": "Deslizamento",
+    "eventTypeAvalanche": "Avalanche",
+    "eventTypeClosure": "Estrada cortada",
+    "eventTypeHeatwave": "Onda de calor"
 }

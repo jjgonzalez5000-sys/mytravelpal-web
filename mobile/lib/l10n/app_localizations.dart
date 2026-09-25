@@ -4617,6 +4617,72 @@ abstract class AppLocalizations {
   /// **'Start trip'**
   String get resultStartTrip;
 
+  /// No description provided for @resultStartCompanion.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Companion mode'**
+  String get resultStartCompanion;
+
+  /// No description provided for @companionPreflightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-flight setup'**
+  String get companionPreflightTitle;
+
+  /// No description provided for @companionPreflightMealWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal times'**
+  String get companionPreflightMealWindows;
+
+  /// No description provided for @companionPreflightDetourTolerance.
+  ///
+  /// In en, this message translates to:
+  /// **'Max detour'**
+  String get companionPreflightDetourTolerance;
+
+  /// No description provided for @companionPreflightMealBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal budget'**
+  String get companionPreflightMealBudget;
+
+  /// No description provided for @companionPreflightHotelBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel budget'**
+  String get companionPreflightHotelBudget;
+
+  /// No description provided for @companionPreflightSaveToProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to my profile'**
+  String get companionPreflightSaveToProfile;
+
+  /// No description provided for @companionPreflightStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start driving'**
+  String get companionPreflightStart;
+
+  /// No description provided for @companionPreflightBreakfast.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakfast'**
+  String get companionPreflightBreakfast;
+
+  /// No description provided for @companionPreflightLunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch'**
+  String get companionPreflightLunch;
+
+  /// No description provided for @companionPreflightDinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Dinner'**
+  String get companionPreflightDinner;
+
   /// No description provided for @navPickerTitle.
   ///
   /// In en, this message translates to:

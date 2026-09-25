@@ -10,7 +10,11 @@ from app.providers.adverse_events import (
     MockAdverseEventsProvider,
     UserMarkedAdverseEventsProvider,
 )
+from app.providers.copernicus_ems import CopernicusEmsProvider
 from app.providers.firms import FirmsFireProvider
+from app.providers.heatwave import HeatwaveProvider
+from app.providers.road_closures import RoadClosureProvider
+from app.providers.usgs_earthquakes import UsgsEarthquakeProvider
 from app.providers.national_weather import (
     AemetWeatherProvider,
     DwdWeatherProvider,
@@ -172,6 +176,22 @@ def _adverse_providers() -> tuple[AdverseEventsProvider, ...]:
     # `MYTRAVELPAL_FIRES=off` to suppress the outbound call (CI, tests).
     if os.environ.get("MYTRAVELPAL_FIRES", "firms").lower() not in {"off", "0", "false"}:
         providers.append(FirmsFireProvider())
+    # Earthquakes: USGS FDSN, free + keyless. Default-off so unit
+    # tests stay hermetic; production docker sets MYTRAVELPAL_QUAKES=usgs.
+    if os.environ.get("MYTRAVELPAL_QUAKES", "").lower() in {"usgs", "on", "1", "true"}:
+        providers.append(UsgsEarthquakeProvider())
+    # Heatwaves: Open-Meteo daily max, keyless. Off by default to
+    # avoid an extra API call per /plan; production docker turns
+    # it on via MYTRAVELPAL_HEATWAVE=on.
+    if os.environ.get("MYTRAVELPAL_HEATWAVE", "").lower() in {"on", "1", "true"}:
+        providers.append(HeatwaveProvider())
+    # Landslides / avalanches: Copernicus EMS stub (returns () today).
+    # Wired unconditionally so the log line appears once at startup
+    # and so real activations flow through the moment we ship the
+    # RSS/webhook adapter — no code changes elsewhere needed.
+    providers.append(CopernicusEmsProvider())
+    # Road closures: stub for DGT/DIRIF/ANAS/DATEX II adapters.
+    providers.append(RoadClosureProvider())
     # National advisory feeds — only add when their key is set.
     for cls in (AemetWeatherProvider, MeteoFranceWeatherProvider,
                 DwdWeatherProvider, MetOfficeWeatherProvider):
