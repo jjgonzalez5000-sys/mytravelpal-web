@@ -1508,17 +1508,64 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
 
-    final active = <String>[
-      if (widget.hotelPrefs.enabled) l.hotelPrefTitle,
-      if (widget.restaurantPrefs.enabled) l.restaurantPrefTitle,
-      if (widget.parkingEnabled) l.parkingPrefTitle,
-      if (widget.alertsEnabled) l.planOptAlertsTitle,
-      if (widget.tollAlternativeEnabled) l.planOptTollFreeTitle,
-      if (widget.routeComparisonEnabled) l.planOptRouteVariantsTitle,
+    final activeChips = <_ActiveChip>[
+      if (widget.hotelPrefs.enabled)
+        _ActiveChip(Icons.hotel_outlined, l.hotelPrefTitle),
+      if (widget.restaurantPrefs.enabled)
+        _ActiveChip(Icons.restaurant_outlined, l.restaurantPrefTitle),
+      if (widget.parkingEnabled)
+        _ActiveChip(Icons.local_parking_outlined, l.parkingPrefTitle),
+      if (widget.alertsEnabled)
+        _ActiveChip(Icons.warning_amber_outlined, l.planOptAlertsTitle),
+      if (widget.tollAlternativeEnabled)
+        _ActiveChip(Icons.alt_route_outlined, l.planOptTollFreeTitle),
+      if (widget.routeComparisonEnabled)
+        _ActiveChip(Icons.shuffle, l.planOptRouteVariantsTitle),
     ];
-    final subtitle = active.isEmpty
-        ? l.onRouteEmpty
-        : active.join(' · ');
+
+    final Widget subtitleWidget;
+    if (activeChips.isEmpty) {
+      subtitleWidget = Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: Text(
+          l.onRouteEmpty,
+          style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+      );
+    } else {
+      subtitleWidget = Padding(
+        padding: const EdgeInsets.only(top: 6, bottom: 2),
+        child: Wrap(
+          spacing: 6,
+          runSpacing: 4,
+          children: [
+            for (final c in activeChips)
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(c.icon, size: 12, color: scheme.onPrimaryContainer),
+                    const SizedBox(width: 4),
+                    Text(
+                      c.label,
+                      style: t.labelSmall?.copyWith(
+                        color: scheme.onPrimaryContainer,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -1535,12 +1582,7 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
             l.onRouteTitle,
             style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
           ),
-          subtitle: Text(
-            subtitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-          ),
+          subtitle: subtitleWidget,
           tilePadding: const EdgeInsets.symmetric(
             horizontal: Tokens.space16,
             vertical: 2,
@@ -1944,4 +1986,10 @@ class _RecentTripRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _ActiveChip {
+  const _ActiveChip(this.icon, this.label);
+  final IconData icon;
+  final String label;
 }
