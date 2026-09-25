@@ -1553,6 +1553,17 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
     return parts.join(' · ');
   }
 
+  /// Tiny inline icons for the boolean feature toggles — rendered
+  /// after the text detail in the chip so the reader sees at a
+  /// glance which extras are required (parking, wifi, wheelchair,
+  /// non-hotel accommodation).
+  List<IconData> _hotelFeatureIcons(HotelPreferences p) => [
+        if (p.requireParking) Icons.local_parking_outlined,
+        if (p.requireWifi) Icons.wifi,
+        if (p.requireWheelchair) Icons.accessible,
+        if (p.includeOtherAccommodation) Icons.holiday_village_outlined,
+      ];
+
   String _restaurantDetail(AppLocalizations l, RestaurantPreferences p) {
     final parts = <String>[];
     parts.add('${p.maxDetourMinutes}′');
@@ -1581,6 +1592,7 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
           Icons.hotel_outlined,
           l.hotelPrefTitle,
           detail: _hotelDetail(l, widget.hotelPrefs),
+          featureIcons: _hotelFeatureIcons(widget.hotelPrefs),
         ),
       if (widget.restaurantPrefs.enabled)
         _ActiveChip(
@@ -1642,6 +1654,16 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
                           color: scheme.onPrimaryContainer.withValues(
                             alpha: 0.75,
                           ),
+                        ),
+                      ),
+                    ],
+                    for (final fi in c.featureIcons) ...[
+                      const SizedBox(width: 4),
+                      Icon(
+                        fi,
+                        size: 11,
+                        color: scheme.onPrimaryContainer.withValues(
+                          alpha: 0.8,
                         ),
                       ),
                     ],
@@ -2086,8 +2108,14 @@ class _RecentTripRow extends StatelessWidget {
 }
 
 class _ActiveChip {
-  const _ActiveChip(this.icon, this.label, {this.detail = ''});
+  const _ActiveChip(
+    this.icon,
+    this.label, {
+    this.detail = '',
+    this.featureIcons = const [],
+  });
   final IconData icon;
   final String label;
   final String detail;
+  final List<IconData> featureIcons;
 }
