@@ -2686,6 +2686,12 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'Sur l\'itinéraire';
+
+  @override
+  String get onRouteEmpty => 'Tape pour choisir des options';
+
+  @override
   String get exportShareTitle => 'Partager l\'itinéraire';
 
   @override

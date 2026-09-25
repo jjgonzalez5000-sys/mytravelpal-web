@@ -2680,6 +2680,12 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'Lungo il percorso';
+
+  @override
+  String get onRouteEmpty => 'Tocca per scegliere le opzioni';
+
+  @override
   String get exportShareTitle => 'Condividi il percorso';
 
   @override

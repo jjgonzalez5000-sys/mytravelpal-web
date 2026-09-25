@@ -52,13 +52,34 @@ class ApiClient {
 
   Map<String, String> _headers({
     String contentType = 'application/json',
+    String? acceptLanguage,
   }) =>
       {
         'Content-Type': contentType,
         if (_apiKey != null) 'X-MyTravelPal-Api-Key': _apiKey,
         if (_premium) 'X-MyTravelPal-Premium': 'true',
         if (_authToken != null) 'Authorization': 'Bearer $_authToken',
+        if (acceptLanguage != null) 'Accept-Language': acceptLanguage,
       };
+
+  /// Trim a Flutter locale ("es", "es_ES", "pt-BR") down to a
+  /// two-letter ISO 639-1 code the backend recognises. Returns null
+  /// when the input is empty or clearly not a language code, so the
+  /// backend defaults to English and existing callers stay unchanged.
+  static String? _normalizeLocale(String? locale) {
+    if (locale == null) return null;
+    final trimmed = locale.trim();
+    if (trimmed.isEmpty) return null;
+    final code = trimmed
+        .toLowerCase()
+        .replaceAll('_', '-')
+        .split('-')
+        .first;
+    if (code.length != 2 || !RegExp(r'^[a-z]{2}$').hasMatch(code)) {
+      return null;
+    }
+    return code;
+  }
 
   Future<TripPlanResponse> planTrip(TripPlanRequest request) async {
     final uri = Uri.parse('$_baseUrl/v1/trips/plan');
@@ -182,14 +203,28 @@ class ApiClient {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  Future<List<GeocodeResult>> geocode(String query, {int limit = 5}) async {
+  Future<List<GeocodeResult>> geocode(
+    String query, {
+    int limit = 5,
+    String? locale,
+  }) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return const [];
+    // Pass locale as an explicit `lang` query param — most reliable
+    // signal for the backend, no dependence on client HTTP defaults
+    // sending an `Accept-Language` header. Tester bug: typing
+    // "Toledo" from the ES-locale app used to come back as "Tolède"
+    // because the backend defaulted to English.
+    final normalizedLocale = _normalizeLocale(locale);
     final uri = Uri.parse('$_baseUrl/v1/geocode').replace(queryParameters: {
       'q': trimmed,
       'limit': '$limit',
+      if (normalizedLocale != null) 'lang': normalizedLocale,
     });
-    final response = await _http.get(uri, headers: _headers());
+    final response = await _http.get(
+      uri,
+      headers: _headers(acceptLanguage: normalizedLocale),
+    );
     if (response.statusCode != 200) {
       throw ApiException(response.statusCode, response.body);
     }
@@ -442,12 +477,21 @@ class ApiClient {
   Future<GeocodeResult?> reverseGeocode({
     required double lat,
     required double lon,
+    String? locale,
   }) async {
+    final normalizedLocale = _normalizeLocale(locale);
     final uri = Uri.parse('$_baseUrl/v1/geocode/reverse').replace(
-      queryParameters: {'lat': '$lat', 'lon': '$lon'},
+      queryParameters: {
+        'lat': '$lat',
+        'lon': '$lon',
+        if (normalizedLocale != null) 'lang': normalizedLocale,
+      },
     );
     try {
-      final response = await _http.get(uri, headers: _headers());
+      final response = await _http.get(
+        uri,
+        headers: _headers(acceptLanguage: normalizedLocale),
+      );
       if (response.statusCode == 404) return null;
       if (response.statusCode != 200) {
         throw ApiException(response.statusCode, response.body);

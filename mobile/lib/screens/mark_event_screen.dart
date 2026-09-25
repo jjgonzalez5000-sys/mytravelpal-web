@@ -133,7 +133,10 @@ class _MarkEventScreenState extends ConsumerState<MarkEventScreen> {
               title: l.eventWhere, eyebrow: l.eventWhereEyebrow),
           LocationSearchField(
             label: l.eventLocation,
-            geocode: api.geocode,
+            geocode: (q) => api.geocode(
+              q,
+              locale: Localizations.localeOf(context).languageCode,
+            ),
             onSelected: (r) => setState(() => _place = r),
             initial: _place,
           ),

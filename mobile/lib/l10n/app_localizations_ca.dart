@@ -2679,6 +2679,12 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'A la ruta';
+
+  @override
+  String get onRouteEmpty => 'Toca per triar opcions';
+
+  @override
   String get exportShareTitle => 'Compartir ruta';
 
   @override

@@ -219,7 +219,10 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       // Monza -> Roma when the LLM stuffed extra POIs into the
       // day list.
       try {
-        final results = await api.geocode(cityName.trim());
+        final results = await api.geocode(
+          cityName.trim(),
+          locale: Localizations.localeOf(context).languageCode,
+        );
         if (results.isNotEmpty) return results.first.coordinate;
       } catch (_) {
         // Network / backend hiccup — skip this stop rather than

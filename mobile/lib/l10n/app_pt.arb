@@ -124,6 +124,8 @@
     "@recentTripsSubtitle": {
       "placeholders": { "count": {"type": "int"} }
     },
+    "onRouteTitle": "Na rota",
+    "onRouteEmpty": "Toca para escolher opções",
     "exportShareTitle": "Partilhar rota",
     "exportOpenInMaps": "Abrir no Google Maps",
     "exportCopyLink": "Copiar ligação",

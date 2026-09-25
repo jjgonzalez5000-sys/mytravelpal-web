@@ -1003,6 +1003,8 @@
     "@recentTripsSubtitle": {
       "placeholders": { "count": {"type": "int"} }
     },
+    "onRouteTitle": "En la ruta",
+    "onRouteEmpty": "Toca para elegir opciones",
     "exportShareTitle": "Compartir ruta",
     "exportOpenInMaps": "Abrir en Google Maps",
     "exportCopyLink": "Copiar enlace",

@@ -994,6 +994,8 @@
     "@recentTripsSubtitle": {
       "placeholders": { "count": {"type": "int"} }
     },
+    "onRouteTitle": "Along the route",
+    "onRouteEmpty": "Tap to pick options",
     "exportShareTitle": "Share route",
     "exportOpenInMaps": "Open in Google Maps",
     "exportCopyLink": "Copy link",

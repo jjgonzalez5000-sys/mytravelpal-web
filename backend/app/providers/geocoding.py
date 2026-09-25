@@ -34,16 +34,23 @@ class GeocodeResult:
 
 
 class GeocodingProvider(Protocol):
-    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]: ...
+    async def search(
+        self, query: str, *, limit: int = 5, lang: str | None = None,
+    ) -> tuple[GeocodeResult, ...]: ...
 
     async def reverse(
-        self, lat: float, lon: float,
+        self, lat: float, lon: float, *, lang: str | None = None,
     ) -> GeocodeResult | None:
         """Look up the human-readable place at `lat`,`lon`.
 
         Returns None when no populated place is close enough (open sea,
         remote wilderness) or when the provider can't answer (network
         error). Callers should always be prepared for None.
+
+        `lang` is a two-letter ISO 639-1 code that upstream geocoders
+        use to localise `display_name` (Nominatim honours it via
+        `Accept-Language`). None means default to English so existing
+        callers don't break.
         """
         ...
 
@@ -70,7 +77,14 @@ class MockGeocodingProvider:
     integration will handle full accent folding).
     """
 
-    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
+    async def search(
+        self, query: str, *, limit: int = 5, lang: str | None = None,
+    ) -> tuple[GeocodeResult, ...]:
+        # `lang` is ignored: the catalogue only stores canonical
+        # English city names and re-translating them would drift.
+        # Nominatim (fallback) will provide localised names for
+        # anything not in the hardcoded list.
+        del lang
         q = query.strip().casefold()
         if not q:
             return ()
@@ -81,8 +95,9 @@ class MockGeocodingProvider:
         return tuple(matches[:limit])
 
     async def reverse(
-        self, lat: float, lon: float,
+        self, lat: float, lon: float, *, lang: str | None = None,
     ) -> GeocodeResult | None:
+        del lang
         # Mock returns the catalogue city closest to (lat, lon) if any is
         # within ~50 km — enough for demos, not for reality.
         best: GeocodeResult | None = None
@@ -115,7 +130,9 @@ class NominatimGeocodingProvider:
     def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
         self._client = http_client or httpx.AsyncClient(timeout=5.0)
 
-    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
+    async def search(
+        self, query: str, *, limit: int = 5, lang: str | None = None,
+    ) -> tuple[GeocodeResult, ...]:
         q = query.strip()
         if not q:
             return ()
@@ -132,7 +149,7 @@ class NominatimGeocodingProvider:
                 params=params,
                 headers={
                     "User-Agent": self._USER_AGENT,
-                    "Accept-Language": "en",
+                    "Accept-Language": _accept_language(lang),
                 },
             )
             response.raise_for_status()
@@ -171,7 +188,7 @@ class NominatimGeocodingProvider:
 
 
     async def reverse(
-        self, lat: float, lon: float,
+        self, lat: float, lon: float, *, lang: str | None = None,
     ) -> GeocodeResult | None:
         params = {
             "lat": f"{lat:.6f}",
@@ -191,7 +208,7 @@ class NominatimGeocodingProvider:
                 self._REVERSE_URL, params=params,
                 headers={
                     "User-Agent": self._USER_AGENT,
-                    "Accept-Language": "en",
+                    "Accept-Language": _accept_language(lang),
                 },
             )
             response.raise_for_status()
@@ -274,12 +291,18 @@ class HybridGeocodingProvider:
         self._primary = primary
         self._fallback = fallback
 
-    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
+    async def search(
+        self, query: str, *, limit: int = 5, lang: str | None = None,
+    ) -> tuple[GeocodeResult, ...]:
         q = query.strip()
         if len(q) < self._NOMINATIM_MIN_CHARS:
-            return await self._primary.search(q, limit=limit)
-        primary_task = asyncio.create_task(self._primary.search(q, limit=limit))
-        fallback_task = asyncio.create_task(self._fallback.search(q, limit=limit))
+            return await self._primary.search(q, limit=limit, lang=lang)
+        primary_task = asyncio.create_task(
+            self._primary.search(q, limit=limit, lang=lang),
+        )
+        fallback_task = asyncio.create_task(
+            self._fallback.search(q, limit=limit, lang=lang),
+        )
         primary, fallback = await asyncio.gather(
             primary_task, fallback_task, return_exceptions=True,
         )
@@ -300,7 +323,7 @@ class HybridGeocodingProvider:
         return tuple(merged)
 
     async def reverse(
-        self, lat: float, lon: float,
+        self, lat: float, lon: float, *, lang: str | None = None,
     ) -> GeocodeResult | None:
         # For reverse geocoding, prefer the *fallback* (Nominatim)
         # because it returns the actual town/village at the GPS
@@ -309,7 +332,41 @@ class HybridGeocodingProvider:
         # both returned "Zürich" because it's within 50 km. Only
         # fall back to the catalogue when Nominatim is down or the
         # coord lands outside the supported country set.
-        result = await self._fallback.reverse(lat, lon)
+        result = await self._fallback.reverse(lat, lon, lang=lang)
         if result is not None:
             return result
-        return await self._primary.reverse(lat, lon)
+        return await self._primary.reverse(lat, lon, lang=lang)
+
+
+# Two-letter ISO 639-1 codes we're willing to forward as-is to
+# Nominatim's Accept-Language header. Guarded because upstream is a
+# free public service and we don't want to become the ingress that
+# lets a caller inject arbitrary header values.
+_SUPPORTED_LANGS: frozenset[str] = frozenset({
+    "en", "es", "fr", "de", "it", "pt", "ca", "eu", "gl",
+    "nl", "pl", "cs", "sk", "sl", "hr", "sv", "no", "da",
+    "fi", "el", "hu", "ro", "bg", "et", "lv", "lt", "ga", "mt",
+})
+
+
+def _accept_language(lang: str | None) -> str:
+    """Return a safe Accept-Language header value.
+
+    Defaults to `en` when no locale was requested. Unknown or
+    non-ISO-639-1-looking codes fall back to `en` too — Nominatim
+    silently ignores garbage but we want deterministic behaviour on
+    our end. When the caller passes a locale-region form ("es-ES",
+    "pt_BR"), we peel the region: Nominatim only keys on the
+    language part.
+    """
+    if not lang:
+        return "en"
+    code = lang.strip().lower().replace("_", "-").split("-", 1)[0]
+    if code in _SUPPORTED_LANGS:
+        # Include `en` as a secondary preference so a place with no
+        # translation in the primary language still returns a name
+        # rather than blank.
+        if code == "en":
+            return "en"
+        return f"{code},en;q=0.5"
+    return "en"

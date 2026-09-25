@@ -1011,6 +1011,8 @@
     "@recentTripsSubtitle": {
       "placeholders": { "count": {"type": "int"} }
     },
+    "onRouteTitle": "Lungo il percorso",
+    "onRouteEmpty": "Tocca per scegliere le opzioni",
     "exportShareTitle": "Condividi il percorso",
     "exportOpenInMaps": "Apri in Google Maps",
     "exportCopyLink": "Copia link",

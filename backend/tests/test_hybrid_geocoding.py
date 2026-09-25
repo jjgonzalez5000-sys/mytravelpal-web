@@ -14,9 +14,18 @@ class _StubProvider:
         self._results = results
         self.calls = 0
 
-    async def search(self, query: str, *, limit: int = 5) -> tuple[GeocodeResult, ...]:
+    async def search(
+        self, query: str, *, limit: int = 5, lang: str | None = None,
+    ) -> tuple[GeocodeResult, ...]:
+        del lang  # stub ignores locale — real providers honour it
         self.calls += 1
         return self._results[:limit]
+
+    async def reverse(
+        self, lat: float, lon: float, *, lang: str | None = None,
+    ) -> GeocodeResult | None:
+        del lat, lon, lang
+        return None
 
 
 _BERN = GeocodeResult("Bern, Switzerland", Coordinate(46.9481, 7.4474), Country.CH)

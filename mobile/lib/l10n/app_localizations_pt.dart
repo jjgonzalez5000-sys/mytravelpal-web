@@ -2679,6 +2679,12 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'Na rota';
+
+  @override
+  String get onRouteEmpty => 'Toca para escolher opções';
+
+  @override
   String get exportShareTitle => 'Partilhar rota';
 
   @override

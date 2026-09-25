@@ -214,7 +214,11 @@ class _CompanionDriveScreenState
     String cityLabel;
     try {
       final api = ref.read(apiClientWithPremiumProvider);
-      final r = await api.reverseGeocode(lat: p.latitude, lon: p.longitude);
+      final r = await api.reverseGeocode(
+        lat: p.latitude,
+        lon: p.longitude,
+        locale: Localizations.localeOf(context).languageCode,
+      );
       cityLabel = r?.displayName.split(',').last.trim()
           ?? '${p.latitude.toStringAsFixed(3)}, '
               '${p.longitude.toStringAsFixed(3)}';

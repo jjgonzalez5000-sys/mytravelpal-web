@@ -2688,6 +2688,12 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'En la ruta';
+
+  @override
+  String get onRouteEmpty => 'Toca para elegir opciones';
+
+  @override
   String get exportShareTitle => 'Compartir ruta';
 
   @override

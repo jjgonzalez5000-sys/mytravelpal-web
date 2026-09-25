@@ -21,6 +21,7 @@ we synthesise them.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import datetime, time, timedelta
 
@@ -31,6 +32,9 @@ from app.domain import (
     TripProfile,
     Waypoint,
 )
+_log = logging.getLogger(__name__)
+
+
 from app.services.trip_optimizations import (
     MealStop,
     Optimizations,
@@ -174,11 +178,28 @@ def compute(
     pass_anchors: list[WaypointAnchor] = []
     if route is not None:
         for wp in waypoints:
-            if wp.dwell_nights >= 1 or not wp.label:
+            if wp.dwell_nights >= 1:
+                _log.info(
+                    "pass_anchor SKIP dwell>=1 label=%r dwell=%d",
+                    wp.label, wp.dwell_nights,
+                )
+                continue
+            if not wp.label:
+                _log.info(
+                    "pass_anchor SKIP no-label lat=%.4f lon=%.4f",
+                    wp.coordinate.lat, wp.coordinate.lon,
+                )
                 continue
             km = _km_at_coord(route, wp.coordinate)
             if km is None:
+                _log.info(
+                    "pass_anchor SKIP off-corridor (>30km) label=%r lat=%.4f lon=%.4f",
+                    wp.label, wp.coordinate.lat, wp.coordinate.lon,
+                )
                 continue
+            _log.info(
+                "pass_anchor ADD label=%r km=%.1f", wp.label, km,
+            )
             pass_anchors.append(WaypointAnchor(
                 label=wp.label, km=round(km, 1),
                 lat=wp.coordinate.lat, lon=wp.coordinate.lon,

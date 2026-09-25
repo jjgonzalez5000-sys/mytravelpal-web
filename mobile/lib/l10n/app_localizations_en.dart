@@ -2675,6 +2675,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'Along the route';
+
+  @override
+  String get onRouteEmpty => 'Tap to pick options';
+
+  @override
   String get exportShareTitle => 'Share route';
 
   @override

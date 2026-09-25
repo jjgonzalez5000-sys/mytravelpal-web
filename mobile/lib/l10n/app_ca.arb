@@ -124,6 +124,8 @@
     "@recentTripsSubtitle": {
       "placeholders": { "count": {"type": "int"} }
     },
+    "onRouteTitle": "A la ruta",
+    "onRouteEmpty": "Toca per triar opcions",
     "exportShareTitle": "Compartir ruta",
     "exportOpenInMaps": "Obrir a Google Maps",
     "exportCopyLink": "Copiar enllaç",

@@ -137,7 +137,12 @@ class _ParkingSearchScreenState
             children: [
               LocationSearchField(
                 label: l.parkingSearchLabel,
-                geocode: ref.read(apiClientWithPremiumProvider).geocode,
+                geocode: (q) => ref
+                    .read(apiClientWithPremiumProvider)
+                    .geocode(
+                      q,
+                      locale: Localizations.localeOf(context).languageCode,
+                    ),
                 initial: _query,
                 onSelected: (r) {
                   if (r == null) return;

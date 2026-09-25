@@ -18,6 +18,7 @@ import '../providers.dart';
 import '../utils/duration_format.dart';
 import '../services/currency_service.dart';
 import '../services/notifications.dart';
+import '../services/plan_foreground_task.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
 import '../services/trip_export.dart';
@@ -691,7 +692,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         tripProfile: widget.request.tripProfile,
         includeParking: widget.request.includeParking,
       );
-      final fresh = await api.planTrip(replan);
+      // Foreground service pins the process so the user can
+      // background the app mid-replan without Doze killing the
+      // socket. Tray notification also flags "still working".
+      final replanLabel =
+          '${widget.origin.displayName} → ${widget.destination.displayName}';
+      final fresh = await runInForeground(
+        context,
+        replanLabel,
+        () => api.planTrip(replan),
+      );
       if (!mounted) return;
       if (dialogOpen) {
         navigator.pop();

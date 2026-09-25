@@ -16,6 +16,7 @@ import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../storage/saved_trip.dart';
 import '../services/maps_url_parser.dart';
+import '../services/plan_foreground_task.dart';
 import '../services/trip_sharing.dart';
 import '../widgets/hotel_preferences.dart';
 import '../widgets/location_search_field.dart';
@@ -114,19 +115,27 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   bool _isRoundTrip = false;
   late DateTime _returnDeparture = _defaultReturnDeparture();
 
-  /// Progressive disclosure: the three advanced toggles (alerts,
-  /// toll-free, route-variants) collapse behind a "Más opciones"
-  /// row by default so first-timers see only Hotels + Restaurants.
-  /// Power users expand once; the state does NOT persist across
-  /// launches — kept in memory only, per session.
-  bool _advancedOptionsExpanded = false;
-
   DateTime _defaultReturnDeparture() =>
       _departure.add(const Duration(days: 3));
 
   static DateTime _defaultDeparture() {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day + 1, 8);
+  }
+
+  /// Locale-aware `geocode(query)` closure. Every field on this
+  /// screen must call this rather than `api.geocode` directly so
+  /// results land in the app language (tester bug: "Toledo" from
+  /// the ES-locale app returned "Tolède" because the request went
+  /// out with no language hint).
+  Future<List<GeocodeResult>> _geocode(String q) {
+    final api = ref.read(apiClientWithPremiumProvider);
+    return api.geocode(q, locale: _localeCode());
+  }
+
+  String? _localeCode() {
+    if (!mounted) return null;
+    return Localizations.localeOf(context).languageCode;
   }
 
   @override
@@ -318,7 +327,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         builder: (_) => PickLocationScreen(
           title: l.leaveNowSheetTitle,
           label: l.planTo,
-          geocode: ref.read(apiClientWithPremiumProvider).geocode,
+          geocode: _geocode,
         ),
       ),
     );
@@ -326,7 +335,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     setState(() => _destination = destination);
 
     // Resolve current GPS as origin.
-    final res = await ref.read(currentLocationServiceProvider).resolve();
+    final res = await ref
+        .read(currentLocationServiceProvider)
+        .resolve(locale: _localeCode());
     if (!mounted) return;
     if (res.place == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -345,7 +356,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
   Future<void> _prepareDepartureNow() async {
     final l = AppLocalizations.of(context);
-    final res = await ref.read(currentLocationServiceProvider).resolve();
+    final res = await ref
+        .read(currentLocationServiceProvider)
+        .resolve(locale: _localeCode());
     if (!mounted) return;
     if (res.place == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -365,7 +378,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   /// just surfaces a snackbar.
   Future<void> _importFromMaps() async {
     final l = AppLocalizations.of(context);
-    final api = ref.read(apiClientWithPremiumProvider);
     final controller = TextEditingController();
     try {
       final clip = await Clipboard.getData('text/plain');
@@ -440,7 +452,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
     SharedTrip? trip;
     try {
-      trip = await parseGoogleMapsUrl(url, geocode: api.geocode);
+      trip = await parseGoogleMapsUrl(url, geocode: _geocode);
     } catch (_) {
       trip = null;
     }
@@ -654,9 +666,26 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         );
         returnFuture = api.planTrip(returnRequest);
       }
-      final response = await api.planTrip(request);
-      final returnResponse =
-          returnFuture == null ? null : await returnFuture;
+      // Foreground-service wrap: pins the process (and the HTTP
+      // socket) while /plan runs, so backgrounding the app during
+      // the 5-15s wait doesn't cancel the request on aggressive
+      // OEM ROMs. Shows a persistent tray notification too, so the
+      // user sees the plan is still cooking. Round-trip: we await
+      // BOTH legs inside the wrapper so the service stays up until
+      // the second /plan settles too.
+      final planLabel =
+          '${origin.displayName} → ${destination.displayName}';
+      final legs = await runInForeground(
+        context,
+        planLabel,
+        () async {
+          final r = await api.planTrip(request);
+          final ret = returnFuture == null ? null : await returnFuture;
+          return (r, ret);
+        },
+      );
+      final response = legs.$1;
+      final returnResponse = legs.$2;
       if (!mounted) return;
       // Pop the loading dialog BEFORE pushing ResultScreen —
       // otherwise the dialog stays on top and blocks navigation.
@@ -725,7 +754,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final api = ref.watch(apiClientWithPremiumProvider);
+    // ApiClient is fetched lazily inside `_geocode` per call so the
+    // widget rebuilds don't need to watch the provider explicitly.
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
@@ -960,11 +990,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                               child: LocationSearchField(
                                 key: _originKey,
                                 label: l.planFrom,
-                                geocode: api.geocode,
+                                geocode: _geocode,
                                 onUseCurrentLocation: () async {
                                   final res = await ref
                                       .read(currentLocationServiceProvider)
-                                      .resolve();
+                                      .resolve(locale: _localeCode());
                                   if (!context.mounted) return null;
                                   if (res.disabled || res.denied) {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -1068,7 +1098,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                             child: LocationSearchField(
                                               key: ValueKey('stop-field-$i'),
                                               label: l.planStopLabel(i + 1),
-                                              geocode: api.geocode,
+                                              geocode: _geocode,
                                               onSelected: (r) {
                                                 if (r == null) return;
                                                 setState(() => _stops[i] =
@@ -1127,7 +1157,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                               label: Text(l.planAddStop),
                               onPressed: () async {
                                 final picked =
-                                    await _pickStop(context, api.geocode);
+                                    await _pickStop(context, _geocode);
                                 if (picked == null) return;
                                 // Fresh stop defaults to dwell=0
                                 // (pass-through). Driver taps the
@@ -1148,7 +1178,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                               child: LocationSearchField(
                                 key: _destinationKey,
                                 label: l.planTo,
-                                geocode: api.geocode,
+                                geocode: _geocode,
                                 onSelected: (r) {
                                   setState(() => _destination = r);
                                   if (r != null) {
@@ -1205,132 +1235,31 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
                   const SizedBox(height: Tokens.space24),
 
-                  // Preferences group
-                  SectionHeader(
-                    title: l.planSectionOptional,
-                    eyebrow: l.planSectionOptionalEyebrow,
-                  ),
-                  SoftCard(
+                  // Single collapsible container that holds every
+                  // "on-the-route" pick (hotels, restaurants, parking,
+                  // alerts, toll-free, route variants). Header summary
+                  // reflects what's currently enabled so users know at
+                  // a glance without expanding.
+                  _OnRoutePicker(
                     key: _preferencesKey,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Tokens.space12,
-                      vertical: Tokens.space4,
-                    ),
-                    child: Column(
-                      children: [
-                        // Group 1: "En la ruta" — hotels & restaurants
-                        // as ExpansionTiles so the sub-options
-                        // (detour, stars, cuisines) only take space
-                        // when actually configured. Alerts stay
-                        // inline (no sub-options, always on by
-                        // default).
-                        _CompactExpandableToggle(
-                          icon: Icons.hotel_outlined,
-                          title: l.hotelPrefTitle,
-                          value: _hotelPrefs.enabled,
-                          onChanged: (v) => setState(
-                            () => _hotelPrefs = _hotelPrefs.copyWith(enabled: v),
-                          ),
-                          expandedChild: HotelPreferencesSection(
-                            value: _hotelPrefs,
-                            onChanged: (v) => setState(() => _hotelPrefs = v),
-                            hideMainSwitch: true,
-                          ),
-                        ),
-                        _CompactExpandableToggle(
-                          icon: Icons.restaurant_outlined,
-                          title: l.restaurantPrefTitle,
-                          value: _restaurantPrefs.enabled,
-                          onChanged: (v) => setState(
-                            () => _restaurantPrefs =
-                                _restaurantPrefs.copyWith(enabled: v),
-                          ),
-                          expandedChild: RestaurantPreferencesSection(
-                            value: _restaurantPrefs,
-                            onChanged: (v) =>
-                                setState(() => _restaurantPrefs = v),
-                            hideMainSwitch: true,
-                          ),
-                        ),
-                        _CompactToggle(
-                          icon: Icons.local_parking_outlined,
-                          title: l.parkingPrefTitle,
-                          subtitle: l.parkingPrefSub,
-                          value: _parkingEnabled,
-                          onChanged: (v) =>
-                              setState(() => _parkingEnabled = v),
-                        ),
-                        InkWell(
-                          onTap: () => setState(
-                            () => _advancedOptionsExpanded =
-                                !_advancedOptionsExpanded,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              vertical: Tokens.space12,
-                              horizontal: Tokens.space4,
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  _advancedOptionsExpanded
-                                      ? Icons.expand_less
-                                      : Icons.expand_more,
-                                  size: 20,
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: Tokens.space8),
-                                Text(
-                                  _advancedOptionsExpanded
-                                      ? l.planLessOptions
-                                      : l.planMoreOptions,
-                                  style: t.labelLarge?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        AnimatedSize(
-                          duration: Tokens.motionBase,
-                          curve: Tokens.curveOut,
-                          child: !_advancedOptionsExpanded
-                              ? const SizedBox.shrink()
-                              : Column(
-                                  children: [
-                                    _CompactToggle(
-                                      icon: Icons.warning_amber_outlined,
-                                      title: l.planOptAlertsTitle,
-                                      subtitle: l.planOptAlertsSub,
-                                      value: _alertsEnabled,
-                                      onChanged: (v) => setState(
-                                        () => _alertsEnabled = v,
-                                      ),
-                                    ),
-                                    _CompactToggle(
-                                      icon: Icons.euro,
-                                      title: l.planOptTollFreeTitle,
-                                      subtitle: l.planOptTollFreeSub,
-                                      value: _tollAlternativeEnabled,
-                                      onChanged: (v) => setState(
-                                        () => _tollAlternativeEnabled = v,
-                                      ),
-                                    ),
-                                    _CompactToggle(
-                                      icon: Icons.alt_route,
-                                      title: l.planOptRouteVariantsTitle,
-                                      subtitle: l.planOptRouteVariantsSub,
-                                      value: _routeComparisonEnabled,
-                                      onChanged: (v) => setState(
-                                        () => _routeComparisonEnabled = v,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ],
-                    ),
+                    hotelPrefs: _hotelPrefs,
+                    onHotelChanged: (v) =>
+                        setState(() => _hotelPrefs = v),
+                    restaurantPrefs: _restaurantPrefs,
+                    onRestaurantChanged: (v) =>
+                        setState(() => _restaurantPrefs = v),
+                    parkingEnabled: _parkingEnabled,
+                    onParkingChanged: (v) =>
+                        setState(() => _parkingEnabled = v),
+                    alertsEnabled: _alertsEnabled,
+                    onAlertsChanged: (v) =>
+                        setState(() => _alertsEnabled = v),
+                    tollAlternativeEnabled: _tollAlternativeEnabled,
+                    onTollAlternativeChanged: (v) =>
+                        setState(() => _tollAlternativeEnabled = v),
+                    routeComparisonEnabled: _routeComparisonEnabled,
+                    onRouteComparisonChanged: (v) =>
+                        setState(() => _routeComparisonEnabled = v),
                   ).animate().fadeIn(delay: 120.ms, duration: Tokens.motionBase),
 
                   const SizedBox(height: Tokens.space24),
@@ -1524,6 +1453,203 @@ class _CompactExpandableToggle extends StatelessWidget {
             child: expandedChild,
           ),
       ],
+    );
+  }
+}
+
+/// Single collapsible card that groups every on-the-route pick
+/// (hotels, restaurants, parking, alerts, toll-free alternative,
+/// route variants). Replaces the former SectionHeader + SoftCard
+/// stack so the plan form scans as a shorter list. Header subtitle
+/// is a "·"-joined summary of currently-enabled options so users
+/// can see what's on without expanding.
+class _OnRoutePicker extends StatefulWidget {
+  const _OnRoutePicker({
+    super.key,
+    required this.hotelPrefs,
+    required this.onHotelChanged,
+    required this.restaurantPrefs,
+    required this.onRestaurantChanged,
+    required this.parkingEnabled,
+    required this.onParkingChanged,
+    required this.alertsEnabled,
+    required this.onAlertsChanged,
+    required this.tollAlternativeEnabled,
+    required this.onTollAlternativeChanged,
+    required this.routeComparisonEnabled,
+    required this.onRouteComparisonChanged,
+  });
+
+  final HotelPreferences hotelPrefs;
+  final ValueChanged<HotelPreferences> onHotelChanged;
+  final RestaurantPreferences restaurantPrefs;
+  final ValueChanged<RestaurantPreferences> onRestaurantChanged;
+  final bool parkingEnabled;
+  final ValueChanged<bool> onParkingChanged;
+  final bool alertsEnabled;
+  final ValueChanged<bool> onAlertsChanged;
+  final bool tollAlternativeEnabled;
+  final ValueChanged<bool> onTollAlternativeChanged;
+  final bool routeComparisonEnabled;
+  final ValueChanged<bool> onRouteComparisonChanged;
+
+  @override
+  State<_OnRoutePicker> createState() => _OnRoutePickerState();
+}
+
+class _OnRoutePickerState extends State<_OnRoutePicker> {
+  // Nested progressive disclosure for the three advanced toggles
+  // (alerts / toll-free / route variants). In-memory only.
+  bool _advancedExpanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    final active = <String>[
+      if (widget.hotelPrefs.enabled) l.hotelPrefTitle,
+      if (widget.restaurantPrefs.enabled) l.restaurantPrefTitle,
+      if (widget.parkingEnabled) l.parkingPrefTitle,
+      if (widget.alertsEnabled) l.planOptAlertsTitle,
+      if (widget.tollAlternativeEnabled) l.planOptTollFreeTitle,
+      if (widget.routeComparisonEnabled) l.planOptRouteVariantsTitle,
+    ];
+    final subtitle = active.isEmpty
+        ? l.onRouteEmpty
+        : active.join(' · ');
+
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(color: scheme.outlineVariant),
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          dividerColor: Colors.transparent,
+        ),
+        child: ExpansionTile(
+          leading: Icon(Icons.tune, color: scheme.primary, size: 20),
+          title: Text(
+            l.onRouteTitle,
+            style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          subtitle: Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          tilePadding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space16,
+            vertical: 2,
+          ),
+          childrenPadding: const EdgeInsets.fromLTRB(
+            Tokens.space12,
+            0,
+            Tokens.space12,
+            Tokens.space8,
+          ),
+          children: [
+            _CompactExpandableToggle(
+              icon: Icons.hotel_outlined,
+              title: l.hotelPrefTitle,
+              value: widget.hotelPrefs.enabled,
+              onChanged: (v) => widget.onHotelChanged(
+                widget.hotelPrefs.copyWith(enabled: v),
+              ),
+              expandedChild: HotelPreferencesSection(
+                value: widget.hotelPrefs,
+                onChanged: widget.onHotelChanged,
+                hideMainSwitch: true,
+              ),
+            ),
+            _CompactExpandableToggle(
+              icon: Icons.restaurant_outlined,
+              title: l.restaurantPrefTitle,
+              value: widget.restaurantPrefs.enabled,
+              onChanged: (v) => widget.onRestaurantChanged(
+                widget.restaurantPrefs.copyWith(enabled: v),
+              ),
+              expandedChild: RestaurantPreferencesSection(
+                value: widget.restaurantPrefs,
+                onChanged: widget.onRestaurantChanged,
+                hideMainSwitch: true,
+              ),
+            ),
+            _CompactToggle(
+              icon: Icons.local_parking_outlined,
+              title: l.parkingPrefTitle,
+              subtitle: l.parkingPrefSub,
+              value: widget.parkingEnabled,
+              onChanged: widget.onParkingChanged,
+            ),
+            InkWell(
+              onTap: () => setState(
+                () => _advancedExpanded = !_advancedExpanded,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  vertical: Tokens.space12,
+                  horizontal: Tokens.space4,
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      _advancedExpanded
+                          ? Icons.expand_less
+                          : Icons.expand_more,
+                      size: 20,
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: Tokens.space8),
+                    Text(
+                      _advancedExpanded
+                          ? l.planLessOptions
+                          : l.planMoreOptions,
+                      style: t.labelLarge?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            AnimatedSize(
+              duration: Tokens.motionBase,
+              curve: Tokens.curveOut,
+              child: !_advancedExpanded
+                  ? const SizedBox.shrink()
+                  : Column(
+                      children: [
+                        _CompactToggle(
+                          icon: Icons.warning_amber_outlined,
+                          title: l.planOptAlertsTitle,
+                          subtitle: l.planOptAlertsSub,
+                          value: widget.alertsEnabled,
+                          onChanged: widget.onAlertsChanged,
+                        ),
+                        _CompactToggle(
+                          icon: Icons.euro,
+                          title: l.planOptTollFreeTitle,
+                          subtitle: l.planOptTollFreeSub,
+                          value: widget.tollAlternativeEnabled,
+                          onChanged: widget.onTollAlternativeChanged,
+                        ),
+                        _CompactToggle(
+                          icon: Icons.alt_route,
+                          title: l.planOptRouteVariantsTitle,
+                          subtitle: l.planOptRouteVariantsSub,
+                          value: widget.routeComparisonEnabled,
+                          onChanged: widget.onRouteComparisonChanged,
+                        ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

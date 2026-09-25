@@ -46,6 +46,7 @@ class CurrentLocationService {
 
   Future<CurrentLocationResult> resolve({
     Duration timeout = const Duration(seconds: 8),
+    String? locale,
   }) async {
     try {
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -62,7 +63,9 @@ class CurrentLocationService {
       }
       final position = await _positionResolver().timeout(timeout);
       final place = await _api.reverseGeocode(
-        lat: position.latitude, lon: position.longitude,
+        lat: position.latitude,
+        lon: position.longitude,
+        locale: locale,
       );
       return CurrentLocationResult(
         place: place,

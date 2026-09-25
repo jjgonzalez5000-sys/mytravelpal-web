@@ -2683,6 +2683,12 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get onRouteTitle => 'Entlang der Route';
+
+  @override
+  String get onRouteEmpty => 'Tippen, um Optionen zu wählen';
+
+  @override
   String get exportShareTitle => 'Route teilen';
 
   @override

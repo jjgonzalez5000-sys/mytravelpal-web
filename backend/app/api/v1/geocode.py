@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.domain import Country
@@ -8,6 +8,25 @@ from app.providers import get_providers
 from app.providers.factory import Providers
 
 router = APIRouter(prefix="/geocode", tags=["geocode"])
+
+
+def _resolve_lang(
+    lang_param: str | None, accept_language: str | None,
+) -> str | None:
+    """Pick the caller's preferred language for `display_name`.
+
+    Explicit `?lang=xx` wins because the mobile client sends it. When
+    it's absent, sniff the first token of `Accept-Language` (browsers
+    format it as e.g. `es-ES,es;q=0.9,en;q=0.8`). Returns None when
+    neither is set — providers then default to English.
+    """
+    if lang_param:
+        return lang_param
+    if accept_language:
+        first = accept_language.split(",", 1)[0].strip()
+        if first:
+            return first
+    return None
 
 
 class CoordinateOut(BaseModel):
@@ -35,9 +54,20 @@ def _providers() -> Providers:
 async def geocode(
     q: str = Query(..., min_length=1, max_length=512, description="Search query"),
     limit: int = Query(5, ge=1, le=20),
+    lang: str | None = Query(
+        None,
+        max_length=16,
+        description=(
+            "Preferred language for display names (ISO 639-1, e.g. 'es'). "
+            "Falls back to Accept-Language header, then English."
+        ),
+    ),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     providers: Providers = Depends(_providers),
 ) -> GeocodeResponse:
-    results = await providers.geocoding.search(q, limit=limit)
+    results = await providers.geocoding.search(
+        q, limit=limit, lang=_resolve_lang(lang, accept_language),
+    )
     return GeocodeResponse(
         results=[
             GeocodeResultOut(
@@ -56,6 +86,15 @@ async def geocode(
 async def reverse_geocode(
     lat: float = Query(..., ge=-90.0, le=90.0),
     lon: float = Query(..., ge=-180.0, le=180.0),
+    lang: str | None = Query(
+        None,
+        max_length=16,
+        description=(
+            "Preferred language for display names (ISO 639-1, e.g. 'es'). "
+            "Falls back to Accept-Language header, then English."
+        ),
+    ),
+    accept_language: str | None = Header(default=None, alias="Accept-Language"),
     providers: Providers = Depends(_providers),
 ) -> GeocodeResultOut:
     """Return the nearest known place for `lat`,`lon`.
@@ -65,7 +104,9 @@ async def reverse_geocode(
     enough — the client is expected to show a friendly "we couldn't
     place you" message rather than blowing up.
     """
-    result = await providers.geocoding.reverse(lat, lon)
+    result = await providers.geocoding.reverse(
+        lat, lon, lang=_resolve_lang(lang, accept_language),
+    )
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

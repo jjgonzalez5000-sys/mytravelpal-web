@@ -13,6 +13,7 @@ import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../widgets/skeleton.dart';
 import '../services/notifications.dart';
+import '../services/plan_foreground_task.dart';
 import '../storage/saved_trip.dart';
 import '../services/trip_export.dart';
 import '../services/trip_sharing.dart';
@@ -114,7 +115,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       builder: (_) => const PlanLoadingDialog(),
     ));
     try {
-      final response = await api.planTrip(request);
+      // Foreground-service wrap so backgrounding the app during the
+      // 5-8s replan doesn't cancel the request on OEM ROMs, and the
+      // user sees a tray notification while it runs.
+      final reopenLabel =
+          '${trip.origin.displayName} → ${trip.destination.displayName}';
+      final response = await runInForeground(
+        context,
+        reopenLabel,
+        () => api.planTrip(request),
+      );
       if (!mounted) return;
       if (dialogOpen) {
         navigator.pop();

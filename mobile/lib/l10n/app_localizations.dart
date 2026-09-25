@@ -4798,6 +4798,18 @@ abstract class AppLocalizations {
   /// **'{count} saved — tap to reuse'**
   String recentTripsSubtitle(int count);
 
+  /// No description provided for @onRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Along the route'**
+  String get onRouteTitle;
+
+  /// No description provided for @onRouteEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to pick options'**
+  String get onRouteEmpty;
+
   /// No description provided for @exportShareTitle.
   ///
   /// In en, this message translates to:
