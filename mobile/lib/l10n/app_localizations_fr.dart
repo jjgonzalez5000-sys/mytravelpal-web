@@ -2681,6 +2681,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planStopReorderHint => 'Maintiens la poignée pour réorganiser';
 
   @override
+  String get planSwapOriginDestination => 'Inverser';
+
+  @override
   String get planStopMoveUp => 'Monter';
 
   @override

@@ -990,6 +990,7 @@
     "prepareDepartureNow": "Leave now",
     "replanNewDepartureTitle": "Recalculating with new departure time…",
     "planStopReorderHint": "Long-press the handle to reorder",
+    "planSwapOriginDestination": "Swap",
     "planStopMoveUp": "Move up",
     "planStopMoveDown": "Move down",
     "recentTripsTitle": "Recent trips",

@@ -1175,7 +1175,33 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             ),
                           ),
                         ],
-                        const SizedBox(height: Tokens.space12),
+                        // Swap origin ↔ destination (Google-Maps-style).
+                        // Reverses intermediate stops too so A→P1→P2→B
+                        // becomes B→P2→P1→A. Disabled until both
+                        // endpoints are set — nothing to swap otherwise.
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            icon: const Icon(Icons.swap_vert, size: 18),
+                            label: Text(l.planSwapOriginDestination),
+                            onPressed: (_origin == null || _destination == null)
+                                ? null
+                                : () {
+                                    setState(() {
+                                      final tmp = _origin;
+                                      _origin = _destination;
+                                      _destination = tmp;
+                                      // Reverse intermediate stops so the
+                                      // full trip flips end-to-end.
+                                      final reversed = _stops.reversed.toList();
+                                      _stops
+                                        ..clear()
+                                        ..addAll(reversed);
+                                    });
+                                  },
+                          ),
+                        ),
+                        const SizedBox(height: Tokens.space4),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [

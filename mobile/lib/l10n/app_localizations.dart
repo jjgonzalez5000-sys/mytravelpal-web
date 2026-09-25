@@ -4792,6 +4792,12 @@ abstract class AppLocalizations {
   /// **'Long-press the handle to reorder'**
   String get planStopReorderHint;
 
+  /// No description provided for @planSwapOriginDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'Swap'**
+  String get planSwapOriginDestination;
+
   /// No description provided for @planStopMoveUp.
   ///
   /// In en, this message translates to:
