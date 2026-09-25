@@ -2680,6 +2680,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get replanNewDepartureTitle => 'Calculando con nueva hora de salida…';
 
   @override
+  String get planStopReorderHint => 'Mantén pulsado el asa para reordenar';
+
+  @override
   String get recentTripsTitle => 'Viajes recientes';
 
   @override

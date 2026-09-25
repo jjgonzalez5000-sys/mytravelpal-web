@@ -2671,6 +2671,9 @@ class AppLocalizationsPt extends AppLocalizations {
       'A recalcular com o novo horário de partida…';
 
   @override
+  String get planStopReorderHint => 'Mantém a alça para reordenar';
+
+  @override
   String get recentTripsTitle => 'Viagens recentes';
 
   @override

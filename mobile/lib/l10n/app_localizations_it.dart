@@ -2672,6 +2672,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Ricalcolo con il nuovo orario di partenza…';
 
   @override
+  String get planStopReorderHint => 'Tieni premuta la maniglia per riordinare';
+
+  @override
   String get recentTripsTitle => 'Viaggi recenti';
 
   @override

@@ -4786,6 +4786,12 @@ abstract class AppLocalizations {
   /// **'Recalculating with new departure time…'**
   String get replanNewDepartureTitle;
 
+  /// No description provided for @planStopReorderHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press the handle to reorder'**
+  String get planStopReorderHint;
+
   /// No description provided for @recentTripsTitle.
   ///
   /// In en, this message translates to:

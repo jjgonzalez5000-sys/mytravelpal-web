@@ -2678,6 +2678,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Recalcul avec le nouvel horaire de départ…';
 
   @override
+  String get planStopReorderHint => 'Maintiens la poignée pour réorganiser';
+
+  @override
   String get recentTripsTitle => 'Trajets récents';
 
   @override

@@ -119,6 +119,7 @@
     },
     "prepareDepartureNow": "Sair agora",
     "replanNewDepartureTitle": "A recalcular com o novo horário de partida…",
+    "planStopReorderHint": "Mantém a alça para reordenar",
     "recentTripsTitle": "Viagens recentes",
     "recentTripsSubtitle": "{count} guardadas — toca para reutilizar",
     "@recentTripsSubtitle": {

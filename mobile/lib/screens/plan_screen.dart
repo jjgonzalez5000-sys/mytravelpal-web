@@ -1077,35 +1077,42 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                     children: [
                                       Row(
                                         children: [
-                                          ReorderableDragStartListener(
+                                          // Google-Maps-style drag chip
+                                          // on the far left. Long-press
+                                          // to grab (wins gesture arena
+                                          // over the surrounding scroll
+                                          // view; the immediate
+                                          // ReorderableDragStartListener
+                                          // was losing to VerticalDrag
+                                          // and never firing).
+                                          ReorderableDelayedDragStartListener(
                                             index: i,
                                             child: MouseRegion(
                                               cursor: SystemMouseCursors.grab,
                                               child: Container(
-                                                // 48x48 Material tap
-                                                // target so the handle
-                                                // is not swallowed by
-                                                // the neighbouring
-                                                // LocationSearchField
-                                                // hit area on touch.
-                                                width: 48,
-                                                height: 48,
+                                                width: 44,
+                                                height: 56,
                                                 alignment: Alignment.center,
                                                 margin: const EdgeInsets.only(
-                                                    right: Tokens.space4),
+                                                    right: Tokens.space8),
                                                 decoration: BoxDecoration(
                                                   color: Theme.of(context)
                                                       .colorScheme
-                                                      .surfaceContainerHighest,
+                                                      .primaryContainer,
                                                   borderRadius:
-                                                      BorderRadius.circular(6),
+                                                      BorderRadius.circular(8),
+                                                  border: Border.all(
+                                                    color: Theme.of(context)
+                                                        .colorScheme
+                                                        .outlineVariant,
+                                                  ),
                                                 ),
                                                 child: Icon(
-                                                  Icons.drag_indicator,
-                                                  size: 22,
+                                                  Icons.drag_handle,
+                                                  size: 24,
                                                   color: Theme.of(context)
                                                       .colorScheme
-                                                      .onSurfaceVariant,
+                                                      .onPrimaryContainer,
                                                 ),
                                               ),
                                             ),
@@ -1163,6 +1170,19 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                 ),
                             ],
                           ),
+                        if (_stops.length >= 2) ...[
+                          const SizedBox(height: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(left: Tokens.space4),
+                            child: Text(
+                              l.planStopReorderHint,
+                              style: t.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ),
+                        ],
                         if (_stops.length < _maxStops) ...[
                           const SizedBox(height: Tokens.space8),
                           Align(
@@ -1517,6 +1537,38 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
   // (alerts / toll-free / route variants). In-memory only.
   bool _advancedExpanded = false;
 
+  // Compact secondary text on each active chip so the collapsed
+  // header shows the actual pick, not just the category name.
+  // Empty string → chip renders without a "·" suffix.
+  String _hotelDetail(AppLocalizations l, HotelPreferences p) {
+    final parts = <String>[];
+    parts.add('${p.maxDetourMinutes}′');
+    if (p.minStars > 0) parts.add('≥${p.minStars}★');
+    if (p.priceBands.length == 1 && p.priceBands.first != PriceBand.any) {
+      parts.add(p.priceBands.first.symbol);
+    } else if (p.priceBands.length > 1) {
+      parts.add(p.priceBands.map((b) => b.symbol).join('/'));
+    }
+    if (p.destinationRadiusKm != 40) parts.add('${p.destinationRadiusKm}km');
+    return parts.join(' · ');
+  }
+
+  String _restaurantDetail(AppLocalizations l, RestaurantPreferences p) {
+    final parts = <String>[];
+    parts.add('${p.maxDetourMinutes}′');
+    if (p.priceBands.length == 1 && p.priceBands.first != PriceBand.any) {
+      parts.add(p.priceBands.first.symbol);
+    } else if (p.priceBands.length > 1) {
+      parts.add(p.priceBands.map((b) => b.symbol).join('/'));
+    }
+    if (p.cuisines.isNotEmpty) {
+      parts.add(p.cuisines.length == 1
+          ? p.cuisines.first
+          : '${p.cuisines.length} tipos');
+    }
+    return parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -1525,9 +1577,17 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
 
     final activeChips = <_ActiveChip>[
       if (widget.hotelPrefs.enabled)
-        _ActiveChip(Icons.hotel_outlined, l.hotelPrefTitle),
+        _ActiveChip(
+          Icons.hotel_outlined,
+          l.hotelPrefTitle,
+          detail: _hotelDetail(l, widget.hotelPrefs),
+        ),
       if (widget.restaurantPrefs.enabled)
-        _ActiveChip(Icons.restaurant_outlined, l.restaurantPrefTitle),
+        _ActiveChip(
+          Icons.restaurant_outlined,
+          l.restaurantPrefTitle,
+          detail: _restaurantDetail(l, widget.restaurantPrefs),
+        ),
       if (widget.parkingEnabled)
         _ActiveChip(Icons.local_parking_outlined, l.parkingPrefTitle),
       if (widget.alertsEnabled)
@@ -1574,6 +1634,17 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    if (c.detail.isNotEmpty) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        '· ${c.detail}',
+                        style: t.labelSmall?.copyWith(
+                          color: scheme.onPrimaryContainer.withValues(
+                            alpha: 0.75,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -2015,7 +2086,8 @@ class _RecentTripRow extends StatelessWidget {
 }
 
 class _ActiveChip {
-  const _ActiveChip(this.icon, this.label);
+  const _ActiveChip(this.icon, this.label, {this.detail = ''});
   final IconData icon;
   final String label;
+  final String detail;
 }

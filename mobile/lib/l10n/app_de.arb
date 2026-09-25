@@ -1011,6 +1011,7 @@
     },
     "prepareDepartureNow": "Jetzt losfahren",
     "replanNewDepartureTitle": "Neue Abfahrtszeit wird berechnet…",
+    "planStopReorderHint": "Griff halten, um umzuordnen",
     "recentTripsTitle": "Letzte Fahrten",
     "recentTripsSubtitle": "{count} gespeichert — tippen zum Wiederverwenden",
     "@recentTripsSubtitle": {

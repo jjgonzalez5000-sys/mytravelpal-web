@@ -1006,6 +1006,7 @@
     },
     "prepareDepartureNow": "Partire ora",
     "replanNewDepartureTitle": "Ricalcolo con il nuovo orario di partenza…",
+    "planStopReorderHint": "Tieni premuta la maniglia per riordinare",
     "recentTripsTitle": "Viaggi recenti",
     "recentTripsSubtitle": "{count} salvati — tocca per riutilizzare",
     "@recentTripsSubtitle": {

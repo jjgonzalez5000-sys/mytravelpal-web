@@ -2667,6 +2667,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Recalculating with new departure time…';
 
   @override
+  String get planStopReorderHint => 'Long-press the handle to reorder';
+
+  @override
   String get recentTripsTitle => 'Recent trips';
 
   @override

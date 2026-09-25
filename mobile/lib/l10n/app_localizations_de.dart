@@ -2675,6 +2675,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get replanNewDepartureTitle => 'Neue Abfahrtszeit wird berechnet…';
 
   @override
+  String get planStopReorderHint => 'Griff halten, um umzuordnen';
+
+  @override
   String get recentTripsTitle => 'Letzte Fahrten';
 
   @override

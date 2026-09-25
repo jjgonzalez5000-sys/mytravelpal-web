@@ -2671,6 +2671,9 @@ class AppLocalizationsCa extends AppLocalizations {
       'Recalculant amb la nova hora de sortida…';
 
   @override
+  String get planStopReorderHint => 'Manté premuda la nansa per reordenar';
+
+  @override
   String get recentTripsTitle => 'Viatges recents';
 
   @override
