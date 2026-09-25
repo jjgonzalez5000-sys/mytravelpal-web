@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,6 +16,7 @@ import '../services/notifications.dart';
 import '../storage/saved_trip.dart';
 import '../services/trip_export.dart';
 import '../services/trip_sharing.dart';
+import '../widgets/plan_loading_dialog.dart';
 import 'plan_screen.dart';
 import 'result_screen.dart';
 
@@ -98,9 +101,25 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       destination: trip.destination.coordinate,
       desiredDepartureAt: departure,
     );
+    // Show the same "planning your trip" loading dialog the plan flow
+    // uses — tester feedback was that "Ver plan" felt frozen for the
+    // 5-8s it takes to re-run the backend planner. Root navigator so
+    // the pop later doesn't get stuck behind a mid-flight rebuild.
+    final navigator = Navigator.of(context, rootNavigator: true);
+    var dialogOpen = true;
+    unawaited(showDialog<void>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      builder: (_) => const PlanLoadingDialog(),
+    ));
     try {
       final response = await api.planTrip(request);
       if (!mounted) return;
+      if (dialogOpen) {
+        navigator.pop();
+        dialogOpen = false;
+      }
       Navigator.of(context).push(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
@@ -114,11 +133,20 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       );
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (dialogOpen) {
+        navigator.pop();
+        dialogOpen = false;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(
           AppLocalizations.of(context).historyReplanFailed(e.statusCode),
         )),
       );
+    } catch (_) {
+      if (mounted && dialogOpen) {
+        navigator.pop();
+      }
+      rethrow;
     }
   }
 
