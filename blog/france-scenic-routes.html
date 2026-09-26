@@ -7,9 +7,12 @@
 <meta name="description" content="Cinco rutas esc&eacute;nicas imprescindibles en Francia para road trip: Provenza, Costa Azul, C&ocirc;te d'Opale, Alsacia y las Gargantas del Verdon. Paradas, hoteles y consejos.">
 <meta property="og:title" content="Las 5 mejores rutas esc&eacute;nicas por Francia">
 <meta property="og:description" content="Paradas imprescindibles en las cinco carreteras m&aacute;s bonitas de Francia, con hoteles y restaurantes recomendados.">
-<meta property="og:url" content="https://mytravelpal.io/blog/france-scenic-routes.html">
+<meta property="og:url" content="https://www.mytravelpal.io/blog/france-scenic-routes">
 <meta property="og:type" content="article">
 <meta name="theme-color" content="#F44F72">
+<link rel="alternate" hreflang="es" href="https://www.mytravelpal.io/blog/france-scenic-routes">
+<link rel="alternate" hreflang="en" href="https://www.mytravelpal.io/en/blog/france-scenic-routes">
+<link rel="alternate" hreflang="x-default" href="https://www.mytravelpal.io/blog/france-scenic-routes">
 <link rel="icon" href="/favicon.svg">
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -17,12 +20,17 @@
 <header><nav class="container">
   <a class="brand" href="/">MyTravelPal</a>
   <div class="links">
-    <a href="/#features">Features</a>
-    <a href="/about.html">About</a>
+    <a href="/#features">Funciones</a>
+    <a href="/about">Nosotros</a>
     <a href="/blog/">Blog</a>
-    <a href="/support.html">Support</a>
-    <a href="/privacy.html">Privacy</a>
-    <a href="/terms.html">Terms</a>
+    <a href="/support">Soporte</a>
+    <a href="/privacy">Privacidad</a>
+    <a href="/terms">T&eacute;rminos</a>
+    <div class="lang-switch">
+      <a href="/blog/france-scenic-routes" class="active" data-lang="es">ES</a>
+      <span>|</span>
+      <a href="/en/blog/france-scenic-routes" data-lang="en">EN</a>
+    </div>
   </div>
 </nav></header>
 
@@ -33,10 +41,10 @@
 <h1>Las 5 mejores rutas esc&eacute;nicas por Francia: paradas imprescindibles</h1>
 
 <p>Francia es probablemente el pa&iacute;s europeo con mejor ratio
-kil&oacute;metro / paisaje: en 700 km puedes cruzar viñedos borgo&ntilde;ones,
+kil&oacute;metro / paisaje: en 700 km puedes cruzar vi&ntilde;edos borgo&ntilde;ones,
 volcanes de Auvergne, gargantas provenzales, pueblos alsacianos con
 entramado de madera y acantilados sobre el Canal de la Mancha. Estas
-cinco rutas son las que m&aacute;s recomiendan nuestros beta testers y las
+cinco rutas son las que m&aacute;s recomiendan nuestros testers y las
 que, sin salirte del asfalto, ofrecen las mejores vistas para un road trip
 de 4 a 7 d&iacute;as.</p>
 
@@ -71,7 +79,7 @@ se ve la costa inglesa. Es perfecta para un fin de semana desde Par&iacute;s
 con hoteles de encanto y marisquer&iacute;as excelentes.</p>
 
 <h2>4. Route des Vins d'Alsace (Marlenheim &ndash; Thann)</h2>
-<p>170 km de v&iacute;a departamental entre viñedos y pueblos con nombres
+<p>170 km de v&iacute;a departamental entre vi&ntilde;edos y pueblos con nombres
 alemanes que ganan concursos de flores todos los a&ntilde;os:
 <strong>Riquewihr</strong>, <strong>Kaysersberg</strong>,
 <strong>Eguisheim</strong>. La ruta es corta pero se recomienda dedicar
@@ -86,9 +94,9 @@ de 500 m sobre el r&iacute;o. Complemento obligado: pasar por el
 <strong>viaducto de Millau</strong> (2,4 km, el puente atirantado m&aacute;s
 alto del mundo, peaje unos 9 &euro; en verano). Es una escapada ideal desde
 Barcelona o Toulouse. Duerme en <strong>Sainte-Enimie</strong>,
-<strong>La Malène</strong> o <strong>Le Rozier</strong>, tres pueblos
+<strong>La Mal&egrave;ne</strong> o <strong>Le Rozier</strong>, tres pueblos
 medievales con hoteles peque&ntilde;os y restaurantes de cocina local
-(aligot, salsa Roquefort, cordero lechal). Alquila una cano&iacute; si
+(aligot, salsa Roquefort, cordero lechal). Alquila una canoa si
 tienes un d&iacute;a extra: descender el Tarn a remo es la mejor forma de
 apreciar la escala del paisaje.</p>
 
@@ -101,17 +109,24 @@ las rutas de monta&ntilde;a (Grandes Alpes, Route Napol&eacute;on) te
 adelanta la meteorolog&iacute;a de los puertos y si alg&uacute;n col est&aacute;
 cerrado en la fecha. As&iacute; no llegas a Val d'Is&egrave;re a descubrir
 que el Iseran a&uacute;n tiene nieve.
-<a href="/beta.html">Consigue la app aqu&iacute;</a>.</p>
+<a href="/beta">Consigue la app aqu&iacute;</a>.</p>
 
 </div></main>
 
 <footer><div class="container">
 <small>&copy; 2026 MyTravelPal &middot;
-  <a href="/about.html">About</a> &middot;
+  <a href="/about">Nosotros</a> &middot;
   <a href="/blog/">Blog</a> &middot;
-  <a href="/privacy.html">Privacy</a> &middot;
-  <a href="/terms.html">Terms</a> &middot;
-  <a href="/support.html">Support</a> &middot;
+  <a href="/privacy">Privacidad</a> &middot;
+  <a href="/terms">T&eacute;rminos</a> &middot;
+  <a href="/support">Soporte</a> &middot;
   <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
 </div></footer>
+<script>
+  document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){
+    el.addEventListener('click', function(){
+      try { localStorage.setItem('mtp-lang', el.getAttribute('data-lang')); } catch(e){}
+    });
+  });
+</script>
 </body></html>

@@ -7,9 +7,12 @@
 <meta name="description" content="Cu&aacute;ndo salir, qu&eacute; puertos elegir, d&oacute;nde dormir y qu&eacute; hoteles recomendamos para un road trip por los Alpes franceses, suizos e italianos en julio y agosto.">
 <meta property="og:title" content="Gu&iacute;a completa de ruta por los Alpes en verano">
 <meta property="og:description" content="Todo lo que necesitas para planificar un road trip por los Alpes: puertos abiertos, hoteles recomendados y consejos para evitar los atascos de agosto.">
-<meta property="og:url" content="https://mytravelpal.io/blog/alps-summer-road-trip.html">
+<meta property="og:url" content="https://www.mytravelpal.io/blog/alps-summer-road-trip">
 <meta property="og:type" content="article">
 <meta name="theme-color" content="#F44F72">
+<link rel="alternate" hreflang="es" href="https://www.mytravelpal.io/blog/alps-summer-road-trip">
+<link rel="alternate" hreflang="en" href="https://www.mytravelpal.io/en/blog/alps-summer-road-trip">
+<link rel="alternate" hreflang="x-default" href="https://www.mytravelpal.io/blog/alps-summer-road-trip">
 <link rel="icon" href="/favicon.svg">
 <link rel="stylesheet" href="/style.css">
 </head>
@@ -17,12 +20,17 @@
 <header><nav class="container">
   <a class="brand" href="/">MyTravelPal</a>
   <div class="links">
-    <a href="/#features">Features</a>
-    <a href="/about.html">About</a>
+    <a href="/#features">Funciones</a>
+    <a href="/about">Nosotros</a>
     <a href="/blog/">Blog</a>
-    <a href="/support.html">Support</a>
-    <a href="/privacy.html">Privacy</a>
-    <a href="/terms.html">Terms</a>
+    <a href="/support">Soporte</a>
+    <a href="/privacy">Privacidad</a>
+    <a href="/terms">T&eacute;rminos</a>
+    <div class="lang-switch">
+      <a href="/blog/alps-summer-road-trip" class="active" data-lang="es">ES</a>
+      <span>|</span>
+      <a href="/en/blog/alps-summer-road-trip" data-lang="en">EN</a>
+    </div>
   </div>
 </nav></header>
 
@@ -44,7 +52,7 @@ varios veranos recorriendo los Alpes franceses, suizos e italianos.</p>
 <p>Reglas b&aacute;sicas para 2026:</p>
 <ul>
   <li><strong>Evita s&aacute;bados de agosto</strong>: los llamados
-    "s&aacute;bados negros" en Francia se pronostican en el calendario de
+    &laquo;s&aacute;bados negros&raquo; en Francia se pronostican en el calendario de
     Bison Fut&eacute;. El 1 de agosto, el 3, el 10 y el 15 suelen colapsar la
     A-7 (Valle del R&oacute;dano) y todos los accesos al Mont Blanc.</li>
   <li><strong>Sal antes de las 7:00 o despu&eacute;s de las 18:00</strong>
@@ -59,7 +67,7 @@ varios veranos recorriendo los Alpes franceses, suizos e italianos.</p>
 </ul>
 
 <h2>Ruta cl&aacute;sica de 8 d&iacute;as</h2>
-<p>Un itinerario probado por muchos beta testers, empezando y terminando
+<p>Un itinerario probado por muchos testers, empezando y terminando
 en Ginebra (base a&eacute;rea barata) o Mil&aacute;n:</p>
 <ol>
   <li><strong>D&iacute;a 1:</strong> Ginebra &ndash; Chamonix (90 km).
@@ -82,10 +90,10 @@ en Ginebra (base a&eacute;rea barata) o Mil&aacute;n:</p>
 </ol>
 
 <h2>Hoteles recomendados por zona</h2>
-<p>Sin patrocinio: son los que m&aacute;s han sorprendido a nuestros beta
-testers por ubicaci&oacute;n, servicio y desayuno.</p>
+<p>Sin patrocinio: son los que m&aacute;s han sorprendido a nuestros testers
+por ubicaci&oacute;n, servicio y desayuno.</p>
 <ul>
-  <li><strong>Chamonix</strong>: los B&B de <em>Les Praz</em>, a 3 km del
+  <li><strong>Chamonix</strong>: los B&amp;B de <em>Les Praz</em>, a 3 km del
     centro, ofrecen vistas al Aiguille Verte por la mitad del precio de un
     hotel en el centro.</li>
   <li><strong>Cortina d'Ampezzo</strong>: los <em>rifugi</em> convertidos
@@ -133,17 +141,24 @@ del recorrido completo. Adem&aacute;s te suma la meteorolog&iacute;a por
 tramo para que sepas si vais a pillar tormenta en el Stelvio o sol pleno en
 la bajada al lago Como. Ideal para un road trip alpino de una o dos
 semanas.
-<a href="/beta.html">Consigue la app aqu&iacute;</a>.</p>
+<a href="/beta">Consigue la app aqu&iacute;</a>.</p>
 
 </div></main>
 
 <footer><div class="container">
 <small>&copy; 2026 MyTravelPal &middot;
-  <a href="/about.html">About</a> &middot;
+  <a href="/about">Nosotros</a> &middot;
   <a href="/blog/">Blog</a> &middot;
-  <a href="/privacy.html">Privacy</a> &middot;
-  <a href="/terms.html">Terms</a> &middot;
-  <a href="/support.html">Support</a> &middot;
+  <a href="/privacy">Privacidad</a> &middot;
+  <a href="/terms">T&eacute;rminos</a> &middot;
+  <a href="/support">Soporte</a> &middot;
   <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
 </div></footer>
+<script>
+  document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){
+    el.addEventListener('click', function(){
+      try { localStorage.setItem('mtp-lang', el.getAttribute('data-lang')); } catch(e){}
+    });
+  });
+</script>
 </body></html>

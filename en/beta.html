@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tester program &mdash; MyTravelPal</title>
+<meta name="description" content="Join the MyTravelPal tester program: early access to the Android app for European drivers planning a road trip.">
+<meta property="og:title" content="Tester program &mdash; MyTravelPal">
+<meta property="og:description" content="Early access to MyTravelPal for European drivers with a road trip on the calendar.">
+<meta property="og:url" content="https://www.mytravelpal.io/en/beta">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#F44F72">
+<link rel="alternate" hreflang="es" href="https://www.mytravelpal.io/beta">
+<link rel="alternate" hreflang="en" href="https://www.mytravelpal.io/en/beta">
+<link rel="alternate" hreflang="x-default" href="https://www.mytravelpal.io/beta">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><nav class="container">
+  <a class="brand" href="/en/">MyTravelPal</a>
+  <div class="links">
+    <a href="/en/#features">Features</a>
+    <a href="/en/about">About</a>
+    <a href="/en/blog/">Blog</a>
+    <a href="/en/support">Support</a>
+    <a href="/en/privacy">Privacy</a>
+    <a href="/en/terms">Terms</a>
+    <div class="lang-switch">
+      <a href="/beta" data-lang="es">ES</a>
+      <span>|</span>
+      <a href="/en/beta" class="active" data-lang="en">EN</a>
+    </div>
+  </div>
+</nav></header>
+<main class="page"><div class="container">
+  <h1>Tester program</h1>
+  <p>We onboard a small group of European Android drivers at a time. If you have a road trip planned in the next few weeks and want to use the app on the road and share your feedback, we would love to have you on board.</p>
+
+  <h2>What we need from you</h2>
+  <ul>
+    <li>An Android phone running Android 8 or newer.</li>
+    <li>A Google account for the invite (Play Store closed track).</li>
+    <li>A real trip you are about to take &mdash; the best feedback comes from actual use.</li>
+    <li>Willingness to email us bugs and rough edges as you find them.</li>
+  </ul>
+
+  <h2>What you get</h2>
+  <ul>
+    <li>All Premium features unlocked while you test.</li>
+    <li>Direct line to the team &mdash; we ship good feedback quickly.</li>
+    <li>Founding-user perks when we open the app to the general public.</li>
+  </ul>
+
+  <h2>How to sign up</h2>
+  <p>Email <a href="mailto:hello@mytravelpal.io?subject=Tester%20access%20request">hello@mytravelpal.io</a> with:</p>
+  <ul>
+    <li>Your Google account email (for the Play Store invite).</li>
+    <li>Country you live in.</li>
+    <li>What kind of road trip you are planning (roughly).</li>
+    <li>Vehicle type (car / camper / motorbike / etc.).</li>
+  </ul>
+  <p>We add you to the tester list within 24 hours and send you the invite link.</p>
+</div></main>
+<footer><div class="container">
+<small>&copy; 2026 MyTravelPal &middot; <a href="/en/about">About</a> &middot; <a href="/en/blog/">Blog</a> &middot; <a href="/en/privacy">Privacy</a> &middot; <a href="/en/terms">Terms</a> &middot; <a href="/en/support">Support</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
+</div></footer>
+<script>
+  document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){
+    el.addEventListener('click', function(){
+      try { localStorage.setItem('mtp-lang', el.getAttribute('data-lang')); } catch(e){}
+    });
+  });
+</script>
+</body></html>
