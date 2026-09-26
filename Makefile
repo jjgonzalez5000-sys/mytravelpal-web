@@ -9,6 +9,7 @@ OSRM_READY    := $(OSRM_DATA)/osrm-graph.osrm.cell_metrics
 PROD_API_URL  := https://mytravelpal-api.fly.dev
 PROD_API_KEY  := 7637fb236013308ebf998843d924e15e56dce87457187e22a1a03c9c1e164d7a
 PROD_SENTRY   := https://3c46e071b627ae7c6c5cb4592cadbf60@o4511977727590400.ingest.de.sentry.io/4511977749086288
+APP_PACKAGE   := com.mytravelpal.mytravelpal
 APK_OUT       := $(MOBILE_DIR)/build/app/outputs/flutter-apk/app-release.apk
 RCLONE_DEST   := blu3g3_drive_jjgonzalez5000:Desarrollo_APPS/APKs/
 
@@ -121,6 +122,8 @@ mobile-prod:
 	  --dart-define=API_BASE_URL=$(PROD_API_URL) \
 	  --dart-define=API_KEY=$(PROD_API_KEY) \
 	  --dart-define=SENTRY_DSN=$(PROD_SENTRY)
+	@echo ">>> uninstalling previous build (clean state — user preference 2026-09-27)"
+	@adb uninstall $(APP_PACKAGE) 2>&1 | tail -1
 	cd $(MOBILE_DIR) && flutter install
 	rclone copy $(APK_OUT) $(RCLONE_DEST)
 
