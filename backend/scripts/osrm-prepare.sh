@@ -125,16 +125,15 @@ else
   echo "    $GRAPH.osm.pbf                 present, skip merge"
 fi
 
-# --flatnodes offloads the node cache to disk (few extra GB) so the
-# extract fits comfortably in ~15 GB RAM instead of ~50 GB. Slower
-# during extract but stays inside a 42 GB free budget.
+# Modern OSRM (v6+) uses mmap automatically — the old --flatnodes-file
+# flag was retired. RAM peak on West Europe ~15-25 GB depending on
+# available headroom, fits comfortably in 42 GB free.
 if [ ! -f "$DATA_DIR/$GRAPH.osrm" ] || [ ! -f "$DATA_DIR/$GRAPH.osrm.names" ]; then
-  echo ">>> osrm-extract ($PROFILE) with flatnodes — the slow one, ~60-90 min"
+  echo ">>> osrm-extract ($PROFILE) — the slow one, ~60-90 min"
   docker run --rm \
     -v "$DATA_DIR":/data \
     osrm/osrm-backend \
     osrm-extract \
-      --flatnodes /data/$GRAPH.flatnodes \
       -p /opt/$PROFILE.lua \
       /data/$GRAPH.osm.pbf
 else
