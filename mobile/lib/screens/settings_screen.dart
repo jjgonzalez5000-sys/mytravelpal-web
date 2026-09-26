@@ -302,19 +302,24 @@ class SettingsScreen extends ConsumerWidget {
     // saved trips to a fat-finger is a bad first impression.
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogCtx) => AlertDialog(
         title: Text(l.settingsDeleteAccountConfirmTitle),
         content: Text(l.settingsDeleteAccountConfirmBody),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            // Use the DIALOG's context here — the outer `context` is
+            // SettingsScreen's, so Navigator.of(context).pop() would
+            // pop Settings off the tab navigator instead of closing
+            // the dialog (which lives on the root nav). Result: dialog
+            // stays visible, Settings goes away, user sees main tabs.
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
             child: Text(l.settingsDeleteAccountCancel),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
             child: Text(l.settingsDeleteAccountConfirm),
           ),
         ],
