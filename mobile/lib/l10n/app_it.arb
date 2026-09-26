@@ -144,6 +144,7 @@
     "companionLocationDenied": "Serve il permesso di posizione per il compagno.",
     "companionDriving": "in guida",
     "companionAllGood": "Nessun avviso — buon viaggio.",
+    "companionWeatherRowEmpty": "Nessun avviso in vista",
     "companionEndTitle": "Terminare compagno?",
     "companionEndBody": "Il tracciamento si ferma e gli avvisi attivi saranno persi.",
     "companionEndKeep": "Continua",
@@ -1086,5 +1087,33 @@
     "refuelWindowCritical": "Rifornisci entro il km {km} (critico)",
     "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
-    }
+    },
+    "garageTitle": "Il mio garage",
+    "garageEmpty": "Nessun veicolo — aggiungi il primo",
+    "garageAdd": "Aggiungi veicolo",
+    "garageEdit": "Modifica veicolo",
+    "garageDelete": "Elimina",
+    "garageCancel": "Annulla",
+    "garageSave": "Salva",
+    "garageDefaultName": "La mia auto",
+    "garageNameHint": "Dagli un nome (es. La mia Golf)",
+    "garageDefaultTankLabel": "Livello serbatoio predefinito",
+    "garageAddError": "Impossibile salvare. Riprova.",
+    "garageDeleteTitle": "Eliminare il veicolo?",
+    "garageDeleteBody": "\"{name}\" verrà rimosso dal tuo garage.",
+    "@garageDeleteBody": {
+      "placeholders": { "name": {"type": "String"} }
+    },
+    "garageSettingsRow": "Il mio garage ({count})",
+    "@garageSettingsRow": {
+      "placeholders": { "count": {"type": "int"} }
+    },
+    "planScreenGarageChip": "Auto: {name} · {pct} %",
+    "@planScreenGarageChip": {
+      "placeholders": {
+        "name": {"type": "String"},
+        "pct": {"type": "int"}
+      }
+    },
+    "planScreenGarageChooseVehicle": "Scegli un veicolo per questo viaggio"
 }

@@ -5,6 +5,7 @@ import 'api/api_client.dart';
 import 'api/models.dart';
 import 'domain/auth_user.dart';
 import 'domain/favorite_place.dart';
+import 'domain/garage_vehicle.dart';
 import 'domain/trip_profile.dart';
 import 'domain/units.dart';
 import 'domain/vehicle_model.dart';
@@ -491,3 +492,99 @@ final vehicleCatalogueProvider =
 /// show a badge on the Companion tab when a session is running in the
 /// background.
 final companionActiveProvider = StateProvider<bool>((ref) => false);
+
+/// The user's saved "garage" — every vehicle they've added plus the
+/// legacy auto-migrated one. Mutations go through the notifier so we
+/// can echo them to the server without the UI having to await.
+class GarageNotifier extends StateNotifier<List<GarageVehicle>> {
+  GarageNotifier(this._api) : super(const []);
+
+  final ApiClient _api;
+  bool _loaded = false;
+
+  /// One-shot cold-start load. Cheap (single GET, small payload) so
+  /// callers can fire this from any screen that needs the list.
+  Future<void> ensureLoaded() async {
+    if (_loaded) return;
+    _loaded = true;
+    state = await _api.fetchGarage();
+  }
+
+  /// Force a re-fetch — used when the user logs in with a different
+  /// account or the server sent us a 401 mid-session.
+  Future<void> refresh() async {
+    state = await _api.fetchGarage();
+  }
+
+  Future<GarageVehicle?> add({
+    required String name,
+    required String modelId,
+    int defaultTankPercent = 100,
+    String? notes,
+  }) async {
+    try {
+      final v = await _api.addGarageVehicle(
+        name: name,
+        modelId: modelId,
+        defaultTankPercent: defaultTankPercent,
+        notes: notes,
+      );
+      state = [...state, v];
+      return v;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<bool> update({
+    required String id,
+    String? name,
+    int? defaultTankPercent,
+    String? notes,
+  }) async {
+    try {
+      final updated = await _api.updateGarageVehicle(
+        id: id,
+        name: name,
+        defaultTankPercent: defaultTankPercent,
+        notes: notes,
+      );
+      state = [
+        for (final v in state)
+          if (v.id == updated.id) updated else v,
+      ];
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> remove(String id) async {
+    final ok = await _api.deleteGarageVehicle(id);
+    if (ok) state = state.where((v) => v.id != id).toList(growable: false);
+    return ok;
+  }
+}
+
+final garageProvider =
+    StateNotifierProvider<GarageNotifier, List<GarageVehicle>>((ref) {
+  final api = ref.watch(apiClientWithPremiumProvider);
+  final notifier = GarageNotifier(api);
+  // Fire-and-forget cold-start load once the notifier exists. Errors
+  // are swallowed inside `fetchGarage` so the UI just sees "empty".
+  final auth = ref.watch(authProvider);
+  if (auth.isAuthenticated) {
+    // ignore: discarded_futures
+    notifier.ensureLoaded();
+  }
+  return notifier;
+});
+
+/// Which garage vehicle the user has selected for the CURRENT plan
+/// screen session. Ephemeral — doesn't persist across app restarts;
+/// the plan screen resets it whenever a new trip flow starts.
+///
+/// null = "no selection yet" → the plan chip shows either the first
+/// saved vehicle as a preview (auto-pick) or "Añadir coche" when
+/// the garage is empty.
+final selectedGarageVehicleIdProvider = StateProvider<String?>((ref) => null);

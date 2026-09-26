@@ -12,6 +12,7 @@ import '../design/components.dart';
 import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
+import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../storage/saved_trip.dart';
@@ -26,6 +27,7 @@ import '../widgets/travel_style_chip.dart';
 import '../widgets/weather_chip.dart';
 import 'dashboard_screen.dart';
 import 'favorites_screen.dart';
+import 'garage_screen.dart';
 import 'mark_event_screen.dart';
 import 'settings_screen.dart';
 import 'inspire_screen.dart';
@@ -675,6 +677,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         avoidMotorways: _avoidMotorways,
         preferScenic: _preferScenic,
         tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
+        garageVehicleId: ref.read(selectedGarageVehicleIdProvider),
       );
       // Round-trip: fire two /plan calls in parallel — outbound
       // A→B on the chosen departure and return B→A on the return
@@ -723,6 +726,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           avoidMotorways: _avoidMotorways,
           preferScenic: _preferScenic,
           tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
+          garageVehicleId: ref.read(selectedGarageVehicleIdProvider),
         );
         returnFuture = api.planTrip(returnRequest);
       }
@@ -1021,6 +1025,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         builder: (_) => const ProfileScreen(),
                       ),
                     ),
+                  ),
+                  const SizedBox(height: Tokens.space8),
+                  _GarageChip(
+                    onPicked: (id) {
+                      ref
+                          .read(selectedGarageVehicleIdProvider.notifier)
+                          .state = id;
+                    },
                   ),
                   const SizedBox(height: Tokens.space8),
                   Row(
@@ -2043,6 +2055,164 @@ class _ProfileChip extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Compact per-trip vehicle picker. Tap → bottom sheet listing every
+/// entry in the user's garage with "Usar en este viaje" tap targets.
+/// Auto-selects the first vehicle as the initial preview so drivers
+/// with a single car don't have to tap anything to keep the current
+/// behaviour. Empty garage → the chip becomes an "Añadir coche" CTA
+/// that jumps straight into the vehicle picker and adds the result.
+class _GarageChip extends ConsumerWidget {
+  const _GarageChip({required this.onPicked});
+
+  final ValueChanged<String?> onPicked;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final garage = ref.watch(garageProvider);
+    final selectedId = ref.watch(selectedGarageVehicleIdProvider);
+
+    if (garage.isEmpty) {
+      return SoftCard(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16, vertical: Tokens.space12,
+        ),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const GarageScreen(),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.add, size: 18, color: scheme.primary),
+            const SizedBox(width: Tokens.space8),
+            Expanded(
+              child: Text(
+                l.planScreenGarageChooseVehicle,
+                style: t.bodyMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+          ],
+        ),
+      );
+    }
+
+    // Auto-preview the first vehicle when nothing is selected yet.
+    final displayed = selectedId == null
+        ? garage.first
+        : garage.firstWhere(
+            (v) => v.id == selectedId,
+            orElse: () => garage.first,
+          );
+
+    return SoftCard(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space16, vertical: Tokens.space12,
+      ),
+      onTap: () async {
+        final picked = await _showGaragePicker(
+          context: context,
+          ref: ref,
+          currentId: displayed.id,
+        );
+        if (picked != null) {
+          onPicked(picked);
+        }
+      },
+      child: Row(
+        children: [
+          Icon(Icons.directions_car, size: 18, color: scheme.primary),
+          const SizedBox(width: Tokens.space8),
+          Expanded(
+            child: Text(
+              l.planScreenGarageChip(
+                displayed.name, displayed.defaultTankPercent,
+              ),
+              style: t.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+        ],
+      ),
+    );
+  }
+}
+
+Future<String?> _showGaragePicker({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String currentId,
+}) async {
+  final l = AppLocalizations.of(context);
+  final garage = ref.read(garageProvider);
+  final catalogueAsync = ref.read(vehicleCatalogueProvider);
+  return showModalBottomSheet<String>(
+    context: context,
+    isScrollControlled: true,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(Tokens.space16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l.planScreenGarageChooseVehicle,
+              style: Theme.of(ctx).textTheme.titleMedium,
+            ),
+            const SizedBox(height: Tokens.space12),
+            for (final v in garage)
+              ListTile(
+                leading: CircleAvatar(
+                  child: Icon(
+                    v.id == currentId
+                        ? Icons.check
+                        : Icons.directions_car,
+                  ),
+                ),
+                title: Text(v.name),
+                subtitle: Builder(builder: (_) {
+                  VehicleModel? m;
+                  if (catalogueAsync.hasValue) {
+                    final list = catalogueAsync.value!;
+                    final match = list.where((x) => x.id == v.modelId);
+                    m = match.isEmpty ? null : match.first;
+                  }
+                  final label = m == null
+                      ? v.modelId
+                      : '${m.make} ${m.model} · '
+                          '${v.defaultTankPercent} %';
+                  return Text(label);
+                }),
+                onTap: () => Navigator.of(ctx).pop(v.id),
+              ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.garage_outlined),
+              title: Text(l.garageTitle),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const GarageScreen(),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _DepartureButton extends StatelessWidget {

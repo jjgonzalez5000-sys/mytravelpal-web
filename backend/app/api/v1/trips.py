@@ -9,6 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.premium import is_premium
+from app.auth.dependency import current_user_optional
+from app.auth.jwt import AuthUser
 
 _log = logging.getLogger(__name__)
 
@@ -383,6 +385,16 @@ class TripPlanRequest(BaseModel):
     )
     trip_profile: TripProfileIn | None = None
 
+    # -- Garage (multi-vehicle) --
+    # When set AND the caller is authenticated, the backend looks up
+    # the entry in the user's garage and uses its `model_id` +
+    # `default_tank_percent` for the refuel-window calc — overriding
+    # the standalone `trip_profile.vehicle_model_id` for THIS trip
+    # only. Falls through to `trip_profile.vehicle_model_id` when
+    # the garage lookup fails (unknown id, anonymous user), so
+    # older clients that never send this field keep working.
+    garage_vehicle_id: str | None = Field(default=None, max_length=64)
+
 
 class RouteOut(BaseModel):
     distance_km: float
@@ -750,6 +762,7 @@ async def plan_trip(
     payload: TripPlanRequest,
     providers: Providers = Depends(_providers),
     premium: bool = Depends(is_premium),
+    user: AuthUser | None = Depends(current_user_optional),
 ) -> TripPlanResponse:
     if payload.include_hourly_toll_analysis and not premium:
         raise HTTPException(
@@ -1938,28 +1951,59 @@ async def plan_trip(
     except Exception:
         weather_raw = ()
 
-    # Refuel window — computed only when the caller sent both a
-    # curated `vehicle_model_id` and a `current_tank_level_percent`.
-    # The catalogue supplies real-world tank + consumption; the
-    # helper returns two km milestones the mobile chip renders as
-    # "refuel by km X (comfortable) / km Y (critical)".
+    # Refuel window — computed only when we can resolve a vehicle
+    # model (either via the garage lookup or the standalone id) AND
+    # a tank level. The catalogue supplies real-world tank +
+    # consumption; the helper returns two km milestones the mobile
+    # chip renders as "refuel by km X (comfortable) / km Y
+    # (critical)".
+    #
+    # Resolution order:
+    #   1. `garage_vehicle_id` + authenticated user → look up on the
+    #      user's garage. `default_tank_percent` becomes the tank
+    #      level unless `trip_profile.current_tank_level_percent`
+    #      explicitly overrides it (client can override per-trip).
+    #   2. Fallback to the pre-garage `trip_profile.vehicle_model_id`
+    #      + `current_tank_level_percent` pair so old clients still
+    #      work.
     refuel_out: RefuelWindowOut | None = None
+    resolved_model_id: str | None = None
+    resolved_tank_pct: int | None = None
+    if payload.garage_vehicle_id and user is not None:
+        from app.api.v1.profile import resolve_garage_vehicle
+        garage_entry = await resolve_garage_vehicle(
+            user.id, payload.garage_vehicle_id,
+        )
+        if garage_entry is not None:
+            resolved_model_id = str(garage_entry.get("model_id") or "")
+            # Per-trip override from the client wins; else default from garage.
+            if (
+                payload.trip_profile is not None
+                and payload.trip_profile.current_tank_level_percent is not None
+            ):
+                resolved_tank_pct = (
+                    payload.trip_profile.current_tank_level_percent
+                )
+            else:
+                raw = garage_entry.get("default_tank_percent")
+                if isinstance(raw, (int, float)):
+                    resolved_tank_pct = int(raw)
+    if resolved_model_id is None and payload.trip_profile is not None:
+        resolved_model_id = payload.trip_profile.vehicle_model_id
+        resolved_tank_pct = payload.trip_profile.current_tank_level_percent
     if (
-        payload.trip_profile is not None
-        and payload.trip_profile.vehicle_model_id
-        and payload.trip_profile.current_tank_level_percent is not None
+        resolved_model_id
+        and resolved_tank_pct is not None
         and profile is not None
         and profile.vehicle.fuel_type != FuelType.ELECTRIC
     ):
         from app.data.vehicle_models import find as _find_vehicle
         from app.services.fuel_planning import refuel_window as _refuel_window
-        hit = _find_vehicle(payload.trip_profile.vehicle_model_id)
+        hit = _find_vehicle(resolved_model_id)
         if hit is not None:
             rw = _refuel_window(
                 route_distance_km=route.distance_km,
-                tank_level_frac=(
-                    payload.trip_profile.current_tank_level_percent / 100.0
-                ),
+                tank_level_frac=resolved_tank_pct / 100.0,
                 tank_liters=hit.tank_liters,
                 consumption_l100km=hit.consumption_l100km,
             )

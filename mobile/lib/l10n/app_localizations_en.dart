@@ -445,6 +445,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get companionAllGood => 'No alerts — enjoy the drive.';
 
   @override
+  String get companionWeatherRowEmpty => 'Clear skies ahead';
+
+  @override
   String get companionEndTitle => 'End companion?';
 
   @override
@@ -2860,4 +2863,58 @@ class AppLocalizationsEn extends AppLocalizations {
   String refuelWindowCritical(String km) {
     return 'Refuel by km $km (critical)';
   }
+
+  @override
+  String get garageTitle => 'My garage';
+
+  @override
+  String get garageEmpty => 'No vehicles yet — add your first car';
+
+  @override
+  String get garageAdd => 'Add vehicle';
+
+  @override
+  String get garageEdit => 'Edit vehicle';
+
+  @override
+  String get garageDelete => 'Delete';
+
+  @override
+  String get garageCancel => 'Cancel';
+
+  @override
+  String get garageSave => 'Save';
+
+  @override
+  String get garageDefaultName => 'My car';
+
+  @override
+  String get garageNameHint => 'Give it a name (e.g. Mi Golf)';
+
+  @override
+  String get garageDefaultTankLabel => 'Default tank level';
+
+  @override
+  String get garageAddError => 'Could not save. Try again.';
+
+  @override
+  String get garageDeleteTitle => 'Delete vehicle?';
+
+  @override
+  String garageDeleteBody(String name) {
+    return '\"$name\" will be removed from your garage.';
+  }
+
+  @override
+  String garageSettingsRow(int count) {
+    return 'My garage ($count)';
+  }
+
+  @override
+  String planScreenGarageChip(String name, int pct) {
+    return 'Car: $name · $pct%';
+  }
+
+  @override
+  String get planScreenGarageChooseVehicle => 'Choose a vehicle for this trip';
 }

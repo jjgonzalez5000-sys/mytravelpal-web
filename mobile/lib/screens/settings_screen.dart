@@ -19,6 +19,7 @@ import '../theme.dart';
 import 'attributions_screen.dart';
 import 'inspire_history_screen.dart';
 import 'emergency_contacts_screen.dart';
+import 'garage_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 
@@ -139,6 +140,36 @@ class SettingsScreen extends ConsumerWidget {
                 builder: (_) => const ProfileScreen(),
               ),
             ),
+          ),
+          // Multi-vehicle "garage". Shows a live count from the
+          // provider so the row hints how many cars the user has
+          // saved and, when there's at least one, the first vehicle's
+          // friendly name as a preview.
+          Consumer(
+            builder: (context, ref, _) {
+              final garage = ref.watch(garageProvider);
+              final subtitle = garage.isEmpty
+                  ? l.garageEmpty
+                  : garage
+                      .take(2)
+                      .map((v) => v.name)
+                      .join(' · ');
+              return ListTile(
+                leading: const Icon(Icons.garage_outlined),
+                title: Text(l.garageSettingsRow(garage.length)),
+                subtitle: Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const GarageScreen(),
+                  ),
+                ),
+              );
+            },
           ),
           ListTile(
             leading: const Icon(Icons.contact_emergency_outlined),

@@ -2,9 +2,12 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart' as ll;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
@@ -269,6 +272,13 @@ class _CompanionDriveScreenState
   /// across polls. Cleared when Companion ends (state disposed).
   final Set<String> _hazardFingerprints = <String>{};
 
+  /// Latest weather-hazards snapshot rendered by the horizontal
+  /// upcoming-weather row. Refreshed every poll so the tiles
+  /// reflect the freshest 5-6 hazards ahead. Empty means either
+  /// the first poll hasn't landed yet or the backend returned
+  /// nothing along the sampled corridor.
+  List<WeatherHazard> _upcomingHazards = const [];
+
   /// Live weather-hazards check. Samples 5 coords along the next
   /// 200 km of the route and hits `/v1/trips/weather-hazards-check`
   /// (Open-Meteo forecast + RainViewer radar cross-check). Fires
@@ -308,7 +318,21 @@ class _CompanionDriveScreenState
 
     final api = ref.read(apiClientWithPremiumProvider);
     final hazards = await api.weatherHazardsCheck(coords: samples);
-    if (!mounted || hazards.isEmpty) return;
+    if (!mounted) return;
+
+    // Refresh the upcoming-weather row snapshot on every poll so
+    // stale tiles clear out when the driver moves past a hazard.
+    // Sorted by distance-ahead so the row reads left-to-right in
+    // travel order.
+    final sorted = [...hazards]
+      ..sort((a, b) {
+        final da = a.etaKmAhead ?? double.infinity;
+        final db = b.etaKmAhead ?? double.infinity;
+        return da.compareTo(db);
+      });
+    setState(() => _upcomingHazards = sorted);
+
+    if (hazards.isEmpty) return;
 
     // Notify for brand-new hazards only. Skip INFO severity to
     // avoid noise — the driver only needs to hear about actionable
@@ -757,12 +781,43 @@ class _CompanionDriveScreenState
             ListView(
               padding: const EdgeInsets.all(Tokens.space20),
               children: [
+                // Live mini-map at the top — only when Companion is
+                // anchored to a real plan (assistant-only sessions
+                // have no route to render). Shows remaining polyline,
+                // pulsing current-position dot, and next-stop pin.
+                if (_hasActiveTrip &&
+                    widget.activeTrip!.route.geometry.isNotEmpty) ...[
+                  _CompanionLiveMap(
+                    route: widget.activeTrip!.route.geometry,
+                    currentPosition: p != null
+                        ? LatLon(lat: p.latitude, lon: p.longitude)
+                        : null,
+                    nextStop: _nextStop()?.coordinate ??
+                        widget.tripDestination?.coordinate,
+                    nextStopName: _nextStop()?.restaurantName ??
+                        widget.tripDestination?.displayName,
+                  ),
+                  const SizedBox(height: Tokens.space12),
+                ],
                 // Speed + driving time hero
                 _HeroTile(
                   speedKmh: speedKmh.toDouble(),
                   drivingHours: hours,
                   drivingMinutes: minutes,
                 ),
+                // Horizontal row of upcoming weather along the
+                // next stretch of route. Rendered only when
+                // Companion is anchored to a plan — the sample
+                // corridor is meaningless in assistant-only mode.
+                if (_hasActiveTrip) ...[
+                  const SizedBox(height: Tokens.space12),
+                  _UpcomingWeatherRow(
+                    hazards: _upcomingHazards,
+                    currentPosition: p != null
+                        ? LatLon(lat: p.latitude, lon: p.longitude)
+                        : null,
+                  ),
+                ],
                 // Trip progress card — only when Companion runs
                 // against a real plan (ETA, km remaining, next
                 // stop, % complete). Assistant-only sessions
@@ -834,21 +889,19 @@ class _HeroTile extends StatelessWidget {
         color: scheme.primaryContainer,
         borderRadius: BorderRadius.circular(Tokens.radiusLg),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      // Wrap allows the drive-time chip to fall below the gauge on
+      // narrow devices instead of overflowing the Row.
+      child: Wrap(
+        alignment: WrapAlignment.spaceAround,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: Tokens.space16,
+        runSpacing: Tokens.space16,
         children: [
-          Column(
-            children: [
-              Text(
-                speedKmh.toStringAsFixed(0),
-                style: t.displayLarge?.copyWith(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              Text('km/h', style: t.bodySmall),
-            ],
-          ),
+          // Analog speedometer replaces the previous plain-text
+          // speed value. `limitKph` is null today (no road-limit
+          // source wired yet); painter falls back to a neutral
+          // single-tone arc when that's the case.
+          _Speedometer(speedKph: speedKmh),
           Column(
             children: [
               Text(
@@ -867,6 +920,250 @@ class _HeroTile extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Big circular analog speedometer for the Companion HUD. Renders
+/// a 200 dp gauge with a 270° arc sweeping from bottom-left through
+/// top to bottom-right, tick marks every 20 km/h, and a triangular
+/// needle whose rotation is tween-animated between GPS samples.
+///
+/// When `limitKph` is provided, the arc is split into green
+/// (0 → limit), amber (limit → limit+15) and red (> limit+15)
+/// zones. When null (current state — road-limit ingest isn't wired
+/// yet) the arc paints as a single neutral tone.
+class _Speedometer extends StatelessWidget {
+  const _Speedometer({required this.speedKph, this.limitKph});
+
+  final double speedKph;
+  final double? limitKph;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    // Max scale: limit+40 when known, otherwise 140 (typical EU
+    // motorway ceiling of 130 plus a small headroom). Rounded to
+    // the next multiple of 20 so tick labels land cleanly.
+    final rawMax = (limitKph ?? 100) + 40;
+    final maxKph = (rawMax / 20).ceil() * 20.0;
+    final clampedSpeed = speedKph.clamp(0.0, maxKph);
+    return SizedBox(
+      width: 200,
+      height: 200,
+      child: TweenAnimationBuilder<double>(
+        tween: Tween<double>(begin: clampedSpeed, end: clampedSpeed),
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        builder: (context, animatedNeedle, child) {
+          return CustomPaint(
+            painter: _SpeedometerPainter(
+              needleValue: animatedNeedle,
+              limitKph: limitKph,
+              maxKph: maxKph,
+              arcColor: scheme.primary,
+              trackColor: scheme.surfaceContainerHighest,
+              tickColor: scheme.onPrimaryContainer.withOpacity(0.75),
+              labelColor: scheme.onPrimaryContainer.withOpacity(0.85),
+              needleColor: scheme.primary,
+              hubColor: scheme.onPrimaryContainer,
+            ),
+            child: child,
+          );
+        },
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                speedKph.toStringAsFixed(0),
+                style: TextStyle(
+                  fontFamily: 'Manrope',
+                  fontSize: 48,
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onPrimaryContainer,
+                  height: 1.0,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'km/h',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: scheme.onPrimaryContainer.withOpacity(0.8),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SpeedometerPainter extends CustomPainter {
+  _SpeedometerPainter({
+    required this.needleValue,
+    required this.limitKph,
+    required this.maxKph,
+    required this.arcColor,
+    required this.trackColor,
+    required this.tickColor,
+    required this.labelColor,
+    required this.needleColor,
+    required this.hubColor,
+  });
+
+  final double needleValue;
+  final double? limitKph;
+  final double maxKph;
+  final Color arcColor;
+  final Color trackColor;
+  final Color tickColor;
+  final Color labelColor;
+  final Color needleColor;
+  final Color hubColor;
+
+  // Canvas 0 rad points to 3 o'clock and rotates clockwise. Start
+  // at 135° (bottom-left) and sweep 270° so the gauge ends at 45°
+  // (bottom-right), leaving the bottom quadrant open.
+  static final double _startAngle = 135.0 * math.pi / 180.0;
+  static final double _sweepAngle = 270.0 * math.pi / 180.0;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - 6;
+    const strokeWidth = 10.0;
+    final arcRect = Rect.fromCircle(center: center, radius: radius);
+
+    // Background track (full arc).
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..color = trackColor;
+    canvas.drawArc(arcRect, _startAngle, _sweepAngle, false, trackPaint);
+
+    // Colored arc — zoned when limit is known, single-tone otherwise.
+    if (limitKph != null) {
+      final l = limitKph!;
+      final greenEnd = (l / maxKph).clamp(0.0, 1.0);
+      final amberEnd = ((l + 15.0) / maxKph).clamp(0.0, 1.0);
+      _paintSegment(canvas, arcRect, 0.0, greenEnd,
+          const Color(0xFF34A853), strokeWidth);
+      _paintSegment(canvas, arcRect, greenEnd, amberEnd,
+          const Color(0xFFF9AB00), strokeWidth);
+      _paintSegment(canvas, arcRect, amberEnd, 1.0,
+          const Color(0xFFEA4335), strokeWidth);
+    } else {
+      _paintSegment(canvas, arcRect, 0.0, 1.0, arcColor, strokeWidth);
+    }
+
+    // Tick marks + numeric labels every 20 km/h.
+    final tickPaint = Paint()
+      ..color = tickColor
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
+    final steps = (maxKph / 20).round();
+    for (int i = 0; i <= steps; i++) {
+      final v = i * 20.0;
+      final t = (v / maxKph).clamp(0.0, 1.0);
+      final angle = _startAngle + t * _sweepAngle;
+      final cos = math.cos(angle);
+      final sin = math.sin(angle);
+      final outer = Offset(
+          center.dx + radius * cos, center.dy + radius * sin);
+      final inner = Offset(
+        center.dx + (radius - 10) * cos,
+        center.dy + (radius - 10) * sin,
+      );
+      canvas.drawLine(inner, outer, tickPaint);
+
+      final labelR = radius - 22;
+      final labelCenter = Offset(
+        center.dx + labelR * cos,
+        center.dy + labelR * sin,
+      );
+      final tp = TextPainter(
+        text: TextSpan(
+          text: v.toStringAsFixed(0),
+          style: TextStyle(
+            color: labelColor,
+            fontSize: 10,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      tp.paint(
+        canvas,
+        labelCenter - Offset(tp.width / 2, tp.height / 2),
+      );
+    }
+
+    // Needle — triangular pointer rotated via matrix so we can
+    // draw it in local coordinates and let the canvas handle the
+    // rotation math cleanly.
+    final needleT =
+        (needleValue.clamp(0.0, maxKph) / maxKph).clamp(0.0, 1.0);
+    final needleAngle = _startAngle + needleT * _sweepAngle;
+    final needleLen = radius - 14;
+    const halfBase = 7.0;
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    // Canvas rotation angle: needle tip should point along
+    // `needleAngle`. Triangle is drawn pointing "up" (-y) before
+    // rotation, so add π/2 to align.
+    canvas.rotate(needleAngle + math.pi / 2);
+    final needlePath = Path()
+      ..moveTo(0, -needleLen)
+      ..lineTo(-halfBase, 6)
+      ..lineTo(halfBase, 6)
+      ..close();
+    canvas.drawPath(needlePath, Paint()..color = needleColor);
+    canvas.restore();
+
+    // Center hub.
+    canvas.drawCircle(center, 7, Paint()..color = hubColor);
+    canvas.drawCircle(
+        center, 3, Paint()..color = needleColor);
+  }
+
+  void _paintSegment(
+    Canvas canvas,
+    Rect rect,
+    double t0,
+    double t1,
+    Color color,
+    double strokeWidth,
+  ) {
+    if (t1 <= t0) return;
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.butt
+      ..color = color;
+    canvas.drawArc(
+      rect,
+      _startAngle + t0 * _sweepAngle,
+      (t1 - t0) * _sweepAngle,
+      false,
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _SpeedometerPainter old) {
+    return old.needleValue != needleValue ||
+        old.limitKph != limitKph ||
+        old.maxKph != maxKph ||
+        old.arcColor != arcColor ||
+        old.trackColor != trackColor ||
+        old.tickColor != tickColor ||
+        old.labelColor != labelColor ||
+        old.needleColor != needleColor ||
+        old.hubColor != hubColor;
   }
 }
 
@@ -894,6 +1191,11 @@ class _TripProgressCard extends StatelessWidget {
     final etaText =
         '${progress.etaToDestination.hour.toString().padLeft(2, "0")}:'
         '${progress.etaToDestination.minute.toString().padLeft(2, "0")}';
+    // Only render the ring once we have real progress; before the
+    // first snapped fix `progressKm == 0` and a full-track empty
+    // circle just looks like a broken skeleton, so we fall back to
+    // the compact "flag + ETA" row.
+    final showRing = progress.progressKm > 0.0;
     return Container(
       padding: const EdgeInsets.all(Tokens.space16),
       decoration: BoxDecoration(
@@ -914,43 +1216,56 @@ class _TripProgressCard extends StatelessWidget {
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                 ),
               ),
-              Text(
-                etaText,
-                style: t.titleMedium?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
+              if (!showRing)
+                Text(
+                  etaText,
+                  style: t.titleMedium?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
-              ),
             ],
           ),
-          const SizedBox(height: Tokens.space8),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: percent,
-              minHeight: 5,
-              backgroundColor: scheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
+          if (showRing) ...[
+            const SizedBox(height: Tokens.space12),
+            Center(
+              child: _ProgressRingHero(
+                progress: percent,
+                etaText: etaText,
+                progressKm: progress.progressKm,
+                remainingKm: progress.remainingKm,
+              ),
             ),
-          ),
-          const SizedBox(height: Tokens.space8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '${progress.progressKm.toStringAsFixed(0)} / '
-                '${progress.totalKm.toStringAsFixed(0)} km',
-                style: t.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
+          ] else ...[
+            const SizedBox(height: Tokens.space8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: percent,
+                minHeight: 5,
+                backgroundColor: scheme.surfaceContainerHighest,
+                valueColor: AlwaysStoppedAnimation<Color>(scheme.primary),
               ),
-              Text(
-                '${progress.remainingKm.toStringAsFixed(0)} km left',
-                style: t.bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: Tokens.space8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${progress.progressKm.toStringAsFixed(0)} / '
+                  '${progress.totalKm.toStringAsFixed(0)} km',
+                  style: t.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+                Text(
+                  '${progress.remainingKm.toStringAsFixed(0)} km left',
+                  style: t.bodySmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ],
           if (nextStop != null) ...[
             const SizedBox(height: Tokens.space8),
             Divider(color: scheme.outlineVariant, height: 1),
@@ -976,6 +1291,259 @@ class _TripProgressCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Circular progress ring wrapping the ETA hero — visualises `%`
+/// of the trip completed so a glance at the dashboard tells the
+/// driver both when they'll arrive AND how far along they are.
+/// Rendered only when we actually have live progress
+/// (`progressKm > 0`); before the first snapped GPS fix the parent
+/// falls back to the linear bar layout.
+class _ProgressRingHero extends StatefulWidget {
+  const _ProgressRingHero({
+    required this.progress,
+    required this.etaText,
+    required this.progressKm,
+    required this.remainingKm,
+  });
+
+  /// Normalised 0..1 fraction of the polyline covered.
+  final double progress;
+  /// Wall-clock ETA (`"18:29"` etc.) rendered dead-center.
+  final String etaText;
+  final double progressKm;
+  final double remainingKm;
+
+  @override
+  State<_ProgressRingHero> createState() => _ProgressRingHeroState();
+}
+
+class _ProgressRingHeroState extends State<_ProgressRingHero> {
+  // Previous target we animated toward. `TweenAnimationBuilder`
+  // picks up the delta on rebuild and glides — no jitter on every
+  // GPS tick.
+  double _lastProgress = 0.0;
+  // Milestone bucket last displayed (0 pre-25 %, 1 at 25, 2 at 50,
+  // 3 at 75). When it changes we replay the flourish by rotating
+  // the `Animate` key.
+  int _lastMilestone = 0;
+  int _flourishSeed = 0;
+
+  static const double _ringDiameter = 148.0;
+  static const double _ringStroke = 9.0;
+
+  int _milestoneBucketFor(double p) {
+    if (p >= 0.75) return 3;
+    if (p >= 0.50) return 2;
+    if (p >= 0.25) return 1;
+    return 0;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _lastProgress = widget.progress;
+    _lastMilestone = _milestoneBucketFor(widget.progress);
+  }
+
+  @override
+  void didUpdateWidget(covariant _ProgressRingHero oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newMilestone = _milestoneBucketFor(widget.progress);
+    if (newMilestone > _lastMilestone) {
+      _lastMilestone = newMilestone;
+      _flourishSeed++;
+    } else {
+      _lastMilestone = newMilestone;
+    }
+    _lastProgress = oldWidget.progress;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final trackColor = scheme.primaryContainer.withValues(alpha: 0.30);
+    final fillColor = scheme.primary.withValues(alpha: 0.90);
+    final ring = TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: _lastProgress, end: widget.progress),
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+      builder: (context, value, _) {
+        return SizedBox(
+          width: _ringDiameter,
+          height: _ringDiameter,
+          child: CustomPaint(
+            painter: _ProgressRingPainter(
+              progress: value,
+              trackColor: trackColor,
+              fillColor: fillColor,
+              stroke: _ringStroke,
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    widget.etaText,
+                    style: t.displaySmall?.copyWith(
+                      color: scheme.primary,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures:
+                          const [FontFeature.tabularFigures()],
+                      height: 1.0,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${(value * 100).round()}%',
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                      fontFeatures:
+                          const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+    // `key` changes every time we cross a 25/50/75 % milestone, so
+    // flutter_animate replays the scale-up + fade flourish. Without
+    // the key the animation would only fire on first build.
+    final flourishing = Animate(
+      key: ValueKey<int>(_flourishSeed),
+      effects: [
+        ScaleEffect(
+          begin: const Offset(0.94, 0.94),
+          end: const Offset(1.0, 1.0),
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOutBack,
+        ),
+        FadeEffect(
+          begin: 0.85,
+          end: 1.0,
+          duration: const Duration(milliseconds: 200),
+        ),
+      ],
+      child: ring,
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        flourishing,
+        const SizedBox(height: Tokens.space12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _RingCaption(
+              value: '${widget.progressKm.toStringAsFixed(0)} km',
+              label: 'recorridos',
+              color: scheme.primary,
+            ),
+            const SizedBox(width: Tokens.space20),
+            Container(
+              width: 1,
+              height: 24,
+              color: scheme.outlineVariant,
+            ),
+            const SizedBox(width: Tokens.space20),
+            _RingCaption(
+              value: '${widget.remainingKm.toStringAsFixed(0)} km',
+              label: 'restantes',
+              color: scheme.onSurfaceVariant,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _RingCaption extends StatelessWidget {
+  const _RingCaption({
+    required this.value,
+    required this.label,
+    required this.color,
+  });
+  final String value;
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      children: [
+        Text(
+          value,
+          style: t.titleSmall?.copyWith(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        Text(
+          label,
+          style: t.bodySmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Paints the ring: a full-circle track and a filled arc that
+/// starts at 12 o'clock and sweeps clockwise proportional to
+/// `progress` (0..1). Kept private + stateless so `TweenAnimationBuilder`
+/// can rebuild it every frame cheaply.
+class _ProgressRingPainter extends CustomPainter {
+  _ProgressRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.fillColor,
+    required this.stroke,
+  });
+
+  final double progress;
+  final Color trackColor;
+  final Color fillColor;
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = math.min(size.width, size.height) / 2 - stroke / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..color = trackColor;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    if (progress > 0) {
+      final fillPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = stroke
+        ..strokeCap = StrokeCap.round
+        ..color = fillColor;
+      // -90° puts the arc origin at 12 o'clock; sweep clockwise.
+      const startAngle = -math.pi / 2;
+      final sweep = 2 * math.pi * progress.clamp(0.0, 1.0);
+      canvas.drawArc(rect, startAngle, sweep, false, fillPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _ProgressRingPainter old) =>
+      old.progress != progress ||
+      old.trackColor != trackColor ||
+      old.fillColor != fillColor ||
+      old.stroke != stroke;
 }
 
 class _RecCard extends StatelessWidget {
@@ -1099,6 +1667,480 @@ class _CriticalOverlay extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Horizontal strip of weather tiles for the next stretch of the
+/// route. Renders whatever `_upcomingHazards` was set to by the
+/// latest `_pollWeatherHazards()` call — takes the freshest 5-6
+/// entries ordered by distance-ahead. Falls back to a compact
+/// "clear ahead" chip when nothing is queued (initial state or
+/// backend returned empty).
+///
+/// Each tile is 90 dp wide with three lines: km-ahead label,
+/// weather icon, temperature (skipped — WeatherHazard model has
+/// no temperature field; kept in the layout so the row height
+/// stays stable when a temperature source lands later).
+class _UpcomingWeatherRow extends StatelessWidget {
+  const _UpcomingWeatherRow({
+    required this.hazards,
+    required this.currentPosition,
+  });
+
+  final List<WeatherHazard> hazards;
+  final LatLon? currentPosition;
+
+  static const double _tileWidth = 90;
+  static const double _rowHeight = 72;
+  static const int _maxTiles = 6;
+
+  double _distanceAheadKm(WeatherHazard h) {
+    if (h.etaKmAhead != null) return h.etaKmAhead!;
+    final me = currentPosition;
+    if (me == null) return double.nan;
+    // Haversine — same formula used elsewhere in this screen for
+    // route sampling. Skips the tile when the coord is missing.
+    const r = 6371.0;
+    final dLat = (h.lat - me.lat) * math.pi / 180.0;
+    final dLon = (h.lon - me.lon) * math.pi / 180.0;
+    final la1 = me.lat * math.pi / 180.0;
+    final la2 = h.lat * math.pi / 180.0;
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(la1) * math.cos(la2) *
+            math.sin(dLon / 2) * math.sin(dLon / 2);
+    return 2 * r * math.asin(math.min(1.0, math.sqrt(a)));
+  }
+
+  IconData _iconFor(AdverseEventType type) => switch (type) {
+        AdverseEventType.heavyRain => Icons.grain,
+        AdverseEventType.freezingRain => Icons.grain,
+        AdverseEventType.snow => Icons.ac_unit,
+        AdverseEventType.avalanche => Icons.ac_unit,
+        AdverseEventType.thunderstorm => Icons.thunderstorm,
+        AdverseEventType.hail => Icons.thunderstorm,
+        AdverseEventType.highWind => Icons.air,
+        AdverseEventType.denseFog => Icons.visibility_off,
+        AdverseEventType.weather => Icons.cloud,
+        AdverseEventType.heatwave => Icons.wb_sunny,
+        _ => Icons.wb_sunny,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+
+    // Empty state — compact chip so the row doesn't collapse.
+    if (hazards.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space12,
+          vertical: Tokens.space8,
+        ),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(Tokens.radiusMd),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.wb_sunny,
+                size: 18, color: scheme.onSurfaceVariant),
+            const SizedBox(width: Tokens.space8),
+            Flexible(
+              child: Text(
+                l.companionWeatherRowEmpty,
+                style: t.bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    // Build tiles. Skip entries with no computable distance or
+    // an unmappable type. Keep the freshest 5-6 in travel order.
+    final tiles = <_UpcomingWeatherTileData>[];
+    for (final h in hazards) {
+      final km = _distanceAheadKm(h);
+      if (km.isNaN || km.isInfinite || km < 0) continue;
+      tiles.add(_UpcomingWeatherTileData(
+        distanceKm: km,
+        icon: _iconFor(h.type),
+        hazard: h,
+      ));
+    }
+    if (tiles.isEmpty) {
+      // Everything was skippable — fall through to the empty chip.
+      return _UpcomingWeatherRow(
+        hazards: const [],
+        currentPosition: currentPosition,
+      ).build(context);
+    }
+    tiles.sort((a, b) => a.distanceKm.compareTo(b.distanceKm));
+    final visible = tiles.take(_maxTiles).toList();
+
+    return SizedBox(
+      height: _rowHeight,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        child: Row(
+          children: [
+            for (final td in visible)
+              Padding(
+                padding: const EdgeInsets.only(right: Tokens.space8),
+                child: _UpcomingWeatherTile(
+                  width: _tileWidth,
+                  data: td,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+@immutable
+class _UpcomingWeatherTileData {
+  const _UpcomingWeatherTileData({
+    required this.distanceKm,
+    required this.icon,
+    required this.hazard,
+  });
+  final double distanceKm;
+  final IconData icon;
+  final WeatherHazard hazard;
+}
+
+class _UpcomingWeatherTile extends StatelessWidget {
+  const _UpcomingWeatherTile({
+    required this.width,
+    required this.data,
+  });
+
+  final double width;
+  final _UpcomingWeatherTileData data;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    // Severity-tinted border so critical hazards (thunderstorms,
+    // ice) pop compared to informational ones.
+    final accent = switch (data.hazard.severity) {
+      AdverseEventSeverity.critical => scheme.error,
+      AdverseEventSeverity.warning => scheme.tertiary,
+      _ => scheme.outlineVariant,
+    };
+    return InkWell(
+      borderRadius: BorderRadius.circular(Tokens.radiusMd),
+      onTap: () {
+        final desc = data.hazard.description.isNotEmpty
+            ? data.hazard.description
+            : data.hazard.type.localized(AppLocalizations.of(context));
+        ScaffoldMessenger.of(context)
+          ..hideCurrentSnackBar()
+          ..showSnackBar(SnackBar(content: Text(desc)));
+      },
+      child: Container(
+        width: width,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 6,
+          vertical: 6,
+        ),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          border: Border.all(color: accent.withValues(alpha: 0.55)),
+          borderRadius: BorderRadius.circular(Tokens.radiusMd),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              '+${data.distanceKm.toStringAsFixed(0)} km',
+              style: t.labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Icon(data.icon, size: 22, color: accent),
+            // Temperature row reserved — WeatherHazard has no
+            // temp field yet, so we render an empty spacer to
+            // keep the tile height stable when a temp source
+            // lands later.
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Small live mini-map at the top of the Companion drive screen.
+/// Renders only when Companion is anchored to a real trip
+/// (`activeTrip != null` on the parent). Shows:
+///   - the REMAINING slice of the polyline (already-traveled portion
+///     is trimmed by snapping the current GPS fix onto the route),
+///   - a pulsing blue dot at the current position,
+///   - a red pin at the next stop (meal stop when planned, otherwise
+///     the trip destination).
+/// Camera re-fits to the remaining bounds when the extent changes
+/// significantly (>5%); otherwise it just recenters on the driver
+/// so the map doesn't jitter zoom-in/zoom-out at every GPS tick.
+class _CompanionLiveMap extends StatefulWidget {
+  const _CompanionLiveMap({
+    required this.route,
+    required this.currentPosition,
+    this.nextStop,
+    this.nextStopName,
+  });
+
+  final List<LatLon> route;
+  final LatLon? currentPosition;
+  final LatLon? nextStop;
+  final String? nextStopName;
+
+  @override
+  State<_CompanionLiveMap> createState() => _CompanionLiveMapState();
+}
+
+class _CompanionLiveMapState extends State<_CompanionLiveMap>
+    with SingleTickerProviderStateMixin {
+  final fmap.MapController _mapController = fmap.MapController();
+  late final AnimationController _pulseController;
+  // Cache of the last polyline "extent" (a length proxy: sum of the
+  // lat+lon spans of the remaining slice) so we can decide whether
+  // the bounds shifted enough to justify a full re-fit vs. a cheap
+  // recenter. Threshold is 5% relative delta.
+  double? _lastExtent;
+  // Precomputed cumulative distances for the input route, used to
+  // snap the current GPS fix and slice the remaining polyline. Built
+  // once per widget instance and rebuilt only when the input route
+  // reference changes.
+  RouteReference? _routeRef;
+  List<LatLon>? _routeCache;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
+    _routeCache = widget.route;
+    _routeRef = widget.route.length >= 2
+        ? RouteReference.build(widget.route)
+        : null;
+  }
+
+  @override
+  void didUpdateWidget(covariant _CompanionLiveMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(widget.route, _routeCache)) {
+      _routeCache = widget.route;
+      _routeRef = widget.route.length >= 2
+          ? RouteReference.build(widget.route)
+          : null;
+      _lastExtent = null; // force a re-fit on next frame
+    }
+    // Recentre / re-fit whenever the GPS fix advances. Deferred to
+    // a post-frame callback because the map's render box has to be
+    // laid out before `move`/`fitCamera` can compute pixel positions.
+    if (oldWidget.currentPosition != widget.currentPosition) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncCamera();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  /// Remaining slice of the route from the current position onward.
+  /// Snaps the GPS fix onto the polyline to find its segment index,
+  /// then inserts the fix itself as the head of the slice so the
+  /// polyline starts exactly where the driver is (not at the nearest
+  /// polyline vertex behind them). Falls back to the full route when
+  /// there's no fix yet.
+  List<LatLon> _remainingSlice() {
+    final route = widget.route;
+    final me = widget.currentPosition;
+    final ref = _routeRef;
+    if (route.length < 2) return route;
+    if (me == null || ref == null) return route;
+    final snapped = snapToRoute(me, ref);
+    final startIdx = (snapped.segmentIndex + 1)
+        .clamp(0, route.length);
+    final tail = route.sublist(startIdx);
+    return [me, ...tail];
+  }
+
+  double _extentOf(List<LatLon> pts) {
+    if (pts.isEmpty) return 0.0;
+    var minLat = pts.first.lat, maxLat = pts.first.lat;
+    var minLon = pts.first.lon, maxLon = pts.first.lon;
+    for (final p in pts) {
+      if (p.lat < minLat) minLat = p.lat;
+      if (p.lat > maxLat) maxLat = p.lat;
+      if (p.lon < minLon) minLon = p.lon;
+      if (p.lon > maxLon) maxLon = p.lon;
+    }
+    return (maxLat - minLat) + (maxLon - minLon);
+  }
+
+  void _syncCamera() {
+    final remaining = _remainingSlice();
+    if (remaining.length < 2) {
+      // Not enough points to bound — just centre on driver.
+      final me = widget.currentPosition;
+      if (me != null) {
+        _mapController.move(
+          ll.LatLng(me.lat, me.lon),
+          _mapController.camera.zoom,
+        );
+      }
+      return;
+    }
+    final extent = _extentOf(remaining);
+    final prev = _lastExtent;
+    final significantShift = prev == null ||
+        prev == 0 ||
+        ((extent - prev).abs() / prev) > 0.05;
+    if (significantShift) {
+      _lastExtent = extent;
+      final pts = remaining
+          .map((p) => ll.LatLng(p.lat, p.lon))
+          .toList(growable: false);
+      _mapController.fitCamera(
+        fmap.CameraFit.bounds(
+          bounds: fmap.LatLngBounds.fromPoints(pts),
+          padding: const EdgeInsets.all(28),
+        ),
+      );
+    } else {
+      final me = widget.currentPosition;
+      if (me != null) {
+        _mapController.move(
+          ll.LatLng(me.lat, me.lon),
+          _mapController.camera.zoom,
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = _remainingSlice();
+    final polylinePts = remaining
+        .map((p) => ll.LatLng(p.lat, p.lon))
+        .toList(growable: false);
+    // Initial camera fit on first paint — subsequent updates go
+    // through `_syncCamera` triggered from `didUpdateWidget`.
+    final initialFit = polylinePts.length >= 2
+        ? fmap.CameraFit.bounds(
+            bounds: fmap.LatLngBounds.fromPoints(polylinePts),
+            padding: const EdgeInsets.all(28),
+          )
+        : null;
+    final markers = <fmap.Marker>[];
+    final me = widget.currentPosition;
+    if (me != null) {
+      markers.add(
+        fmap.Marker(
+          point: ll.LatLng(me.lat, me.lon),
+          width: 24,
+          height: 24,
+          child: AnimatedBuilder(
+            animation: _pulseController,
+            builder: (context, _) {
+              // Pulse 8 → 14 px on a smooth sine curve.
+              final t = _pulseController.value;
+              final size = 8.0 + (14.0 - 8.0) * t;
+              return Center(
+                child: Container(
+                  width: size,
+                  height: size,
+                  decoration: BoxDecoration(
+                    color: Colors.blue,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blue.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    }
+    final next = widget.nextStop;
+    if (next != null) {
+      markers.add(
+        fmap.Marker(
+          point: ll.LatLng(next.lat, next.lon),
+          width: 32,
+          height: 32,
+          child: Icon(
+            Icons.location_on,
+            size: 32,
+            color: Colors.red.shade700,
+          ),
+        ),
+      );
+    }
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(16),
+      child: SizedBox(
+        height: 200,
+        width: double.infinity,
+        child: fmap.FlutterMap(
+          mapController: _mapController,
+          options: fmap.MapOptions(
+            initialCameraFit: initialFit,
+            initialCenter: initialFit == null && me != null
+                ? ll.LatLng(me.lat, me.lon)
+                : const ll.LatLng(48.8566, 2.3522),
+            initialZoom: 10,
+            interactionOptions: const fmap.InteractionOptions(
+              flags:
+                  fmap.InteractiveFlag.pinchZoom | fmap.InteractiveFlag.drag,
+            ),
+          ),
+          children: [
+            fmap.TileLayer(
+              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+            ),
+            if (polylinePts.length >= 2)
+              fmap.PolylineLayer(
+                polylines: [
+                  fmap.Polyline(
+                    points: polylinePts,
+                    color: Colors.blue.shade700,
+                    strokeWidth: 4.0,
+                  ),
+                ],
+              ),
+            if (markers.isNotEmpty) fmap.MarkerLayer(markers: markers),
+          ],
         ),
       ),
     );

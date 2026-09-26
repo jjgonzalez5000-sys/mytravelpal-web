@@ -144,6 +144,7 @@
     "companionLocationDenied": "Standortberechtigung für den Begleiter erforderlich.",
     "companionDriving": "unterwegs",
     "companionAllGood": "Keine Meldungen — gute Fahrt.",
+    "companionWeatherRowEmpty": "Keine Warnungen voraus",
     "companionEndTitle": "Begleiter beenden?",
     "companionEndBody": "Die Verfolgung stoppt und aktive Meldungen gehen verloren.",
     "companionEndKeep": "Weiterfahren",
@@ -1091,5 +1092,33 @@
     "refuelWindowCritical": "Bis km {km} tanken (kritisch)",
     "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
-    }
+    },
+    "garageTitle": "Meine Garage",
+    "garageEmpty": "Noch keine Fahrzeuge — füge dein erstes hinzu",
+    "garageAdd": "Fahrzeug hinzufügen",
+    "garageEdit": "Fahrzeug bearbeiten",
+    "garageDelete": "Löschen",
+    "garageCancel": "Abbrechen",
+    "garageSave": "Speichern",
+    "garageDefaultName": "Mein Auto",
+    "garageNameHint": "Gib ihm einen Namen (z. B. Mein Golf)",
+    "garageDefaultTankLabel": "Standard-Tankfüllung",
+    "garageAddError": "Speichern fehlgeschlagen. Nochmal versuchen.",
+    "garageDeleteTitle": "Fahrzeug löschen?",
+    "garageDeleteBody": "\"{name}\" wird aus deiner Garage entfernt.",
+    "@garageDeleteBody": {
+      "placeholders": { "name": {"type": "String"} }
+    },
+    "garageSettingsRow": "Meine Garage ({count})",
+    "@garageSettingsRow": {
+      "placeholders": { "count": {"type": "int"} }
+    },
+    "planScreenGarageChip": "Auto: {name} · {pct} %",
+    "@planScreenGarageChip": {
+      "placeholders": {
+        "name": {"type": "String"},
+        "pct": {"type": "int"}
+      }
+    },
+    "planScreenGarageChooseVehicle": "Fahrzeug für diese Fahrt wählen"
 }

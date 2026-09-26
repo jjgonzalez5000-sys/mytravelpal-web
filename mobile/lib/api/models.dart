@@ -450,6 +450,7 @@ class TripPlanRequest {
     this.timeWindowTopN = 5,
     this.tripProfile,
     this.includeParking = false,
+    this.garageVehicleId,
   });
 
   final LatLon origin;
@@ -542,6 +543,13 @@ class TripPlanRequest {
   /// optimizations (meal stops, sleep stop, fuel cost).
   final TripProfile? tripProfile;
 
+  /// Optional per-trip garage vehicle selection. When set (and the
+  /// caller is authenticated), the backend swaps the profile's
+  /// `vehicle_model_id` + tank level for the values stored on the
+  /// matching garage entry for this trip only. Silently falls back
+  /// to the profile pair when unknown / anonymous.
+  final String? garageVehicleId;
+
   Map<String, dynamic> toJson() => {
         'origin': origin.toJson(),
         'destination': destination.toJson(),
@@ -588,6 +596,8 @@ class TripPlanRequest {
           'time_window_span_hours': timeWindowSpanHours,
         if (timeWindowTopN != 5) 'time_window_top_n': timeWindowTopN,
         if (tripProfile != null) 'trip_profile': tripProfile!.toJson(),
+        if (garageVehicleId != null && garageVehicleId!.isNotEmpty)
+          'garage_vehicle_id': garageVehicleId,
       };
 }
 

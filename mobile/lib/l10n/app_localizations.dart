@@ -924,6 +924,12 @@ abstract class AppLocalizations {
   /// **'No alerts — enjoy the drive.'**
   String get companionAllGood;
 
+  /// No description provided for @companionWeatherRowEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear skies ahead'**
+  String get companionWeatherRowEmpty;
+
   /// No description provided for @companionEndTitle.
   ///
   /// In en, this message translates to:
@@ -5133,6 +5139,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refuel by km {km} (critical)'**
   String refuelWindowCritical(String km);
+
+  /// No description provided for @garageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My garage'**
+  String get garageTitle;
+
+  /// No description provided for @garageEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No vehicles yet — add your first car'**
+  String get garageEmpty;
+
+  /// No description provided for @garageAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add vehicle'**
+  String get garageAdd;
+
+  /// No description provided for @garageEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit vehicle'**
+  String get garageEdit;
+
+  /// No description provided for @garageDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get garageDelete;
+
+  /// No description provided for @garageCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get garageCancel;
+
+  /// No description provided for @garageSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get garageSave;
+
+  /// No description provided for @garageDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'My car'**
+  String get garageDefaultName;
+
+  /// No description provided for @garageNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Give it a name (e.g. Mi Golf)'**
+  String get garageNameHint;
+
+  /// No description provided for @garageDefaultTankLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Default tank level'**
+  String get garageDefaultTankLabel;
+
+  /// No description provided for @garageAddError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save. Try again.'**
+  String get garageAddError;
+
+  /// No description provided for @garageDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete vehicle?'**
+  String get garageDeleteTitle;
+
+  /// No description provided for @garageDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" will be removed from your garage.'**
+  String garageDeleteBody(String name);
+
+  /// No description provided for @garageSettingsRow.
+  ///
+  /// In en, this message translates to:
+  /// **'My garage ({count})'**
+  String garageSettingsRow(int count);
+
+  /// No description provided for @planScreenGarageChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Car: {name} · {pct}%'**
+  String planScreenGarageChip(String name, int pct);
+
+  /// No description provided for @planScreenGarageChooseVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a vehicle for this trip'**
+  String get planScreenGarageChooseVehicle;
 }
 
 class _AppLocalizationsDelegate

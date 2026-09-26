@@ -448,6 +448,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get companionAllGood => 'Keine Meldungen — gute Fahrt.';
 
   @override
+  String get companionWeatherRowEmpty => 'Keine Warnungen voraus';
+
+  @override
   String get companionEndTitle => 'Begleiter beenden?';
 
   @override
@@ -2868,4 +2871,58 @@ class AppLocalizationsDe extends AppLocalizations {
   String refuelWindowCritical(String km) {
     return 'Bis km $km tanken (kritisch)';
   }
+
+  @override
+  String get garageTitle => 'Meine Garage';
+
+  @override
+  String get garageEmpty => 'Noch keine Fahrzeuge — füge dein erstes hinzu';
+
+  @override
+  String get garageAdd => 'Fahrzeug hinzufügen';
+
+  @override
+  String get garageEdit => 'Fahrzeug bearbeiten';
+
+  @override
+  String get garageDelete => 'Löschen';
+
+  @override
+  String get garageCancel => 'Abbrechen';
+
+  @override
+  String get garageSave => 'Speichern';
+
+  @override
+  String get garageDefaultName => 'Mein Auto';
+
+  @override
+  String get garageNameHint => 'Gib ihm einen Namen (z. B. Mein Golf)';
+
+  @override
+  String get garageDefaultTankLabel => 'Standard-Tankfüllung';
+
+  @override
+  String get garageAddError => 'Speichern fehlgeschlagen. Nochmal versuchen.';
+
+  @override
+  String get garageDeleteTitle => 'Fahrzeug löschen?';
+
+  @override
+  String garageDeleteBody(String name) {
+    return '\"$name\" wird aus deiner Garage entfernt.';
+  }
+
+  @override
+  String garageSettingsRow(int count) {
+    return 'Meine Garage ($count)';
+  }
+
+  @override
+  String planScreenGarageChip(String name, int pct) {
+    return 'Auto: $name · $pct %';
+  }
+
+  @override
+  String get planScreenGarageChooseVehicle => 'Fahrzeug für diese Fahrt wählen';
 }

@@ -144,6 +144,7 @@
     "companionLocationDenied": "Location permission is required for the companion.",
     "companionDriving": "driving",
     "companionAllGood": "No alerts — enjoy the drive.",
+    "companionWeatherRowEmpty": "Clear skies ahead",
     "companionEndTitle": "End companion?",
     "companionEndBody": "Tracking will stop and any active alerts will be lost.",
     "companionEndKeep": "Keep driving",
@@ -1069,5 +1070,33 @@
     "refuelWindowCritical": "Refuel by km {km} (critical)",
     "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
-    }
+    },
+    "garageTitle": "My garage",
+    "garageEmpty": "No vehicles yet — add your first car",
+    "garageAdd": "Add vehicle",
+    "garageEdit": "Edit vehicle",
+    "garageDelete": "Delete",
+    "garageCancel": "Cancel",
+    "garageSave": "Save",
+    "garageDefaultName": "My car",
+    "garageNameHint": "Give it a name (e.g. Mi Golf)",
+    "garageDefaultTankLabel": "Default tank level",
+    "garageAddError": "Could not save. Try again.",
+    "garageDeleteTitle": "Delete vehicle?",
+    "garageDeleteBody": "\"{name}\" will be removed from your garage.",
+    "@garageDeleteBody": {
+      "placeholders": { "name": {"type": "String"} }
+    },
+    "garageSettingsRow": "My garage ({count})",
+    "@garageSettingsRow": {
+      "placeholders": { "count": {"type": "int"} }
+    },
+    "planScreenGarageChip": "Car: {name} · {pct}%",
+    "@planScreenGarageChip": {
+      "placeholders": {
+        "name": {"type": "String"},
+        "pct": {"type": "int"}
+      }
+    },
+    "planScreenGarageChooseVehicle": "Choose a vehicle for this trip"
 }

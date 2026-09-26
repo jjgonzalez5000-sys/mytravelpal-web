@@ -49,6 +49,7 @@
     "companionLocationDenied": "Cal permís d'ubicació per a l'acompanyant.",
     "companionDriving": "conduint",
     "companionAllGood": "Sense avisos — bon viatge.",
+    "companionWeatherRowEmpty": "Sense avisos propers",
     "companionEndTitle": "Acabar acompanyant?",
     "companionEndBody": "El seguiment s'aturarà i els avisos actius es perdran.",
     "companionEndKeep": "Continuar",
@@ -211,5 +212,33 @@
     "refuelWindowCritical": "Reposta abans del km {km} (crític)",
     "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
-    }
+    },
+    "garageTitle": "El meu garatge",
+    "garageEmpty": "Encara no hi ha vehicles — afegeix el primer",
+    "garageAdd": "Afegir vehicle",
+    "garageEdit": "Editar vehicle",
+    "garageDelete": "Eliminar",
+    "garageCancel": "Cancel·lar",
+    "garageSave": "Desar",
+    "garageDefaultName": "El meu cotxe",
+    "garageNameHint": "Posa-li un nom (p. ex. El meu Golf)",
+    "garageDefaultTankLabel": "Nivell de dipòsit per defecte",
+    "garageAddError": "No s'ha pogut desar. Torna-ho a intentar.",
+    "garageDeleteTitle": "Eliminar el vehicle?",
+    "garageDeleteBody": "\"{name}\" s'esborrarà del teu garatge.",
+    "@garageDeleteBody": {
+      "placeholders": { "name": {"type": "String"} }
+    },
+    "garageSettingsRow": "El meu garatge ({count})",
+    "@garageSettingsRow": {
+      "placeholders": { "count": {"type": "int"} }
+    },
+    "planScreenGarageChip": "Cotxe: {name} · {pct} %",
+    "@planScreenGarageChip": {
+      "placeholders": {
+        "name": {"type": "String"},
+        "pct": {"type": "int"}
+      }
+    },
+    "planScreenGarageChooseVehicle": "Trieu un vehicle per a aquest viatge"
 }

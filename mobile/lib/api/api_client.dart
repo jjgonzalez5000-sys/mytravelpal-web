@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../domain/auth_user.dart';
+import '../domain/garage_vehicle.dart';
 import '../domain/vehicle_model.dart';
 import 'config.dart';
 import 'models.dart';
@@ -652,6 +653,93 @@ class ApiClient {
         .whereType<Map<String, dynamic>>()
         .map(VehicleModel.fromJson)
         .toList(growable: false);
+  }
+
+  /// Fetch the user's saved garage (multi-vehicle list). Returns an
+  /// empty list on any failure so the picker UI can show "empty
+  /// state" instead of a spinner-of-doom.
+  Future<List<GarageVehicle>> fetchGarage() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/garage');
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return const [];
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final raw = (body['vehicles'] as List<dynamic>?) ?? const [];
+      return raw
+          .whereType<Map<String, dynamic>>()
+          .map(GarageVehicle.fromJson)
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Add a vehicle to the user's garage. Backend generates the uuid
+  /// and returns the fully-formed entry. Throws [ApiException] so
+  /// the caller can surface a snackbar on a 400 (unknown model_id).
+  Future<GarageVehicle> addGarageVehicle({
+    required String name,
+    required String modelId,
+    int defaultTankPercent = 100,
+    String? notes,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/garage');
+    final response = await _http.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({
+        'name': name,
+        'model_id': modelId,
+        'default_tank_percent': defaultTankPercent,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return GarageVehicle.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Update the mutable fields of a garage vehicle. The catalogue
+  /// `model_id` is intentionally not editable — swap-my-car means
+  /// delete + re-add so the id stays semantically stable.
+  Future<GarageVehicle> updateGarageVehicle({
+    required String id,
+    String? name,
+    int? defaultTankPercent,
+    String? notes,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/garage/$id');
+    final response = await _http.put(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({
+        if (name != null) 'name': name,
+        if (defaultTankPercent != null)
+          'default_tank_percent': defaultTankPercent,
+        if (notes != null) 'notes': notes,
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return GarageVehicle.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Remove a vehicle from the garage. Returns true on 200 / 404
+  /// (idempotent — a gone vehicle is a fine end-state).
+  Future<bool> deleteGarageVehicle(String id) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/garage/$id');
+    try {
+      final response = await _http.delete(uri, headers: _headers());
+      return response.statusCode == 200 || response.statusCode == 404;
+    } catch (_) {
+      return false;
+    }
   }
 
   void dispose() => _http.close();
