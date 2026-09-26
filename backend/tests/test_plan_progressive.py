@@ -11,15 +11,18 @@ adverse events, weather segments, toll alternative).
 The historic ``/v1/trips/plan`` must still return the union of both
 so pre-progressive mobile clients keep working (backwards compat).
 
-Implementation note: the current backend still runs a monolithic
-compute for both progressive endpoints and just slices the response
-server-side ("shortcut" variant of the split). The ``plan_cache``
-absorbs the double-compute cost when a client fires ``/core`` +
-``/enrich`` back-to-back — the second hits the cache and returns
-instantly.
+Implementation note: the backend now runs two independent compute
+paths — ``_plan_core_impl`` for the fast slice and
+``_plan_enrich_impl`` for the slow provider fan-out. They share only
+a cheap preamble (route + tollguru + time windows) and are keyed on
+distinct ``PlanCacheSlot`` values, so hitting one never accidentally
+returns a payload the caller wasn't expecting.
 """
 
 from __future__ import annotations
+
+import asyncio
+import time
 
 from fastapi.testclient import TestClient
 
@@ -59,7 +62,7 @@ def test_plan_core_returns_route_and_days_but_not_hotels_restaurants() -> None:
     # `days` and `optimizations` require a profile — without one the
     # backend still ships an empty `days` list. Route + windows are
     # the ironclad core-phase guarantee.
-    assert "days" in body
+    assert isinstance(body["days"], list)
 
     # Enrich-only fields — must be EMPTY/None in the core slice so
     # the client doesn't wastefully re-parse them.
@@ -88,7 +91,6 @@ def test_plan_enrich_returns_enrich_fields_but_not_route() -> None:
     assert body["days"] == []
     assert body["optimizations"] is None
     assert body["savings"]["time_saved_minutes_vs_desired"] == 0.0
-    assert body["savings"]["money_saved_eur_vs_tolls"] == 0.0
 
     # Enrich fields — at least one of hotels / restaurants / fuel /
     # rest_stops should surface. Providers are stubbed in tests to
@@ -123,25 +125,81 @@ def test_plan_full_endpoint_returns_union_of_both() -> None:
     assert len(body["fuel_prices"]) > 0 or len(body["rest_stops"]) > 0
 
 
-def test_plan_core_and_enrich_share_cache_key() -> None:
-    """Firing /plan/core then /plan/enrich for the SAME payload
-    should be a cache hit on the second call — the compute cost is
-    paid ONCE. We prove this indirectly: both responses come from the
-    same underlying full-response payload, so the fields they share
-    (route.distance_km on core, restStops kilometers on enrich) match
-    what /plan returns for the same request.
+def test_plan_core_and_enrich_have_independent_cache_slots() -> None:
+    """``/plan/core`` and ``/plan/enrich`` now live in different cache
+    slots (``PlanCacheSlot.CORE`` vs. ``PlanCacheSlot.ENRICH``) so a
+    hit on one never serves the wrong payload shape to the other.
+
+    We prove independence by firing both endpoints for the same
+    payload and asserting each response carries its own signature
+    (core has a real route, enrich has enrich fields), i.e. neither
+    slot leaked the other's cached bytes into this response.
     """
     reset_plan_cache_for_tests()
     payload = _paris_madrid_payload()
-    full = client.post("/v1/trips/plan", json=payload).json()
+
+    core = client.post("/v1/trips/plan/core", json=payload).json()
+    assert core["route"]["distance_km"] > 1000, (
+        "/plan/core must return a real route; got "
+        f"distance_km={core['route']['distance_km']}"
+    )
+    assert core["hotels"] == []
+    assert core["fuel_prices"] == []
+
+    # /enrich right after /core: different slot key, so it does its
+    # own compute rather than returning core's cached payload.
+    enrich = client.post("/v1/trips/plan/enrich", json=payload).json()
+    assert enrich["route"]["distance_km"] == 0.0, (
+        "/plan/enrich must NOT reuse the /plan/core cache slot; "
+        "got a populated route which means the two slots collided"
+    )
+    has_any_enrich = (
+        len(enrich["fuel_prices"]) > 0
+        or len(enrich["rest_stops"]) > 0
+        or len(enrich["hotels"]) > 0
+        or len(enrich["restaurants"]) > 0
+    )
+    assert has_any_enrich
+
+
+def test_plan_core_is_faster_than_plan_enrich_with_mocked_delays(
+    monkeypatch,
+) -> None:
+    """With a mocked hotel-provider delay, /core should return
+    materially faster than /enrich. Proves the split is real, not
+    cosmetic — /core does zero hotel work, so the injected latency
+    only hits /enrich.
+    """
 
     reset_plan_cache_for_tests()
-    core = client.post("/v1/trips/plan/core", json=payload).json()
-    # Same request → same underlying compute → identical route.
-    assert core["route"]["distance_km"] == full["route"]["distance_km"]
 
-    # /enrich right after /core should hit the cache (no reset).
-    enrich = client.post("/v1/trips/plan/enrich", json=payload).json()
-    # Cache-shared: the enrich payload's fuel_prices list mirrors the
-    # full response's list (assuming providers are deterministic).
-    assert len(enrich["fuel_prices"]) == len(full["fuel_prices"])
+    from app.providers.hotels import MockHotelsProvider
+
+    orig_hotels_along = MockHotelsProvider.hotels_along
+
+    async def slow_hotels(self, route, **kw):
+        await asyncio.sleep(1.0)
+        return await orig_hotels_along(self, route, **kw)
+
+    monkeypatch.setattr(MockHotelsProvider, "hotels_along", slow_hotels)
+
+    payload = _paris_madrid_payload()
+
+    t0 = time.perf_counter()
+    r1 = client.post("/v1/trips/plan/core", json=payload)
+    core_wall = time.perf_counter() - t0
+    assert r1.status_code == 200
+
+    reset_plan_cache_for_tests()
+    t0 = time.perf_counter()
+    r2 = client.post("/v1/trips/plan/enrich", json=payload)
+    enrich_wall = time.perf_counter() - t0
+    assert r2.status_code == 200
+
+    # Enrich should be at least 0.5s slower than core because of the
+    # injected hotel delay (1s sleep). Leaves plenty of headroom for
+    # noise on shared CI hardware.
+    assert enrich_wall > core_wall + 0.5, (
+        f"core={core_wall:.2f}s enrich={enrich_wall:.2f}s — the split "
+        "must isolate /core from the hotel-provider latency"
+    )

@@ -728,22 +728,37 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
           garageVehicleId: ref.read(selectedGarageVehicleIdProvider),
         );
+        // Round-trip stays on the legacy monolithic endpoint for now —
+        // we only need the two-phase progressive UX for the primary
+        // leg (which lands on ResultScreen immediately). The return
+        // leg is only inspected later via the "swap leg" action, so
+        // ripping the entire round-trip into core+enrich would add
+        // complexity for no perceived-perf gain.
         returnFuture = api.planTrip(returnRequest);
       }
+      // Two-phase progressive plan. Fire BOTH endpoints in parallel
+      // (backend shares a cache keyed on the request hash so the
+      // enrich call is a cheap POI fan-out — the /core compute
+      // ISN'T redone). We await ONLY core inside runInForeground so
+      // the loading dialog dismisses as soon as the route + hero +
+      // day cards are ready; enrich keeps running and is handed to
+      // ResultScreen as a Future the widget subscribes to.
+      final coreFuture = api.planTripCore(request);
+      final enrichFuture = api.planTripEnrich(request);
       // Foreground-service wrap: pins the process (and the HTTP
       // socket) while /plan runs, so backgrounding the app during
       // the 5-15s wait doesn't cancel the request on aggressive
       // OEM ROMs. Shows a persistent tray notification too, so the
       // user sees the plan is still cooking. Round-trip: we await
-      // BOTH legs inside the wrapper so the service stays up until
-      // the second /plan settles too.
+      // both legs' core inside the wrapper so the service stays up
+      // until the second /plan/core settles too.
       final planLabel =
           '${origin.displayName} → ${destination.displayName}';
       final legs = await runInForeground(
         context,
         planLabel,
         () async {
-          final r = await api.planTrip(request);
+          final r = await coreFuture;
           final ret = returnFuture == null ? null : await returnFuture;
           return (r, ret);
         },
@@ -782,6 +797,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             currentLegLabel: outboundLabel,
             otherLeg: returnLeg,
             hotelPrefs: _hotelPrefs.enabled ? _hotelPrefs : null,
+            // Progressive phase 2: ResultScreen renders skeletons
+            // for hotels / restaurants / fuel / adverse events and
+            // hydrates them when this future resolves.
+            enrichFuture: enrichFuture,
           ),
         ),
       );

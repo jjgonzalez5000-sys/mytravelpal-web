@@ -21,18 +21,50 @@ European road-trip planning app (freemium). FastAPI backend on Fly.io (CDG), Flu
 - `mobile/lib/widgets/trip_insights.dart` — day plan + hotel sections
 - `mobile/lib/services/app_tutorial.dart` — coach mark tutorial
 
-## Deploy pattern
+## Local dev (fast iteration, no Fly round-trip)
+
+```bash
+# One-time (~30-60 min, ~15 GB disk): download Iberia+FR PBFs and build OSRM MLD graph
+make osrm-prep
+
+# Start the full local stack — hot-reload FastAPI + Postgres + Redis + local OSRM
+make dev
+
+# Common
+make logs                # tail api + osrm
+make test                # backend pytest -xvs -n auto inside container
+make shell               # bash into api container
+make down                # stop stack
+
+# Mobile against local backend (emulator default host = 10.0.2.2)
+make mobile-local
+# Real device on LAN:  make mobile-local LOCAL_IP=192.168.1.42
+```
+
+Local stack talks to real `MYTRAVELPAL_GEOAPIFY_KEY` if it's exported in your
+shell; otherwise POI providers gracefully degrade. Local OSRM covers ES/PT/FR
+only — trips outside that box need the Fly backend.
+
+## Ship pattern (mobile testing / beta)
+
+```bash
+make mobile-prod    # release APK against Fly + install + rclone upload
+make deploy         # fly deploy for backend
+```
+
+Or the raw commands:
 
 ```bash
 # Backend
 cd backend && fly deploy
 
-# Mobile (include all --dart-define)
-cd mobile && flutter build apk --release \
+# Mobile
+cd mobile && flutter build apk --release --no-shrink --no-tree-shake-icons \
   --dart-define=API_BASE_URL=https://mytravelpal-api.fly.dev \
   --dart-define=API_KEY=7637fb236013308ebf998843d924e15e56dce87457187e22a1a03c9c1e164d7a \
   --dart-define=SENTRY_DSN=https://3c46e071b627ae7c6c5cb4592cadbf60@o4511977727590400.ingest.de.sentry.io/4511977749086288
 flutter install
+rclone copy build/app/outputs/flutter-apk/app-release.apk blu3g3_drive_jjgonzalez5000:Desarrollo_APPS/APKs/
 ```
 
 ## Secrets (Fly)

@@ -41,6 +41,7 @@ import '../widgets/trip_insights.dart';
 import '../widgets/favorite_star_button.dart';
 import '../widgets/poi_detail_sheet.dart';
 import '../widgets/route_map.dart';
+import '../widgets/skeleton.dart';
 import '../widgets/time_window_chart.dart';
 import 'narrative_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -111,6 +112,7 @@ class ResultScreen extends ConsumerStatefulWidget {
     this.currentLegLabel,
     this.otherLeg,
     this.hotelPrefs,
+    this.enrichFuture,
   });
 
   final TripPlanRequest request;
@@ -118,6 +120,17 @@ class ResultScreen extends ConsumerStatefulWidget {
   final GeocodeResult destination;
   final TripPlanResponse response;
   final DateTime desiredDepartureAt;
+
+  /// Two-phase progressive loading: when non-null, the widget mounts
+  /// immediately with `response` (the fast `/plan/core` result) and
+  /// swaps in the merged full response as soon as this future
+  /// resolves. Sections that depend on enrich-only data (hotels,
+  /// restaurants, fuel, adverse events) render skeleton placeholders
+  /// until then.
+  ///
+  /// Null on the classic single-shot flow (splash / history restore
+  /// / internal re-plan) — `response` already carries everything.
+  final Future<TripPlanResponse>? enrichFuture;
 
   /// Non-null when this screen is showing one leg of a round-trip.
   /// Rendered as a small pill next to the app title so the driver
@@ -142,6 +155,20 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _saved = false;
   bool _saving = false;
+
+  /// Response actually rendered by the tree. Seeded from `widget.response`
+  /// (the core, fast phase). When `widget.enrichFuture` resolves, the
+  /// enrich response is merged in and `setState` swaps this field so
+  /// hotels / restaurants / fuel / adverse events / weather /
+  /// tollAlternative / hourlyTollReport / partialTollSkips /
+  /// intraSectionSkips / fuelArbitrage light up in place.
+  late TripPlanResponse _response;
+
+  /// True while we're waiting on `widget.enrichFuture` to land. Drives
+  /// the skeleton placeholders on sections that would otherwise render
+  /// misleading empty states (e.g. "no restaurants found" before the
+  /// enrich call has even returned).
+  bool _enrichPending = false;
 
   // Hero landing moment: on the very first build after the plan
   // arrives, the top sections play a small staggered entrance and a
@@ -194,7 +221,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   // _tollSkipEnabled = indices the user KEEPS (pays).
   // So savings come from indices NOT in the set.
   double get _tollSkipSavingsEur {
-    final skips = widget.response.partialTollSkips;
+    final skips = _response.partialTollSkips;
     var total = 0.0;
     for (var i = 0; i < skips.length; i++) {
       if (!_tollSkipEnabled.contains(i)) total += skips[i].savingsEur;
@@ -203,7 +230,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   double get _tollSkipPenaltyMinutes {
-    final skips = widget.response.partialTollSkips;
+    final skips = _response.partialTollSkips;
     var total = 0.0;
     for (var i = 0; i < skips.length; i++) {
       if (!_tollSkipEnabled.contains(i)) total += skips[i].timePenaltyMinutes;
@@ -220,8 +247,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// otherwise good candidates.
   List<Hotel> get _filteredHotels {
     final prefs = widget.hotelPrefs;
-    if (prefs == null) return widget.response.hotels;
-    return widget.response.hotels.where((h) {
+    if (prefs == null) return _response.hotels;
+    return _response.hotels.where((h) {
       if (prefs.minStars > 0) {
         final raw = h.attributes['stars'];
         final stars = raw == null ? null : int.tryParse(raw);
@@ -238,18 +265,75 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   void initState() {
     super.initState();
+    // Seed the rendered response with the core payload. Enrich
+    // hydration below swaps in the merged view when it lands.
+    _response = widget.response;
+    _enrichPending = widget.enrichFuture != null;
     // All tolls CHECKED (= paid) by default. Savings start at 0.
     // As the driver unchecks a toll, it gets removed from the set,
     // savings grow, and the toll cost in the stats card drops.
+    // On the two-phase flow the list starts empty (enrich hasn't
+    // landed yet); we re-seed inside the enrichFuture callback
+    // below once the real toll skips are known.
     _tollSkipEnabled = {
-      for (var i = 0; i < widget.response.partialTollSkips.length; i++) i,
+      for (var i = 0; i < _response.partialTollSkips.length; i++) i,
     };
+    // Progressive hydration: swap enrich data into _response when the
+    // second phase lands. Merge is idempotent (Core-owned fields come
+    // from core, enrich-owned from enrich) so the visible route /
+    // days / savings never flicker.
+    final ef = widget.enrichFuture;
+    if (ef != null) {
+      ef.then((enrich) {
+        if (!mounted) return;
+        setState(() {
+          _response = TripPlanResponse.merge(
+            core: widget.response,
+            enrich: enrich,
+          );
+          _enrichPending = false;
+          // If the user hadn't unchecked any tolls yet (still empty
+          // because core carried no partial skips), seed the set with
+          // "all paid" now. If they already interacted (impossible
+          // pre-enrich, but future-proof) preserve their picks.
+          if (_tollSkipEnabled.isEmpty &&
+              _response.partialTollSkips.isNotEmpty) {
+            _tollSkipEnabled = {
+              for (var i = 0;
+                  i < _response.partialTollSkips.length;
+                  i++)
+                i,
+            };
+          }
+        });
+        // Now that partial toll skips (may) exist, offer the coach
+        // mark. Wrapped in postFrame so the key targets have laid out.
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_response.partialTollSkips.isNotEmpty) {
+            showResultTutorial(
+              context,
+              timeWindowKey: _timeWindowKey,
+              tollKey: _tollKey,
+            );
+          }
+        });
+      }).catchError((Object _) {
+        if (!mounted) return;
+        // Enrich fails silently: the core plan is already usable, so
+        // we just drop the skeletons back to the true empty state.
+        // A future iteration can surface a discreet retry banner.
+        setState(() {
+          _enrichPending = false;
+        });
+      });
+    }
     Future.microtask(() {
       ReviewPrompter.instance.onPlanCompleted();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (widget.response.partialTollSkips.isNotEmpty) {
+      if (_response.partialTollSkips.isNotEmpty) {
         showResultTutorial(
           context,
           timeWindowKey: _timeWindowKey,
@@ -329,8 +413,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   /// Build sorted waypoints from added routeable stops to include in replan.
   List<TripWaypoint> _buildAddedWaypoints() {
-    final geometry = widget.response.route.geometry;
-    final routeKm = widget.response.route.distanceKm;
+    final geometry = _response.route.geometry;
+    final routeKm = _response.route.distanceKm;
     double kmAt(LatLon c) {
       if (geometry.isEmpty || routeKm <= 0) return 0;
       double bestD = double.infinity;
@@ -427,7 +511,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// which is €/L not € total. Returns 0 when nothing eligible is
   /// added.
   double get _addedFuelSavingsEur {
-    final rw = widget.response.refuelWindow;
+    final rw = _response.refuelWindow;
     final s = rw?.suggestedStation;
     if (s == null || rw?.suggestedSavingsEur == null) return 0.0;
     final coordSuffix = s.coordinate == null
@@ -497,14 +581,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   ///     motorway for the whole trip); rely on the injected detour
   ///     waypoints to route around the specific skipped booths.
   void _openExportSheet() {
-    final skips = widget.response.partialTollSkips;
+    final skips = _response.partialTollSkips;
     final skippedIndices = <int>[
       for (var i = 0; i < skips.length; i++)
         if (!_tollSkipEnabled.contains(i)) i,
     ];
 
     // Compute km-along-route once per candidate so the sort stays O(n log n).
-    final totalKm = widget.response.route.distanceKm;
+    final totalKm = _response.route.distanceKm;
     double kmOf(LatLon c) => _kmFromOrigin(c) ?? totalKm;
 
     // 1. Detour anchors from every skipped toll.
@@ -579,8 +663,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// Estimates km-from-origin for [coord] by finding the nearest point
   /// in the route geometry and using its index fraction × totalKm.
   double? _kmFromOrigin(LatLon coord) {
-    final geom = widget.response.route.geometry;
-    final totalKm = widget.response.route.distanceKm;
+    final geom = _response.route.geometry;
+    final totalKm = _response.route.distanceKm;
     if (geom.isEmpty || totalKm <= 0) return null;
     var bestIndex = 0;
     var bestDist = double.infinity;
@@ -603,7 +687,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   List<AddedStop> _resolveAddedStops() {
     if (_addedStops.isEmpty) return const [];
     final out = <AddedStop>[];
-    for (final h in widget.response.hotels) {
+    for (final h in _response.hotels) {
       final key = 'hotel:${h.name}:'
           '${h.coordinate.lat.toStringAsFixed(4)},'
           '${h.coordinate.lon.toStringAsFixed(4)}';
@@ -618,7 +702,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ));
       }
     }
-    for (final r in widget.response.restaurants) {
+    for (final r in _response.restaurants) {
       final key = 'restaurant:${r.name}:'
           '${r.coordinate.lat.toStringAsFixed(4)},'
           '${r.coordinate.lon.toStringAsFixed(4)}';
@@ -633,7 +717,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ));
       }
     }
-    for (final p in widget.response.fuelPrices) {
+    for (final p in _response.fuelPrices) {
       final coordSuffix = p.coordinate == null
           ? ':nocoord'
           : ':${p.coordinate!.lat.toStringAsFixed(4)},'
@@ -653,7 +737,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
     }
     // Meal + sleep stops the user pinned from the "Optimizado" section.
-    for (final m in widget.response.optimizations?.mealStops
+    for (final m in _response.optimizations?.mealStops
         ?? const <MealStopOpt>[]) {
       final key = _optMealKey(m);
       if (_addedStops.containsKey(key) && m.coordinate != null) {
@@ -666,7 +750,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ));
       }
     }
-    final sleep = widget.response.optimizations?.sleepStop;
+    final sleep = _response.optimizations?.sleepStop;
     if (sleep != null) {
       final key = _optSleepKey(sleep);
       if (_addedStops.containsKey(key) && sleep.coordinate != null) {
@@ -694,7 +778,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       stops: stops,
       origin: widget.request.origin,
       destination: widget.request.destination,
-      routeGeometry: widget.response.route.geometry,
+      routeGeometry: _response.route.geometry,
     );
   }
 
@@ -754,7 +838,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           controller: scrollController,
           padding: const EdgeInsets.symmetric(horizontal: Tokens.space20),
           children: [
-            for (final e in widget.response.adverseEvents)
+            for (final e in _response.adverseEvents)
               Padding(
                 padding: const EdgeInsets.only(bottom: Tokens.space8),
                 child: _AdverseEventTile(
@@ -766,7 +850,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       event: e,
                       origin: widget.request.origin,
                       destination: widget.request.destination,
-                      routeGeometry: widget.response.route.geometry,
+                      routeGeometry: _response.route.geometry,
                     );
                   },
                 ),
@@ -905,7 +989,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// simply check whether each hour falls inside the departure→arrival
   /// window (with day-wrap for overnight trips).
   Set<MealSlot> _slotsCoveredByTrip() {
-    final route = widget.response.route;
+    final route = _response.route;
     final start = widget.desiredDepartureAt;
     final end = start.add(Duration(minutes: route.freeFlowMinutes.round()));
     final prefs = widget.request.tripProfile?.meals;
@@ -936,7 +1020,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   List<Widget> _restaurantSectionsBySlot(AppLocalizations l) {
-    final restaurants = widget.response.restaurants;
+    final restaurants = _response.restaurants;
     final crossed = _slotsCoveredByTrip();
     // Bucket each restaurant into the first slot that (a) it advertises
     // AND (b) the trip actually crosses. Falls through to "other" if it
@@ -1000,7 +1084,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         poi: r.coordinate,
         origin: widget.request.origin,
         destination: widget.request.destination,
-        routeGeometry: widget.response.route.geometry,
+        routeGeometry: _response.route.geometry,
         attributes: r.attributes,
         icon: Icons.restaurant_outlined,
         accent: Theme.of(context).colorScheme.tertiary,
@@ -1009,7 +1093,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   TimeWindow? get _recommended {
-    for (final w in widget.response.timeWindows) {
+    for (final w in _response.timeWindows) {
       if (w.recommended) return w;
     }
     return null;
@@ -1043,15 +1127,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         destination: widget.destination,
         desiredDepartureAt: widget.desiredDepartureAt,
         savedAt: DateTime.now(),
-        distanceKm: widget.response.route.distanceKm,
+        distanceKm: _response.route.distanceKm,
         recommendedDepartureAt: recommended.departureAt,
         recommendedMinutes: recommended.estimatedMinutes,
-        countriesCrossed: widget.response.route.countriesCrossed,
+        countriesCrossed: _response.route.countriesCrossed,
         savedMinutesVsDesired:
-            widget.response.savings.timeSavedMinutesVsDesired,
-        savedEurVsTolls: widget.response.savings.moneySavedEurVsTolls,
+            _response.savings.timeSavedMinutesVsDesired,
+        savedEurVsTolls: _response.savings.moneySavedEurVsTolls,
         fuelCostEur:
-            widget.response.optimizations?.fuelCost.totalCostEur ?? 0,
+            _response.optimizations?.fuelCost.totalCostEur ?? 0,
         reminderMinutesBefore: reminderMinutes,
         notificationId: notificationId,
       );
@@ -1060,7 +1144,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // a border with a meaningful price difference. Fires 15 min
       // before departure so the driver sees "fill up in X before
       // crossing into Y" while still at home/hotel.
-      final arb = widget.response.fuelArbitrage;
+      final arb = _response.fuelArbitrage;
       if (arb != null && arb.estimatedTankSavingEur >= 5) {
         await NotificationService.instance.scheduleDepartureReminder(
           tripId: 'fuel:$id',
@@ -1143,9 +1227,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         context,
         originName: _shortName(widget.origin),
         destinationName: _shortName(widget.destination),
-        route: widget.response.route,
-        savedEur: widget.response.savings.moneySavedEurVsTolls,
-        savedMinutes: widget.response.savings.timeSavedMinutesVsDesired,
+        route: _response.route,
+        savedEur: _response.savings.moneySavedEurVsTolls,
+        savedMinutes: _response.savings.timeSavedMinutesVsDesired,
       );
     } else {
       await shareTrip(
@@ -1153,15 +1237,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         localeName: Localizations.localeOf(context).toString(),
         originName: _shortName(widget.origin),
         destinationName: _shortName(widget.destination),
-        route: widget.response.route,
+        route: _response.route,
         origin: widget.request.origin,
         destination: widget.request.destination,
         departureAt: widget.desiredDepartureAt,
         recommended: _recommended,
-        tollAlt: widget.response.tollAlternative,
-        hotels: widget.response.hotels,
-        restaurants: widget.response.restaurants,
-        fuelArbitrage: widget.response.fuelArbitrage,
+        tollAlt: _response.tollAlternative,
+        hotels: _response.hotels,
+        restaurants: _response.restaurants,
+        fuelArbitrage: _response.fuelArbitrage,
       );
     }
   }
@@ -1180,7 +1264,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final route = widget.response.route;
+    final route = _response.route;
     final recommended = _recommended;
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
@@ -1196,7 +1280,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
     // Scope tells the client which sections to surface. When absent
     // (request had no TripProfile), fall through to a permissive default.
-    final scope = widget.response.recommendationScope;
+    final scope = _response.recommendationScope;
     final showRestaurants = scope?.showRestaurants ?? true;
     final bedtimeHour = widget.request.tripProfile?.bedtimeHour ?? 22;
 
@@ -1210,12 +1294,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       destination: widget.request.destination,
       route: route,
       alternativeGeometry:
-          widget.response.tollAlternative?.geometry ?? const [],
+          _response.tollAlternative?.geometry ?? const [],
       hotels: _filteredHotels,
-      restaurants: widget.response.restaurants,
-      tollSkips: widget.response.partialTollSkips,
-      fuelStations: _topCheapestFuel(widget.response.fuelPrices, 10),
-      adverseEvents: widget.response.adverseEvents,
+      restaurants: _response.restaurants,
+      tollSkips: _response.partialTollSkips,
+      fuelStations: _topCheapestFuel(_response.fuelPrices, 10),
+      adverseEvents: _response.adverseEvents,
       mode: _mapMode,
       onModeChange: (m) => setState(() => _mapMode = m),
     );
@@ -1326,11 +1410,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ),
               ],
             ],
-            if (widget.response.days.isNotEmpty) ...[
+            if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space12),
               Divider(color: scheme.outlineVariant),
               const SizedBox(height: Tokens.space4),
-              for (final d in widget.response.days)
+              for (final d in _response.days)
                 _DayStripRow(day: d),
             ],
           ],
@@ -1339,10 +1423,40 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
 
     final sections = <Widget>[
-      if (widget.response.adverseEvents.isNotEmpty)
+      if (_response.adverseEvents.isNotEmpty)
         _AdverseEventsBanner(
-          events: widget.response.adverseEvents,
+          events: _response.adverseEvents,
           onTap: () => _showAdverseEventsSheet(context),
+        )
+      else if (widget.request.includeAdverseEvents && _enrichPending)
+        // Pre-enrich: show a discreet "loading alerts" chip so the
+        // driver knows we haven't confirmed the corridor is clear
+        // yet. Prevents a jarring flip from "all clear" checkmark to
+        // "wildfire near km 240" a couple of seconds later.
+        Padding(
+          padding: const EdgeInsets.only(bottom: Tokens.space8),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.planLoadingStepAlerts,
+                  style: t.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         )
       else if (widget.request.includeAdverseEvents)
         Padding(
@@ -1397,25 +1511,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       heroCompanionButton,
       const SizedBox(height: Tokens.space12),
       heroStatsCard,
-      if (widget.response.days.isNotEmpty) ...[
+      if (_response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
           key: _tollKey,
           child: DayPlanSection(
-            days: widget.response.days,
+            days: _response.days,
             timeFormat: DateFormat.Hm(),
             hotels: _filteredHotels,
             destination: widget.request.destination,
             origin: widget.request.origin,
             originName: widget.origin.displayName,
             destinationName: widget.destination.displayName,
-            routeGeometry: widget.response.route.geometry,
+            routeGeometry: _response.route.geometry,
             selectedNightHotels: _selectedNightHotels,
             onToggleNightHotel: _toggleNightHotel,
             showHotelSections:
                 widget.request.hotelMaxDetourMinutes != null &&
                     widget.request.hotelMaxDetourMinutes! > 0,
-            partialTollSkips: widget.response.partialTollSkips,
+            partialTollSkips: _response.partialTollSkips,
             enabledTollIndices: _tollSkipEnabled,
             onToggleToll: (i, enabled) => setState(() {
               if (enabled) {
@@ -1424,49 +1538,49 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 _tollSkipEnabled.remove(i);
               }
             }),
-            hourlyTollReport: widget.response.hourlyTollReport,
+            hourlyTollReport: _response.hourlyTollReport,
             tripDepartureAt: widget.desiredDepartureAt,
-            routeFreeFlowMinutes: widget.response.route.freeFlowMinutes,
-            routeTotalKm: widget.response.route.distanceKm,
+            routeFreeFlowMinutes: _response.route.freeFlowMinutes,
+            routeTotalKm: _response.route.distanceKm,
             addedStops: _resolveAddedStops(),
-            weatherSegments: widget.response.weatherSegments,
+            weatherSegments: _response.weatherSegments,
           ),
         ),
       ],
       const SizedBox(height: Tokens.space24),
-      if (widget.response.consistencyIssues.isNotEmpty)
-        ConsistencyBanner(issues: widget.response.consistencyIssues),
+      if (_response.consistencyIssues.isNotEmpty)
+        ConsistencyBanner(issues: _response.consistencyIssues),
       // Trip cost hero: the first thing the user wants to know.
-      if (widget.response.optimizations != null) ...[
+      if (_response.optimizations != null) ...[
         _TotalTripCostCard(
-          fuelCostEur: widget.response.optimizations!.fuelCost.totalCostEur,
+          fuelCostEur: _response.optimizations!.fuelCost.totalCostEur,
           tollCostEur: route.tollCostEur,
-          mealStops: widget.response.optimizations!.mealStops,
-          sleepStop: widget.response.optimizations!.sleepStop,
+          mealStops: _response.optimizations!.mealStops,
+          sleepStop: _response.optimizations!.sleepStop,
           tollSkipSavingsEur: _tollSkipSavingsEur,
           travellers: widget.request.tripProfile?.travellers ?? 1,
-          tripDays: widget.response.days.length,
+          tripDays: _response.days.length,
           pickedHotelsCostEur: _selectedNightHotels.isEmpty
               ? null
               : _selectedHotelsCostEur,
           pickedHotelsNights: _selectedNightHotels.length,
-          savings: widget.response.savings.copyWith(
+          savings: _response.savings.copyWith(
             fuelSavingsEur: _addedFuelSavingsEur > 0
                 ? _addedFuelSavingsEur
                 : null,
           ),
           tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
-          intraSectionSkips: widget.response.intraSectionSkips,
+          intraSectionSkips: _response.intraSectionSkips,
         ),
         const SizedBox(height: Tokens.space16),
       ],
       // Next-stop hero: pulls the first meal stop of the trip so the
       // driver always sees "next planned stop" up top without hunting
       // through the Optimizations section.
-      if (widget.response.optimizations != null &&
-          widget.response.optimizations!.mealStops.isNotEmpty) ...[
+      if (_response.optimizations != null &&
+          _response.optimizations!.mealStops.isNotEmpty) ...[
         Builder(builder: (context) {
-          final meal = widget.response.optimizations!.mealStops.first;
+          final meal = _response.optimizations!.mealStops.first;
           final coordSuffix = meal.restaurantCoordinate == null
               ? ':nocoord'
               : ':${meal.restaurantCoordinate!.lat.toStringAsFixed(4)},'
@@ -1494,7 +1608,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       poi: meal.restaurantCoordinate!,
                       origin: widget.request.origin,
                       destination: widget.request.destination,
-                      routeGeometry: widget.response.route.geometry,
+                      routeGeometry: _response.route.geometry,
                       attributes: const {},
                       icon: Icons.restaurant_menu,
                       accent: Theme.of(context).colorScheme.primary,
@@ -1528,16 +1642,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // fallback can land far from the 22:00 target. Filtering
       // client-side avoids showing garbage until the backend
       // logic is tightened.
-      if (widget.response.optimizations?.sleepStop != null &&
+      if (_response.optimizations?.sleepStop != null &&
           _isPlausibleSleepTime(
-            widget.response.optimizations!.sleepStop!.at,
+            _response.optimizations!.sleepStop!.at,
           )) ...[
         _MultiDaySleepPreview(
-          sleepStop: widget.response.optimizations!.sleepStop!,
-          hotels: widget.response.hotels,
+          sleepStop: _response.optimizations!.sleepStop!,
+          hotels: _response.hotels,
           origin: widget.request.origin,
           destination: widget.request.destination,
-          routeGeometry: widget.response.route.geometry,
+          routeGeometry: _response.route.geometry,
         ),
         const SizedBox(height: Tokens.space16),
       ],
@@ -1548,8 +1662,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         desiredDepartureAt: widget.desiredDepartureAt,
         freeFlowMinutes: route.freeFlowMinutes,
         savedMinutesVsDesired:
-            widget.response.savings.timeSavedMinutesVsDesired,
-        initialWindows: widget.response.timeWindows,
+            _response.savings.timeSavedMinutesVsDesired,
+        initialWindows: _response.timeWindows,
         initialSpanHours: widget.request.timeWindowSpanHours,
         onFetch: _refetchWindows,
         onWindowSelect: _replanWithDeparture,
@@ -1557,15 +1671,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             ? () => _replanWithDeparture(recommended)
             : null,
       ),
-      if (widget.response.routeVariants.length >= 2) ...[
+      if (_response.routeVariants.length >= 2) ...[
         const SizedBox(height: Tokens.space24),
-        _RouteVariantsSection(variants: widget.response.routeVariants),
+        _RouteVariantsSection(variants: _response.routeVariants),
       ],
-      if (widget.response.optimizations != null) ...[
+      if (_response.optimizations != null) ...[
         const SizedBox(height: Tokens.space24),
         _OptimizationsSection(
           key: _hotelKey,
-          opts: widget.response.optimizations!,
+          opts: _response.optimizations!,
           // Ship the full pool; the section shows 3 up-front and
           // hides the rest behind a "Ver más" expander so the
           // standalone `_DestinationHotelsSection` below stops
@@ -1575,9 +1689,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           destination: widget.request.destination,
           originName: widget.origin.displayName,
           destinationName: widget.destination.displayName,
-          routeGeometry: widget.response.route.geometry,
+          routeGeometry: _response.route.geometry,
           addedKeys: _addedStops.keys.toSet(),
-          weatherSegments: widget.response.weatherSegments,
+          weatherSegments: _response.weatherSegments,
           onAddMealStop: (m) => setState(() =>
               _toggleStop(_optMealKey(m), 0)),
           onAddSleepStop: (s) => setState(() =>
@@ -1596,16 +1710,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // stops" list read as redundant noise. The domain data is
       // still emitted so day_plan / consistency checks work.
       // Weather along route — forecast conditions at 5 points.
-      if (widget.response.weatherSegments.isNotEmpty) ...[
+      if (_response.weatherSegments.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
-        _WeatherStripCard(segments: widget.response.weatherSegments),
+        _WeatherStripCard(segments: _response.weatherSegments),
       ],
       // Parkings near destination — populated only when the user
       // ticked the "Parking" preference on the plan form.
-      if (widget.response.parkings.isNotEmpty) ...[
+      if (_response.parkings.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
         _DestinationParkingSection(
-          parkings: widget.response.parkings,
+          parkings: _response.parkings,
         ),
       ],
       // Flat hotel list removed (2026-08-26 tester feedback):
@@ -1613,10 +1727,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // grouped by overnight stop / destination. The promoted
       // _MultiDaySleepPreview card stays; the scrollable flat
       // list is gone.
+      // Restaurants: while enrich is pending, show a skeleton so the
+      // driver doesn't briefly see "no restaurants found" for a
+      // request that IS going to return restaurants a few seconds
+      // later. Once enrich lands the branch below decides between
+      // populated list and the true empty state.
       if (showRestaurants &&
           widget.request.restaurantMaxDetourMinutes != null &&
           widget.request.restaurantMaxDetourMinutes! > 0 &&
-          widget.response.restaurants.isEmpty) ...[
+          _response.restaurants.isEmpty &&
+          _enrichPending) ...[
+        const SizedBox(height: Tokens.space24),
+        SectionHeader(
+          title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
+        ),
+        const _EnrichListSkeleton(),
+      ],
+      if (showRestaurants &&
+          widget.request.restaurantMaxDetourMinutes != null &&
+          widget.request.restaurantMaxDetourMinutes! > 0 &&
+          _response.restaurants.isEmpty &&
+          !_enrichPending) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(
           title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
@@ -1627,7 +1758,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           body: l.emptyRestaurantsBody,
         ),
       ],
-      if (showRestaurants && widget.response.restaurants.isNotEmpty) ...[
+      if (showRestaurants && _response.restaurants.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
@@ -1651,10 +1782,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       ],
-      if (widget.response.fuelPrices.isNotEmpty) ...[
+      // Fuel prices: same pattern as restaurants above. Show a
+      // skeleton while enrich hasn't landed so the driver's mental
+      // model is "loading" instead of "no data".
+      if (_response.fuelPrices.isEmpty && _enrichPending) ...[
         const SizedBox(height: Tokens.space24),
-        if (widget.response.fuelArbitrage != null) ...[
-          FuelArbitrageBanner(hint: widget.response.fuelArbitrage!),
+        SectionHeader(
+          title: l.resultFuel,
+          eyebrow: l.resultEyebrowNearRoute,
+        ),
+        const _EnrichListSkeleton(),
+      ],
+      if (_response.fuelPrices.isNotEmpty) ...[
+        const SizedBox(height: Tokens.space24),
+        if (_response.fuelArbitrage != null) ...[
+          FuelArbitrageBanner(hint: _response.fuelArbitrage!),
           const SizedBox(height: Tokens.space12),
         ],
         // Proactive refuel-here-and-save card. Only rendered when
@@ -1662,10 +1804,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         // to pre-pick a cheapest station on the window. Tapping
         // "+ Add" pipes into the same `_addedRouteWaypoints` flow
         // as manual fuel-tile picks.
-        if (widget.response.refuelWindow?.suggestedStation != null) ...[
+        if (_response.refuelWindow?.suggestedStation != null) ...[
           Builder(builder: (context) {
             final suggested =
-                widget.response.refuelWindow!.suggestedStation!;
+                _response.refuelWindow!.suggestedStation!;
             final coordSuffix = suggested.coordinate == null
                 ? ':nocoord'
                 : ':${suggested.coordinate!.lat.toStringAsFixed(4)},'
@@ -1674,7 +1816,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             return _RefuelSuggestionCard(
               station: suggested,
               savingsEur:
-                  widget.response.refuelWindow!.suggestedSavingsEur,
+                  _response.refuelWindow!.suggestedSavingsEur,
               isAdded: _isAdded(key),
               onToggleAdd: () {
                 _toggleStop(
@@ -1704,7 +1846,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             ),
             subtitle: Text(
               l.resultFuelCollapsedHint(
-                widget.response.fuelPrices.length,
+                _response.fuelPrices.length,
               ),
               style: Theme.of(context).textTheme.bodySmall,
             ),
@@ -1717,7 +1859,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               // trip order — the driver sees stations in the sequence
               // they'll actually pass, not shuffled by price.
               ..._separated(
-                (List<FuelPrice>.from(widget.response.fuelPrices)
+                (List<FuelPrice>.from(_response.fuelPrices)
                       ..sort((a, b) => a.distanceFromOriginKm
                           .compareTo(b.distanceFromOriginKm)))
                     .map((p) {
@@ -1744,7 +1886,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                               origin: widget.request.origin,
                               destination: widget.request.destination,
                               routeGeometry:
-                                  widget.response.route.geometry,
+                                  _response.route.geometry,
                               attributes: p.attributes,
                               icon: Icons.local_gas_station,
                               accent:
@@ -5577,6 +5719,56 @@ class _MultiDaySleepPreview extends StatelessWidget {
           );
         },
         child: Ink(decoration: decoration, child: card),
+      ),
+    );
+  }
+}
+
+/// Skeleton tile row for enrich-only sections (hotels / restaurants /
+/// fuel / adverse events). Three fake tiles under the section header
+/// keep the layout height stable so the eventual real list doesn't
+/// yank the scroll offset when it arrives.
+///
+/// Deliberately minimal — no icons, no shimmer knobs — because the
+/// enrich phase usually settles in 1-4 s on a warm backend and
+/// anything more elaborate would out-live its purpose.
+class _EnrichListSkeleton extends StatelessWidget {
+  const _EnrichListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: Tokens.space8),
+      child: Column(
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            Row(
+              children: [
+                const Skeleton(width: 40, height: 40),
+                const SizedBox(width: Tokens.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Skeleton(
+                        width: double.infinity,
+                        height: 14,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      const SizedBox(height: 6),
+                      Skeleton(
+                        width: 150,
+                        height: 12,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            if (i < 2) const SizedBox(height: Tokens.space16),
+          ],
+        ],
       ),
     );
   }

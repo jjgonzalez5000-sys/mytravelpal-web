@@ -28,6 +28,9 @@ build/
 # Docker
 docker-compose.override.yml
 
+# Local dev data (OSRM graphs, PBF extracts — several GB)
+backend/data/
+
 # Flutter (for later)
 mobile/.dart_tool/
 mobile/.flutter-plugins

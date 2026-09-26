@@ -20,14 +20,51 @@ services:
     ports:
       - "6379:6379"
 
+  osrm:
+    image: osrm/osrm-backend:latest
+    command: >
+      osrm-routed
+      --algorithm=mld
+      /data/osrm-graph.osrm
+      --port 5000
+      --max-viaroute-size=10000
+      --max-table-size=10000
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/osrm:/data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/route/v1/car/-3.7,40.4;2.15,41.4?overview=false || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    restart: unless-stopped
+
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
     environment:
       DATABASE_URL: postgresql+asyncpg://mytravelpal:mytravelpal@db:5432/mytravelpal
       REDIS_URL: redis://redis:6379/0
+      MYTRAVELPAL_ROUTING: osrm
+      MYTRAVELPAL_OSRM_URL: http://osrm:5000
+      MYTRAVELPAL_WEATHER: openmeteo
+      MYTRAVELPAL_FIRES: effis
+      MYTRAVELPAL_SKIP_PREWARM: "1"
+      # MYTRAVELPAL_API_KEY unset on purpose → auth middleware is a
+      # no-op locally (see backend/app/api/api_key.py). Set it in your
+      # shell env before `make dev` if you want to test the gate.
+      MYTRAVELPAL_GEOAPIFY_KEY: ${MYTRAVELPAL_GEOAPIFY_KEY:-}
+      MYTRAVELPAL_JWT_SECRET: ${MYTRAVELPAL_JWT_SECRET:-dev-secret-not-for-prod}
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+      osrm:
+        condition: service_started
     ports:
       - "8000:8000"
     volumes:

@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from cachetools import TTLCache
@@ -41,7 +42,30 @@ _log = logging.getLogger(__name__)
 # provider-driven bust would risk showing stale toll / adverse-event
 # data.
 _TTL_SECONDS = 600
+# Enrich payloads carry hotel prices + fuel + weather, all of which
+# turn over faster than the core route. Use a shorter 5-minute TTL
+# so a driver hitting refresh 6 min after their first plan sees the
+# updated numbers.
+_ENRICH_TTL_SECONDS = 300
 _MEMORY_MAX = 200
+
+
+class PlanCacheSlot(str, Enum):
+    """Namespaces the three plan-response variants share the cache with.
+
+    ``CORE`` is the fast route + days shape returned by
+    ``POST /v1/trips/plan/core``. ``ENRICH`` is the slow POI/weather
+    shape returned by ``POST /v1/trips/plan/enrich``. ``FULL`` is the
+    merged legacy response returned by ``POST /v1/trips/plan``.
+
+    Appending the slot value to the canonical JSON before hashing keeps
+    the three variants from colliding when a client fires them for the
+    same trip in quick succession.
+    """
+
+    CORE = "core"
+    ENRICH = "enrich"
+    FULL = "full"
 
 
 def _round_coord(value: float) -> float:
@@ -95,8 +119,14 @@ class PlanCache:
         self._redis_url = redis_url
         self._redis: Any | None = None
         self._redis_broken = False
+        # Two TTL caches so the in-memory fallback can honour the
+        # shorter enrich TTL. Keys are namespaced by slot (see
+        # ``key_for``), so entries never collide across the two.
         self._memory: TTLCache[str, str] = TTLCache(
             maxsize=_MEMORY_MAX, ttl=_TTL_SECONDS
+        )
+        self._memory_enrich: TTLCache[str, str] = TTLCache(
+            maxsize=_MEMORY_MAX, ttl=_ENRICH_TTL_SECONDS
         )
         if redis_url:
             try:
@@ -126,7 +156,11 @@ class PlanCache:
 
     # ---- key derivation ------------------------------------------------
 
-    def key_for(self, payload: TripPlanRequest) -> str:
+    def key_for(
+        self,
+        payload: TripPlanRequest,
+        slot: PlanCacheSlot = PlanCacheSlot.FULL,
+    ) -> str:
         """SHA-256 over a stable JSON of the whole request.
 
         We hash the full ``model_dump`` — everything that reaches the
@@ -144,6 +178,11 @@ class PlanCache:
 
         Everything else (filter toggles, trip_profile blob, garage
         vehicle id, feature flags) is passed through as-is.
+
+        The ``slot`` argument namespaces the digest — ``/plan``,
+        ``/plan/core`` and ``/plan/enrich`` therefore have distinct
+        keys even for the same underlying request, so hitting one
+        never returns a payload shape the caller wasn't expecting.
         """
 
         data = payload.model_dump(mode="json")
@@ -175,6 +214,9 @@ class PlanCache:
         )
 
         canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
+        # Slot suffix keeps the three variants in distinct namespaces
+        # without polluting the payload dict itself.
+        canonical = f"{canonical}|slot={slot.value}"
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     # ---- storage ops --------------------------------------------------
@@ -197,9 +239,23 @@ class PlanCache:
             )
             return None
 
-    async def set(self, key: str, response: TripPlanResponse) -> None:
+    async def set(
+        self,
+        key: str,
+        response: TripPlanResponse,
+        ttl_seconds: int | None = None,
+    ) -> None:
+        """Persist ``response`` under ``key`` with an optional TTL.
+
+        Callers pass ``ttl_seconds=_ENRICH_TTL_SECONDS`` for the
+        enrich slot (POI + weather turn over faster than core route).
+        Omitting the argument uses the 10-minute default that also
+        covers ``/plan`` (FULL) and ``/plan/core``. Both Redis and the
+        in-memory fallback honour the value.
+        """
+
         data = response.model_dump_json()
-        await self._raw_set(key, data)
+        await self._raw_set(key, data, ttl_seconds)
 
     async def _raw_get(self, key: str) -> str | None:
         if self._redis is not None and not self._redis_broken:
@@ -213,12 +269,25 @@ class PlanCache:
                     exc,
                 )
                 self._redis_broken = True
+        # Check the enrich TTLCache first — its keys are slot-namespaced
+        # so a match here always refers to an enrich payload.
+        hit = self._memory_enrich.get(key)
+        if hit is not None:
+            return hit
         return self._memory.get(key)
 
-    async def _raw_set(self, key: str, data: str) -> None:
+    async def _raw_set(
+        self,
+        key: str,
+        data: str,
+        ttl_seconds: int | None = None,
+    ) -> None:
+        effective_ttl = (
+            ttl_seconds if ttl_seconds is not None else _TTL_SECONDS
+        )
         if self._redis is not None and not self._redis_broken:
             try:
-                await self._redis.set(key, data, ex=_TTL_SECONDS)
+                await self._redis.set(key, data, ex=effective_ttl)
                 return
             except Exception as exc:  # noqa: BLE001
                 _log.warning(
@@ -226,7 +295,12 @@ class PlanCache:
                     exc,
                 )
                 self._redis_broken = True
-        self._memory[key] = data
+        # Route to the enrich TTL cache when the caller asked for a
+        # short-lived entry (or any TTL shorter than the default).
+        if effective_ttl <= _ENRICH_TTL_SECONDS:
+            self._memory_enrich[key] = data
+        else:
+            self._memory[key] = data
 
 
 def _mask_url(url: str) -> str:
