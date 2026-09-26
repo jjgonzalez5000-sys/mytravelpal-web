@@ -1659,6 +1659,12 @@ class AppLocalizationsCa extends AppLocalizations {
       'Signed out locally, but the server may still hold data. Try again from a stable connection.';
 
   @override
+  String get settingsDeleteAccountDone => 'Account deleted. Signed out.';
+
+  @override
+  String get settingsDeleteAccountInProgress => 'Deleting account…';
+
+  @override
   String get settingsSupport => 'Support & contact';
 
   @override

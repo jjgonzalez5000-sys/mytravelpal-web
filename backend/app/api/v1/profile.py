@@ -7,14 +7,17 @@ dicts for local dev / tests.
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
 from app.auth.dependency import current_user_required
 from app.auth.jwt import AuthUser
 from app.db import get_session, is_available as db_available
+
+_log = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -72,7 +75,7 @@ async def save_profile(
     return ProfileResponse(profile=payload.profile)
 
 
-@router.delete("")
+@router.delete("", status_code=status.HTTP_200_OK)
 async def delete_profile(
     user: AuthUser = Depends(current_user_required),
 ) -> dict[str, str]:
@@ -84,19 +87,41 @@ async def delete_profile(
     Also exposed at `/v1/me/account` (DELETE) with a friendlier
     name — this legacy path stays for backwards compat with clients
     already shipped.
+
+    Delete order matters: `saved_trips` is the child table (no FK
+    yet, but if we ever add ON DELETE RESTRICT this order lets the
+    call keep succeeding). Any exception is logged with a stack
+    trace so future regressions surface in `fly logs` instead of
+    dying silently as a 500.
     """
     if db_available():
-        async with get_session() as session:
-            from sqlalchemy import text
-            await session.execute(
-                text("DELETE FROM user_profiles WHERE user_id = :uid"),
-                {"uid": user.id},
+        try:
+            async with get_session() as session:
+                from sqlalchemy import text
+                # Children first: saved trips → then the profile
+                # row itself. Order is defensive against a future
+                # FK constraint from saved_trips.user_id.
+                await session.execute(
+                    text("DELETE FROM saved_trips WHERE user_id = :uid"),
+                    {"uid": user.id},
+                )
+                await session.execute(
+                    text("DELETE FROM user_profiles WHERE user_id = :uid"),
+                    {"uid": user.id},
+                )
+                await session.commit()
+        except Exception:
+            # Log the stack trace so `fly logs` shows the real
+            # cause instead of the bare `Internal Server Error`
+            # the mobile client sees. Re-raise so the client
+            # doesn't get a false success.
+            _log.exception(
+                "delete_account failed for user_id=%s", user.id,
             )
-            await session.execute(
-                text("DELETE FROM saved_trips WHERE user_id = :uid"),
-                {"uid": user.id},
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={"error": "delete_failed"},
             )
-            await session.commit()
     else:
         _PROFILES.pop(user.id, None)
         _TRIPS.pop(user.id, None)

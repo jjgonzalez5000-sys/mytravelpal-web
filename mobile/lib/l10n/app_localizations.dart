@@ -3073,6 +3073,18 @@ abstract class AppLocalizations {
   /// **'Signed out locally, but the server may still hold data. Try again from a stable connection.'**
   String get settingsDeleteAccountPartial;
 
+  /// No description provided for @settingsDeleteAccountDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Account deleted. Signed out.'**
+  String get settingsDeleteAccountDone;
+
+  /// No description provided for @settingsDeleteAccountInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleting account…'**
+  String get settingsDeleteAccountInProgress;
+
   /// No description provided for @settingsSupport.
   ///
   /// In en, this message translates to:

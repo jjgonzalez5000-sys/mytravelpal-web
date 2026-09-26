@@ -374,4 +374,24 @@ class AppPrefs {
     await _prefs.remove(_favoriteRestaurantsKey);
     await _prefs.remove(_favoritePlacesKey);
   }
+
+  /// Wipe everything the current account owns while KEEPING device
+  /// preferences that survive a re-login (locale, theme, unit
+  /// system, currency, density, onboarding flag).
+  ///
+  /// Called after a successful "delete my account" so the next
+  /// launch lands on the login screen with a clean slate, but the
+  /// user isn't asked to re-pick their language / theme / units
+  /// again — those are device-level, not account-level.
+  Future<void> clearUserScoped() async {
+    await _prefs.remove(_authTokenKey);
+    await _prefs.remove(_authUserKey);
+    await _prefs.remove(_tripProfileKey);
+    await _prefs.remove(_premiumKey);
+    await _prefs.remove(_recentSearchesKey);
+    await _prefs.remove(_favoriteHotelsKey);
+    await _prefs.remove(_favoriteRestaurantsKey);
+    await _prefs.remove(_favoritePlacesKey);
+    await _prefs.remove(_emergencyContactsKey);
+  }
 }

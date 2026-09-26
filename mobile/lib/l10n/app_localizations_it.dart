@@ -1665,6 +1665,12 @@ class AppLocalizationsIt extends AppLocalizations {
       'Disconnesso localmente, ma il server potrebbe ancora avere dati. Riprova con connessione stabile.';
 
   @override
+  String get settingsDeleteAccountDone => 'Account eliminato. Disconnesso.';
+
+  @override
+  String get settingsDeleteAccountInProgress => 'Eliminazione account…';
+
+  @override
   String get settingsSupport => 'Supporto e contatti';
 
   @override

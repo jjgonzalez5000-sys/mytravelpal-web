@@ -598,6 +598,8 @@
     "settingsDeleteAccountCancel": "Abbrechen",
     "settingsDeleteAccountConfirm": "Endgültig löschen",
     "settingsDeleteAccountPartial": "Lokal abgemeldet, aber der Server hat möglicherweise noch Daten. Bei stabiler Verbindung erneut versuchen.",
+    "settingsDeleteAccountDone": "Konto gelöscht. Abgemeldet.",
+    "settingsDeleteAccountInProgress": "Konto wird gelöscht…",
     "settingsSupport": "Support & Kontakt",
     "settingsPrivacyPolicy": "Datenschutz",
     "settingsTerms": "Nutzungsbedingungen",

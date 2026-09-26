@@ -593,6 +593,8 @@
     "settingsDeleteAccountCancel": "Annulla",
     "settingsDeleteAccountConfirm": "Elimina definitivamente",
     "settingsDeleteAccountPartial": "Disconnesso localmente, ma il server potrebbe ancora avere dati. Riprova con connessione stabile.",
+    "settingsDeleteAccountDone": "Account eliminato. Disconnesso.",
+    "settingsDeleteAccountInProgress": "Eliminazione account…",
     "settingsSupport": "Supporto e contatti",
     "settingsPrivacyPolicy": "Informativa privacy",
     "settingsTerms": "Termini del servizio",

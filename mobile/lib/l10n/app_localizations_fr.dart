@@ -1664,6 +1664,12 @@ class AppLocalizationsFr extends AppLocalizations {
       'Déconnecté localement, mais le serveur peut encore avoir des données. Réessayez avec une connexion stable.';
 
   @override
+  String get settingsDeleteAccountDone => 'Compte supprimé. Déconnecté.';
+
+  @override
+  String get settingsDeleteAccountInProgress => 'Suppression du compte…';
+
+  @override
   String get settingsSupport => 'Support et contact';
 
   @override

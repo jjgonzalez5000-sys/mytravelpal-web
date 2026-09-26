@@ -323,19 +323,46 @@ class SettingsScreen extends ConsumerWidget {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final api = ref.read(apiClientWithPremiumProvider);
+    final tripStorage = ref.read(tripStorageProvider);
+    final prefs = ref.read(appPrefsProvider);
+
+    // Non-modal progress dialog — the delete round-trip is a
+    // single ~500 ms request but on a bad network it can take
+    // a couple of seconds and the user shouldn't be able to
+    // re-tap the row in the meantime.
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const _DeletingAccountDialog(),
+    );
+
     // Fire the server delete BEFORE the local sign-out so we
     // still have the JWT to authenticate the request. Sign out
-    // afterwards regardless of the server outcome — the user's
-    // intent was to erase, so at minimum local state should
-    // reflect that.
+    // + wipe local state afterwards regardless of the server
+    // outcome — the user's intent was to erase, so at minimum
+    // local state should reflect that.
     final ok = await api.deleteAccount();
+    // Wipe user-scoped local data (auth, trip profile, saved
+    // trips, favourites, recents, emergency contacts). Locale,
+    // theme, unit system, currency and density are preserved
+    // so a fresh account on the same device doesn't have to
+    // re-pick them.
+    await tripStorage.clear();
+    await prefs.clearUserScoped();
     await ref.read(authProvider.notifier).signOut();
+
     if (!context.mounted) return;
-    if (!ok) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l.settingsDeleteAccountPartial)),
-      );
-    }
+    // Dismiss the progress dialog before navigating.
+    Navigator.of(context, rootNavigator: true).pop();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? l.settingsDeleteAccountDone
+              : l.settingsDeleteAccountPartial,
+        ),
+      ),
+    );
     navigator.pushAndRemoveUntil(
       MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       (_) => false,
@@ -660,4 +687,35 @@ class _Section extends StatelessWidget {
               ),
         ),
       );
+}
+
+/// Non-dismissible progress dialog shown while the delete-account
+/// request is in flight. Uses [PopScope] to also swallow the
+/// system back gesture — cancelling mid-delete would leave state
+/// half-wiped and confuse the user.
+class _DeletingAccountDialog extends StatelessWidget {
+  const _DeletingAccountDialog();
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    return PopScope(
+      canPop: false,
+      child: AlertDialog(
+        content: Row(
+          children: [
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2.5),
+            ),
+            const SizedBox(width: Tokens.space16),
+            Expanded(
+              child: Text(l.settingsDeleteAccountInProgress),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

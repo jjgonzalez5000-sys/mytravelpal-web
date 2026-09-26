@@ -1661,6 +1661,12 @@ class AppLocalizationsDe extends AppLocalizations {
       'Lokal abgemeldet, aber der Server hat möglicherweise noch Daten. Bei stabiler Verbindung erneut versuchen.';
 
   @override
+  String get settingsDeleteAccountDone => 'Konto gelöscht. Abgemeldet.';
+
+  @override
+  String get settingsDeleteAccountInProgress => 'Konto wird gelöscht…';
+
+  @override
   String get settingsSupport => 'Support & Kontakt';
 
   @override

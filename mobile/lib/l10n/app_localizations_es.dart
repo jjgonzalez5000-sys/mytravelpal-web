@@ -1669,6 +1669,12 @@ class AppLocalizationsEs extends AppLocalizations {
       'Sesión cerrada, pero el servidor puede aún tener datos. Reintenta con conexión estable.';
 
   @override
+  String get settingsDeleteAccountDone => 'Cuenta borrada. Sesión cerrada.';
+
+  @override
+  String get settingsDeleteAccountInProgress => 'Borrando cuenta…';
+
+  @override
   String get settingsSupport => 'Soporte y contacto';
 
   @override

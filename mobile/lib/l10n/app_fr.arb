@@ -598,6 +598,8 @@
     "settingsDeleteAccountCancel": "Annuler",
     "settingsDeleteAccountConfirm": "Supprimer définitivement",
     "settingsDeleteAccountPartial": "Déconnecté localement, mais le serveur peut encore avoir des données. Réessayez avec une connexion stable.",
+    "settingsDeleteAccountDone": "Compte supprimé. Déconnecté.",
+    "settingsDeleteAccountInProgress": "Suppression du compte…",
     "settingsSupport": "Support et contact",
     "settingsPrivacyPolicy": "Politique de confidentialité",
     "settingsTerms": "Conditions d'utilisation",

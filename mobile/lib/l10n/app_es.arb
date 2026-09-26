@@ -585,6 +585,8 @@
     "settingsDeleteAccountCancel": "Cancelar",
     "settingsDeleteAccountConfirm": "Borrar para siempre",
     "settingsDeleteAccountPartial": "Sesión cerrada, pero el servidor puede aún tener datos. Reintenta con conexión estable.",
+    "settingsDeleteAccountDone": "Cuenta borrada. Sesión cerrada.",
+    "settingsDeleteAccountInProgress": "Borrando cuenta…",
     "settingsSupport": "Soporte y contacto",
     "settingsPrivacyPolicy": "Política de privacidad",
     "settingsTerms": "Términos del servicio",

@@ -576,6 +576,8 @@
     "settingsDeleteAccountCancel": "Cancel",
     "settingsDeleteAccountConfirm": "Delete forever",
     "settingsDeleteAccountPartial": "Signed out locally, but the server may still hold data. Try again from a stable connection.",
+    "settingsDeleteAccountDone": "Account deleted. Signed out.",
+    "settingsDeleteAccountInProgress": "Deleting account…",
     "settingsSupport": "Support & contact",
     "settingsPrivacyPolicy": "Privacy Policy",
     "settingsTerms": "Terms of Service",
