@@ -21,6 +21,28 @@ European road-trip planning app (freemium). FastAPI backend on Fly.io (CDG), Flu
 - `mobile/lib/widgets/trip_insights.dart` — day plan + hotel sections
 - `mobile/lib/services/app_tutorial.dart` — coach mark tutorial
 
+## One-time developer setup
+
+Do these once per machine so `git push` / `fly deploy` work non-interactively
+from any shell (including Claude Code's).
+
+```bash
+# GitHub CLI — token stored in ~/.config/gh/hosts.yml (survives reboots)
+sudo apt install -y gh
+gh auth login              # HTTPS → Login with web browser → Authorize gh
+gh auth setup-git          # wire git to use the gh token
+
+# Fly CLI — token stored in ~/.fly/config.yml
+curl -L https://fly.io/install.sh | sh    # only if flyctl not installed
+flyctl auth login          # browser flow
+
+# Docker + docker-compose (v1 or v2), Flutter SDK, rclone
+# — assumed already installed. See individual docs if missing.
+```
+
+After this, both `git push origin main` and `fly deploy` succeed with no
+prompts, from any shell — including from within background jobs.
+
 ## Local dev (fast iteration, no Fly round-trip)
 
 ```bash
