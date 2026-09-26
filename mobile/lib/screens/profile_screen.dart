@@ -263,8 +263,26 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   const SizedBox(height: Tokens.space16),
                   _VehicleModelRow(
                     currentId: _profile.vehicleModelId,
-                    onPicked: (id) {
-                      _update(_profile.copyWith(vehicleModelId: id));
+                    onPicked: (model) {
+                      // Overwrite the manual fuel type / tank / consumption
+                      // fields with the picked model's data so the profile
+                      // stays consistent (the fields shown above this row
+                      // are the same ones that get sent to the backend
+                      // when no vehicle_model_id fallback is in play).
+                      _update(
+                        _profile.copyWith(
+                          vehicleModelId: model.id,
+                          vehicle: _profile.vehicle.copyWith(
+                            fuelType: model.fuelType,
+                            fuelTankL: model.tankLiters > 0
+                                ? model.tankLiters
+                                : _profile.vehicle.fuelTankL,
+                            consumptionLPer100km: model.consumptionL100km > 0
+                                ? model.consumptionL100km
+                                : _profile.vehicle.consumptionLPer100km,
+                          ),
+                        ),
+                      );
                     },
                     onClear: () {
                       _update(_profile.copyWith(
@@ -919,7 +937,11 @@ class _VehicleModelRow extends ConsumerWidget {
   });
 
   final String? currentId;
-  final ValueChanged<String> onPicked;
+  // Callback receives the resolved [VehicleModel] (not just its id)
+  // so the caller can also overwrite the profile's `Vehicle` fields
+  // (fuelType / tankLiters / consumption) — otherwise the "manual"
+  // spec fields shown below stay stale and disagree with the model.
+  final ValueChanged<VehicleModel> onPicked;
   final VoidCallback onClear;
 
   @override
@@ -962,7 +984,21 @@ class _VehicleModelRow extends ConsumerWidget {
             builder: (_) => VehiclePickerScreen(currentId: currentId),
           ),
         );
-        if (id != null && id.isNotEmpty) onPicked(id);
+        if (id == null || id.isEmpty) return;
+        // Resolve to a full VehicleModel via the cached catalogue so
+        // the caller can apply fuel type + tank + consumption to the
+        // profile's Vehicle. Fall back to a stub with just the id if
+        // the catalogue isn't loaded yet (extremely rare — the
+        // picker itself needs the catalogue to render).
+        final list = async.hasValue ? async.value! : const <VehicleModel>[];
+        final resolved = list.firstWhere(
+          (m) => m.id == id,
+          orElse: () => VehicleModel(
+            id: id, make: '', model: id, yearFrom: 0, yearTo: null,
+            fuelType: FuelType.petrol, tankLiters: 0, consumptionL100km: 0,
+          ),
+        );
+        onPicked(resolved);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
