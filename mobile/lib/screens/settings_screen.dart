@@ -320,40 +320,46 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
     if (!context.mounted) return;
-    final navigator = Navigator.of(context);
+    // Capture the ROOT navigator + messenger up-front. The local
+    // Navigator.of(context) would only pushAndRemoveUntil inside
+    // the AppShell's inner nav, so the user would land back on the
+    // main tabs instead of the LoginScreen. `signOut()` also
+    // rebuilds any ref.watch(authProvider) consumer, at which
+    // point `context.mounted` flips to false — so we can't rely
+    // on the context after that call.
+    final rootNav = Navigator.of(context, rootNavigator: true);
     final messenger = ScaffoldMessenger.of(context);
     final api = ref.read(apiClientWithPremiumProvider);
     final tripStorage = ref.read(tripStorageProvider);
     final prefs = ref.read(appPrefsProvider);
 
-    // Non-modal progress dialog — the delete round-trip is a
-    // single ~500 ms request but on a bad network it can take
-    // a couple of seconds and the user shouldn't be able to
-    // re-tap the row in the meantime.
+    // Non-modal progress dialog on the root navigator so the pop
+    // later matches the push.
     showDialog<void>(
       context: context,
+      useRootNavigator: true,
       barrierDismissible: false,
       builder: (_) => const _DeletingAccountDialog(),
     );
 
     // Fire the server delete BEFORE the local sign-out so we
-    // still have the JWT to authenticate the request. Sign out
-    // + wipe local state afterwards regardless of the server
-    // outcome — the user's intent was to erase, so at minimum
-    // local state should reflect that.
+    // still have the JWT to authenticate the request.
     final ok = await api.deleteAccount();
     // Wipe user-scoped local data (auth, trip profile, saved
     // trips, favourites, recents, emergency contacts). Locale,
-    // theme, unit system, currency and density are preserved
-    // so a fresh account on the same device doesn't have to
-    // re-pick them.
+    // theme, unit system, currency and density are preserved.
     await tripStorage.clear();
     await prefs.clearUserScoped();
-    await ref.read(authProvider.notifier).signOut();
 
-    if (!context.mounted) return;
-    // Dismiss the progress dialog before navigating.
-    Navigator.of(context, rootNavigator: true).pop();
+    // Dismiss the loading dialog + navigate BEFORE signOut so the
+    // widget tree rebuild that signOut triggers happens against the
+    // fresh LoginScreen, not against SettingsScreen (which would
+    // orphan the dialog).
+    rootNav.pop(); // dismiss _DeletingAccountDialog
+    rootNav.pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+      (_) => false,
+    );
     messenger.showSnackBar(
       SnackBar(
         content: Text(
@@ -363,10 +369,9 @@ class SettingsScreen extends ConsumerWidget {
         ),
       ),
     );
-    navigator.pushAndRemoveUntil(
-      MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
-      (_) => false,
-    );
+    // Finally: flip auth state. Any listener rebuilds against the
+    // fresh route stack, no orphan dialogs.
+    await ref.read(authProvider.notifier).signOut();
   }
 
   Future<void> _pickCurrency(
