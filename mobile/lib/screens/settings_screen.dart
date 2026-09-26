@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../app.dart' show rootNavigatorKey;
 import '../design/tokens.dart';
 import '../domain/units.dart';
 import '../l10n/app_localizations.dart';
@@ -320,58 +322,47 @@ class SettingsScreen extends ConsumerWidget {
     );
     if (confirmed != true) return;
     if (!context.mounted) return;
-    // Capture the ROOT navigator + messenger up-front. The local
-    // Navigator.of(context) would only pushAndRemoveUntil inside
-    // the AppShell's inner nav, so the user would land back on the
-    // main tabs instead of the LoginScreen. `signOut()` also
-    // rebuilds any ref.watch(authProvider) consumer, at which
-    // point `context.mounted` flips to false — so we can't rely
-    // on the context after that call.
-    final rootNav = Navigator.of(context, rootNavigator: true);
-    final messenger = ScaffoldMessenger.of(context);
+
     final api = ref.read(apiClientWithPremiumProvider);
     final tripStorage = ref.read(tripStorageProvider);
     final prefs = ref.read(appPrefsProvider);
 
-    // Non-modal progress dialog on the root navigator so the pop
-    // later matches the push.
-    showDialog<void>(
-      context: context,
-      useRootNavigator: true,
-      barrierDismissible: false,
-      builder: (_) => const _DeletingAccountDialog(),
-    );
+    // Use the app's TRUE root navigator, not `Navigator.of(context,
+    // rootNavigator: true)` — the app has per-tab Navigators
+    // (`_TabNavigator` in app_shell.dart) and the tree-walk was
+    // landing on a nested one, so pushAndRemoveUntil only replaced
+    // the Settings tab stack and the user still saw the main tabs.
+    final rootNav = rootNavigatorKey.currentState!;
 
-    // Fire the server delete BEFORE the local sign-out so we
-    // still have the JWT to authenticate the request.
-    final ok = await api.deleteAccount();
-    // Wipe user-scoped local data (auth, trip profile, saved
-    // trips, favourites, recents, emergency contacts). Locale,
-    // theme, unit system, currency and density are preserved.
-    await tripStorage.clear();
-    await prefs.clearUserScoped();
+    // Loading dialog on the same true root navigator.
+    unawaited(rootNav.push<void>(
+      DialogRoute<void>(
+        context: rootNav.context,
+        barrierDismissible: false,
+        builder: (_) => const _DeletingAccountDialog(),
+      ),
+    ));
 
-    // Dismiss the loading dialog + navigate BEFORE signOut so the
-    // widget tree rebuild that signOut triggers happens against the
-    // fresh LoginScreen, not against SettingsScreen (which would
-    // orphan the dialog).
-    rootNav.pop(); // dismiss _DeletingAccountDialog
-    rootNav.pushAndRemoveUntil(
+    bool ok = false;
+    try {
+      ok = await api.deleteAccount();
+    } catch (_) {
+      ok = false;
+    }
+    try { await tripStorage.clear(); } catch (_) {}
+    try { await prefs.clearUserScoped(); } catch (_) {}
+    try { await ref.read(authProvider.notifier).signOut(); } catch (_) {}
+
+    // Dismiss the dialog and route to Login on the same root nav.
+    // `pushAndRemoveUntil` with a truthy `until` predicate would
+    // stop at the top-most route (the dialog); using `(_) => false`
+    // removes EVERY route so LoginScreen ends up alone.
+    if (rootNav.canPop()) rootNav.pop(); // dismiss dialog
+    await rootNav.pushAndRemoveUntil<void>(
       MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       (_) => false,
     );
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? l.settingsDeleteAccountDone
-              : l.settingsDeleteAccountPartial,
-        ),
-      ),
-    );
-    // Finally: flip auth state. Any listener rebuilds against the
-    // fresh route stack, no orphan dialogs.
-    await ref.read(authProvider.notifier).signOut();
+    debugPrint('[delete] finished (api ok=$ok)');
   }
 
   Future<void> _pickCurrency(
