@@ -503,19 +503,26 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       ),
     );
 
-    SharedTrip? trip;
+    MapsUrlParseResult? result;
     try {
-      trip = await parseGoogleMapsUrl(url, geocode: _geocode);
+      result = await parseGoogleMapsUrlDetailed(url, geocode: _geocode);
     } catch (_) {
-      trip = null;
+      result = null;
     }
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
 
+    final trip = result?.trip;
     if (trip == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(l.importFromMapsError)),
-      );
+      final err = result?.error ?? MapsUrlParseError.unknownFormat;
+      final msg = switch (err) {
+        MapsUrlParseError.malformedUrl => l.importFromMapsErrorMalformed,
+        MapsUrlParseError.shortlinkUnresolved =>
+          l.importFromMapsErrorShortlink,
+        MapsUrlParseError.geocodeFailed => l.importFromMapsErrorGeocode,
+        MapsUrlParseError.unknownFormat => l.importFromMapsError,
+      };
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
       return;
     }
 

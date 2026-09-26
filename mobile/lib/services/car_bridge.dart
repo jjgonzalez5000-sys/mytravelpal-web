@@ -166,6 +166,35 @@ class CarBridge {
         'lon': r.coordinate.lon,
       };
 
+  /// Refresh the Android Auto alerts tray with the current list of
+  /// active adverse events. Called by Companion's periodic refresh
+  /// so the head unit's "Alerts" screen reflects fires / storms
+  /// that landed on the corridor mid-drive.
+  ///
+  /// Full-snapshot semantics (same as `updateTrip`): the passed list
+  /// replaces whatever was there. Cap at 10 rows to fit AA's list
+  /// rendering limit.
+  Future<void> updateAlertsQueue(List<AdverseEvent> events) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(
+      _kAlertsQueueJson,
+      jsonEncode(
+        events.take(10).map(_alertToBridge).toList(),
+      ),
+    );
+  }
+
+  Map<String, Object?> _alertToBridge(AdverseEvent e) => {
+        'id': e.id,
+        'type': e.type.name,
+        'severity': e.severity.name,
+        'description': e.description,
+        'lat': e.coordinate.lat,
+        'lon': e.coordinate.lon,
+        'reportedAtMs': e.reportedAt.millisecondsSinceEpoch,
+        'expiresAtMs': e.expiresAt.millisecondsSinceEpoch,
+      };
+
   /// Called when the driver leaves the dashboard so AA falls back
   /// to the idle "plan a trip" screen instead of showing stale data.
   Future<void> clearTrip() async {

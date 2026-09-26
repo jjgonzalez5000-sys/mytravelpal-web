@@ -220,6 +220,8 @@ class TripProfile {
     this.bedtimeHour = 22,
     this.wakeHour = 8,
     this.breakStyle = BreakStyle.scenic,
+    this.vehicleModelId,
+    this.currentTankLevelPercent,
   });
 
   final int travellers;
@@ -236,6 +238,17 @@ class TripProfile {
   final int wakeHour;
   final BreakStyle breakStyle;
 
+  /// Optional link to a curated catalogue entry from
+  /// `/v1/vehicles`. When set the backend substitutes the catalogue's
+  /// tank size + real-world consumption for the manual `vehicle`
+  /// sliders.
+  final String? vehicleModelId;
+
+  /// Current fuel level in the tank (0-100). Common notches from the
+  /// picker: 25 / 50 / 75 / 100. When paired with `vehicleModelId`
+  /// the backend returns a `refuel_window` hint.
+  final int? currentTankLevelPercent;
+
   TripProfile copyWith({
     int? travellers,
     bool? hasKids,
@@ -248,6 +261,11 @@ class TripProfile {
     int? bedtimeHour,
     int? wakeHour,
     BreakStyle? breakStyle,
+    // Sentinel-style opt-in: pass `clearVehicleModelId: true` to wipe
+    // the field. `vehicleModelId: null` on its own would collide with
+    // the "not passed" case.
+    Object? vehicleModelId = _sentinel,
+    Object? currentTankLevelPercent = _sentinel,
   }) =>
       TripProfile(
         travellers: travellers ?? this.travellers,
@@ -262,6 +280,12 @@ class TripProfile {
         bedtimeHour: bedtimeHour ?? this.bedtimeHour,
         wakeHour: wakeHour ?? this.wakeHour,
         breakStyle: breakStyle ?? this.breakStyle,
+        vehicleModelId: vehicleModelId == _sentinel
+            ? this.vehicleModelId
+            : vehicleModelId as String?,
+        currentTankLevelPercent: currentTankLevelPercent == _sentinel
+            ? this.currentTankLevelPercent
+            : currentTankLevelPercent as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -276,6 +300,9 @@ class TripProfile {
         'bedtime_hour': bedtimeHour,
         'wake_hour': wakeHour,
         'break_style': breakStyle.code,
+        if (vehicleModelId != null) 'vehicle_model_id': vehicleModelId,
+        if (currentTankLevelPercent != null)
+          'current_tank_level_percent': currentTankLevelPercent,
       };
 
   factory TripProfile.fromJson(Map<String, dynamic> j) => TripProfile(
@@ -296,5 +323,12 @@ class TripProfile {
         bedtimeHour: (j['bedtime_hour'] as num?)?.toInt() ?? 22,
         wakeHour: (j['wake_hour'] as num?)?.toInt() ?? 8,
         breakStyle: BreakStyle.fromCode(j['break_style'] as String?),
+        vehicleModelId: j['vehicle_model_id'] as String?,
+        currentTankLevelPercent:
+            (j['current_tank_level_percent'] as num?)?.toInt(),
       );
 }
+
+// Sentinel used by `TripProfile.copyWith` so callers can distinguish
+// "leave the field alone" (default) from "set it to null" (explicit).
+const Object _sentinel = Object();

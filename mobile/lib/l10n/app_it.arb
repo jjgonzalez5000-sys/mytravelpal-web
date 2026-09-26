@@ -367,7 +367,6 @@
     "resultHotels": "Hotel",
     "resultRestaurants": "Ristoranti",
     "resultFuel": "Carburante",
-    "resultOptimized": "Ottimizzato per il tuo viaggio",
     "resultOptimizedFuelBudget": "Budget carburante stimato",
     "resultCompareTitle": "Confronta le opzioni",
     "resultCompareStraightApprox": "Approssim. linea retta.",
@@ -429,7 +428,6 @@
     "resultCompareEyebrow": "Varianti di percorso",
     "resultCompareDescription": "Stessa partenza e arrivo — priorità diverse. Tempi senza traffico.",
     "resultVariantDashed": "Tratteggiata sulla mappa sopra",
-    "resultOptimizedEyebrow": "Basato sul tuo profilo",
     "dayTollsHeader": "Pedaggi di oggi · {amount} € ({count})",
     "@dayTollsHeader": {"placeholders": {"amount": {}, "count": {"type": "int"}}},
     "dayTollsSavedSummary": "Risparmi {amount} € saltandone {count}.",
@@ -441,7 +439,6 @@
     "partialTollsPerDayHint": "Puoi anche gestirli per giorno nell'itinerario ↓",
     "resultCityHint": "Vicino a {city}",
     "@resultCityHint": {"placeholders": {"city": {}}},
-    "resultOptimizedDescription": "Pasti, pernottamento e carburante scelti per il tuo profilo.",
     "resultSavingsShiftAndSkip": "Spostando la partenza e saltando i pedaggi.",
     "resultSavingsShift": "Spostando la partenza alla finestra consigliata.",
     "resultSavingsSkip": "Prendendo l'alternativa senza pedaggi.",
@@ -668,6 +665,12 @@
     "eventTypeAvalanche": "Valanga",
     "eventTypeClosure": "Strada chiusa",
     "eventTypeHeatwave": "Ondata di calore",
+    "eventTypeHeavyRain": "Pioggia forte",
+    "eventTypeHail": "Grandine",
+    "eventTypeThunderstorm": "Temporale",
+    "eventTypeHighWind": "Vento forte",
+    "eventTypeDenseFog": "Nebbia fitta",
+    "eventTypeFreezingRain": "Pioggia gelata",
     "eventTypeOther": "Altro",
     "eventSeverityCritical": "Critico",
     "eventSeverityWarning": "Allerta",
@@ -765,6 +768,12 @@
     "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
     "daySleepMarker": "Fine guida verso le {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
+    "dayStartsAt": "Partenza alle {time}",
+    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
+    "dayMealStopAt": "🍽 {time} · {name}",
+    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
+    "dayRestStopAt": "☕ {time} · {label}",
+    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
     "dayHeaderDwell": "Giorno {index} · {place}",
     "@dayHeaderDwell": {"placeholders": {"index": {"type": "int"}, "place": {"type": "String"}}},
     "daySleepStay": "Soggiorno a {place}",
@@ -1045,6 +1054,9 @@
     "importFromMapsPaste": "Incolla",
     "importFromMapsImport": "Importa",
     "importFromMapsError": "URL non riconosciuto",
+    "importFromMapsErrorMalformed": "URL non valido — controlla il link e riprova",
+    "importFromMapsErrorShortlink": "Impossibile espandere il link corto — aprilo in Maps e copia l'URL completo",
+    "importFromMapsErrorGeocode": "Impossibile localizzare i luoghi — prova con un percorso più breve o inseriscili a mano",
     "importFromMapsLoading": "Analisi del link in corso…",
     "adverseEventsBannerCount": "{count} avviso/i sul percorso",
     "@adverseEventsBannerCount": {
@@ -1058,6 +1070,21 @@
     },
     "kmFromOrigin": "{km} km dall'origine",
     "@kmFromOrigin": {
+      "placeholders": { "km": {"type": "String"} }
+    },
+    "profileVehicleModel": "Modello",
+    "profileVehicleModelHint": "Scegli il tuo modello",
+    "profileVehicleModelClear": "Rimuovi modello",
+    "profileTankLevel": "Serbatoio attuale",
+    "vehiclePickerSearchHint": "Cerca marca o modello",
+    "vehiclePickerEmpty": "Nessun modello corrisponde",
+    "vehiclePickerLoadError": "Impossibile caricare l'elenco. Riprova più tardi.",
+    "refuelWindowComfortable": "Rifornisci entro il km {km} (comodo)",
+    "@refuelWindowComfortable": {
+      "placeholders": { "km": {"type": "String"} }
+    },
+    "refuelWindowCritical": "Rifornisci entro il km {km} (critico)",
+    "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
     }
 }

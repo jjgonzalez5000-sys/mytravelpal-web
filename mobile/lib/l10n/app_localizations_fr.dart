@@ -1043,9 +1043,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultFuel => 'Carburant';
 
   @override
-  String get resultOptimized => 'Optimisé pour votre voyage';
-
-  @override
   String get resultOptimizedFuelBudget => 'Budget carburant estimé';
 
   @override
@@ -1205,9 +1202,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultVariantDashed => 'Pointillé sur la carte ci-dessus';
 
   @override
-  String get resultOptimizedEyebrow => 'Selon votre profil';
-
-  @override
   String dayTollsHeader(Object amount, int count) {
     return 'Péages du jour · $amount € ($count)';
   }
@@ -1235,10 +1229,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String resultCityHint(Object city) {
     return 'Près de $city';
   }
-
-  @override
-  String get resultOptimizedDescription =>
-      'Repas, hébergement et carburant adaptés à votre profil.';
 
   @override
   String get resultSavingsShiftAndSkip =>
@@ -1871,6 +1861,24 @@ class AppLocalizationsFr extends AppLocalizations {
   String get eventTypeHeatwave => 'Canicule';
 
   @override
+  String get eventTypeHeavyRain => 'Pluie forte';
+
+  @override
+  String get eventTypeHail => 'Grêle';
+
+  @override
+  String get eventTypeThunderstorm => 'Orage';
+
+  @override
+  String get eventTypeHighWind => 'Vent fort';
+
+  @override
+  String get eventTypeDenseFog => 'Brouillard dense';
+
+  @override
+  String get eventTypeFreezingRain => 'Pluie verglaçante';
+
+  @override
   String get eventTypeOther => 'Autre';
 
   @override
@@ -2128,6 +2136,21 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String daySleepMarker(String time) {
     return 'Fin de la conduite vers $time';
+  }
+
+  @override
+  String dayStartsAt(String time) {
+    return 'Départ à $time';
+  }
+
+  @override
+  String dayMealStopAt(String time, String name) {
+    return '🍽 $time · $name';
+  }
+
+  @override
+  String dayRestStopAt(String time, String label) {
+    return '☕ $time · $label';
   }
 
   @override
@@ -2788,6 +2811,18 @@ class AppLocalizationsFr extends AppLocalizations {
   String get importFromMapsError => 'URL non reconnue';
 
   @override
+  String get importFromMapsErrorMalformed =>
+      'URL invalide — vérifie le lien et réessaie';
+
+  @override
+  String get importFromMapsErrorShortlink =>
+      'Impossible d\'étendre le lien court — ouvre-le dans Maps et copie l\'URL complète';
+
+  @override
+  String get importFromMapsErrorGeocode =>
+      'Impossible de localiser les lieux — essaie un trajet plus court ou saisis-les manuellement';
+
+  @override
   String get importFromMapsLoading => 'Analyse du lien…';
 
   @override
@@ -2803,5 +2838,37 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String kmFromOrigin(String km) {
     return '$km km depuis l\'origine';
+  }
+
+  @override
+  String get profileVehicleModel => 'Modèle';
+
+  @override
+  String get profileVehicleModelHint => 'Choisissez votre modèle';
+
+  @override
+  String get profileVehicleModelClear => 'Retirer le modèle';
+
+  @override
+  String get profileTankLevel => 'Réservoir actuel';
+
+  @override
+  String get vehiclePickerSearchHint => 'Rechercher marque ou modèle';
+
+  @override
+  String get vehiclePickerEmpty => 'Aucun modèle ne correspond';
+
+  @override
+  String get vehiclePickerLoadError =>
+      'Impossible de charger la liste. Réessayez plus tard.';
+
+  @override
+  String refuelWindowComfortable(String km) {
+    return 'Faites le plein avant le km $km (confortable)';
+  }
+
+  @override
+  String refuelWindowCritical(String km) {
+    return 'Faites le plein avant le km $km (critique)';
   }
 }

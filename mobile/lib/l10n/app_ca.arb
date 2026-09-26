@@ -145,6 +145,9 @@
     "importFromMapsPaste": "Enganxar",
     "importFromMapsImport": "Importar",
     "importFromMapsError": "URL no reconeguda",
+    "importFromMapsErrorMalformed": "URL no vàlida — revisa l'enllaç i torna-ho a provar",
+    "importFromMapsErrorShortlink": "No s'ha pogut expandir l'enllaç curt — obre'l a Maps i copia la URL completa",
+    "importFromMapsErrorGeocode": "No s'han pogut localitzar els llocs — prova amb una ruta més curta o escriu-los a mà",
     "importFromMapsLoading": "Analitzant l'enllaç…",
     "adverseEventsBannerCount": "{count} alerta/es a la teva ruta",
     "@adverseEventsBannerCount": {
@@ -164,6 +167,12 @@
     "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
     "dayArrivalMarker": "Arribes al destí cap a les {time}",
     "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
+    "dayStartsAt": "Surt a les {time}",
+    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
+    "dayMealStopAt": "🍽 {time} · {name}",
+    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
+    "dayRestStopAt": "☕ {time} · {label}",
+    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
 
     "resultStartCompanion": "Iniciar mode Companion",
     "companionPreflightTitle": "Ajustos abans de conduir",
@@ -181,5 +190,26 @@
     "eventTypeLandslide": "Esllavissada",
     "eventTypeAvalanche": "Allau",
     "eventTypeClosure": "Carretera tallada",
-    "eventTypeHeatwave": "Onada de calor"
+    "eventTypeHeatwave": "Onada de calor",
+    "eventTypeHeavyRain": "Pluja forta",
+    "eventTypeHail": "Calamarsa",
+    "eventTypeThunderstorm": "Tempesta elèctrica",
+    "eventTypeHighWind": "Vent fort",
+    "eventTypeDenseFog": "Boira densa",
+    "eventTypeFreezingRain": "Pluja gelada",
+    "profileVehicleModel": "Model",
+    "profileVehicleModelHint": "Tria el teu model",
+    "profileVehicleModelClear": "Treu el model",
+    "profileTankLevel": "Dipòsit actual",
+    "vehiclePickerSearchHint": "Cerca marca o model",
+    "vehiclePickerEmpty": "Cap model coincideix",
+    "vehiclePickerLoadError": "No s'ha pogut carregar la llista. Torna-ho a provar.",
+    "refuelWindowComfortable": "Reposta abans del km {km} (còmode)",
+    "@refuelWindowComfortable": {
+      "placeholders": { "km": {"type": "String"} }
+    },
+    "refuelWindowCritical": "Reposta abans del km {km} (crític)",
+    "@refuelWindowCritical": {
+      "placeholders": { "km": {"type": "String"} }
+    }
 }

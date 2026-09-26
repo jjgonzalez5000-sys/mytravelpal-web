@@ -7,6 +7,7 @@ import 'domain/auth_user.dart';
 import 'domain/favorite_place.dart';
 import 'domain/trip_profile.dart';
 import 'domain/units.dart';
+import 'domain/vehicle_model.dart';
 import 'services/current_location.dart';
 import 'storage/app_prefs.dart';
 import 'storage/inspiration_storage.dart';
@@ -472,6 +473,18 @@ class FavoritePlacesNotifier extends StateNotifier<List<FavoritePlace>> {
 final favoritePlacesProvider = StateNotifierProvider<
     FavoritePlacesNotifier, List<FavoritePlace>>((ref) {
   return FavoritePlacesNotifier(ref.watch(appPrefsProvider));
+});
+
+/// Curated top-EU vehicle catalogue fetched from `/v1/vehicles`.
+///
+/// The endpoint's payload is small (~50 rows) and the CDN can cache it
+/// for a day — but re-hitting it on every profile screen entry is
+/// still wasteful, so wrap it in a `FutureProvider` that only fires
+/// once per app run.
+final vehicleCatalogueProvider =
+    FutureProvider<List<VehicleModel>>((ref) async {
+  final api = ref.watch(apiClientWithPremiumProvider);
+  return api.listVehicles();
 });
 
 /// True while [CompanionDriveScreen] is mounted. Read in [AppShell] to

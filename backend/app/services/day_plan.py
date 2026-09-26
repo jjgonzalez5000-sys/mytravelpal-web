@@ -232,13 +232,26 @@ def compute(
         # what the promoted card shows.
         if day_index == 1 and opt_sleep is not None:
             driving_this_day = opt_sleep.rest_stop.cumulative_driving_hours
-            day_end_driving_at = opt_sleep.at
+            day_end_driving_at = _extend_end_with_meals(
+                current_start, opt_sleep.at, meals,
+            )
             end_km = opt_sleep.rest_stop.distance_from_origin_km
             opt_sleep_consumed = True
         else:
             driving_this_day = min(cap_hours, remaining_hours)
-            day_end_driving_at = current_start + timedelta(
+            raw_drive_end = current_start + timedelta(
                 hours=_wall_hours(driving_this_day, pause_ratio),
+            )
+            # Fold meal-stop overhead into the wall-clock end. A 5.5 h
+            # driving day that swallows a lunch stop lands ~1 h later
+            # than pure driving time suggests — testers saw "termina
+            # a las 13:45" on a day with lunch scheduled at 13:00,
+            # which is impossible (the driver is still eating). Same
+            # correction the trip-optimizations service uses for the
+            # sleep-hour budget; kept in sync here so day boundaries
+            # and the meal cards read as one coherent timeline.
+            day_end_driving_at = _extend_end_with_meals(
+                current_start, raw_drive_end, meals,
             )
             end_km = current_start_km + driving_this_day * avg_kmh
         # Clip to the next dwell waypoint if this day would drive
@@ -253,8 +266,11 @@ def compute(
                     / max(end_km - current_start_km, 1e-6)
                 )
                 driving_this_day = driving_this_day * clip_ratio
-                day_end_driving_at = current_start + timedelta(
+                raw_drive_end = current_start + timedelta(
                     hours=_wall_hours(driving_this_day, pause_ratio),
+                )
+                day_end_driving_at = _extend_end_with_meals(
+                    current_start, raw_drive_end, meals,
                 )
                 end_km = next_dwell_km
                 clipped_at_dwell = next_dwell_wp
@@ -384,6 +400,42 @@ def compute(
             )
         )
     return MultiDayPlan(days=tuple(days), total_days=total)
+
+
+# Wall-clock overhead we assume for each meal stop that falls
+# inside a day's driving window. 1 h covers sit-down time + parking
+# + service at a European roadside restaurant; matches the value
+# `_select_sleep_stop` reserves in `trip_optimizations.py`.
+_MEAL_OVERHEAD_HOURS = 1.0
+
+
+def _extend_end_with_meals(
+    start: datetime,
+    raw_end: datetime,
+    meals: list[MealStop],
+) -> datetime:
+    """Shift `raw_end` forward by one `_MEAL_OVERHEAD_HOURS` for each
+    meal stop scheduled inside the growing `[start, end_at)` window.
+
+    Iteration is safe: meals are considered in `at` order, so
+    extending the window can only pull *later* meals into scope —
+    once a meal falls beyond the current `end_at`, everything after
+    it does too and we stop. Pure driving hours + pauses land in
+    `raw_end`; this helper folds in only the meal breaks that
+    genuinely interrupt driving (meals scheduled AFTER `raw_end`
+    happen post-drive and don't push the day's driving-end later).
+    """
+    end_at = raw_end
+    sorted_meals = sorted(
+        (m for m in meals if m.at >= start),
+        key=lambda m: m.at,
+    )
+    for m in sorted_meals:
+        if m.at < end_at:
+            end_at += timedelta(hours=_MEAL_OVERHEAD_HOURS)
+        else:
+            break
+    return end_at
 
 
 def _coord_at_km(route: Route, km: float) -> Coordinate | None:

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../domain/auth_user.dart';
+import '../domain/vehicle_model.dart';
 import 'config.dart';
 import 'models.dart';
 
@@ -483,6 +484,87 @@ class ApiClient {
     }
   }
 
+  /// Live re-scan of adverse events for the corridor slice ahead of
+  /// the driver. Called by Companion every ~15 min so new fires /
+  /// thunderstorms / quakes that develop mid-drive surface as fresh
+  /// notifications instead of the frozen plan-time snapshot.
+  ///
+  /// Returns an empty list on any transport failure — the drive
+  /// session must never crash because the refresh call timed out;
+  /// the driver's original plan-time events stay visible either way.
+  Future<List<AdverseEvent>> refreshAdverseEvents({
+    required List<LatLon> geometry,
+    required double currentKm,
+    double lookAheadKm = 200.0,
+    List<Country> countries = const [],
+  }) async {
+    if (geometry.length < 2) return const [];
+    final uri = Uri.parse('$_baseUrl/v1/trips/adverse-refresh');
+    try {
+      final response = await _http
+          .post(
+            uri,
+            headers: _headers(),
+            body: jsonEncode({
+              'geometry': geometry
+                  .map((p) => {'lat': p.lat, 'lon': p.lon})
+                  .toList(),
+              'current_km': currentKm,
+              'look_ahead_km': lookAheadKm,
+              if (countries.isNotEmpty)
+                'countries': countries.map((c) => c.code).toList(),
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return const [];
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (body['events'] as List<dynamic>? ?? const []);
+      return list
+          .map((e) => AdverseEvent.fromJson(e as Map<String, dynamic>))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Companion-mode live weather-hazards probe: send sample coords
+  /// along the next ~200 km, get back typed hazard alerts (heavy
+  /// rain, hail, thunder, high wind, dense fog, freezing rain,
+  /// snow). Best-effort — returns empty on any failure. Coverage
+  /// caveat: RainViewer confirmation only across Europe + North
+  /// America; elsewhere the response falls back to Open-Meteo
+  /// forecast alone (`radar_confirmed = false`).
+  Future<List<WeatherHazard>> weatherHazardsCheck({
+    required List<({double lat, double lon, double? kmAhead})> coords,
+  }) async {
+    if (coords.isEmpty) return const [];
+    final uri = Uri.parse('$_baseUrl/v1/trips/weather-hazards-check');
+    try {
+      final response = await _http.post(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({
+          'coords': [
+            for (final c in coords)
+              {
+                'lat': c.lat,
+                'lon': c.lon,
+                if (c.kmAhead != null) 'km_ahead': c.kmAhead,
+              },
+          ],
+        }),
+      );
+      if (response.statusCode != 200) return const [];
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final list = (body['hazards'] as List<dynamic>? ?? const []);
+      return list
+          .map((h) => WeatherHazard.fromJson(h as Map<String, dynamic>))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Push saved trips to server (cloud backup).
   Future<bool> saveTrips(List<Map<String, dynamic>> trips) async {
     final uri = Uri.parse('$_baseUrl/v1/profile/trips');
@@ -549,6 +631,26 @@ class ApiClient {
     final raw = (body['items'] as List<dynamic>?) ?? const [];
     return raw
         .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+  }
+
+  /// Pull the curated top-EU vehicle catalogue (make / model / tank /
+  /// consumption). Small payload (~50 rows). Cached on the server for
+  /// 24 h — callers should cache client-side too (Riverpod
+  /// `FutureProvider` in `providers.dart` does the honours).
+  Future<List<VehicleModel>> listVehicles() async {
+    final uri = Uri.parse('$_baseUrl/v1/vehicles');
+    final response = await _http
+        .get(uri, headers: _headers())
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    final raw = (body['vehicles'] as List<dynamic>?) ?? const [];
+    return raw
+        .whereType<Map<String, dynamic>>()
+        .map(VehicleModel.fromJson)
         .toList(growable: false);
   }
 

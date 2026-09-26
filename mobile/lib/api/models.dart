@@ -17,9 +17,24 @@ enum AdverseEventType {
   avalanche,
   closure,
   heatwave,
+  heavyRain,
+  hail,
+  thunderstorm,
+  highWind,
+  denseFog,
+  freezingRain,
   other;
 
-  String get code => name;
+  /// Wire format matches backend `AdverseEventType` string values.
+  /// Dart camelCase names must be mapped explicitly when the backend
+  /// uses snake_case (e.g. `heavyRain` -> `heavy_rain`).
+  String get code => switch (this) {
+        AdverseEventType.heavyRain => 'heavy_rain',
+        AdverseEventType.highWind => 'high_wind',
+        AdverseEventType.denseFog => 'dense_fog',
+        AdverseEventType.freezingRain => 'freezing_rain',
+        _ => name,
+      };
 
   /// English fallback — prefer `localized(l)` in UI code so the label
   /// follows the app locale.
@@ -37,6 +52,12 @@ enum AdverseEventType {
         AdverseEventType.avalanche => 'Avalanche',
         AdverseEventType.closure => 'Road closure',
         AdverseEventType.heatwave => 'Heatwave',
+        AdverseEventType.heavyRain => 'Heavy rain',
+        AdverseEventType.hail => 'Hail',
+        AdverseEventType.thunderstorm => 'Thunderstorm',
+        AdverseEventType.highWind => 'High wind',
+        AdverseEventType.denseFog => 'Dense fog',
+        AdverseEventType.freezingRain => 'Freezing rain',
         AdverseEventType.other => 'Other',
       };
 
@@ -54,6 +75,12 @@ enum AdverseEventType {
         AdverseEventType.avalanche => l.eventTypeAvalanche,
         AdverseEventType.closure => l.eventTypeClosure,
         AdverseEventType.heatwave => l.eventTypeHeatwave,
+        AdverseEventType.heavyRain => l.eventTypeHeavyRain,
+        AdverseEventType.hail => l.eventTypeHail,
+        AdverseEventType.thunderstorm => l.eventTypeThunderstorm,
+        AdverseEventType.highWind => l.eventTypeHighWind,
+        AdverseEventType.denseFog => l.eventTypeDenseFog,
+        AdverseEventType.freezingRain => l.eventTypeFreezingRain,
         AdverseEventType.other => l.eventTypeOther,
       };
 
@@ -71,6 +98,12 @@ enum AdverseEventType {
         AdverseEventType.avalanche => Icons.ac_unit,
         AdverseEventType.closure => Icons.block,
         AdverseEventType.heatwave => Icons.wb_sunny,
+        AdverseEventType.heavyRain => Icons.thunderstorm,
+        AdverseEventType.hail => Icons.grain,
+        AdverseEventType.thunderstorm => Icons.flash_on,
+        AdverseEventType.highWind => Icons.air,
+        AdverseEventType.denseFog => Icons.cloud,
+        AdverseEventType.freezingRain => Icons.severe_cold,
         AdverseEventType.other => Icons.warning,
       };
 
@@ -1516,6 +1549,7 @@ class TripPlanResponse {
     this.fuelArbitrage,
     this.days = const [],
     this.weatherSegments = const [],
+    this.refuelWindow,
     this.rawJson,
   });
 
@@ -1549,6 +1583,11 @@ class TripPlanResponse {
   final FuelArbitrage? fuelArbitrage;
   final List<DayPlan> days;
   final List<WeatherSegment> weatherSegments;
+
+  /// Refuel milestones ("comfortable" + "must") along the route.
+  /// Present only when the plan request carried
+  /// `vehicleModelId + currentTankLevelPercent`. Null otherwise.
+  final RefuelWindow? refuelWindow;
 
   factory TripPlanResponse.fromJson(Map<String, dynamic> json) =>
       TripPlanResponse(
@@ -1631,10 +1670,42 @@ class TripPlanResponse {
                 .map((w) =>
                     WeatherSegment.fromJson(w as Map<String, dynamic>))
                 .toList(growable: false),
+        refuelWindow: json['refuel_window'] == null
+            ? null
+            : RefuelWindow.fromJson(
+                json['refuel_window'] as Map<String, dynamic>,
+              ),
         // Retain the whole envelope so the session-persistence layer
         // can re-serialise the exact plan without a per-field
         // `toJson` on every nested type.
         rawJson: json,
+      );
+}
+
+/// Refuel milestones for the trip. Two distances measured from
+/// origin: `comfortableByKm` (~25 % remaining) and `mustByKm` (~10 %
+/// reserve line). `reachesDestination` flips true when the driver's
+/// current fuel comfortably covers the trip end-to-end — the mobile
+/// chip hides itself in that case.
+@immutable
+class RefuelWindow {
+  const RefuelWindow({
+    required this.usableRangeKm,
+    required this.comfortableByKm,
+    required this.mustByKm,
+    required this.reachesDestination,
+  });
+
+  final double usableRangeKm;
+  final double comfortableByKm;
+  final double mustByKm;
+  final bool reachesDestination;
+
+  factory RefuelWindow.fromJson(Map<String, dynamic> j) => RefuelWindow(
+        usableRangeKm: (j['usable_range_km'] as num).toDouble(),
+        comfortableByKm: (j['comfortable_by_km'] as num).toDouble(),
+        mustByKm: (j['must_by_km'] as num).toDouble(),
+        reachesDestination: j['reaches_destination'] as bool? ?? false,
       );
 }
 
@@ -2222,6 +2293,49 @@ class DailyForecast {
 }
 
 @immutable
+/// Companion live weather-hazards probe response item.
+///
+/// Backend `type` matches [AdverseEventType]'s snake_case wire
+/// codes (heavy_rain, hail, thunderstorm, high_wind, dense_fog,
+/// freezing_rain, snow). We keep the raw string on the wire side
+/// and expose a decoded [AdverseEventType] enum for the UI.
+@immutable
+class WeatherHazard {
+  const WeatherHazard({
+    required this.type,
+    required this.severity,
+    required this.lat,
+    required this.lon,
+    required this.description,
+    required this.radarConfirmed,
+    this.etaKmAhead,
+  });
+
+  final AdverseEventType type;
+  final AdverseEventSeverity severity;
+  final double lat;
+  final double lon;
+  final double? etaKmAhead;
+  final String description;
+
+  /// True when RainViewer radar corroborates the Open-Meteo
+  /// forecast. Only ever true for precipitation types inside
+  /// RainViewer's Europe/N-America footprint.
+  final bool radarConfirmed;
+
+  factory WeatherHazard.fromJson(Map<String, dynamic> j) => WeatherHazard(
+        type: AdverseEventType.fromCode(j['type'] as String? ?? 'other'),
+        severity: AdverseEventSeverity.fromCode(
+          j['severity'] as String? ?? 'info',
+        ),
+        lat: (j['lat'] as num).toDouble(),
+        lon: (j['lon'] as num).toDouble(),
+        etaKmAhead: (j['eta_km_ahead'] as num?)?.toDouble(),
+        description: j['description'] as String? ?? '',
+        radarConfirmed: j['radar_confirmed'] as bool? ?? false,
+      );
+}
+
 class WeatherPoint {
   const WeatherPoint({
     required this.lat,

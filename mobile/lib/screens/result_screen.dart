@@ -3132,22 +3132,10 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Builder(builder: (context) {
-          final l = AppLocalizations.of(context);
-          // Compose the "Madrid → Toledo" line when we have both
-          // names. Falls back to the generic tagline so the
-          // section still renders on legacy responses without
-          // origin/destination labels.
-          final od = (widget.originName != null &&
-                  widget.destinationName != null)
-              ? '${widget.originName}  →  ${widget.destinationName}'
-              : l.resultOptimizedDescription;
-          return SectionHeader(
-            title: l.resultOptimized,
-            eyebrow: l.resultOptimizedEyebrow,
-            description: od,
-          );
-        }),
+        // "Según tu perfil" section header removed 2026-09-26 —
+        // everything below is already computed against the user's
+        // profile, so the eyebrow / description read as redundant
+        // noise. The functional card stays.
         SoftCard(
           padding: const EdgeInsets.all(Tokens.space20),
           child: Column(

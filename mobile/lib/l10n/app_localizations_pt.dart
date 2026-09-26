@@ -1041,9 +1041,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get resultFuel => 'Fuel';
 
   @override
-  String get resultOptimized => 'Optimized for your trip';
-
-  @override
   String get resultOptimizedFuelBudget => 'Estimated fuel budget';
 
   @override
@@ -1202,9 +1199,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String get resultVariantDashed => 'Dashed on the map above';
 
   @override
-  String get resultOptimizedEyebrow => 'Profile-aware';
-
-  @override
   String dayTollsHeader(Object amount, int count) {
     return 'Tolls today · $amount € ($count)';
   }
@@ -1232,10 +1226,6 @@ class AppLocalizationsPt extends AppLocalizations {
   String resultCityHint(Object city) {
     return 'Near $city';
   }
-
-  @override
-  String get resultOptimizedDescription =>
-      'Meal, sleep and fuel picks that match your profile.';
 
   @override
   String get resultSavingsShiftAndSkip =>
@@ -1866,6 +1856,24 @@ class AppLocalizationsPt extends AppLocalizations {
   String get eventTypeHeatwave => 'Onda de calor';
 
   @override
+  String get eventTypeHeavyRain => 'Chuva forte';
+
+  @override
+  String get eventTypeHail => 'Granizo';
+
+  @override
+  String get eventTypeThunderstorm => 'Trovoada';
+
+  @override
+  String get eventTypeHighWind => 'Vento forte';
+
+  @override
+  String get eventTypeDenseFog => 'Nevoeiro denso';
+
+  @override
+  String get eventTypeFreezingRain => 'Chuva gelada';
+
+  @override
   String get eventTypeOther => 'Other';
 
   @override
@@ -2122,6 +2130,21 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String daySleepMarker(String time) {
     return 'Finish driving around $time';
+  }
+
+  @override
+  String dayStartsAt(String time) {
+    return 'Sai às $time';
+  }
+
+  @override
+  String dayMealStopAt(String time, String name) {
+    return '🍽 $time · $name';
+  }
+
+  @override
+  String dayRestStopAt(String time, String label) {
+    return '☕ $time · $label';
   }
 
   @override
@@ -2781,6 +2804,18 @@ class AppLocalizationsPt extends AppLocalizations {
   String get importFromMapsError => 'URL não reconhecido';
 
   @override
+  String get importFromMapsErrorMalformed =>
+      'URL inválido — verifica a ligação e tenta novamente';
+
+  @override
+  String get importFromMapsErrorShortlink =>
+      'Não foi possível expandir a ligação curta — abre-a no Maps e copia o URL completo';
+
+  @override
+  String get importFromMapsErrorGeocode =>
+      'Não foi possível localizar os lugares — tenta uma rota mais curta ou escreve-os à mão';
+
+  @override
   String get importFromMapsLoading => 'A analisar a ligação…';
 
   @override
@@ -2796,5 +2831,37 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String kmFromOrigin(String km) {
     return '$km km desde a origem';
+  }
+
+  @override
+  String get profileVehicleModel => 'Modelo';
+
+  @override
+  String get profileVehicleModelHint => 'Escolha o seu modelo';
+
+  @override
+  String get profileVehicleModelClear => 'Remover modelo';
+
+  @override
+  String get profileTankLevel => 'Depósito atual';
+
+  @override
+  String get vehiclePickerSearchHint => 'Procurar marca ou modelo';
+
+  @override
+  String get vehiclePickerEmpty => 'Nenhum modelo corresponde';
+
+  @override
+  String get vehiclePickerLoadError =>
+      'Não foi possível carregar a lista. Tente novamente.';
+
+  @override
+  String refuelWindowComfortable(String km) {
+    return 'Abasteça até ao km $km (confortável)';
+  }
+
+  @override
+  String refuelWindowCritical(String km) {
+    return 'Abasteça até ao km $km (crítico)';
   }
 }

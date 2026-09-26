@@ -12,6 +12,7 @@ from app.api.v1 import (
     parking,
     profile,
     trips,
+    vehicles,
     weather,
 )
 
@@ -28,3 +29,4 @@ router.include_router(parking.router)
 router.include_router(weather.router)
 router.include_router(diagnostics.router)
 router.include_router(attributions.router)
+router.include_router(vehicles.router)

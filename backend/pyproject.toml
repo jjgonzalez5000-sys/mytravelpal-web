@@ -19,6 +19,12 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.0",
     "pyjwt>=2.9",
     "google-auth[requests]>=2.35",
+    # RainViewer live-radar tile sampling. Companion mode downloads
+    # a 256 px PNG tile at the driver's next-hop coord and inspects
+    # a 5x5 pixel window to detect precipitation reflectivity.
+    # If the Fly wheel is unavailable, `rain_radar.py` degrades to a
+    # tile-size heuristic (bytes > 1 KB => has-precipitation).
+    "pillow>=10.0",
 ]
 
 [project.optional-dependencies]

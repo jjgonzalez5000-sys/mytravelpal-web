@@ -145,6 +145,9 @@
     "importFromMapsPaste": "Colar",
     "importFromMapsImport": "Importar",
     "importFromMapsError": "URL não reconhecido",
+    "importFromMapsErrorMalformed": "URL inválido — verifica a ligação e tenta novamente",
+    "importFromMapsErrorShortlink": "Não foi possível expandir a ligação curta — abre-a no Maps e copia o URL completo",
+    "importFromMapsErrorGeocode": "Não foi possível localizar os lugares — tenta uma rota mais curta ou escreve-os à mão",
     "importFromMapsLoading": "A analisar a ligação…",
     "adverseEventsBannerCount": "{count} alerta(s) na sua rota",
     "@adverseEventsBannerCount": {
@@ -164,6 +167,12 @@
     "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
     "dayArrivalMarker": "Chega ao destino por volta das {time}",
     "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
+    "dayStartsAt": "Sai às {time}",
+    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
+    "dayMealStopAt": "🍽 {time} · {name}",
+    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
+    "dayRestStopAt": "☕ {time} · {label}",
+    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
 
     "resultStartCompanion": "Iniciar modo Companion",
     "companionPreflightTitle": "Ajustes antes de conduzir",
@@ -181,5 +190,26 @@
     "eventTypeLandslide": "Deslizamento",
     "eventTypeAvalanche": "Avalanche",
     "eventTypeClosure": "Estrada cortada",
-    "eventTypeHeatwave": "Onda de calor"
+    "eventTypeHeatwave": "Onda de calor",
+    "eventTypeHeavyRain": "Chuva forte",
+    "eventTypeHail": "Granizo",
+    "eventTypeThunderstorm": "Trovoada",
+    "eventTypeHighWind": "Vento forte",
+    "eventTypeDenseFog": "Nevoeiro denso",
+    "eventTypeFreezingRain": "Chuva gelada",
+    "profileVehicleModel": "Modelo",
+    "profileVehicleModelHint": "Escolha o seu modelo",
+    "profileVehicleModelClear": "Remover modelo",
+    "profileTankLevel": "Depósito atual",
+    "vehiclePickerSearchHint": "Procurar marca ou modelo",
+    "vehiclePickerEmpty": "Nenhum modelo corresponde",
+    "vehiclePickerLoadError": "Não foi possível carregar a lista. Tente novamente.",
+    "refuelWindowComfortable": "Abasteça até ao km {km} (confortável)",
+    "@refuelWindowComfortable": {
+      "placeholders": { "km": {"type": "String"} }
+    },
+    "refuelWindowCritical": "Abasteça até ao km {km} (crítico)",
+    "@refuelWindowCritical": {
+      "placeholders": { "km": {"type": "String"} }
+    }
 }

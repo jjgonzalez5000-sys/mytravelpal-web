@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,6 +13,7 @@ import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/car_bridge.dart';
 import '../services/crash_detector.dart';
+import '../services/notifications.dart';
 import '../services/trip_foreground.dart';
 import '../services/trip_progress.dart';
 import '../services/trip_share_image.dart';
@@ -75,13 +77,35 @@ class CompanionDriveScreen extends ConsumerStatefulWidget {
 class _CompanionDriveScreenState
     extends ConsumerState<CompanionDriveScreen> {
   static const _tickInterval = Duration(seconds: 60);
+  // Adverse-event re-scan cadence. 15 min balances "fresh enough to
+  // catch a new fire cell before the driver reaches it" against
+  // provider costs (EFFIS / Open-Meteo). Refresh always runs on
+  // Companion start too so the driver isn't blind for the first 15 min.
+  static const _adversePollInterval = Duration(minutes: 15);
+  // How far along the polyline to look ahead for new events. 200 km
+  // is ~2 h of highway driving — long enough to notify with warning,
+  // short enough to keep the query cheap.
+  static const _adverseLookAheadKm = 200.0;
 
   StreamSubscription<Position>? _positionSub;
   Timer? _tickTimer;
+  Timer? _advTimer;
   Position? _lastPosition;
   DateTime? _sessionStart;
   DateTime? _lastStopAt;
   double _drivingHours = 0.0;
+
+  /// Stable identifiers of adverse events we've already surfaced as
+  /// a local notification. Prevents the 15-min poll from re-alerting
+  /// the driver about the same fire on every tick. Key format is
+  /// `${type}:${lat.toFixed(3)}:${lon.toFixed(3)}` — coordinate-based
+  /// so FIRMS' rotating pixel ids don't cause duplicate notifications
+  /// for the same fire.
+  final Set<String> _lastKnownEventIds = <String>{};
+  // Rolling cache of ALL live adverse events (pre-trip + refreshed).
+  // Pushed to CarBridge on every refresh so the AA alerts tray
+  // reflects the current state.
+  final List<AdverseEvent> _activeAdverseEvents = [];
 
   final List<CompanionRecommendation> _recs = [];
   final Set<String> _dismissed = {};
@@ -136,7 +160,229 @@ class _CompanionDriveScreenState
       _plannedArrival = DateTime.now().add(Duration(
         minutes: trip.route.freeFlowMinutes.round(),
       ));
+      // Seed the "already-seen" set with the plan-time events so the
+      // first refresh doesn't fire duplicate notifications for the
+      // hazards the driver already saw on the result screen.
+      for (final e in trip.adverseEvents) {
+        _lastKnownEventIds.add(_eventFingerprint(e));
+        _activeAdverseEvents.add(e);
+      }
+      // Kick off the live re-scan loop. Fire one refresh IMMEDIATELY
+      // so recent events show up right after starting Companion,
+      // then poll every 15 min.
+      _advTimer = Timer.periodic(
+        _adversePollInterval, (_) {
+          unawaited(_pollAdverse());
+          // Weather-hazards check runs on the same cadence so a
+          // squall line, sudden fog bank or wind gust the plan-time
+          // Open-Meteo snapshot missed still surfaces mid-drive.
+          // Reuses `_advTimer` — cheaper than a second Timer and
+          // keeps polling aligned with the adverse-refresh window.
+          unawaited(_pollWeatherHazards());
+        },
+      );
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        unawaited(_pollAdverse());
+        unawaited(_pollWeatherHazards());
+      });
     }
+  }
+
+  /// Coordinate-based fingerprint so the same fire reported under
+  /// rotating FIRMS pixel ids (or the same open-meteo cell across
+  /// polls) doesn't spam the driver with a fresh notification each
+  /// tick.
+  String _eventFingerprint(AdverseEvent e) =>
+      '${e.type.name}:${e.coordinate.lat.toStringAsFixed(3)}:'
+      '${e.coordinate.lon.toStringAsFixed(3)}';
+
+  /// Snap `me` onto the precomputed route and return km-from-origin.
+  /// Returns 0 when no route reference is set (assistant-only mode).
+  double _kmAtPosition(LatLon me) {
+    final ref = _routeRef;
+    if (ref == null) return 0.0;
+    final snapped = snapToRoute(me, ref);
+    return snapped.progressMeters / 1000.0;
+  }
+
+  /// Live re-scan of adverse events. Called on session start and
+  /// every 15 min while Companion is running against a real plan.
+  /// Silently no-ops when no position is available yet — the next
+  /// tick will retry with a fresh fix.
+  Future<void> _pollAdverse() async {
+    if (!mounted) return;
+    final trip = widget.activeTrip;
+    final route = _routeRef;
+    final pos = _lastPosition;
+    if (trip == null || route == null || pos == null) return;
+    final me = LatLon(lat: pos.latitude, lon: pos.longitude);
+    final km = _kmAtPosition(me);
+    final api = ref.read(apiClientWithPremiumProvider);
+    final events = await api.refreshAdverseEvents(
+      geometry: trip.route.geometry,
+      currentKm: km,
+      lookAheadKm: _adverseLookAheadKm,
+      countries: trip.route.countriesCrossed,
+    );
+    if (!mounted) return;
+    // Diff against what we've already surfaced. Fingerprint on
+    // (type, lat, lon) so rotating provider ids don't re-alert.
+    final freshEvents = <AdverseEvent>[];
+    for (final e in events) {
+      final fp = _eventFingerprint(e);
+      if (_lastKnownEventIds.add(fp)) {
+        freshEvents.add(e);
+      }
+    }
+    // Notify for each brand-new event. Severity maps to notification
+    // priority via `NotificationService.showTripAlert`'s built-in
+    // channel (already high-importance).
+    for (final e in freshEvents) {
+      final title = _adverseNotificationTitle(e);
+      final body = e.description.isNotEmpty
+          ? e.description
+          : e.type.name;
+      unawaited(
+        NotificationService.instance.showTripAlert(
+          stableId: 'adverse:${_eventFingerprint(e)}',
+          title: title,
+          body: body,
+        ),
+      );
+    }
+    // Merge into the live cache and push the snapshot to Android
+    // Auto. Fingerprint-based dedup keeps the list clean.
+    final seen = <String>{};
+    final merged = <AdverseEvent>[];
+    for (final e in [..._activeAdverseEvents, ...events]) {
+      if (seen.add(_eventFingerprint(e))) merged.add(e);
+    }
+    _activeAdverseEvents
+      ..clear()
+      ..addAll(merged);
+    unawaited(CarBridge.instance.updateAlertsQueue(merged));
+  }
+
+  /// Dedup set for the weather-hazards poll. Fingerprint is
+  /// `${type}:${sampleIndex}` so a hazard at the same sample coord
+  /// only notifies once per Companion session even if it lingers
+  /// across polls. Cleared when Companion ends (state disposed).
+  final Set<String> _hazardFingerprints = <String>{};
+
+  /// Live weather-hazards check. Samples 5 coords along the next
+  /// 200 km of the route and hits `/v1/trips/weather-hazards-check`
+  /// (Open-Meteo forecast + RainViewer radar cross-check). Fires
+  /// a local notification for any brand-new WARNING or CRITICAL
+  /// hazard so the driver hears about heavy rain / hail / thunder
+  /// / high wind / dense fog / freezing rain / snow that developed
+  /// after the plan was computed.
+  ///
+  /// Silently no-ops in assistant-only mode (no route reference) —
+  /// there is no polyline to sample from.
+  Future<void> _pollWeatherHazards() async {
+    if (!mounted) return;
+    final trip = widget.activeTrip;
+    final route = _routeRef;
+    final pos = _lastPosition;
+    if (trip == null || route == null || pos == null) return;
+    final me = LatLon(lat: pos.latitude, lon: pos.longitude);
+    final currentKm = _kmAtPosition(me);
+    // 5 evenly spaced samples over the next 200 km. Fewer coords
+    // keep the RainViewer tile fetches under the polite ~1 req/s
+    // guideline; 5 is enough to catch a squall line at any point
+    // along a 2 h corridor.
+    const sampleCount = 5;
+    const stepKm = _adverseLookAheadKm / sampleCount;
+    final samples = <({double lat, double lon, double? kmAhead})>[];
+    for (int i = 1; i <= sampleCount; i++) {
+      final targetKm = currentKm + stepKm * i;
+      final coord = _coordAtKm(trip.route.geometry, targetKm);
+      if (coord == null) break;
+      samples.add((
+        lat: coord.lat,
+        lon: coord.lon,
+        kmAhead: stepKm * i,
+      ));
+    }
+    if (samples.isEmpty) return;
+
+    final api = ref.read(apiClientWithPremiumProvider);
+    final hazards = await api.weatherHazardsCheck(coords: samples);
+    if (!mounted || hazards.isEmpty) return;
+
+    // Notify for brand-new hazards only. Skip INFO severity to
+    // avoid noise — the driver only needs to hear about actionable
+    // warnings.
+    for (int i = 0; i < hazards.length; i++) {
+      final h = hazards[i];
+      if (h.severity == AdverseEventSeverity.info) continue;
+      // Fingerprint by (type, coarse coord) so a lingering storm
+      // over the same cell doesn't re-alert every 15 min.
+      final fp = '${h.type.code}:'
+          '${h.lat.toStringAsFixed(2)}:'
+          '${h.lon.toStringAsFixed(2)}';
+      if (!_hazardFingerprints.add(fp)) continue;
+      final l = AppLocalizations.of(context);
+      final typeName = h.type.localized(l);
+      final etaSuffix = h.etaKmAhead != null
+          ? ' (~${h.etaKmAhead!.toStringAsFixed(0)} km)'
+          : '';
+      unawaited(
+        NotificationService.instance.showTripAlert(
+          stableId: 'hazard:$fp',
+          title: '$typeName$etaSuffix',
+          body: h.description,
+        ),
+      );
+    }
+  }
+
+  /// Linear interpolation along the route polyline to a coord at
+  /// `targetKm` from origin. Returns null when the target is past
+  /// the destination.
+  LatLon? _coordAtKm(List<LatLon> geom, double targetKm) {
+    if (geom.length < 2 || targetKm <= 0) {
+      return geom.isNotEmpty ? geom.first : null;
+    }
+    double acc = 0.0;
+    for (int i = 1; i < geom.length; i++) {
+      final segKm = _haversineKm(geom[i - 1], geom[i]);
+      if (acc + segKm >= targetKm) {
+        final ratio = segKm > 0 ? (targetKm - acc) / segKm : 0.0;
+        final a = geom[i - 1];
+        final b = geom[i];
+        return LatLon(
+          lat: a.lat + (b.lat - a.lat) * ratio,
+          lon: a.lon + (b.lon - a.lon) * ratio,
+        );
+      }
+      acc += segKm;
+    }
+    return null;
+  }
+
+  double _haversineKm(LatLon a, LatLon b) {
+    const r = 6371.0;
+    final dLat = (b.lat - a.lat) * math.pi / 180.0;
+    final dLon = (b.lon - a.lon) * math.pi / 180.0;
+    final la1 = a.lat * math.pi / 180.0;
+    final la2 = b.lat * math.pi / 180.0;
+    final h = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(la1) * math.cos(la2) *
+            math.sin(dLon / 2) * math.sin(dLon / 2);
+    return 2 * r * math.asin(math.min(1.0, math.sqrt(h)));
+  }
+
+  /// User-visible notification title. Severity determines the
+  /// wording ("Peligro" for critical, "Aviso" for warning) but the
+  /// actual translation is deferred to a future localisation pass —
+  /// for now we ship English + the event type name so the string is
+  /// self-explanatory.
+  String _adverseNotificationTitle(AdverseEvent e) {
+    final prefix = e.severity == AdverseEventSeverity.critical
+        ? 'Alert'
+        : 'Warning';
+    return '$prefix: ${e.type.name} ahead';
   }
 
   Future<void> _initTts() async {
@@ -432,6 +678,7 @@ class _CompanionDriveScreenState
   @override
   void dispose() {
     _tickTimer?.cancel();
+    _advTimer?.cancel();
     _positionSub?.cancel();
     _crashSub?.cancel();
     unawaited(_crashDetector.dispose());

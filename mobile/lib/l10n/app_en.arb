@@ -350,7 +350,6 @@
     "resultHotels": "Hotels",
     "resultRestaurants": "Restaurants",
     "resultFuel": "Fuel",
-    "resultOptimized": "Optimized for your trip",
     "resultOptimizedFuelBudget": "Estimated fuel budget",
     "resultCompareTitle": "Compare your options",
     "resultCompareStraightApprox": "Straight-line approx.",
@@ -412,7 +411,6 @@
     "resultCompareEyebrow": "Route variants",
     "resultCompareDescription": "Same start and end — different priorities. Numbers are free-flow.",
     "resultVariantDashed": "Dashed on the map above",
-    "resultOptimizedEyebrow": "Profile-aware",
     "dayTollsHeader": "Tolls today · {amount} € ({count})",
     "@dayTollsHeader": {"placeholders": {"amount": {}, "count": {"type": "int"}}},
     "dayTollsSavedSummary": "You'll save {amount} € by skipping {count}.",
@@ -424,7 +422,6 @@
     "partialTollsPerDayHint": "You can also toggle these per day in the itinerary below ↓",
     "resultCityHint": "Near {city}",
     "@resultCityHint": {"placeholders": {"city": {}}},
-    "resultOptimizedDescription": "Meal, sleep and fuel picks that match your profile.",
     "resultSavingsShiftAndSkip": "By shifting your departure and skipping tolls.",
     "resultSavingsShift": "By shifting your departure to the recommended window.",
     "resultSavingsSkip": "By taking the toll-free alternative.",
@@ -651,6 +648,12 @@
     "eventTypeAvalanche": "Avalanche",
     "eventTypeClosure": "Road closure",
     "eventTypeHeatwave": "Heatwave",
+    "eventTypeHeavyRain": "Heavy rain",
+    "eventTypeHail": "Hail",
+    "eventTypeThunderstorm": "Thunderstorm",
+    "eventTypeHighWind": "High wind",
+    "eventTypeDenseFog": "Dense fog",
+    "eventTypeFreezingRain": "Freezing rain",
     "eventTypeOther": "Other",
     "eventSeverityCritical": "Critical",
     "eventSeverityWarning": "Warning",
@@ -748,6 +751,12 @@
     "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
     "daySleepMarker": "Finish driving around {time}",
     "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
+    "dayStartsAt": "Departs at {time}",
+    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
+    "dayMealStopAt": "🍽 {time} · {name}",
+    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
+    "dayRestStopAt": "☕ {time} · {label}",
+    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
     "dayHeaderDwell": "Day {index} · {place}",
     "@dayHeaderDwell": {"placeholders": {"index": {"type": "int"}, "place": {"type": "String"}}},
     "daySleepStay": "Staying in {place}",
@@ -1028,6 +1037,9 @@
     "importFromMapsPaste": "Paste",
     "importFromMapsImport": "Import",
     "importFromMapsError": "URL not recognised",
+    "importFromMapsErrorMalformed": "Invalid URL — check the link and try again",
+    "importFromMapsErrorShortlink": "Could not expand the short link — try opening it in Maps and copying the long URL",
+    "importFromMapsErrorGeocode": "Could not locate the places on the map — try a shorter route or type them manually",
     "importFromMapsLoading": "Parsing link…",
     "adverseEventsBannerCount": "{count} alert(s) on your route",
     "@adverseEventsBannerCount": {
@@ -1041,6 +1053,21 @@
     },
     "kmFromOrigin": "{km} km from origin",
     "@kmFromOrigin": {
+      "placeholders": { "km": {"type": "String"} }
+    },
+    "profileVehicleModel": "Model",
+    "profileVehicleModelHint": "Pick your car model",
+    "profileVehicleModelClear": "Clear model",
+    "profileTankLevel": "Current tank",
+    "vehiclePickerSearchHint": "Search brand or model",
+    "vehiclePickerEmpty": "No models match your search",
+    "vehiclePickerLoadError": "Could not load models. Try again later.",
+    "refuelWindowComfortable": "Refuel by km {km} (comfortable)",
+    "@refuelWindowComfortable": {
+      "placeholders": { "km": {"type": "String"} }
+    },
+    "refuelWindowCritical": "Refuel by km {km} (critical)",
+    "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
     }
 }

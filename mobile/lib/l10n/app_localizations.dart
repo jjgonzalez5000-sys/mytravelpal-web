@@ -1993,12 +1993,6 @@ abstract class AppLocalizations {
   /// **'Fuel'**
   String get resultFuel;
 
-  /// No description provided for @resultOptimized.
-  ///
-  /// In en, this message translates to:
-  /// **'Optimized for your trip'**
-  String get resultOptimized;
-
   /// No description provided for @resultOptimizedFuelBudget.
   ///
   /// In en, this message translates to:
@@ -2299,12 +2293,6 @@ abstract class AppLocalizations {
   /// **'Dashed on the map above'**
   String get resultVariantDashed;
 
-  /// No description provided for @resultOptimizedEyebrow.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile-aware'**
-  String get resultOptimizedEyebrow;
-
   /// No description provided for @dayTollsHeader.
   ///
   /// In en, this message translates to:
@@ -2340,12 +2328,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Near {city}'**
   String resultCityHint(Object city);
-
-  /// No description provided for @resultOptimizedDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Meal, sleep and fuel picks that match your profile.'**
-  String get resultOptimizedDescription;
 
   /// No description provided for @resultSavingsShiftAndSkip.
   ///
@@ -3463,6 +3445,42 @@ abstract class AppLocalizations {
   /// **'Heatwave'**
   String get eventTypeHeatwave;
 
+  /// No description provided for @eventTypeHeavyRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy rain'**
+  String get eventTypeHeavyRain;
+
+  /// No description provided for @eventTypeHail.
+  ///
+  /// In en, this message translates to:
+  /// **'Hail'**
+  String get eventTypeHail;
+
+  /// No description provided for @eventTypeThunderstorm.
+  ///
+  /// In en, this message translates to:
+  /// **'Thunderstorm'**
+  String get eventTypeThunderstorm;
+
+  /// No description provided for @eventTypeHighWind.
+  ///
+  /// In en, this message translates to:
+  /// **'High wind'**
+  String get eventTypeHighWind;
+
+  /// No description provided for @eventTypeDenseFog.
+  ///
+  /// In en, this message translates to:
+  /// **'Dense fog'**
+  String get eventTypeDenseFog;
+
+  /// No description provided for @eventTypeFreezingRain.
+  ///
+  /// In en, this message translates to:
+  /// **'Freezing rain'**
+  String get eventTypeFreezingRain;
+
   /// No description provided for @eventTypeOther.
   ///
   /// In en, this message translates to:
@@ -3871,6 +3889,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Finish driving around {time}'**
   String daySleepMarker(String time);
+
+  /// No description provided for @dayStartsAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Departs at {time}'**
+  String dayStartsAt(String time);
+
+  /// No description provided for @dayMealStopAt.
+  ///
+  /// In en, this message translates to:
+  /// **'🍽 {time} · {name}'**
+  String dayMealStopAt(String time, String name);
+
+  /// No description provided for @dayRestStopAt.
+  ///
+  /// In en, this message translates to:
+  /// **'☕ {time} · {label}'**
+  String dayRestStopAt(String time, String label);
 
   /// No description provided for @dayHeaderDwell.
   ///
@@ -5002,6 +5038,24 @@ abstract class AppLocalizations {
   /// **'URL not recognised'**
   String get importFromMapsError;
 
+  /// No description provided for @importFromMapsErrorMalformed.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid URL — check the link and try again'**
+  String get importFromMapsErrorMalformed;
+
+  /// No description provided for @importFromMapsErrorShortlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not expand the short link — try opening it in Maps and copying the long URL'**
+  String get importFromMapsErrorShortlink;
+
+  /// No description provided for @importFromMapsErrorGeocode.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not locate the places on the map — try a shorter route or type them manually'**
+  String get importFromMapsErrorGeocode;
+
   /// No description provided for @importFromMapsLoading.
   ///
   /// In en, this message translates to:
@@ -5025,6 +5079,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{km} km from origin'**
   String kmFromOrigin(String km);
+
+  /// No description provided for @profileVehicleModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get profileVehicleModel;
+
+  /// No description provided for @profileVehicleModelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick your car model'**
+  String get profileVehicleModelHint;
+
+  /// No description provided for @profileVehicleModelClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear model'**
+  String get profileVehicleModelClear;
+
+  /// No description provided for @profileTankLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current tank'**
+  String get profileTankLevel;
+
+  /// No description provided for @vehiclePickerSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search brand or model'**
+  String get vehiclePickerSearchHint;
+
+  /// No description provided for @vehiclePickerEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No models match your search'**
+  String get vehiclePickerEmpty;
+
+  /// No description provided for @vehiclePickerLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load models. Try again later.'**
+  String get vehiclePickerLoadError;
+
+  /// No description provided for @refuelWindowComfortable.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuel by km {km} (comfortable)'**
+  String refuelWindowComfortable(String km);
+
+  /// No description provided for @refuelWindowCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuel by km {km} (critical)'**
+  String refuelWindowCritical(String km);
 }
 
 class _AppLocalizationsDelegate

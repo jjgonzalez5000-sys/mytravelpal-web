@@ -9,8 +9,10 @@ import '../design/tokens.dart';
 import '../domain/travel_style_presets.dart';
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
+import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import 'vehicle_picker_screen.dart';
 
 /// Single-form profile editor. Users set this once; the plan screen
 /// then shows a compact chip and applies the profile silently to every
@@ -258,6 +260,28 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         vehicle: v.copyWith(consumptionLPer100km: x)),
                     ),
                   ),
+                  const SizedBox(height: Tokens.space16),
+                  _VehicleModelRow(
+                    currentId: _profile.vehicleModelId,
+                    onPicked: (id) {
+                      _update(_profile.copyWith(vehicleModelId: id));
+                    },
+                    onClear: () {
+                      _update(_profile.copyWith(
+                        vehicleModelId: null,
+                        currentTankLevelPercent: null,
+                      ));
+                    },
+                  ),
+                  if (_profile.vehicleModelId != null) ...[
+                    const SizedBox(height: Tokens.space16),
+                    _TankLevelPicker(
+                      current: _profile.currentTankLevelPercent,
+                      onChanged: (pct) => _update(
+                        _profile.copyWith(currentTankLevelPercent: pct),
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),
@@ -880,6 +904,146 @@ class _MealTimeTile extends StatelessWidget {
         ],
       ),
       onTap: () => _open(context),
+    );
+  }
+}
+
+/// A tappable row showing the currently-picked vehicle model (short
+/// label) or a "pick model" hint. Opens the [VehiclePickerScreen] and
+/// forwards the selection back up to the parent form.
+class _VehicleModelRow extends ConsumerWidget {
+  const _VehicleModelRow({
+    required this.currentId,
+    required this.onPicked,
+    required this.onClear,
+  });
+
+  final String? currentId;
+  final ValueChanged<String> onPicked;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    // Resolve id -> VehicleModel using the cached catalogue. If the
+    // catalogue is still loading (cold start) we render the raw id so
+    // the row is never empty for the user.
+    final async = ref.watch(vehicleCatalogueProvider);
+    VehicleModel? picked;
+    if (currentId != null && async.hasValue) {
+      picked = async.value!.firstWhere(
+        (m) => m.id == currentId,
+        orElse: () => VehicleModel(
+          id: currentId!,
+          make: '',
+          model: currentId!,
+          yearFrom: 0,
+          yearTo: null,
+          fuelType: FuelType.petrol,
+          tankLiters: 0,
+          consumptionL100km: 0,
+        ),
+      );
+    }
+    final labelText = picked == null
+        ? l.profileVehicleModelHint
+        : '${picked.make} ${picked.model}';
+    final subLabel = picked == null || picked.tankLiters <= 0
+        ? null
+        : picked.shortLabel;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () async {
+        final id = await Navigator.of(context).push<String>(
+          MaterialPageRoute(
+            builder: (_) => VehiclePickerScreen(currentId: currentId),
+          ),
+        );
+        if (id != null && id.isNotEmpty) onPicked(id);
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
+        child: Row(
+          children: [
+            Icon(Icons.directions_car_filled, color: scheme.primary),
+            const SizedBox(width: Tokens.space12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.profileVehicleModel,
+                    style: t.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(labelText, style: t.titleMedium),
+                  if (subLabel != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      subLabel,
+                      style: t.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (currentId != null)
+              IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: l.profileVehicleModelClear,
+                onPressed: onClear,
+              ),
+            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 4-notch chip picker (25 / 50 / 75 / 100 %) for the current fuel
+/// level. Only surfaced when a `vehicleModelId` is set — without it
+/// the backend has no tank size to project against.
+class _TankLevelPicker extends StatelessWidget {
+  const _TankLevelPicker({required this.current, required this.onChanged});
+
+  final int? current;
+  final ValueChanged<int?> onChanged;
+
+  static const _notches = <int>[25, 50, 75, 100];
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.profileTankLevel,
+          style: t.labelMedium?.copyWith(color: scheme.onSurfaceVariant),
+        ),
+        const SizedBox(height: Tokens.space8),
+        Wrap(
+          spacing: Tokens.space8,
+          children: [
+            for (final n in _notches)
+              ChoiceChip(
+                label: Text('$n %'),
+                selected: current == n,
+                onSelected: (yes) => onChanged(yes ? n : null),
+              ),
+          ],
+        ),
+      ],
     );
   }
 }

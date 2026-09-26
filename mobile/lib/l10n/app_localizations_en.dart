@@ -1037,9 +1037,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultFuel => 'Fuel';
 
   @override
-  String get resultOptimized => 'Optimized for your trip';
-
-  @override
   String get resultOptimizedFuelBudget => 'Estimated fuel budget';
 
   @override
@@ -1198,9 +1195,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultVariantDashed => 'Dashed on the map above';
 
   @override
-  String get resultOptimizedEyebrow => 'Profile-aware';
-
-  @override
   String dayTollsHeader(Object amount, int count) {
     return 'Tolls today · $amount € ($count)';
   }
@@ -1228,10 +1222,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String resultCityHint(Object city) {
     return 'Near $city';
   }
-
-  @override
-  String get resultOptimizedDescription =>
-      'Meal, sleep and fuel picks that match your profile.';
 
   @override
   String get resultSavingsShiftAndSkip =>
@@ -1862,6 +1852,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get eventTypeHeatwave => 'Heatwave';
 
   @override
+  String get eventTypeHeavyRain => 'Heavy rain';
+
+  @override
+  String get eventTypeHail => 'Hail';
+
+  @override
+  String get eventTypeThunderstorm => 'Thunderstorm';
+
+  @override
+  String get eventTypeHighWind => 'High wind';
+
+  @override
+  String get eventTypeDenseFog => 'Dense fog';
+
+  @override
+  String get eventTypeFreezingRain => 'Freezing rain';
+
+  @override
   String get eventTypeOther => 'Other';
 
   @override
@@ -2118,6 +2126,21 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String daySleepMarker(String time) {
     return 'Finish driving around $time';
+  }
+
+  @override
+  String dayStartsAt(String time) {
+    return 'Departs at $time';
+  }
+
+  @override
+  String dayMealStopAt(String time, String name) {
+    return '🍽 $time · $name';
+  }
+
+  @override
+  String dayRestStopAt(String time, String label) {
+    return '☕ $time · $label';
   }
 
   @override
@@ -2777,6 +2800,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get importFromMapsError => 'URL not recognised';
 
   @override
+  String get importFromMapsErrorMalformed =>
+      'Invalid URL — check the link and try again';
+
+  @override
+  String get importFromMapsErrorShortlink =>
+      'Could not expand the short link — try opening it in Maps and copying the long URL';
+
+  @override
+  String get importFromMapsErrorGeocode =>
+      'Could not locate the places on the map — try a shorter route or type them manually';
+
+  @override
   String get importFromMapsLoading => 'Parsing link…';
 
   @override
@@ -2792,5 +2827,37 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String kmFromOrigin(String km) {
     return '$km km from origin';
+  }
+
+  @override
+  String get profileVehicleModel => 'Model';
+
+  @override
+  String get profileVehicleModelHint => 'Pick your car model';
+
+  @override
+  String get profileVehicleModelClear => 'Clear model';
+
+  @override
+  String get profileTankLevel => 'Current tank';
+
+  @override
+  String get vehiclePickerSearchHint => 'Search brand or model';
+
+  @override
+  String get vehiclePickerEmpty => 'No models match your search';
+
+  @override
+  String get vehiclePickerLoadError =>
+      'Could not load models. Try again later.';
+
+  @override
+  String refuelWindowComfortable(String km) {
+    return 'Refuel by km $km (comfortable)';
+  }
+
+  @override
+  String refuelWindowCritical(String km) {
+    return 'Refuel by km $km (critical)';
   }
 }

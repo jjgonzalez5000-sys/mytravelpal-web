@@ -144,6 +144,16 @@ class AdverseEventType(str, Enum):
     AVALANCHE = "avalanche"
     CLOSURE = "closure"
     HEATWAVE = "heatwave"
+    # Live weather-hazards check (RainViewer radar + Open-Meteo
+    # weather_code / precipitation / wind / visibility). Companion
+    # mode polls sample coords along the next 200 km every 15 min
+    # and raises typed alerts 30-60 min ahead of impact.
+    HEAVY_RAIN = "heavy_rain"
+    HAIL = "hail"
+    THUNDERSTORM = "thunderstorm"
+    HIGH_WIND = "high_wind"
+    DENSE_FOG = "dense_fog"
+    FREEZING_RAIN = "freezing_rain"
     OTHER = "other"
 
 

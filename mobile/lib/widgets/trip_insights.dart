@@ -341,6 +341,25 @@ class DayPlanSection extends StatelessWidget {
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
+                          // Day 1 shows the user's actual departure —
+                          // the rest of the days start at wake_hour
+                          // which is a profile constant, not news.
+                          // Surfacing "Sale a las 08:15" here makes
+                          // the day timeline self-contained so the
+                          // driver doesn't have to backtrack to the
+                          // plan form to remember when they leave.
+                          if (!d.isDwellDay && d.dayIndex == 1) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              l.dayStartsAt(
+                                timeFormat.format(d.startAt.toLocal()),
+                              ),
+                              style: t.bodySmall?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -409,15 +428,90 @@ class DayPlanSection extends StatelessWidget {
                           const SizedBox(width: 6),
                           Expanded(
                             child: Text(
-                              [
-                                '${_slotLabel(l, m.slot)}  ·  '
-                                    '${timeFormat.format(m.at.toLocal())}',
-                                if (m.cityHint != null)
-                                  l.resultCityHint(m.cityHint!)
-                                else
-                                  'km ${m.distanceFromOriginKm.toStringAsFixed(0)}',
-                                if (m.restaurantName != null) m.restaurantName!,
-                              ].join('  ·  '),
+                              // Time is now the row's anchor (driver
+                              // scans clock-first). Fall back to the
+                              // meal slot name when no restaurant was
+                              // picked; append the km / city and slot
+                              // label as secondary context.
+                              () {
+                                final time =
+                                    timeFormat.format(m.at.toLocal());
+                                final primaryName = m.restaurantName
+                                    ?? _slotLabel(l, m.slot);
+                                final where = m.cityHint != null
+                                    ? l.resultCityHint(m.cityHint!)
+                                    : 'km ${m.distanceFromOriginKm.toStringAsFixed(0)}';
+                                final base = l.dayMealStopAt(
+                                  time, primaryName,
+                                );
+                                // Add the "cerca de X" / km hint and
+                                // the slot label only when they add
+                                // signal (i.e. we already showed a
+                                // restaurant name; otherwise the slot
+                                // label is already the primary).
+                                if (m.restaurantName != null) {
+                                  return '$base  ·  $where  ·  '
+                                      '${_slotLabel(l, m.slot)}';
+                                }
+                                return '$base  ·  $where';
+                              }(),
+                              style: t.bodySmall,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+                // Rest stops: same clock-first pattern. Rendered when
+                // the backend flagged any along this day's km range —
+                // usually short coffee / stretch pauses the driver
+                // will naturally take. Time is computed from the day
+                // start + cumulative driving hours (pause-adjusted).
+                if (d.restStops.isNotEmpty) ...[
+                  const SizedBox(height: Tokens.space8),
+                  for (final r in d.restStops)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.local_cafe_outlined, size: 14,
+                              color: scheme.secondary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              () {
+                                // Linear interpolation across the
+                                // day's km / time range. `end_at`
+                                // already folds in pause + meal
+                                // overhead so the derived rest-stop
+                                // time inherits both. Good enough for
+                                // a "coffee around 11:15" chip — not
+                                // a promise. Guards a zero-km day
+                                // (dwell / edge case) by falling back
+                                // to the day's start moment.
+                                final span = d.toKm - d.fromKm;
+                                final frac = span > 0
+                                    ? ((r.distanceFromOriginKm - d.fromKm)
+                                            / span)
+                                        .clamp(0.0, 1.0)
+                                    : 0.0;
+                                final elapsed = d.endAt.difference(d.startAt);
+                                final at = d.startAt.add(
+                                  Duration(
+                                    milliseconds:
+                                        (elapsed.inMilliseconds * frac)
+                                            .round(),
+                                  ),
+                                );
+                                final label =
+                                    'km ${r.distanceFromOriginKm.toStringAsFixed(0)}'
+                                    '  ·  ${r.recommendedBreakMinutes} min';
+                                return l.dayRestStopAt(
+                                  timeFormat.format(at.toLocal()),
+                                  label,
+                                );
+                              }(),
                               style: t.bodySmall,
                             ),
                           ),

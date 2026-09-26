@@ -126,7 +126,37 @@ class TripProfileIn(BaseModel):
     wake_hour: int = Field(default=8, ge=5, le=11)
     break_style: BreakStyle = BreakStyle.SCENIC
 
+    # -- Curated vehicle catalogue (Phase 1: model + tank level) --
+    # When `vehicle_model_id` matches an entry in
+    # `app.data.vehicle_models` we override the manual sliders on
+    # `vehicle` with the catalogue's tank size + consumption. Lets
+    # the driver skip the "guess my consumption in L/100 km" step.
+    # `current_tank_level_percent` (25 / 50 / 75 / 100) feeds
+    # `refuel_window` in the plan response.
+    vehicle_model_id: str | None = Field(default=None, max_length=128)
+    current_tank_level_percent: int | None = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description=(
+            "Current fuel level as a percentage of tank capacity. "
+            "Common values from the picker: 25, 50, 75, 100. Feeds "
+            "the `refuel_window` hint in the response."
+        ),
+    )
+
     def to_domain(self) -> TripProfile:
+        # Optional catalogue lookup for tank + consumption. Falls back
+        # to the manual `vehicle` sliders when the id is unknown or
+        # missing, so a broken/stale id doesn't break the plan.
+        tank_l = self.vehicle.fuel_tank_l
+        consumption = self.vehicle.consumption_l_per_100km
+        if self.vehicle_model_id:
+            from app.data.vehicle_models import find as _find_vehicle
+            hit = _find_vehicle(self.vehicle_model_id)
+            if hit is not None:
+                tank_l = hit.tank_liters
+                consumption = hit.consumption_l100km
         return TripProfile(
             travellers=self.travellers,
             has_kids=self.has_kids,
@@ -134,9 +164,9 @@ class TripProfileIn(BaseModel):
             vehicle=Vehicle(
                 type=self.vehicle.type,
                 fuel_type=self.vehicle.fuel_type,
-                consumption_l_per_100km=self.vehicle.consumption_l_per_100km,
+                consumption_l_per_100km=consumption,
                 consumption_kwh_per_100km=self.vehicle.consumption_kwh_per_100km,
-                fuel_tank_l=self.vehicle.fuel_tank_l,
+                fuel_tank_l=tank_l,
                 ev_range_km=self.vehicle.ev_range_km,
             ),
             meals=MealPreferences(
@@ -672,6 +702,19 @@ class ParkingOutTrip(BaseModel):
     rv_friendly: bool | None = None
 
 
+class RefuelWindowOut(BaseModel):
+    """Distance-along-route milestones for the driver's next refuel.
+
+    Populated only when the request's `trip_profile.vehicle_model_id`
+    AND `current_tank_level_percent` are set. Absent otherwise so the
+    mobile client can leave the chip hidden.
+    """
+    usable_range_km: float
+    comfortable_by_km: float
+    must_by_km: float
+    reaches_destination: bool
+
+
 class TripPlanResponse(BaseModel):
     route: RouteOut
     time_windows: list[TimeWindowOut]
@@ -695,6 +738,7 @@ class TripPlanResponse(BaseModel):
     fuel_arbitrage: FuelArbitrageOut | None = None
     days: list[DayPlanOut] = Field(default_factory=list)
     weather_segments: list[WeatherSegmentOut] = Field(default_factory=list)
+    refuel_window: RefuelWindowOut | None = None
 
 
 def _providers() -> Providers:
@@ -1894,6 +1938,38 @@ async def plan_trip(
     except Exception:
         weather_raw = ()
 
+    # Refuel window — computed only when the caller sent both a
+    # curated `vehicle_model_id` and a `current_tank_level_percent`.
+    # The catalogue supplies real-world tank + consumption; the
+    # helper returns two km milestones the mobile chip renders as
+    # "refuel by km X (comfortable) / km Y (critical)".
+    refuel_out: RefuelWindowOut | None = None
+    if (
+        payload.trip_profile is not None
+        and payload.trip_profile.vehicle_model_id
+        and payload.trip_profile.current_tank_level_percent is not None
+        and profile is not None
+        and profile.vehicle.fuel_type != FuelType.ELECTRIC
+    ):
+        from app.data.vehicle_models import find as _find_vehicle
+        from app.services.fuel_planning import refuel_window as _refuel_window
+        hit = _find_vehicle(payload.trip_profile.vehicle_model_id)
+        if hit is not None:
+            rw = _refuel_window(
+                route_distance_km=route.distance_km,
+                tank_level_frac=(
+                    payload.trip_profile.current_tank_level_percent / 100.0
+                ),
+                tank_liters=hit.tank_liters,
+                consumption_l100km=hit.consumption_l100km,
+            )
+            refuel_out = RefuelWindowOut(
+                usable_range_km=rw.usable_range_km,
+                comfortable_by_km=rw.comfortable_by_km,
+                must_by_km=rw.must_by_km,
+                reaches_destination=rw.reaches_destination,
+            )
+
     parkings_out: list[ParkingOutTrip] = []
     if payload.include_parking:
         try:
@@ -1998,6 +2074,335 @@ async def plan_trip(
             )
             for s in weather_raw
         ],
+        refuel_window=refuel_out,
+    )
+
+
+class AdverseRefreshCoordinate(BaseModel):
+    lat: float = Field(ge=-90.0, le=90.0)
+    lon: float = Field(ge=-180.0, le=180.0)
+
+
+class AdverseRefreshRequest(BaseModel):
+    """Companion-mode live re-scan of adverse events ahead of the driver.
+
+    The plan response is a snapshot at planning time — a fire alert or
+    thunderstorm developing mid-drive doesn't propagate back to the
+    driver. Companion polls this endpoint every 15 min with its current
+    km-along-route so we re-run the same feeds (EFFIS fires, Open-Meteo
+    weather, USGS quakes, heatwave) against just the corridor slice the
+    driver is about to cross.
+    """
+    geometry: list[AdverseRefreshCoordinate] = Field(
+        min_length=2,
+        description="Full route polyline (from the plan response).",
+    )
+    current_km: float = Field(
+        ge=0.0,
+        description=(
+            "Driver's current position measured as km-from-origin along "
+            "the polyline. Client computes this by snapping its GPS "
+            "fix to `geometry`."
+        ),
+    )
+    look_ahead_km: float = Field(
+        default=200.0,
+        gt=0.0,
+        le=1000.0,
+        description=(
+            "How far along the polyline to look. 200 km fits ~2 h of "
+            "highway driving — long enough that the driver has time "
+            "to react, short enough to keep the query cheap."
+        ),
+    )
+    countries: list[Country] | None = Field(
+        default=None,
+        description=(
+            "Optional country hints for country-scoped feeds "
+            "(e.g. national weather advisories)."
+        ),
+    )
+    max_distance_km: float = Field(
+        default=12.0,
+        gt=0.0,
+        le=200.0,
+        description=(
+            "Corridor half-width for near-route filtering. Default matches "
+            "the /plan endpoint (12 km, tuned for FIRMS smoke plume)."
+        ),
+    )
+
+
+class AdverseRefreshResponse(BaseModel):
+    events: list[AdverseEventOut]
+    sliced_from_km: float
+    sliced_to_km: float
+    sliced_distance_km: float
+
+
+def _haversine_km_pair(a: Coordinate, b: Coordinate) -> float:
+    """Cheap haversine — inline copy of `_haversine_km` from
+    `providers.routing`. Kept local to avoid an extra import layer
+    when this file is already at 2 000+ lines."""
+    from math import radians, cos, sin, asin, sqrt
+    lat1, lon1, lat2, lon2 = map(radians, (a.lat, a.lon, b.lat, b.lon))
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    h = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
+    return 2 * 6371.0 * asin(sqrt(h))
+
+
+def _slice_polyline_by_km(
+    geometry: list[Coordinate],
+    current_km: float,
+    look_ahead_km: float,
+) -> tuple[list[Coordinate], float, float, float]:
+    """Return the slice of `geometry` whose cumulative-km-from-start
+    falls in (current_km, current_km + look_ahead_km].
+
+    Returns (sliced_points, actual_from_km, actual_to_km, distance_km).
+    Points at cumulative_km <= current_km are dropped; the first
+    surviving point is prepended with the interpolated location at
+    exactly current_km if the boundary lands mid-segment (so the
+    downstream Route.origin is anchored precisely where the driver
+    is, not at the next raw vertex which may be up to 5 km further
+    on for OSRM-simplified corridors).
+    """
+    if len(geometry) < 2:
+        return ([], current_km, current_km, 0.0)
+    end_km = current_km + look_ahead_km
+    sliced: list[Coordinate] = []
+    cum = 0.0
+    first_idx: int | None = None
+    for i in range(len(geometry)):
+        if i > 0:
+            cum += _haversine_km_pair(geometry[i - 1], geometry[i])
+        # Strict less-than at the near edge: when `current_km == 0` we
+        # want to keep the origin vertex (its cum is 0). For any other
+        # `current_km > 0` the interpolation below anchors the slice
+        # start at the exact km, so we drop vertices strictly behind.
+        if cum < current_km:
+            continue
+        if cum > end_km:
+            break
+        if first_idx is None:
+            first_idx = i
+        sliced.append(geometry[i])
+    if not sliced:
+        return ([], current_km, current_km, 0.0)
+    # Anchor the first point EXACTLY at current_km so downstream Route
+    # objects (which use origin as one of the near-route reference
+    # points) don't drift by up to a segment length. Interpolate
+    # between the vertex before the slice and the first surviving one.
+    if first_idx is not None and first_idx > 0:
+        prev = geometry[first_idx - 1]
+        nxt = geometry[first_idx]
+        # cum after this segment (already accumulated by the loop) is
+        # the km at `nxt`; back-compute km at `prev`.
+        seg_len = _haversine_km_pair(prev, nxt)
+        cum_at_prev = 0.0
+        _c = 0.0
+        for j in range(1, first_idx + 1):
+            step = _haversine_km_pair(geometry[j - 1], geometry[j])
+            if j == first_idx:
+                cum_at_prev = _c
+            _c += step
+        overshoot = current_km - cum_at_prev
+        if seg_len > 0.0 and 0 < overshoot < seg_len:
+            frac = overshoot / seg_len
+            interp = Coordinate(
+                lat=prev.lat + (nxt.lat - prev.lat) * frac,
+                lon=prev.lon + (nxt.lon - prev.lon) * frac,
+            )
+            sliced.insert(0, interp)
+    dist = 0.0
+    for i in range(1, len(sliced)):
+        dist += _haversine_km_pair(sliced[i - 1], sliced[i])
+    return (sliced, current_km, current_km + dist, dist)
+
+
+@router.post("/adverse-refresh", response_model=AdverseRefreshResponse)
+async def refresh_adverse_events(
+    payload: AdverseRefreshRequest,
+    providers: Providers = Depends(_providers),
+) -> AdverseRefreshResponse:
+    """Live re-scan of adverse events for the corridor slice ahead of
+    the driver. Companion polls this every ~15 min so new fires /
+    thunderstorms / quakes that develop mid-drive surface as fresh
+    notifications instead of the frozen plan-time snapshot.
+
+    Cheap by design: sliced route (~200 km) keeps FIRMS / Open-Meteo
+    bounding boxes small, and no POI / hotel / fuel fetching runs.
+    """
+    geometry = [
+        Coordinate(lat=p.lat, lon=p.lon) for p in payload.geometry
+    ]
+    sliced, from_km, to_km, dist_km = _slice_polyline_by_km(
+        geometry, payload.current_km, payload.look_ahead_km,
+    )
+    if len(sliced) < 2 or dist_km <= 0.0:
+        return AdverseRefreshResponse(
+            events=[],
+            sliced_from_km=from_km,
+            sliced_to_km=to_km,
+            sliced_distance_km=dist_km,
+        )
+    # Synthesise a Route object the existing providers understand.
+    # Free-flow duration is a rough 100 km/h floor — enough for the
+    # Open-Meteo weather provider to pick a valid arrival time and
+    # for other providers that check `route.free_flow_duration > 0`.
+    slice_route = Route(
+        origin=sliced[0],
+        destination=sliced[-1],
+        distance_km=dist_km,
+        free_flow_duration=timedelta(hours=max(dist_km / 100.0, 0.1)),
+        polyline="",
+        toll_cost_eur=0.0,
+        countries_crossed=tuple(payload.countries or ()),
+        waypoints=tuple(sliced[1:-1]),
+        geometry=tuple(sliced),
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        raw = await asyncio.wait_for(
+            providers.adverse_events.events_along(slice_route, now=now),
+            timeout=8.0,
+        )
+    except (asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001
+        _log.warning("adverse-refresh providers failed: %r", exc)
+        raw = ()
+    near = filter_events_near_route(
+        raw, slice_route, max_distance_km=payload.max_distance_km,
+    )
+    # Same "serious hazards only" filter as /plan — keep the two
+    # endpoints consistent so the driver never sees a mid-drive
+    # notification for an event type the plan screen would have
+    # hidden.
+    _SERIOUS = {
+        AdverseEventType.FIRE,
+        AdverseEventType.WEATHER,
+        AdverseEventType.FLOOD,
+        AdverseEventType.SNOW,
+        AdverseEventType.EARTHQUAKE,
+        AdverseEventType.LANDSLIDE,
+        AdverseEventType.AVALANCHE,
+        AdverseEventType.HEATWAVE,
+        AdverseEventType.ACCIDENT,
+        AdverseEventType.CLOSURE,
+    }
+    events_out = [
+        AdverseEventOut(
+            id=e.id,
+            type=e.type,
+            severity=e.severity,
+            source=e.source.value,
+            description=e.description,
+            reported_at=e.reported_at,
+            expires_at=e.expires_at,
+            lat=e.coordinate.lat,
+            lon=e.coordinate.lon,
+            country=e.country,
+        )
+        for e in near
+        if e.type in _SERIOUS
+        and e.severity != AdverseEventSeverity.INFO
+    ]
+    return AdverseRefreshResponse(
+        events=events_out,
+        sliced_from_km=from_km,
+        sliced_to_km=to_km,
+        sliced_distance_km=dist_km,
+    )
+
+
+class WeatherHazardsCoord(BaseModel):
+    lat: float = Field(ge=-90.0, le=90.0)
+    lon: float = Field(ge=-180.0, le=180.0)
+    km_ahead: float | None = Field(
+        default=None, ge=0.0,
+        description="Optional km-ahead-of-driver label for UI ETA.",
+    )
+
+
+class WeatherHazardsRequest(BaseModel):
+    """Companion-mode live weather-hazards probe.
+
+    Given 5-10 sample coords along the driver's next ~200 km, returns
+    a typed list of imminent weather hazards (heavy rain, thunder,
+    snow, hail, high wind, dense fog, freezing rain). Combines two
+    signals — Open-Meteo hourly forecast for typing + RainViewer
+    live radar for real-time confirmation of precipitation types.
+
+    Called on the same 15-min poll as `/adverse-refresh`; the two
+    feed the Companion drive screen with complementary alerts.
+    """
+    coords: list[WeatherHazardsCoord] = Field(
+        min_length=1, max_length=10,
+        description="Sample points along the next 200 km of the route.",
+    )
+
+
+class WeatherHazardOut(BaseModel):
+    """One typed hazard forecast (or radar-confirmed observation).
+
+    `type` mirrors backend `AdverseEventType` snake_case values
+    (heavy_rain, hail, thunderstorm, high_wind, dense_fog,
+    freezing_rain, snow).
+    """
+    type: str
+    severity: str
+    lat: float
+    lon: float
+    eta_km_ahead: float | None = None
+    description: str
+    radar_confirmed: bool
+
+
+class WeatherHazardsResponse(BaseModel):
+    hazards: list[WeatherHazardOut]
+
+
+@router.post(
+    "/weather-hazards-check", response_model=WeatherHazardsResponse,
+)
+async def weather_hazards_check(
+    payload: WeatherHazardsRequest,
+) -> WeatherHazardsResponse:
+    """Live probe for weather hazards ahead of the driver.
+
+    Best-effort: any provider failure returns an empty list so the
+    client never surfaces a false positive. Coverage caveat —
+    RainViewer only covers Europe + North America; outside that
+    footprint we still return Open-Meteo-only alerts (radar
+    `radar_confirmed=False`).
+    """
+    # Local import — pulls Pillow lazily so a missing wheel does not
+    # break the app boot; the radar module itself falls back to a
+    # size-heuristic if PIL is not importable.
+    from app.services.weather_hazards import check as check_hazards
+
+    coords = [(c.lat, c.lon) for c in payload.coords]
+    km_ahead = [c.km_ahead if c.km_ahead is not None else 0.0 for c in payload.coords]
+    try:
+        hazards = await asyncio.wait_for(
+            check_hazards(coords, km_ahead=km_ahead), timeout=10.0,
+        )
+    except (asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001
+        _log.warning("weather-hazards-check failed: %r", exc)
+        return WeatherHazardsResponse(hazards=[])
+    return WeatherHazardsResponse(
+        hazards=[
+            WeatherHazardOut(
+                type=h.type,
+                severity=h.severity,
+                lat=h.lat,
+                lon=h.lon,
+                eta_km_ahead=h.eta_km_ahead,
+                description=h.description,
+                radar_confirmed=h.radar_confirmed,
+            )
+            for h in hazards
+        ]
     )
 
 
