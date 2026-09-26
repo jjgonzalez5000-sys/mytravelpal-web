@@ -63,6 +63,7 @@ from app.services.route_variants import compute_variants
 from app.services.toll_savings import compare as compare_toll
 from dataclasses import replace as _dc_replace
 from app.services.consistency import check_trip as check_trip_consistency
+from app.services.plan_cache import get_plan_cache
 from app.services.trip_optimizations import compute as compute_optimizations
 from app.services.trip_style import derive_scope as derive_style_scope
 
@@ -772,13 +773,29 @@ def _providers() -> Providers:
     return get_providers()
 
 
-@router.post("/plan", response_model=TripPlanResponse)
-async def plan_trip(
+async def _plan_trip_impl(
     payload: TripPlanRequest,
-    providers: Providers = Depends(_providers),
-    premium: bool = Depends(is_premium),
-    user: AuthUser | None = Depends(current_user_optional),
+    providers: Providers,
+    premium: bool,
+    user: AuthUser | None,
 ) -> TripPlanResponse:
+    """Full trip-plan compute — the historic single-blob handler.
+
+    Exposed via three routes:
+      * ``POST /plan`` — returns the whole response (backwards compat).
+      * ``POST /plan/core`` — returns a subset the ResultScreen needs
+        to render the map + hero + day cards immediately.
+      * ``POST /plan/enrich`` — returns the remainder (hotels,
+        restaurants, weather, adverse events, fuel, toll alternative).
+
+    This is the *shortcut* two-phase implementation: both progressive
+    endpoints call this same function and slice the response. The
+    ``plan_cache`` keeps the second call cheap when a client fires
+    ``/plan/core`` then ``/plan/enrich`` in sequence, so the compute
+    cost is paid once even though the wire shape is split. A future
+    iteration can genuinely split the compute so ``/core`` returns in
+    2-5 s independently.
+    """
     if payload.include_hourly_toll_analysis and not premium:
         raise HTTPException(
             status_code=status.HTTP_402_PAYMENT_REQUIRED,
@@ -790,6 +807,20 @@ async def plan_trip(
                 ),
             },
         )
+
+    # Response cache — 10-minute TTL. Repeated / near-identical
+    # requests (same coords, same hour bucket, same filters) skip the
+    # entire provider fan-out. Backed by Redis when `REDIS_URL` is
+    # set, else a process-local TTLCache. Only 2xx responses are
+    # populated (via the `.set()` at the tail of this handler).
+    _plan_cache = get_plan_cache()
+    _cache_key = _plan_cache.key_for(payload)
+    _cached = await _plan_cache.get(_cache_key)
+    if _cached is not None:
+        _log.info("plan_cache HIT key=%s", _cache_key[:8])
+        return _cached
+    _log.info("plan_cache MISS key=%s", _cache_key[:8])
+
     origin = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
     destination = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
     waypoints = tuple(
@@ -2137,7 +2168,7 @@ async def plan_trip(
         except Exception as exc:  # noqa: BLE001
             _log.warning("Parking search failed: %r", exc)
 
-    return TripPlanResponse(
+    _response = TripPlanResponse(
         route=RouteOut(
             distance_km=route.distance_km,
             free_flow_minutes=_minutes(route.free_flow_duration),
@@ -2208,6 +2239,136 @@ async def plan_trip(
         ],
         refuel_window=refuel_out,
     )
+
+    # Cache the successful 200 for 10 minutes. Exceptions raised
+    # earlier bubble past this point untouched, so 4xx/5xx never
+    # populates the cache. `.set()` swallows Redis errors internally.
+    await _plan_cache.set(_cache_key, _response)
+    return _response
+
+
+# --- Public routes -------------------------------------------------
+#
+# Three thin wrappers over `_plan_trip_impl`. `/plan` is the historic
+# monolithic endpoint (backwards compat). `/plan/core` and
+# `/plan/enrich` are the two-phase progressive endpoints — the client
+# fires `/core` first to unblock the ResultScreen render, then
+# `/enrich` to hydrate the sections that need slower providers.
+#
+# In this iteration both progressive endpoints call the FULL
+# `_plan_trip_impl` and slice the response server-side. The
+# `plan_cache` (10-min TTL) keys off the request payload, so back-to-
+# back `/core` + `/enrich` for the same trip pays the compute cost
+# ONCE — the second call hits the cache and returns instantly. The
+# UX win in this iteration is API shape + client rendering paths; a
+# future iteration can move the enrich-only providers behind
+# `_plan_enrich_impl` so `/core` genuinely returns in 2-5 s.
+
+
+def _empty_core_slice(full: TripPlanResponse) -> TripPlanResponse:
+    """Return a copy of `full` with every ENRICH-only field zeroed.
+
+    The client already has route + hero + day cards from `/core`,
+    so `/enrich` doesn't need to re-ship them and we save wire bytes.
+    Keeps `route.geometry` etc. as empty defaults so old
+    `TripPlanResponse.fromJson` deserialisers stay happy.
+    """
+    return full.model_copy(update={
+        "route": RouteOut(
+            distance_km=0.0,
+            free_flow_minutes=0.0,
+            polyline="",
+            toll_cost_eur=0.0,
+            countries_crossed=[],
+            geometry=[],
+        ),
+        "time_windows": [],
+        "days": [],
+        "savings": SavingsSummaryOut(
+            time_saved_minutes_vs_desired=0.0,
+            money_saved_eur_vs_tolls=0.0,
+        ),
+        # optimizations is core-owned when it holds meal_stops /
+        # sleep_stop (both drive the day cards); zero it here so the
+        # enrich payload doesn't duplicate.
+        "optimizations": None,
+        "recommendation_scope": None,
+        "consistency_issues": [],
+        "route_variants": [],
+        "refuel_window": None,
+    })
+
+
+def _empty_enrich_slice(full: TripPlanResponse) -> TripPlanResponse:
+    """Return a copy of `full` with every ENRICH field cleared.
+
+    The client uses this to render the map + hero + day cards
+    immediately; enrich sections stay in skeleton state until the
+    second call lands.
+    """
+    return full.model_copy(update={
+        "hotels": [],
+        "restaurants": [],
+        "parkings": [],
+        "fuel_prices": [],
+        "rest_stops": [],
+        "adverse_events": [],
+        "toll_alternative": None,
+        "partial_toll_skips": [],
+        "intra_section_skips": [],
+        "hourly_toll_report": None,
+        "fuel_arbitrage": None,
+        "weather_segments": [],
+    })
+
+
+@router.post("/plan", response_model=TripPlanResponse)
+async def plan_trip(
+    payload: TripPlanRequest,
+    providers: Providers = Depends(_providers),
+    premium: bool = Depends(is_premium),
+    user: AuthUser | None = Depends(current_user_optional),
+) -> TripPlanResponse:
+    """Monolithic /plan — backwards compat with pre-progressive clients."""
+    return await _plan_trip_impl(payload, providers, premium, user)
+
+
+@router.post("/plan/core", response_model=TripPlanResponse)
+async def plan_trip_core(
+    payload: TripPlanRequest,
+    providers: Providers = Depends(_providers),
+    premium: bool = Depends(is_premium),
+    user: AuthUser | None = Depends(current_user_optional),
+) -> TripPlanResponse:
+    """Fast phase — returns route + days + savings + windows.
+
+    The client renders the map + hero + day cards from this payload
+    while `/plan/enrich` is still in flight. Enrich-only fields
+    (hotels, restaurants, fuel, weather, adverse events, toll
+    alternative) are returned as empty defaults so
+    `TripPlanResponse.fromJson` still parses cleanly.
+    """
+    full = await _plan_trip_impl(payload, providers, premium, user)
+    return _empty_enrich_slice(full)
+
+
+@router.post("/plan/enrich", response_model=TripPlanResponse)
+async def plan_trip_enrich(
+    payload: TripPlanRequest,
+    providers: Providers = Depends(_providers),
+    premium: bool = Depends(is_premium),
+    user: AuthUser | None = Depends(current_user_optional),
+) -> TripPlanResponse:
+    """Slower phase — returns hotels / restaurants / fuel / weather /
+    adverse events / toll alternative. Core fields (route, days,
+    savings) are returned as empty defaults; the client already has
+    them from the `/plan/core` call.
+
+    Shares the `plan_cache` with `/plan/core`, so back-to-back calls
+    for the same request pay the compute cost ONCE.
+    """
+    full = await _plan_trip_impl(payload, providers, premium, user)
+    return _empty_core_slice(full)
 
 
 class AdverseRefreshCoordinate(BaseModel):

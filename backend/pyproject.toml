@@ -25,6 +25,9 @@ dependencies = [
     # If the Fly wheel is unavailable, `rain_radar.py` degrades to a
     # tile-size heuristic (bytes > 1 KB => has-precipitation).
     "pillow>=10.0",
+    # In-process TTL cache used as fallback for the plan endpoint
+    # when Redis is unavailable (no REDIS_URL / connect fails).
+    "cachetools>=5.3",
 ]
 
 [project.optional-dependencies]

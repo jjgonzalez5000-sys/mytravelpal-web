@@ -84,6 +84,68 @@ class ApiClient {
     return code;
   }
 
+  /// Two-phase progressive plan: FAST phase.
+  ///
+  /// Returns the subset the ResultScreen needs to render the map +
+  /// hero + day cards immediately (route, days, savings, time
+  /// windows, optimizations). Hotels, restaurants, fuel, weather,
+  /// adverse events, toll alternative come back as empty defaults
+  /// so `TripPlanResponse.fromJson` parses cleanly — the caller
+  /// then fires [planTripEnrich] and hydrates the placeholders.
+  ///
+  /// Same 120 s cap + 3-attempt retry chain as [planTrip] — a
+  /// long-haul plan still fans out server-side and can take tens of
+  /// seconds when the backend is on a cold Fly machine.
+  Future<TripPlanResponse> planTripCore(TripPlanRequest request) =>
+      _postPlanVariant(request, '/v1/trips/plan/core');
+
+  /// Two-phase progressive plan: SLOWER phase.
+  ///
+  /// Returns hotels + restaurants + fuel + weather + adverse events
+  /// + toll alternative. Core fields (route, days, savings) come
+  /// back zeroed — the client already has them from [planTripCore].
+  ///
+  /// Shares the server-side `plan_cache` with [planTripCore], so
+  /// firing this right after `planTripCore` for the same request
+  /// pays the compute cost ONCE (the second call is a cache hit).
+  Future<TripPlanResponse> planTripEnrich(TripPlanRequest request) =>
+      _postPlanVariant(request, '/v1/trips/plan/enrich');
+
+  Future<TripPlanResponse> _postPlanVariant(
+    TripPlanRequest request,
+    String pathSuffix,
+  ) async {
+    final uri = Uri.parse('$_baseUrl$pathSuffix');
+    final body = jsonEncode(request.toJson());
+    const attempts = 3;
+    Object? lastError;
+    for (var i = 0; i < attempts; i++) {
+      try {
+        final response = await _http
+            .post(uri, headers: _headers(), body: body)
+            .timeout(const Duration(seconds: 120));
+        if (response.statusCode == 200) {
+          return TripPlanResponse.fromJson(
+            jsonDecode(response.body) as Map<String, dynamic>,
+          );
+        }
+        if (response.statusCode >= 400 && response.statusCode < 500) {
+          throw ApiException(response.statusCode, response.body);
+        }
+        lastError = ApiException(response.statusCode, response.body);
+      } on ApiException {
+        rethrow;
+      } catch (e) {
+        lastError = e;
+      }
+      if (i < attempts - 1) {
+        await Future<void>.delayed(Duration(seconds: 2 * (i + 1)));
+      }
+    }
+    if (lastError is Exception) throw lastError;
+    throw Exception(lastError?.toString() ?? 'plan variant failed');
+  }
+
   Future<TripPlanResponse> planTrip(TripPlanRequest request) async {
     final uri = Uri.parse('$_baseUrl/v1/trips/plan');
     final body = jsonEncode(request.toJson());
@@ -105,7 +167,13 @@ class ApiClient {
       try {
         final response = await _http
             .post(uri, headers: _headers(), body: body)
-            .timeout(const Duration(seconds: 60));
+            // 120s per attempt — long cross-country plans (e.g.
+            // Switzerland → Toledo, ~2000 km) hit ~70-90 s on the
+            // backend fanning weather/POI/fuel across 4-5 countries.
+            // 60 s was aborting mid-flight and retrying, so the
+            // backend saw 3× POSTs for the same trip while the user
+            // waited nearly 3 minutes.
+            .timeout(const Duration(seconds: 120));
         if (response.statusCode == 200) {
           return TripPlanResponse.fromJson(
             jsonDecode(response.body) as Map<String, dynamic>,

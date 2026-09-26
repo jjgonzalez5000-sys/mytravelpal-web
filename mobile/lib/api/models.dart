@@ -1736,6 +1736,55 @@ class TripPlanResponse {
         // `toJson` on every nested type.
         rawJson: json,
       );
+
+  /// Combine a `/plan/core` response with a `/plan/enrich` response
+  /// into a single full `TripPlanResponse` — the shape the
+  /// ResultScreen and every downstream widget expect.
+  ///
+  /// Two-phase progressive loading: mobile fires `planTripCore`
+  /// first (fast, route + hero + day cards), renders skeletons for
+  /// the enrich sections, then `planTripEnrich` lands and this
+  /// factory produces the merged view the state layer swaps in.
+  ///
+  /// Core wins on route / days / savings / windows / optimizations
+  /// / recommendation_scope; enrich wins on hotels / restaurants /
+  /// fuel / weather / adverse events / toll alternative. Neither
+  /// endpoint currently populates its "other" half — the backend
+  /// zeroes them so the wire cost is small.
+  factory TripPlanResponse.merge({
+    required TripPlanResponse core,
+    required TripPlanResponse enrich,
+  }) =>
+      TripPlanResponse(
+        // -- core-owned --
+        route: core.route,
+        timeWindows: core.timeWindows,
+        days: core.days,
+        savings: core.savings,
+        optimizations: core.optimizations,
+        recommendationScope: core.recommendationScope,
+        routeVariants: core.routeVariants,
+        consistencyIssues: core.consistencyIssues,
+        refuelWindow: core.refuelWindow,
+        // -- enrich-owned --
+        hotels: enrich.hotels,
+        restaurants: enrich.restaurants,
+        parkings: enrich.parkings,
+        fuelPrices: enrich.fuelPrices,
+        restStops: enrich.restStops,
+        adverseEvents: enrich.adverseEvents,
+        tollAlternative: enrich.tollAlternative,
+        partialTollSkips: enrich.partialTollSkips,
+        intraSectionSkips: enrich.intraSectionSkips,
+        hourlyTollReport: enrich.hourlyTollReport,
+        fuelArbitrage: enrich.fuelArbitrage,
+        weatherSegments: enrich.weatherSegments,
+        // `rawJson` intentionally null — merging two envelopes into
+        // one wouldn't have a canonical wire representation. The
+        // session-persistence layer will re-hit `/plan` (the
+        // monolithic endpoint) to snapshot a saved trip.
+        rawJson: null,
+      );
 }
 
 /// Refuel milestones for the trip. Two distances measured from
