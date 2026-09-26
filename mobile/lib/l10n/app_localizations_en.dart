@@ -2147,6 +2147,18 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get restStopFilterAll => 'All';
+
+  @override
+  String get restStopFilterKidFriendly => 'Kid-friendly';
+
+  @override
+  String get restStopFilterPetFriendly => 'Pet-friendly';
+
+  @override
+  String get restStopFilterRvFriendly => 'RV-friendly';
+
+  @override
   String dayHeaderDwell(int index, String place) {
     return 'Day $index · $place';
   }
@@ -2862,6 +2874,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String refuelWindowCritical(String km) {
     return 'Refuel by km $km (critical)';
+  }
+
+  @override
+  String get refuelSuggestionTitle => 'Refuel here to save';
+
+  @override
+  String refuelSuggestionBody(String station, String km, String price) {
+    return '$station · km $km · €$price/L';
+  }
+
+  @override
+  String refuelSuggestionSavings(String eur) {
+    return 'You save $eur €';
+  }
+
+  @override
+  String savingsFuelRow(String eur) {
+    return 'Fuel: $eur €';
   }
 
   @override

@@ -376,6 +376,13 @@ class RestStop:
     distance_from_origin_km: float
     cumulative_driving_hours: float
     recommended_break_minutes: int
+    # OSM-tag-derived amenity flags. Default False when the tag is
+    # absent — we NEVER guess. Consumers use these to filter (mobile
+    # "Solo pet-friendly") and to render inline badges next to each
+    # stop.
+    kid_friendly: bool = False
+    pet_friendly: bool = False
+    rv_friendly: bool = False
 
 
 @dataclass(frozen=True, slots=True)

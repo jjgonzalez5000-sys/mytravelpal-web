@@ -3914,6 +3914,30 @@ abstract class AppLocalizations {
   /// **'☕ {time} · {label}'**
   String dayRestStopAt(String time, String label);
 
+  /// No description provided for @restStopFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get restStopFilterAll;
+
+  /// No description provided for @restStopFilterKidFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'Kid-friendly'**
+  String get restStopFilterKidFriendly;
+
+  /// No description provided for @restStopFilterPetFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'Pet-friendly'**
+  String get restStopFilterPetFriendly;
+
+  /// No description provided for @restStopFilterRvFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'RV-friendly'**
+  String get restStopFilterRvFriendly;
+
   /// No description provided for @dayHeaderDwell.
   ///
   /// In en, this message translates to:
@@ -5139,6 +5163,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Refuel by km {km} (critical)'**
   String refuelWindowCritical(String km);
+
+  /// No description provided for @refuelSuggestionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refuel here to save'**
+  String get refuelSuggestionTitle;
+
+  /// No description provided for @refuelSuggestionBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{station} · km {km} · €{price}/L'**
+  String refuelSuggestionBody(String station, String km, String price);
+
+  /// No description provided for @refuelSuggestionSavings.
+  ///
+  /// In en, this message translates to:
+  /// **'You save {eur} €'**
+  String refuelSuggestionSavings(String eur);
+
+  /// No description provided for @savingsFuelRow.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel: {eur} €'**
+  String savingsFuelRow(String eur);
 
   /// No description provided for @garageTitle.
   ///

@@ -22,6 +22,7 @@ import '../services/notifications.dart';
 import '../services/plan_foreground_task.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
+import '../services/toll_detour_waypoints.dart';
 import '../services/trip_export.dart';
 import '../services/trip_share_image.dart';
 import '../services/trip_sharing.dart';
@@ -416,6 +417,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     });
   }
 
+  /// Running € saved by the driver's chosen fuel stops. Currently
+  /// wired only for the backend-suggested "cheapest in the refuel
+  /// window" station: when the user taps "+ Add" on it, the
+  /// pre-computed `suggestedSavingsEur` gets rolled into the trip
+  /// savings receipt. Manual fuel-tile picks (non-suggested
+  /// stations) don't carry a per-station savings figure yet — the
+  /// backend only stamps `savings_vs_country_median_eur_per_l`,
+  /// which is €/L not € total. Returns 0 when nothing eligible is
+  /// added.
+  double get _addedFuelSavingsEur {
+    final rw = widget.response.refuelWindow;
+    final s = rw?.suggestedStation;
+    if (s == null || rw?.suggestedSavingsEur == null) return 0.0;
+    final coordSuffix = s.coordinate == null
+        ? ':nocoord'
+        : ':${s.coordinate!.lat.toStringAsFixed(4)},'
+            '${s.coordinate!.lon.toStringAsFixed(4)}';
+    final key = 'fuel:${s.stationName}$coordSuffix';
+    if (!_addedRouteWaypoints.containsKey(key)) return 0.0;
+    return rw!.suggestedSavingsEur!;
+  }
+
   /// Sum of picked-hotel prices across nights. Passed to the cost
   /// card so the total reflects the user's actual bookings, not
   /// just the algorithmically-chosen sleep_stop.
@@ -446,6 +469,111 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       _addedStops.clear();
       _addedRouteWaypoints.clear();
     });
+  }
+
+  /// Build the Google Maps export sheet input, then present it.
+  ///
+  /// Waypoint composition, in km-along-route order (Google visits them
+  /// in insertion order, so the sort matters or the URL zig-zags):
+  ///   1. Detour anchors from every toll the driver chose to SKIP
+  ///      (i.e. the tolls NOT in `_tollSkipEnabled`). Prepended by
+  ///      priority — they're the reason the export exists in the
+  ///      "some tolls skipped" case.
+  ///   2. Trip waypoints (intermediate stops from the plan form).
+  ///   3. Route waypoints pinned on this screen (restaurants / fuel
+  ///      added via "Añadir a la ruta").
+  ///
+  /// Then capped at 9 (Google Maps limit). When we'd overflow, detour
+  /// anchors keep priority over restaurants — the toll skip only
+  /// works if the detour point survives, whereas losing a restaurant
+  /// just means Google won't route past that one POI.
+  ///
+  /// `avoid=tolls` semantics:
+  ///   - All partial-toll skips enabled by the driver -> no avoid
+  ///     (they want the tolled motorway everywhere).
+  ///   - All partial-toll skips DISABLED -> add `avoid=tolls`
+  ///     globally (Google picks the whole-route detour).
+  ///   - Some subset -> DO NOT add `avoid=tolls` (that would drop the
+  ///     motorway for the whole trip); rely on the injected detour
+  ///     waypoints to route around the specific skipped booths.
+  void _openExportSheet() {
+    final skips = widget.response.partialTollSkips;
+    final skippedIndices = <int>[
+      for (var i = 0; i < skips.length; i++)
+        if (!_tollSkipEnabled.contains(i)) i,
+    ];
+
+    // Compute km-along-route once per candidate so the sort stays O(n log n).
+    final totalKm = widget.response.route.distanceKm;
+    double kmOf(LatLon c) => _kmFromOrigin(c) ?? totalKm;
+
+    // 1. Detour anchors from every skipped toll.
+    final List<(LatLon, double)> detourPts = <(LatLon, double)>[];
+    for (final i in skippedIndices) {
+      for (final p in detourWaypointsFor(skips[i])) {
+        detourPts.add((p, kmOf(p)));
+      }
+    }
+    detourPts.sort((a, b) => a.$2.compareTo(b.$2));
+
+    // 2. Trip waypoints from the plan request (intermediate stops).
+    //    Use their request order and take their km straight from the
+    //    route so a wonky reverse-geocode doesn't reshuffle them.
+    final List<(LatLon, double)> tripPts = <(LatLon, double)>[
+      for (final w in widget.request.waypoints)
+        (w.coordinate, kmOf(w.coordinate)),
+    ];
+
+    // 3. Route waypoints added on this screen (restaurants / fuel).
+    final List<(LatLon, double)> addedPts = <(LatLon, double)>[
+      for (final entry in _addedRouteWaypoints.values)
+        (entry.$1, kmOf(entry.$1)),
+    ];
+
+    // Merge & cap at 9. Priority: detours > trip stops > added POIs.
+    const int maxWaypoints = 9;
+    final List<(LatLon, double)> merged = <(LatLon, double)>[];
+    void addBucket(List<(LatLon, double)> bucket) {
+      for (final e in bucket) {
+        if (merged.length >= maxWaypoints) return;
+        merged.add(e);
+      }
+    }
+
+    addBucket(detourPts);
+    addBucket(tripPts);
+    addBucket(addedPts);
+
+    // Final sort — Google respects insertion order, so km ascending
+    // keeps origin -> ... -> destination monotonic and prevents the
+    // "figure-8" the app used to draw when a restaurant sat before a
+    // trip waypoint.
+    merged.sort((a, b) => a.$2.compareTo(b.$2));
+    final waypoints = <LatLon>[for (final e in merged) e.$1];
+
+    final noneSkipped = skippedIndices.isEmpty;
+    final allSkipped = skips.isNotEmpty && skippedIndices.length == skips.length;
+    final avoidTollsFlag = allSkipped; // only when EVERY toll is skipped
+
+    // Debug trace so testers can eyeball the URL length + waypoint
+    // count when reporting export bugs. Cheap and only fires on tap.
+    // ignore: avoid_print
+    debugPrint(
+      '[TripExport] waypoints=${waypoints.length}/${maxWaypoints} '
+      'detours=${detourPts.length} tripStops=${tripPts.length} '
+      'added=${addedPts.length} '
+      'avoidTolls=$avoidTollsFlag noneSkipped=$noneSkipped '
+      'allSkipped=$allSkipped',
+    );
+
+    showExportSheet(
+      context,
+      origin: widget.request.origin,
+      destination: widget.request.destination,
+      waypoints: waypoints,
+      avoidHighways: widget.request.avoidMotorways,
+      avoidTolls: avoidTollsFlag,
+    );
   }
 
   /// Estimates km-from-origin for [coord] by finding the nearest point
@@ -1127,30 +1255,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             visualDensity: VisualDensity.compact,
             tooltip: l.exportShareTitle,
             icon: const Icon(Icons.ios_share, size: 18),
-            onPressed: () => showExportSheet(
-              context,
-              origin: widget.request.origin,
-              destination: widget.request.destination,
-              waypoints: [
-                // Trip waypoints (user's intermediate stops) +
-                // restaurants/fuel the driver pinned via "Añadir a
-                // la ruta". Google Maps caps at 9 — buildNavUrl
-                // takes the first 9.
-                for (final w in widget.request.waypoints) w.coordinate,
-                for (final entry in _addedRouteWaypoints.values) entry.$1,
-              ],
-              // Forward the route-preference flags so Google Maps
-              // reroutes accordingly instead of falling back to
-              // origin→destination on default settings.
-              // - avoidHighways: user asked to avoid motorways
-              //   entirely on the plan form.
-              // - avoidTolls: user unchecked at least one partial
-              //   toll skip on this screen (so they're actively
-              //   avoiding SOME toll).
-              avoidHighways: widget.request.avoidMotorways,
-              avoidTolls: _tollSkipEnabled.length <
-                  widget.response.partialTollSkips.length,
-            ),
+            onPressed: _openExportSheet,
           ),
         ],
       ),
@@ -1345,7 +1450,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ? null
               : _selectedHotelsCostEur,
           pickedHotelsNights: _selectedNightHotels.length,
-          savings: widget.response.savings,
+          savings: widget.response.savings.copyWith(
+            fuelSavingsEur: _addedFuelSavingsEur > 0
+                ? _addedFuelSavingsEur
+                : null,
+          ),
           tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
           intraSectionSkips: widget.response.intraSectionSkips,
         ),
@@ -1546,6 +1655,37 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: Tokens.space24),
         if (widget.response.fuelArbitrage != null) ...[
           FuelArbitrageBanner(hint: widget.response.fuelArbitrage!),
+          const SizedBox(height: Tokens.space12),
+        ],
+        // Proactive refuel-here-and-save card. Only rendered when
+        // the backend flagged the tank as insufficient AND managed
+        // to pre-pick a cheapest station on the window. Tapping
+        // "+ Add" pipes into the same `_addedRouteWaypoints` flow
+        // as manual fuel-tile picks.
+        if (widget.response.refuelWindow?.suggestedStation != null) ...[
+          Builder(builder: (context) {
+            final suggested =
+                widget.response.refuelWindow!.suggestedStation!;
+            final coordSuffix = suggested.coordinate == null
+                ? ':nocoord'
+                : ':${suggested.coordinate!.lat.toStringAsFixed(4)},'
+                    '${suggested.coordinate!.lon.toStringAsFixed(4)}';
+            final key = 'fuel:${suggested.stationName}$coordSuffix';
+            return _RefuelSuggestionCard(
+              station: suggested,
+              savingsEur:
+                  widget.response.refuelWindow!.suggestedSavingsEur,
+              isAdded: _isAdded(key),
+              onToggleAdd: () {
+                _toggleStop(
+                  key,
+                  _fuelStopMinutes,
+                  coord: suggested.coordinate,
+                  label: suggested.stationName,
+                );
+              },
+            );
+          }),
           const SizedBox(height: Tokens.space12),
         ],
         // Collapsible now — the top-10 cheapest are already on
@@ -2521,7 +2661,8 @@ class _TotalTripCostCard extends ConsumerWidget {
               final savedTime = savings!.timeSavedMinutesVsDesired -
                   tollSkipPenaltyMinutes;
               final savedEur = tollSkipSavingsEur;
-              if (savedTime <= 0 && savedEur <= 0) {
+              final fuelSavedEur = savings!.fuelSavingsEur ?? 0.0;
+              if (savedTime <= 0 && savedEur <= 0 && fuelSavedEur <= 0) {
                 return const SizedBox.shrink();
               }
               return Column(
@@ -2574,6 +2715,19 @@ class _TotalTripCostCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 12),
                       ],
+                      if (fuelSavedEur > 0) ...[
+                        Icon(Icons.local_gas_station, size: 13,
+                            color: Colors.green.shade700),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatMoney(fuelSavedEur, ccy),
+                          style: t.bodySmall?.copyWith(
+                            color: Colors.green.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                      ],
                       // When toll detour adds net time (savedTime < 0),
                       // show the time cost as a trade-off note so the
                       // user understands why time isn't shown as a saving.
@@ -2594,6 +2748,95 @@ class _TotalTripCostCard extends ConsumerWidget {
               );
             }(),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Proactive "refuel here to save" callout rendered above the
+/// collapsible fuel list. Backend picks the cheapest station within
+/// the driver's remaining range and stamps the €-savings vs the
+/// route's median price. Tapping "+ Add" pipes into the same
+/// `_addedRouteWaypoints` map as manual fuel-tile picks — the trip
+/// receipt then reflects the fuel savings.
+class _RefuelSuggestionCard extends StatelessWidget {
+  const _RefuelSuggestionCard({
+    required this.station,
+    required this.isAdded,
+    required this.onToggleAdd,
+    this.savingsEur,
+  });
+
+  final FuelPrice station;
+  final bool isAdded;
+  final VoidCallback onToggleAdd;
+
+  /// Server-computed € vs route median. When null or ≤ 0 the
+  /// savings chip is suppressed (an at-median suggestion is still
+  /// useful — you'll refuel somewhere — but shouting a "0 €" figure
+  /// undermines trust).
+  final double? savingsEur;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    final hasSavings = (savingsEur ?? 0) > 0.01;
+    return Container(
+      padding: const EdgeInsets.all(Tokens.space16),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.local_gas_station,
+                  size: 18, color: scheme.primary),
+              const SizedBox(width: Tokens.space8),
+              Expanded(
+                child: Text(
+                  l.refuelSuggestionTitle,
+                  style: t.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: scheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space8),
+          Text(
+            l.refuelSuggestionBody(
+              station.stationName,
+              station.distanceFromOriginKm.toStringAsFixed(0),
+              station.priceEurPerL.toStringAsFixed(3),
+            ),
+            style: t.bodyMedium,
+          ),
+          if (hasSavings) ...[
+            const SizedBox(height: Tokens.space4),
+            Text(
+              l.refuelSuggestionSavings(savingsEur!.toStringAsFixed(2)),
+              style: t.bodySmall?.copyWith(
+                color: Colors.green.shade700,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+          const SizedBox(height: Tokens.space12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: _AddToRouteButton(
+              isAdded: isAdded,
+              onPressed: onToggleAdd,
+            ),
+          ),
         ],
       ),
     );

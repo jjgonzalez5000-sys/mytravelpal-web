@@ -20,6 +20,10 @@ distance and the client hides the chip entirely.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterable, Sequence
+
+if TYPE_CHECKING:
+    from app.providers.fuel import FuelPrice
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +43,97 @@ class RefuelWindow:
     must_by_km: float
     comfortable_by_km: float
     reaches_destination: bool
+
+
+def pick_cheapest_in_window(
+    prices: "Iterable[FuelPrice]",
+    from_km: float,
+    to_km: float,
+) -> "FuelPrice | None":
+    """Return the single cheapest priced station whose
+    ``distance_from_origin_km`` sits within ``(from_km, to_km]``.
+
+    Stations without a live price feed (``price_available`` False) and
+    EV charging stations are ignored — we can't compare them on
+    €/L. Returns ``None`` when the window is empty. Behaves gracefully
+    when ``from_km >= to_km`` (returns ``None``).
+    """
+    if to_km <= from_km:
+        return None
+    candidates = [
+        p for p in prices
+        if getattr(p, "price_available", True)
+        and not getattr(p, "is_charging_station", False)
+        and from_km < float(p.distance_from_origin_km) <= to_km
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda p: p.price_eur_per_l)
+
+
+def estimate_fuel_savings(
+    picked_price: float,
+    median_price: float,
+    liters_needed: float,
+) -> float:
+    """Rough €-savings for topping up at ``picked_price`` vs the
+    route's ``median_price``.
+
+    Formula: ``(median - picked) * liters_needed``, clamped to
+    ``max(0, …)`` — a station at or above the median contributes
+    no savings signal (we don't shout "you saved -1.20 €" at
+    the user, that's dishonest).
+    """
+    delta = float(median_price) - float(picked_price)
+    liters = max(0.0, float(liters_needed))
+    return max(0.0, delta * liters)
+
+
+def route_median_price(prices: "Sequence[FuelPrice]") -> float | None:
+    """Median €/L across the route's priced stations. Skips
+    non-priced entries and EV chargers. ``None`` when no station has
+    a live price to compare against.
+    """
+    values = sorted(
+        float(p.price_eur_per_l)
+        for p in prices
+        if getattr(p, "price_available", True)
+        and not getattr(p, "is_charging_station", False)
+    )
+    if not values:
+        return None
+    mid = len(values) // 2
+    if len(values) % 2 == 1:
+        return values[mid]
+    return (values[mid - 1] + values[mid]) / 2.0
+
+
+def liters_needed_for_refuel(
+    tank_liters: float,
+    current_tank_frac: float,
+    reserve_frac: float = 0.10,
+) -> float:
+    """How many litres the driver actually needs to buy at the
+    suggested station, expressed as
+    ``min(tank - reserve, tank * (1 - current_tank_frac))``.
+
+    - The first term is the biggest amount the tank can physically
+      accept above the reserve line (useful when the driver arrives
+      near-empty and refills to full).
+    - The second term is what's actually missing to reach full from
+      the current level (useful when the tank is still half-full and
+      a topping-up doesn't need much).
+
+    The ``min`` picks whichever situation constrains — you can't buy
+    more than the tank can hold, and you don't buy more than what's
+    missing.
+    """
+    tank = max(0.0, float(tank_liters))
+    frac = max(0.0, min(1.0, float(current_tank_frac)))
+    reserve = max(0.0, min(1.0, float(reserve_frac)))
+    usable_capacity = tank * max(0.0, 1.0 - reserve)
+    missing_to_full = tank * (1.0 - frac)
+    return max(0.0, min(usable_capacity, missing_to_full))
 
 
 def refuel_window(

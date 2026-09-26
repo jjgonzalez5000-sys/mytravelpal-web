@@ -4,9 +4,19 @@ from datetime import timedelta
 
 import pytest
 
-from app.domain import Coordinate, Country, Route
+from app.domain import (
+    Coordinate,
+    Country,
+    Route,
+    TripProfile,
+    Vehicle,
+    VehicleType,
+)
 from app.providers import MockRoutingProvider
-from app.services.rest_stops import compute_rest_stops
+from app.services.rest_stops import (
+    compute_rest_stops,
+    recommended_break_minutes,
+)
 
 
 def _route(duration_hours: float, *, distance_km: float = 500.0) -> Route:
@@ -48,6 +58,43 @@ def test_distance_scales_with_position() -> None:
 def test_recommended_break_defaults_to_15_min() -> None:
     stops = compute_rest_stops(_route(6.0))
     assert all(s.recommended_break_minutes == 15 for s in stops)
+
+
+def test_kids_bumps_break_to_45_min() -> None:
+    profile = TripProfile(has_kids=True)
+    assert recommended_break_minutes(profile) == 45
+    stops = compute_rest_stops(_route(6.0), profile=profile)
+    assert all(s.recommended_break_minutes == 45 for s in stops)
+
+
+def test_pets_bumps_break_to_45_min() -> None:
+    profile = TripProfile(has_pets=True)
+    assert recommended_break_minutes(profile) == 45
+
+
+def test_kids_and_pets_bump_break_to_60_min() -> None:
+    profile = TripProfile(has_kids=True, has_pets=True)
+    assert recommended_break_minutes(profile) == 60
+    stops = compute_rest_stops(_route(6.0), profile=profile)
+    assert all(s.recommended_break_minutes == 60 for s in stops)
+
+
+def test_camper_bumps_break_to_60_min_regardless_of_kids_pets() -> None:
+    profile = TripProfile(
+        has_kids=False,
+        has_pets=False,
+        vehicle=Vehicle(type=VehicleType.CAMPER),
+    )
+    assert recommended_break_minutes(profile) == 60
+
+
+def test_default_flags_are_all_false_without_enrichment() -> None:
+    stops = compute_rest_stops(_route(6.0))
+    assert stops
+    for s in stops:
+        assert s.kid_friendly is False
+        assert s.pet_friendly is False
+        assert s.rv_friendly is False
 
 
 @pytest.mark.asyncio

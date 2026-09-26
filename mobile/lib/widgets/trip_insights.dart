@@ -82,6 +82,19 @@ class FuelArbitrageBanner extends StatelessWidget {
   }
 }
 
+/// Filter buckets for the rest-stops row inside `DayPlanSection`.
+/// `all` shows every stop the backend returned; the other three
+/// hide stops that don't carry the matching OSM-tag-derived flag.
+enum _RestStopFilter { all, kidFriendly, petFriendly, rvFriendly }
+
+/// Does this stop pass the current filter? `all` always passes.
+bool _restStopMatchesFilter(RestStop r, _RestStopFilter f) => switch (f) {
+      _RestStopFilter.all => true,
+      _RestStopFilter.kidFriendly => r.kidFriendly,
+      _RestStopFilter.petFriendly => r.petFriendly,
+      _RestStopFilter.rvFriendly => r.rvFriendly,
+    };
+
 /// Renders the per-day breakdown for multi-day trips. One card per
 /// day showing distance range, meal stops on that day, and the
 /// overnight-sleep marker at the end (all days except the last).
@@ -295,10 +308,64 @@ class DayPlanSection extends StatelessWidget {
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final d in days) ...[
+
+    // Any rest stop across ANY day carrying at least one amenity
+    // flag = the filter chip row is useful. When every rest stop
+    // has all three flags off (OSM tags absent for the whole
+    // corridor), the row is dead weight and we hide it.
+    final anyFlagged = days.any((d) => d.restStops.any(
+          (r) => r.kidFriendly || r.petFriendly || r.rvFriendly,
+        ));
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        _RestStopFilter filter = _restStopFilter;
+        void setFilter(_RestStopFilter f) {
+          setState(() {
+            _restStopFilter = f;
+          });
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (anyFlagged) ...[
+              _RestStopFilterChips(
+                current: filter,
+                onChanged: setFilter,
+              ),
+              const SizedBox(height: Tokens.space8),
+            ],
+            for (final d in days) ..._buildDay(
+              context, l, scheme, t, d, filter,
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Filter state persists across rebuilds of DayPlanSection within
+  // the same ResultScreen frame. This is intentionally a mutable
+  // field on a StatelessWidget: DayPlanSection is only reconstructed
+  // when the plan itself changes, at which point resetting to "all"
+  // is the right behaviour (the driver re-planned).
+  static _RestStopFilter _restStopFilter = _RestStopFilter.all;
+
+  /// Split day-card composition out of `build` so `StatefulBuilder`
+  /// can call it repeatedly on filter change without duplicating
+  /// the (large) inline layout code below.
+  List<Widget> _buildDay(
+    BuildContext context,
+    AppLocalizations l,
+    ColorScheme scheme,
+    TextTheme t,
+    DayPlan d,
+    _RestStopFilter filter,
+  ) {
+    // Original body inlined below unchanged. The `filter` parameter
+    // is applied at the rest-stops loop only.
+    return [
           Container(
             padding: const EdgeInsets.all(Tokens.space16),
             decoration: BoxDecoration(
@@ -467,58 +534,96 @@ class DayPlanSection extends StatelessWidget {
                 // usually short coffee / stretch pauses the driver
                 // will naturally take. Time is computed from the day
                 // start + cumulative driving hours (pause-adjusted).
-                if (d.restStops.isNotEmpty) ...[
-                  const SizedBox(height: Tokens.space8),
-                  for (final r in d.restStops)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(Icons.local_cafe_outlined, size: 14,
-                              color: scheme.secondary),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              () {
-                                // Linear interpolation across the
-                                // day's km / time range. `end_at`
-                                // already folds in pause + meal
-                                // overhead so the derived rest-stop
-                                // time inherits both. Good enough for
-                                // a "coffee around 11:15" chip — not
-                                // a promise. Guards a zero-km day
-                                // (dwell / edge case) by falling back
-                                // to the day's start moment.
-                                final span = d.toKm - d.fromKm;
-                                final frac = span > 0
-                                    ? ((r.distanceFromOriginKm - d.fromKm)
-                                            / span)
-                                        .clamp(0.0, 1.0)
-                                    : 0.0;
-                                final elapsed = d.endAt.difference(d.startAt);
-                                final at = d.startAt.add(
-                                  Duration(
-                                    milliseconds:
-                                        (elapsed.inMilliseconds * frac)
-                                            .round(),
-                                  ),
-                                );
-                                final label =
-                                    'km ${r.distanceFromOriginKm.toStringAsFixed(0)}'
-                                    '  ·  ${r.recommendedBreakMinutes} min';
-                                return l.dayRestStopAt(
-                                  timeFormat.format(at.toLocal()),
-                                  label,
-                                );
-                              }(),
-                              style: t.bodySmall,
-                            ),
+                // Rest stops passing the current filter. When the
+                // driver picks e.g. `Con mascota`, stops without
+                // `pet_friendly=true` are hidden — the header
+                // filter is applied here, per-day.
+                Builder(builder: (context) {
+                  final visibleRests = d.restStops
+                      .where((r) => _restStopMatchesFilter(r, filter))
+                      .toList();
+                  if (visibleRests.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: Tokens.space8),
+                      for (final r in visibleRests)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.local_cafe_outlined, size: 14,
+                                  color: scheme.secondary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 6,
+                                  runSpacing: 2,
+                                  children: [
+                                    Text(
+                                      () {
+                                        // Linear interpolation across the
+                                        // day's km / time range. `end_at`
+                                        // already folds in pause + meal
+                                        // overhead so the derived rest-stop
+                                        // time inherits both. Good enough for
+                                        // a "coffee around 11:15" chip — not
+                                        // a promise. Guards a zero-km day
+                                        // (dwell / edge case) by falling back
+                                        // to the day's start moment.
+                                        final span = d.toKm - d.fromKm;
+                                        final frac = span > 0
+                                            ? ((r.distanceFromOriginKm - d.fromKm)
+                                                    / span)
+                                                .clamp(0.0, 1.0)
+                                            : 0.0;
+                                        final elapsed =
+                                            d.endAt.difference(d.startAt);
+                                        final at = d.startAt.add(
+                                          Duration(
+                                            milliseconds:
+                                                (elapsed.inMilliseconds * frac)
+                                                    .round(),
+                                          ),
+                                        );
+                                        final label =
+                                            'km ${r.distanceFromOriginKm.toStringAsFixed(0)}'
+                                            '  ·  ${r.recommendedBreakMinutes} min';
+                                        return l.dayRestStopAt(
+                                          timeFormat.format(at.toLocal()),
+                                          label,
+                                        );
+                                      }(),
+                                      style: t.bodySmall,
+                                    ),
+                                    // Tiny inline badges — one per
+                                    // active OSM flag. Rendered as
+                                    // small icons rather than emoji
+                                    // to inherit theme colour and
+                                    // scale with text size.
+                                    if (r.kidFriendly)
+                                      Icon(Icons.child_care,
+                                          size: 14,
+                                          color: scheme.secondary),
+                                    if (r.petFriendly)
+                                      Icon(Icons.pets,
+                                          size: 14,
+                                          color: scheme.secondary),
+                                    if (r.rvFriendly)
+                                      Icon(Icons.rv_hookup,
+                                          size: 14,
+                                          color: scheme.secondary),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                ],
+                        ),
+                    ],
+                  );
+                }),
                 if (d.sleepAt != null) ...[
                   const SizedBox(height: Tokens.space8),
                   () {
@@ -683,8 +788,53 @@ class DayPlanSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Tokens.space12),
-        ],
-      ],
+    ];
+  }
+}
+
+/// Filter chip row displayed above the day cards when any rest
+/// stop carries an OSM-tag amenity flag. Renders four toggles:
+/// All / Familiar / Con mascota / Autocaravana. Selecting a
+/// non-All chip hides rest stops that don't match the flag.
+class _RestStopFilterChips extends StatelessWidget {
+  const _RestStopFilterChips({
+    required this.current,
+    required this.onChanged,
+  });
+  final _RestStopFilter current;
+  final ValueChanged<_RestStopFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    Widget chip(_RestStopFilter f, String label, IconData? icon) {
+      final selected = f == current;
+      return Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: FilterChip(
+          label: Text(label),
+          avatar: icon != null
+              ? Icon(icon, size: 16, color: scheme.onSurfaceVariant)
+              : null,
+          selected: selected,
+          onSelected: (_) => onChanged(f),
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      );
+    }
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(children: [
+        chip(_RestStopFilter.all, l.restStopFilterAll, null),
+        chip(_RestStopFilter.kidFriendly,
+            l.restStopFilterKidFriendly, Icons.child_care),
+        chip(_RestStopFilter.petFriendly,
+            l.restStopFilterPetFriendly, Icons.pets),
+        chip(_RestStopFilter.rvFriendly,
+            l.restStopFilterRvFriendly, Icons.rv_hookup),
+      ]),
     );
   }
 }

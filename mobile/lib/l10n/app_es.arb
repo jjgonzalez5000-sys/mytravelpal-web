@@ -767,6 +767,10 @@
     "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
     "dayRestStopAt": "☕ {time} · {label}",
     "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
+    "restStopFilterAll": "Todos",
+    "restStopFilterKidFriendly": "Familiar",
+    "restStopFilterPetFriendly": "Con mascota",
+    "restStopFilterRvFriendly": "Autocaravana",
     "dayHeaderDwell": "Día {index} · {place}",
     "@dayHeaderDwell": {"placeholders": {"index": {"type": "int"}, "place": {"type": "String"}}},
     "daySleepStay": "Estancia en {place}",
@@ -1077,6 +1081,23 @@
     "refuelWindowCritical": "Reposta antes del km {km} (crítico)",
     "@refuelWindowCritical": {
       "placeholders": { "km": {"type": "String"} }
+    },
+    "refuelSuggestionTitle": "Reposta aquí para ahorrar",
+    "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
+    "@refuelSuggestionBody": {
+      "placeholders": {
+        "station": {"type": "String"},
+        "km": {"type": "String"},
+        "price": {"type": "String"}
+      }
+    },
+    "refuelSuggestionSavings": "Te ahorras {eur} €",
+    "@refuelSuggestionSavings": {
+      "placeholders": { "eur": {"type": "String"} }
+    },
+    "savingsFuelRow": "Combustible: {eur} €",
+    "@savingsFuelRow": {
+      "placeholders": { "eur": {"type": "String"} }
     },
     "garageTitle": "Mi garaje",
     "garageEmpty": "Aún no hay coches — añade el primero",

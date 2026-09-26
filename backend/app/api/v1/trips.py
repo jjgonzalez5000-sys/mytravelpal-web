@@ -613,6 +613,12 @@ class RestStopOut(BaseModel):
     recommended_break_minutes: int
     lat: float
     lon: float
+    # OSM-tag-derived amenity flags. Absent tag ⇒ `False`. Consumers
+    # use these to filter (mobile "Solo familiar / mascota / RV")
+    # and to render inline badges next to each stop.
+    kid_friendly: bool = False
+    pet_friendly: bool = False
+    rv_friendly: bool = False
 
 
 class AdverseEventOut(BaseModel):
@@ -720,11 +726,20 @@ class RefuelWindowOut(BaseModel):
     Populated only when the request's `trip_profile.vehicle_model_id`
     AND `current_tank_level_percent` are set. Absent otherwise so the
     mobile client can leave the chip hidden.
+
+    When the current tank does NOT reach the destination we go one
+    step further and pre-pick the CHEAPEST station within the window
+    (`suggested_station`) plus the €-savings it earns over the route
+    median (`suggested_savings_eur`). Both are optional so old clients
+    keep working — they just render the chip without the "auto add"
+    call-to-action.
     """
     usable_range_km: float
     comfortable_by_km: float
     must_by_km: float
     reaches_destination: bool
+    suggested_station: FuelPriceOut | None = None
+    suggested_savings_eur: float | None = None
 
 
 class TripPlanResponse(BaseModel):
@@ -1037,6 +1052,18 @@ async def plan_trip(
             for r in filtered_r
         ]
 
+    # Compute rest stops ONCE with the profile so the break duration
+    # is family/pet/RV-aware, then enrich via Overpass (kid / pet /
+    # RV amenity flags). Reused below by `compute_optimizations` and
+    # `compute_day_plan` so all three surfaces see the same coords
+    # and the same flag set.
+    rest_stops_domain = compute_rest_stops(route, profile=profile)
+    try:
+        from app.services.rest_stops_enrichment import enrich_rest_stops
+        rest_stops_domain = await enrich_rest_stops(rest_stops_domain)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("rest-stop enrichment failed: %r", exc)
+
     rest_stops_out = [
         RestStopOut(
             distance_from_origin_km=s.distance_from_origin_km,
@@ -1044,8 +1071,11 @@ async def plan_trip(
             recommended_break_minutes=s.recommended_break_minutes,
             lat=s.coordinate.lat,
             lon=s.coordinate.lon,
+            kid_friendly=s.kid_friendly,
+            pet_friendly=s.pet_friendly,
+            rv_friendly=s.rv_friendly,
         )
-        for s in compute_rest_stops(route)
+        for s in rest_stops_domain
     ]
 
     toll_alternative_out: TollAlternativeOut | None = None
@@ -1218,7 +1248,7 @@ async def plan_trip(
         opt = compute_optimizations(
             departure_at=effective_departure_at,
             trip_duration_hours=route.free_flow_duration.total_seconds() / 3600.0,
-            rest_stops=compute_rest_stops(route),
+            rest_stops=rest_stops_domain,
             restaurants_by_slot=restaurants_by_slot,
             hotels=filtered_hotels_for_sleep,
             profile=profile,
@@ -1355,7 +1385,7 @@ async def plan_trip(
                     ),
                     profile=profile,
                     optimizations=opt,
-                    rest_stops=compute_rest_stops(route),
+                    rest_stops=rest_stops_domain,
                     route_distance_km=route.distance_km,
                     route=route,
                 )
@@ -1824,7 +1854,7 @@ async def plan_trip(
             ),
             profile=profile,
             optimizations=opt_domain,
-            rest_stops=compute_rest_stops(route),
+            rest_stops=rest_stops_domain,
             route_distance_km=route.distance_km,
             route=route,
             waypoints=dwell_waypoints,
@@ -1919,6 +1949,9 @@ async def plan_trip(
                                 recommended_break_minutes=s.recommended_break_minutes,
                                 lat=s.coordinate.lat,
                                 lon=s.coordinate.lon,
+                                kid_friendly=s.kid_friendly,
+                                pet_friendly=s.pet_friendly,
+                                rv_friendly=s.rv_friendly,
                             )
                             for s in d.rest_stops
                         ],
@@ -1998,7 +2031,13 @@ async def plan_trip(
         and profile.vehicle.fuel_type != FuelType.ELECTRIC
     ):
         from app.data.vehicle_models import find as _find_vehicle
-        from app.services.fuel_planning import refuel_window as _refuel_window
+        from app.services.fuel_planning import (
+            refuel_window as _refuel_window,
+            pick_cheapest_in_window as _pick_cheapest_in_window,
+            estimate_fuel_savings as _estimate_fuel_savings,
+            route_median_price as _route_median_price,
+            liters_needed_for_refuel as _liters_needed_for_refuel,
+        )
         hit = _find_vehicle(resolved_model_id)
         if hit is not None:
             rw = _refuel_window(
@@ -2007,11 +2046,60 @@ async def plan_trip(
                 tank_liters=hit.tank_liters,
                 consumption_l100km=hit.consumption_l100km,
             )
+            # Suggested cheapest station within (0, must_by_km] +
+            # estimated €-savings vs the route's median price. Only
+            # populated when the tank won't reach the destination —
+            # otherwise the chip is hidden anyway.
+            suggested_out: FuelPriceOut | None = None
+            suggested_savings: float | None = None
+            if not rw.reaches_destination and fuel:
+                picked = _pick_cheapest_in_window(
+                    fuel, from_km=0.0, to_km=rw.must_by_km,
+                )
+                median = _route_median_price(fuel)
+                if picked is not None and median is not None:
+                    liters_needed = _liters_needed_for_refuel(
+                        tank_liters=hit.tank_liters,
+                        current_tank_frac=resolved_tank_pct / 100.0,
+                    )
+                    suggested_savings = round(
+                        _estimate_fuel_savings(
+                            picked_price=picked.price_eur_per_l,
+                            median_price=median,
+                            liters_needed=liters_needed,
+                        ),
+                        2,
+                    )
+                    suggested_out = FuelPriceOut(
+                        station_name=picked.station_name,
+                        country=picked.country,
+                        price_eur_per_l=picked.price_eur_per_l,
+                        price_available=picked.price_available,
+                        savings_vs_country_median_eur_per_l=(
+                            picked.savings_vs_country_median_eur_per_l
+                        ),
+                        distance_from_origin_km=(
+                            picked.distance_from_origin_km
+                        ),
+                        lat=(
+                            picked.coordinate.lat
+                            if picked.coordinate is not None else None
+                        ),
+                        lon=(
+                            picked.coordinate.lon
+                            if picked.coordinate is not None else None
+                        ),
+                        attributes=dict(picked.attributes),
+                        unit_label=picked.unit_label,
+                        is_charging_station=picked.is_charging_station,
+                    )
             refuel_out = RefuelWindowOut(
                 usable_range_km=rw.usable_range_km,
                 comfortable_by_km=rw.comfortable_by_km,
                 must_by_km=rw.must_by_km,
                 reaches_destination=rw.reaches_destination,
+                suggested_station=suggested_out,
+                suggested_savings_eur=suggested_savings,
             )
 
     parkings_out: list[ParkingOutTrip] = []

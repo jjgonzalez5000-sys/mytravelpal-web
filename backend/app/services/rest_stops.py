@@ -3,27 +3,62 @@
 Common European guidance (ADAC, DGT, FIA) is a short break every ~2h of
 continuous driving. We surface stops at each 2h mark along the trip's
 free-flow duration.
+
+Break duration is profile-aware: a solo driver stretches for 15 min,
+but a family with kids realistically needs 45+ min per stop (bathroom,
+snack, change nappies) and RV / camper drivers legally need longer
+breaks. The single caller (`/plan`) passes the profile; helpers keep
+sensible defaults so old tests without a profile still work.
 """
 
 from __future__ import annotations
 
-from app.domain import RestStop, Route
+from app.domain import RestStop, Route, TripProfile, VehicleType
 from app.providers.routing import _haversine_km, point_at_fraction
 
 _DEFAULT_INTERVAL_HOURS = 2.0
 _DEFAULT_BREAK_MINUTES = 15
+_KIDS_OR_PETS_BREAK_MINUTES = 45
+_KIDS_AND_PETS_BREAK_MINUTES = 60
+_RV_BREAK_MINUTES = 60
+
+
+def recommended_break_minutes(profile: TripProfile | None) -> int:
+    """Break length per stop, in minutes.
+
+    - Default: 15
+    - Kids OR pets: 45
+    - Kids AND pets: 60
+    - Vehicle type is camper/RV: 60 (overrides everything below it —
+      the driver cabin break is legally longer for large vehicles)
+    """
+    if profile is None:
+        return _DEFAULT_BREAK_MINUTES
+    if profile.vehicle.type == VehicleType.CAMPER:
+        return _RV_BREAK_MINUTES
+    if profile.has_kids and profile.has_pets:
+        return _KIDS_AND_PETS_BREAK_MINUTES
+    if profile.has_kids or profile.has_pets:
+        return _KIDS_OR_PETS_BREAK_MINUTES
+    return _DEFAULT_BREAK_MINUTES
 
 
 def compute_rest_stops(
     route: Route,
     *,
     interval_hours: float = _DEFAULT_INTERVAL_HOURS,
-    break_minutes: int = _DEFAULT_BREAK_MINUTES,
+    break_minutes: int | None = None,
+    profile: TripProfile | None = None,
 ) -> tuple[RestStop, ...]:
     """Return rest stops every `interval_hours` of driving.
 
     Empty tuple if the trip is shorter than one interval — nothing to
     recommend on a short hop.
+
+    `break_minutes` overrides the derived duration when explicitly
+    passed (used by tests). When omitted, `profile` decides via
+    `recommended_break_minutes` — falls back to the 15-min default
+    when the profile is also None.
 
     When the route has real polyline geometry (OSRM primary provider),
     we WALK the polyline to place each rest stop at its actual
@@ -38,6 +73,11 @@ def compute_rest_stops(
     if total_hours < interval_hours:
         return ()
 
+    effective_minutes = (
+        break_minutes
+        if break_minutes is not None
+        else recommended_break_minutes(profile)
+    )
     walker = _PolylineWalker(route) if route.geometry else None
     n_stops = int(total_hours // interval_hours)
     stops: list[RestStop] = []
@@ -60,7 +100,7 @@ def compute_rest_stops(
                 coordinate=coord,
                 distance_from_origin_km=round(target_km, 1),
                 cumulative_driving_hours=round(cumulative_hours, 2),
-                recommended_break_minutes=break_minutes,
+                recommended_break_minutes=effective_minutes,
             )
         )
     return tuple(stops)

@@ -770,6 +770,7 @@ class PartialTollSkip {
     required this.extraDistanceKm,
     required this.worthIt,
     required this.coordinate,
+    this.detourGeometry = const [],
   });
 
   final String label;
@@ -788,6 +789,14 @@ class PartialTollSkip {
   final double extraDistanceKm;
   final bool worthIt;
   final LatLon coordinate;
+
+  /// Polyline (ordered points) of the alternative secondary-road
+  /// detour that bypasses this toll. Empty when the backend hasn't
+  /// computed one (heuristic mode only ships a booth coord). Consumed
+  /// by `toll_detour_waypoints.dart` to inject waypoints into a
+  /// Google Maps deep-link so the app-external navigation routes
+  /// around the toll instead of over it.
+  final List<LatLon> detourGeometry;
 
   String localizedLabel(AppLocalizations l) {
     if (kind == 'stretch' && total != null) {
@@ -815,6 +824,16 @@ class PartialTollSkip {
           lat: (j['lat'] as num).toDouble(),
           lon: (j['lon'] as num).toDouble(),
         ),
+        detourGeometry:
+            (j['detour_geometry'] as List<dynamic>? ?? const <dynamic>[])
+                .map((p) {
+          // Backend sends [lon, lat] pairs — matches RouteInfo.geometry.
+          final pair = p as List<dynamic>;
+          return LatLon(
+            lat: (pair[1] as num).toDouble(),
+            lon: (pair[0] as num).toDouble(),
+          );
+        }).toList(growable: false),
       );
 }
 
@@ -1160,12 +1179,20 @@ class RestStop {
     required this.cumulativeDrivingHours,
     required this.recommendedBreakMinutes,
     required this.coordinate,
+    this.kidFriendly = false,
+    this.petFriendly = false,
+    this.rvFriendly = false,
   });
 
   final double distanceFromOriginKm;
   final double cumulativeDrivingHours;
   final int recommendedBreakMinutes;
   final LatLon coordinate;
+  // OSM-tag-derived amenity flags. `false` when the tag was absent
+  // — we never guess. Used by the filter chip row + inline badges.
+  final bool kidFriendly;
+  final bool petFriendly;
+  final bool rvFriendly;
 
   factory RestStop.fromJson(Map<String, dynamic> json) => RestStop(
         distanceFromOriginKm:
@@ -1177,6 +1204,9 @@ class RestStop {
           lat: (json['lat'] as num).toDouble(),
           lon: (json['lon'] as num).toDouble(),
         ),
+        kidFriendly: json['kid_friendly'] as bool? ?? false,
+        petFriendly: json['pet_friendly'] as bool? ?? false,
+        rvFriendly: json['rv_friendly'] as bool? ?? false,
       );
 }
 
@@ -1410,6 +1440,7 @@ class TripSavings {
   const TripSavings({
     required this.timeSavedMinutesVsDesired,
     required this.moneySavedEurVsTolls,
+    this.fuelSavingsEur,
   });
 
   /// Minutes the recommendation saves vs the sample closest to the
@@ -1420,6 +1451,21 @@ class TripSavings {
   /// EUR the driver would save if they took the toll-free alternative
   /// (only populated when the heuristic flags it as worth it).
   final double moneySavedEurVsTolls;
+
+  /// Client-computed EUR saved by refueling at the suggested station
+  /// (or any below-median station the user tapped "+ Add" on) vs the
+  /// route's median price. Not serialised from JSON — the ResultScreen
+  /// mutates a local copy of TripSavings when the driver picks a stop.
+  final double? fuelSavingsEur;
+
+  /// Returns a new [TripSavings] with the given fields overridden.
+  /// Used by the ResultScreen to inject the running fuel savings
+  /// figure without mutating the response envelope.
+  TripSavings copyWith({double? fuelSavingsEur}) => TripSavings(
+        timeSavedMinutesVsDesired: timeSavedMinutesVsDesired,
+        moneySavedEurVsTolls: moneySavedEurVsTolls,
+        fuelSavingsEur: fuelSavingsEur ?? this.fuelSavingsEur,
+      );
 
   factory TripSavings.fromJson(Map<String, dynamic> j) => TripSavings(
         timeSavedMinutesVsDesired:
@@ -1704,6 +1750,8 @@ class RefuelWindow {
     required this.comfortableByKm,
     required this.mustByKm,
     required this.reachesDestination,
+    this.suggestedStation,
+    this.suggestedSavingsEur,
   });
 
   final double usableRangeKm;
@@ -1711,11 +1759,30 @@ class RefuelWindow {
   final double mustByKm;
   final bool reachesDestination;
 
+  /// Pre-picked cheapest station within `(0, mustByKm]`. Populated
+  /// only when `reachesDestination` is false AND the route has at
+  /// least one priced station. Null otherwise; the client just shows
+  /// the plain milestone chip.
+  final FuelPrice? suggestedStation;
+
+  /// Server-computed €-savings for topping up at [suggestedStation]
+  /// vs the route's median price. Null when the median can't be
+  /// computed. Zero when the suggested station happens to be at or
+  /// above median.
+  final double? suggestedSavingsEur;
+
   factory RefuelWindow.fromJson(Map<String, dynamic> j) => RefuelWindow(
         usableRangeKm: (j['usable_range_km'] as num).toDouble(),
         comfortableByKm: (j['comfortable_by_km'] as num).toDouble(),
         mustByKm: (j['must_by_km'] as num).toDouble(),
         reachesDestination: j['reaches_destination'] as bool? ?? false,
+        suggestedStation: j['suggested_station'] == null
+            ? null
+            : FuelPrice.fromJson(
+                j['suggested_station'] as Map<String, dynamic>,
+              ),
+        suggestedSavingsEur:
+            (j['suggested_savings_eur'] as num?)?.toDouble(),
       );
 }
 
