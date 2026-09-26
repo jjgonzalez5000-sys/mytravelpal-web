@@ -157,7 +157,7 @@
              hard-codes this fully-qualified name. -->
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
-            android:foregroundServiceType="dataSync|location"
+            android:foregroundServiceType="dataSync"
             android:exported="false"
             android:stopWithTask="false" />
 

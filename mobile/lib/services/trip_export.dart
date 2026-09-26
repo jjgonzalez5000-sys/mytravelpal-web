@@ -16,6 +16,9 @@ Future<void> showExportSheet(
   required LatLon origin,
   required LatLon destination,
   List<LatLon> waypoints = const [],
+  bool avoidTolls = false,
+  bool avoidHighways = false,
+  bool avoidFerries = false,
 }) {
   final l = AppLocalizations.of(context);
   final url = buildNavUrl(
@@ -23,6 +26,9 @@ Future<void> showExportSheet(
     destination: destination,
     origin: origin,
     waypoints: waypoints,
+    avoidTolls: avoidTolls,
+    avoidHighways: avoidHighways,
+    avoidFerries: avoidFerries,
   );
   return showModalBottomSheet<void>(
     context: context,
@@ -61,6 +67,9 @@ Future<void> showExportSheet(
                   destination: destination,
                   origin: origin,
                   waypoints: waypoints,
+                  avoidTolls: avoidTolls,
+                  avoidHighways: avoidHighways,
+                  avoidFerries: avoidFerries,
                 );
               },
             ),

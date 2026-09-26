@@ -1132,8 +1132,24 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               origin: widget.request.origin,
               destination: widget.request.destination,
               waypoints: [
+                // Trip waypoints (user's intermediate stops) +
+                // restaurants/fuel the driver pinned via "Añadir a
+                // la ruta". Google Maps caps at 9 — buildNavUrl
+                // takes the first 9.
                 for (final w in widget.request.waypoints) w.coordinate,
+                for (final entry in _addedRouteWaypoints.values) entry.$1,
               ],
+              // Forward the route-preference flags so Google Maps
+              // reroutes accordingly instead of falling back to
+              // origin→destination on default settings.
+              // - avoidHighways: user asked to avoid motorways
+              //   entirely on the plan form.
+              // - avoidTolls: user unchecked at least one partial
+              //   toll skip on this screen (so they're actively
+              //   avoiding SOME toll).
+              avoidHighways: widget.request.avoidMotorways,
+              avoidTolls: _tollSkipEnabled.length <
+                  widget.response.partialTollSkips.length,
             ),
           ),
         ],

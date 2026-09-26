@@ -17,6 +17,9 @@ String buildNavUrl(
   required LatLon destination,
   LatLon? origin,
   List<LatLon> waypoints = const [],
+  bool avoidTolls = false,
+  bool avoidHighways = false,
+  bool avoidFerries = false,
 }) {
   final d = '${destination.lat},${destination.lon}';
   switch (app) {
@@ -34,12 +37,29 @@ String buildNavUrl(
               .take(9)
               .map((w) => '${w.lat},${w.lon}')
               .join('|')}';
+      // Google Maps `avoid` param accepts a comma-separated combo
+      // of `tolls`, `highways`, `ferries`. Only emit when at least
+      // one is on so URLs stay clean when nothing is asked for.
+      final avoidParts = <String>[
+        if (avoidTolls) 'tolls',
+        if (avoidHighways) 'highways',
+        if (avoidFerries) 'ferries',
+      ];
+      final avoidPart = avoidParts.isEmpty
+          ? ''
+          : '&avoid=${avoidParts.join(',')}';
       return 'https://www.google.com/maps/dir/?api=1'
-          '&destination=$d$origPart$wpPart&travelmode=driving';
+          '&destination=$d$origPart$wpPart$avoidPart&travelmode=driving';
     case NavApp.waze:
-      // Waze doesn't accept an origin (always uses current position)
-      // and has no multi-stop URL — waypoints ignored.
-      return 'https://waze.com/ul?ll=$d&navigate=yes';
+      // Waze URL supports `avoid_toll_roads=yes` and
+      // `avoid_ferries=yes`. No route waypoints — waze only accepts a
+      // single destination + current position as origin.
+      final avoidWazeParts = <String>[
+        if (avoidTolls) '&avoid_toll_roads=yes',
+        if (avoidFerries) '&avoid_ferries=yes',
+      ];
+      return 'https://waze.com/ul?ll=$d&navigate=yes'
+          '${avoidWazeParts.join()}';
     case NavApp.appleMaps:
       // Apple Maps universal link — opens the native app on iOS and
       // shows the web equivalent everywhere else. `dirflg=d` = drive.
@@ -58,6 +78,9 @@ Future<bool> openInNav(
   required LatLon destination,
   LatLon? origin,
   List<LatLon> waypoints = const [],
+  bool avoidTolls = false,
+  bool avoidHighways = false,
+  bool avoidFerries = false,
 }) {
   return launchUrl(
     Uri.parse(buildNavUrl(
@@ -65,6 +88,9 @@ Future<bool> openInNav(
       destination: destination,
       origin: origin,
       waypoints: waypoints,
+      avoidTolls: avoidTolls,
+      avoidHighways: avoidHighways,
+      avoidFerries: avoidFerries,
     )),
     mode: LaunchMode.externalApplication,
   );
