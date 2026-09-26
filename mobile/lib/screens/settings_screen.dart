@@ -326,20 +326,17 @@ class SettingsScreen extends ConsumerWidget {
     final api = ref.read(apiClientWithPremiumProvider);
     final tripStorage = ref.read(tripStorageProvider);
     final prefs = ref.read(appPrefsProvider);
+    final rootNav = rootNavigatorKey.currentState;
+    if (rootNav == null) return;
 
-    // Use the app's TRUE root navigator, not `Navigator.of(context,
-    // rootNavigator: true)` — the app has per-tab Navigators
-    // (`_TabNavigator` in app_shell.dart) and the tree-walk was
-    // landing on a nested one, so pushAndRemoveUntil only replaced
-    // the Settings tab stack and the user still saw the main tabs.
-    final rootNav = rootNavigatorKey.currentState!;
-
-    // Loading dialog on the same true root navigator.
+    // Live status so the user sees which step is running. If the
+    // dialog "stays forever", the caption pinpoints the culprit.
+    final status = ValueNotifier<String>('1/4 · Contactando servidor…');
     unawaited(rootNav.push<void>(
       DialogRoute<void>(
         context: rootNav.context,
         barrierDismissible: false,
-        builder: (_) => const _DeletingAccountDialog(),
+        builder: (_) => _DeletingAccountDialog(status: status),
       ),
     ));
 
@@ -349,20 +346,18 @@ class SettingsScreen extends ConsumerWidget {
     } catch (_) {
       ok = false;
     }
+    status.value = '2/4 · Borrando datos locales…';
     try { await tripStorage.clear(); } catch (_) {}
     try { await prefs.clearUserScoped(); } catch (_) {}
+    status.value = '3/4 · Cerrando sesión…';
     try { await ref.read(authProvider.notifier).signOut(); } catch (_) {}
+    status.value = '4/4 · Volviendo al inicio…';
 
-    // Dismiss the dialog and route to Login on the same root nav.
-    // `pushAndRemoveUntil` with a truthy `until` predicate would
-    // stop at the top-most route (the dialog); using `(_) => false`
-    // removes EVERY route so LoginScreen ends up alone.
-    if (rootNav.canPop()) rootNav.pop(); // dismiss dialog
+    if (rootNav.canPop()) rootNav.pop();
     await rootNav.pushAndRemoveUntil<void>(
       MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
       (_) => false,
     );
-    debugPrint('[delete] finished (api ok=$ok)');
   }
 
   Future<void> _pickCurrency(
@@ -689,8 +684,12 @@ class _Section extends StatelessWidget {
 /// request is in flight. Uses [PopScope] to also swallow the
 /// system back gesture — cancelling mid-delete would leave state
 /// half-wiped and confuse the user.
+/// Loading dialog with a live status line so we can see at which
+/// step the delete flow hangs (backend call vs local wipe vs
+/// navigation) when the user reports "dialog stays forever".
 class _DeletingAccountDialog extends StatelessWidget {
-  const _DeletingAccountDialog();
+  const _DeletingAccountDialog({required this.status});
+  final ValueNotifier<String> status;
 
   @override
   Widget build(BuildContext context) {
@@ -698,18 +697,23 @@ class _DeletingAccountDialog extends StatelessWidget {
     return PopScope(
       canPop: false,
       child: AlertDialog(
-        content: Row(
-          children: [
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(strokeWidth: 2.5),
-            ),
-            const SizedBox(width: Tokens.space16),
-            Expanded(
-              child: Text(l.settingsDeleteAccountInProgress),
-            ),
-          ],
+        content: ValueListenableBuilder<String>(
+          valueListenable: status,
+          builder: (_, s, __) => Row(
+            children: [
+              const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: Tokens.space16),
+              Expanded(
+                child: Text(
+                  s.isEmpty ? l.settingsDeleteAccountInProgress : s,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

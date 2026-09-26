@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -299,7 +300,13 @@ class ApiClient {
   Future<bool> deleteAccount() async {
     final uri = Uri.parse('$_baseUrl/v1/profile');
     try {
-      final response = await _http.delete(uri, headers: _headers());
+      // 10s cap — the backend delete cascade normally settles under
+      // 500 ms; anything past this and we want to release the UI
+      // (loading dialog) rather than hang forever, so local wipe +
+      // logout can still land.
+      final response = await _http
+          .delete(uri, headers: _headers())
+          .timeout(const Duration(seconds: 10));
       return response.statusCode == 200;
     } catch (_) {
       return false;
