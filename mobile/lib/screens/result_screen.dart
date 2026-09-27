@@ -3772,7 +3772,9 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
                 Divider(color: scheme.outlineVariant),
                 const SizedBox(height: Tokens.space12),
               ],
-              _FuelCostRow(cost: opts.fuelCost),
+              // Fuel budget row removed 2026-09-27 — duplicated the
+              // "Combustible" line already inside the total-trip-cost
+              // card, and its €1.75/L placeholder confused testers.
               if (opts.mealStops.isNotEmpty) ...[
                 const SizedBox(height: Tokens.space16),
                 Divider(color: scheme.outlineVariant),
@@ -3870,93 +3872,10 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
                     ),
                   ),
               ],
-              if (topHotels.isNotEmpty) ...[
-                const SizedBox(height: Tokens.space4),
-                Divider(color: scheme.outlineVariant),
-                const SizedBox(height: Tokens.space12),
-                Builder(builder: (context) {
-                  final l = AppLocalizations.of(context);
-                  return Text(
-                    l.daySleepHotelsLabelDestination.toUpperCase(),
-                    style: t.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                      letterSpacing: 1.4,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  );
-                }),
-                const SizedBox(height: Tokens.space8),
-                // Show 3 up-front then hide the tail behind a
-                // "Show N more" toggle so this card doesn't sprawl.
-                Builder(builder: (context) {
-                  final l = AppLocalizations.of(context);
-                  final visible = _hotelsExpanded
-                      ? topHotels
-                      : topHotels.take(_kInitialHotelCount).toList();
-                  final hidden = topHotels.length - visible.length;
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final (h, km) in visible)
-                        InkWell(
-                          onTap: () => showPoiDetailSheet(
-                            context,
-                            kind: PoiKind.hotel,
-                            name: h.name,
-                            subtitle: _hotelSubtitle(h),
-                            poi: h.coordinate,
-                            origin: origin ?? h.coordinate,
-                            destination: destination ?? h.coordinate,
-                            routeGeometry: routeGeometry,
-                            attributes: h.attributes,
-                            icon: Icons.hotel_outlined,
-                            accent: scheme.tertiary,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                Icon(Icons.hotel_outlined, size: 14,
-                                    color: scheme.tertiary),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    '${h.name}  ·  '
-                                    '${h.priceEurPerNight.toStringAsFixed(0)} €  ·  '
-                                    '${km.toStringAsFixed(1)} km',
-                                    style: t.bodySmall,
-                                  ),
-                                ),
-                                Icon(Icons.chevron_right, size: 16,
-                                    color: scheme.onSurfaceVariant),
-                              ],
-                            ),
-                          ),
-                        ),
-                      if (topHotels.length > _kInitialHotelCount)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            icon: Icon(
-                              _hotelsExpanded
-                                  ? Icons.expand_less
-                                  : Icons.expand_more,
-                              size: 18,
-                            ),
-                            label: Text(
-                              _hotelsExpanded
-                                  ? l.commonShowLess
-                                  : l.commonShowNMore(hidden),
-                            ),
-                            onPressed: () => setState(
-                              () => _hotelsExpanded = !_hotelsExpanded,
-                            ),
-                          ),
-                        ),
-                    ],
-                  );
-                }),
-              ],
+              // Destination hotels sub-section removed 2026-09-27 —
+              // the day-plan already renders hotels near the sleep /
+              // destination stop via `_SleepHotelsBlock`, and the
+              // standalone list duplicated the info.
             ],
           ),
         ),

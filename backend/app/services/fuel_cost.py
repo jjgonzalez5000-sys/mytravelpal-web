@@ -42,13 +42,25 @@ class FuelCostEstimate:
 
 
 def _avg_price(prices: tuple[FuelPrice, ...]) -> float:
-    # Skip stations whose price is a placeholder (Nominatim fallback for
-    # countries without a real-price feed). Averaging in a zero would
-    # under-quote the trip cost by a lot.
-    real = [p for p in prices if p.price_available and p.price_eur_per_l > 0]
+    """Return the mean price of the CHEAPEST half of the surfaced
+    stations — matches what a driver picking cheap stops on the route
+    would realistically pay, instead of the naive mean across every
+    highway-adjacent pump. Nominatim fallback stations (no real price)
+    are excluded so they don't skew the average toward zero. Falls
+    back to a rough EU petrol median when no real prices are
+    available at all — happens on the /plan/core phase before fuel
+    providers have run.
+    """
+    real = sorted(
+        (p.price_eur_per_l for p in prices
+         if p.price_available and p.price_eur_per_l > 0),
+    )
     if not real:
-        return 1.75  # fall-back EU average
-    return sum(p.price_eur_per_l for p in real) / len(real)
+        return 1.75  # rough EU petrol median, ballpark 2026 Q3
+    # Take the cheaper half (rounded up so 3 → 2, 5 → 3, 8 → 4).
+    n_cheap = max(1, (len(real) + 1) // 2)
+    cheap = real[:n_cheap]
+    return sum(cheap) / len(cheap)
 
 
 def estimate(

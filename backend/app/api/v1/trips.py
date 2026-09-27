@@ -1380,6 +1380,10 @@ async def _plan_core_impl(
             route=route,
             fuel_cost=fuel_cost_domain,
             fuel_prices=(),
+            # Core phase doesn't run fuel providers yet — mark data
+            # as unavailable so the "no stations visible" warning
+            # doesn't fire prematurely (fuel data lives in enrich).
+            fuel_data_available=False,
         )
     ]
 

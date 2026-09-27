@@ -65,6 +65,7 @@ def check_trip(
     route: Route | None = None,
     fuel_cost: FuelCostEstimate | None = None,
     fuel_prices: tuple[FuelPrice, ...] = (),
+    fuel_data_available: bool = True,
 ) -> tuple[Issue, ...]:
     """Run all consistency checks and return the collected issues.
 
@@ -99,6 +100,7 @@ def check_trip(
         issues.extend(
             _check_fuel(
                 fuel_cost=fuel_cost, route=route, fuel_prices=fuel_prices,
+                fuel_data_available=fuel_data_available,
             ),
         )
 
@@ -258,6 +260,7 @@ def _check_fuel(
     fuel_cost: FuelCostEstimate,
     route: Route | None,
     fuel_prices: tuple[FuelPrice, ...],
+    fuel_data_available: bool = True,
 ) -> list[Issue]:
     """Two fuel-side sanity checks:
 
@@ -287,6 +290,14 @@ def _check_fuel(
         and fuel_cost.fuel_type is not FuelType.ELECTRIC
         and route.distance_km >= _LONG_TRIP_KM_FOR_FUEL_COVERAGE
         and not fuel_prices
+        # Only warn when the caller HAS run the fuel-price providers
+        # and got nothing back. During the /plan/core phase fuel data
+        # is intentionally empty (it lives in /plan/enrich) — firing
+        # the warning there produced a "no fuel stations visible"
+        # heads-up on the initial paint that then disappeared once
+        # enrich landed. False positive; skip the check when the
+        # caller hasn't run providers yet.
+        and fuel_data_available
     ):
         out.append(Issue(
             code="fuel.no_stations_visible",
