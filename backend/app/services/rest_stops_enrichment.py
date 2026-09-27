@@ -23,7 +23,7 @@ import logging
 import time
 from dataclasses import replace
 
-from app.domain import Coordinate, RestStop, RestStopType
+from app.domain import Coordinate, RestStop, RestStopType, TripProfile, VehicleType
 from app.providers.overpass import (
     _CORRIDOR_METERS,
     _new_overpass_client,
@@ -32,12 +32,15 @@ from app.providers.overpass import (
 
 _log = logging.getLogger(__name__)
 
-# ~800 m radius around each rest-stop coord. Wider than a strict
-# match so a stop marker sitting on the highway centerline still
-# picks up the tags of the actual service-area POI a couple of
-# hundred meters off the road. Kept below `_CORRIDOR_METERS` (3 km)
-# so we don't drag in an unrelated village a km away.
-_REST_STOP_RADIUS_M = 800
+# ~3 km radius around each rest-stop coord. The anchor from
+# `compute_rest_stops` is a pure km-along-route mark that lands
+# wherever the driver has been 2 h — usually near but not exactly
+# on a service area. 3 km gives the enrichment room to pick the
+# BEST nearby amenity (matching kid/pet/RV prefs) and shift the
+# RestStop to its coord. Max detour cost at 100 km/h: ~2 min there
+# + 2 min back = 4 min per stop — inside the noise of the 45 min
+# pause the stop already carries.
+_REST_STOP_RADIUS_M = 3000
 
 # 24 h cache — OSM amenity tags change over days/weeks, not
 # minutes. Key is (round(lat, 3), round(lon, 3)) so nearby coords
@@ -118,9 +121,16 @@ def _haversine_m(a: Coordinate, b: Coordinate) -> float:
 
 async def enrich_rest_stops(
     stops: tuple[RestStop, ...],
+    profile: TripProfile | None = None,
 ) -> tuple[RestStop, ...]:
     """Return `stops` with `kid_friendly` / `pet_friendly` / `rv_friendly`
-    filled from OSM. Original ordering preserved.
+    + `name` + `stop_type` + optionally SHIFTED `coordinate` when a
+    better-matching amenity was found nearby.
+
+    When `profile` is given, the enrichment scorer boosts amenities
+    that match the traveller's prefs (kid_friendly for `has_kids`,
+    pet_friendly for `has_pets`, rv_friendly for RV vehicles) so the
+    picked stop reflects who's actually in the car.
 
     Empty input → empty output. Any Overpass error → the original
     stops are returned unchanged (flags stay `False`), never
@@ -143,7 +153,7 @@ async def enrich_rest_stops(
     fresh_flags: dict[int, dict] = {}
     if misses:
         try:
-            fresh_flags = await _fetch_flags_for(misses)
+            fresh_flags = await _fetch_flags_for(misses, profile)
             _log.info(
                 "rest-stop enrichment: %d/%d stops enriched (%d with name)",
                 sum(1 for v in fresh_flags.values() if any(v.get(k, False) for k in ("kid_friendly", "pet_friendly", "rv_friendly")) or v.get("name")),
@@ -181,9 +191,14 @@ async def enrich_rest_stops(
     out: list[RestStop] = []
     for idx, s in enumerate(stops):
         payload = cache_hits.get(idx) or fresh_flags.get(idx) or _empty_payload()
+        # Shift the anchor onto the amenity coord when the scorer
+        # picked one. Keeps the original coord if the payload didn't
+        # bring one (empty result or cache without a winner).
+        shifted_coord = payload.get("coordinate") or s.coordinate
         out.append(
             replace(
                 s,
+                coordinate=shifted_coord,
                 kid_friendly=payload.get("kid_friendly", False),
                 pet_friendly=payload.get("pet_friendly", False),
                 rv_friendly=payload.get("rv_friendly", False),
@@ -206,6 +221,7 @@ def _empty_payload() -> dict:
 
 async def _fetch_flags_for(
     misses: list[tuple[int, RestStop]],
+    profile: TripProfile | None,
 ) -> dict[int, dict]:
     """Per-stop Overpass queries fanned out in parallel.
 
@@ -223,7 +239,7 @@ async def _fetch_flags_for(
     import asyncio
 
     async def _one(idx: int, stop: RestStop) -> tuple[int, dict]:
-        return (idx, await _fetch_single_stop_amenities(stop))
+        return (idx, await _fetch_single_stop_amenities(stop, profile))
 
     results = await asyncio.gather(
         *(_one(idx, s) for idx, s in misses),
@@ -237,7 +253,10 @@ async def _fetch_flags_for(
     return per_stop
 
 
-async def _fetch_single_stop_amenities(stop: RestStop) -> dict:
+async def _fetch_single_stop_amenities(
+    stop: RestStop,
+    profile: TripProfile | None,
+) -> dict:
     """One tiny Overpass query around a single rest-stop coord.
     Returns the aggregated payload the caller expects (flags + name
     + stop_type). Never raises — a mirror failure produces the empty
@@ -285,7 +304,46 @@ out center 200;
         RestStopType.PARKING: 4,
         RestStopType.UNKNOWN: 99,
     }
+    # Pref-derived bonuses to bring "matches who's in the car" up in
+    # the ranking. Bonus is a negative number so subtracting from
+    # priority (lower = better) makes the candidate outrank generic
+    # equivalents. A kid-friendly service area for a family
+    # (priority 0 - 2 = -2) beats a plain service area (0) even
+    # when the plain one is closer by a few hundred meters.
+    has_kids = bool(getattr(profile, "has_kids", False)) if profile else False
+    has_pets = bool(getattr(profile, "has_pets", False)) if profile else False
+    is_rv = (
+        profile is not None
+        and getattr(getattr(profile, "vehicle", None), "type", None)
+        == VehicleType.CAMPER
+    )
+
+    def _pref_bonus(kind: RestStopType, tags: dict) -> int:
+        bonus = 0
+        # Prefer an actual caravan site for RV travellers over a
+        # generic gas station even if it's a bit farther.
+        if is_rv and kind == RestStopType.CARAVAN_SITE:
+            bonus += 3
+        # A kid-tagged service area for a family beats a plain one.
+        if has_kids and _yes(tags.get("playground")) or tags.get("amenity") == "playground":
+            bonus += 2
+        if has_pets and (
+            _yes(tags.get("dog_area"))
+            or tags.get("amenity") in {"dog_park", "dog_toilet"}
+        ):
+            bonus += 2
+        if is_rv and (
+            _yes(tags.get("motorhome"))
+            or _yes(tags.get("caravan"))
+            or _yes(tags.get("sanitary_dump_station"))
+        ):
+            bonus += 2
+        return bonus
+
+    # Best score is a triple (priority_minus_bonus, distance_m,
+    # index-in-elements) — lower wins on lexicographic order.
     best_name_score: tuple[int, float] = (99, float("inf"))
+    winner_coord: Coordinate | None = None
 
     for el in elements:
         coord = _element_coord(el)
@@ -303,15 +361,25 @@ out center 200;
         if tags.get("tourism") == "caravan_site":
             payload["rv_friendly"] = True
         # Name + type: keep the highest-priority typed amenity, tie
-        # break by proximity.
+        # break by proximity. Pref bonus lowers effective priority so
+        # a "matches my prefs" candidate can outrank a technically
+        # higher-priority-but-generic one.
         name = tags.get("name") or tags.get("brand")
         kind = _stop_type_from_tags(tags)
         if name and kind != RestStopType.UNKNOWN:
-            score = (_TYPE_PRIORITY[kind], d)
+            effective_priority = _TYPE_PRIORITY[kind] - _pref_bonus(kind, tags)
+            score = (effective_priority, d)
             if score < best_name_score:
                 best_name_score = score
                 payload["name"] = str(name)
                 payload["stop_type"] = kind
+                winner_coord = coord
+
+    # Ship the winner's coord back so `enrich_rest_stops` can shift
+    # the anchor onto the actual amenity (max ~3 km detour). Skip
+    # when nothing named matched — keep the original anchor.
+    if winner_coord is not None:
+        payload["coordinate"] = winner_coord
 
     return payload
 

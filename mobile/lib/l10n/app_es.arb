@@ -612,6 +612,7 @@
     "styleDailyCapLabel": "Máx. horas al volante por día",
     "styleBedtimeLabel": "Hora de dormir",
     "styleWakeLabel": "Hora de despertarse",
+    "styleDrivingStartLabel": "Hora preferida para empezar a conducir",
     "styleBreakLabel": "Estilo de parada",
     "styleBreakMinimal": "Mínimo",
     "styleBreakScenic": "Paisajístico",

@@ -368,6 +368,14 @@ class TripProfile:
     bedtime_hour: int = 22
     wake_hour: int = 8
     break_style: BreakStyle = BreakStyle.SCENIC
+    # Preferred hour the user wants to be behind the wheel on days
+    # 2+. Independent from `wake_hour` (when they get out of bed)
+    # and `MealPreferences.breakfast_hour` (when they eat) — a
+    # driver might wake at 07:00, want to drive at 07:30, and grab
+    # breakfast at the first service area at 09:00. `None` falls
+    # back to `wake_hour` for backwards compat with profiles saved
+    # before this field existed.
+    preferred_driving_start_hour: int | None = None
 
 
 class RestStopType(str, Enum):

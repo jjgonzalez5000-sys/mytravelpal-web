@@ -54,7 +54,7 @@ def _reason_for_rest_stop(
     is_rv = (
         profile is not None
         and getattr(getattr(profile, "vehicle", None), "type", None)
-        == VehicleType.RV
+        == VehicleType.CAMPER
     )
 
     if stop.kid_friendly and has_kids:
@@ -180,6 +180,12 @@ class TripProfileIn(BaseModel):
     daily_driving_cap_hours: int = Field(default=8, ge=4, le=14)
     bedtime_hour: int = Field(default=22, ge=18, le=23)
     wake_hour: int = Field(default=8, ge=5, le=11)
+    # Optional. Independent from wake_hour — the driver may want to
+    # wake at 07:00, drive at 07:30 and have breakfast at the first
+    # service area. When null, backend falls back to wake_hour.
+    preferred_driving_start_hour: int | None = Field(
+        default=None, ge=4, le=14,
+    )
     break_style: BreakStyle = BreakStyle.SCENIC
 
     # -- Curated vehicle catalogue (Phase 1: model + tank level) --
@@ -239,6 +245,7 @@ class TripProfileIn(BaseModel):
             daily_driving_cap_hours=self.daily_driving_cap_hours,
             bedtime_hour=self.bedtime_hour,
             wake_hour=self.wake_hour,
+            preferred_driving_start_hour=self.preferred_driving_start_hour,
             break_style=self.break_style,
         )
 
@@ -1011,9 +1018,16 @@ async def _plan_shared_preamble(
     _cap_hours = float(
         getattr(profile, "daily_driving_cap_hours", 8) or 8,
     ) if profile is not None else 24.0
-    _wake_hour = (
-        getattr(profile, "wake_hour", 8) if profile is not None else 0
-    )
+    # Prefer `preferred_driving_start_hour` when set — the arrival
+    # estimate has to match what `trip_optimizations` actually does
+    # or the consistency check falsely fires "breakfast at Thu 08:00
+    # but trip ends at Thu 07:35".
+    _wake_hour = 0
+    if profile is not None:
+        _wake_hour = (
+            getattr(profile, "preferred_driving_start_hour", None)
+            or getattr(profile, "wake_hour", 8)
+        )
     _day_start = effective_departure_at
     _remaining = _trip_hours
     _day_end = effective_departure_at
@@ -1400,7 +1414,7 @@ async def _plan_enrich_impl(
     try:
         from app.services.rest_stops_enrichment import enrich_rest_stops
         rest_stops_domain = tuple(
-            await enrich_rest_stops(rest_stops_domain)
+            await enrich_rest_stops(rest_stops_domain, profile=profile)
         )
     except Exception as exc:  # noqa: BLE001
         _log.warning("rest-stop enrichment failed: %r", exc)

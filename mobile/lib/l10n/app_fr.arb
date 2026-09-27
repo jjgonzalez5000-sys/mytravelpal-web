@@ -625,6 +625,7 @@
     "styleDailyCapLabel": "Heures max de conduite par jour",
     "styleBedtimeLabel": "Heure du coucher",
     "styleWakeLabel": "Heure du réveil",
+    "styleDrivingStartLabel": "Heure préférée pour commencer à conduire",
     "styleBreakLabel": "Style de pause",
     "styleBreakMinimal": "Minimum",
     "styleBreakScenic": "Panoramique",

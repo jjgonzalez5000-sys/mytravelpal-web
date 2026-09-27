@@ -219,6 +219,7 @@ class TripProfile {
     this.dailyDrivingCapHours = 8,
     this.bedtimeHour = 22,
     this.wakeHour = 8,
+    this.preferredDrivingStartHour,
     this.breakStyle = BreakStyle.scenic,
     this.vehicleModelId,
     this.currentTankLevelPercent,
@@ -236,6 +237,11 @@ class TripProfile {
   final int dailyDrivingCapHours;
   final int bedtimeHour;
   final int wakeHour;
+  /// Preferred hour the user wants to be behind the wheel on day 2+.
+  /// Independent from `wakeHour` (bed exit) and
+  /// `meals.breakfastHour` (eating). Backend falls back to
+  /// `wakeHour` when null. Setter exposed under Perfil → Ritmo.
+  final int? preferredDrivingStartHour;
   final BreakStyle breakStyle;
 
   /// Optional link to a curated catalogue entry from
@@ -260,6 +266,7 @@ class TripProfile {
     int? dailyDrivingCapHours,
     int? bedtimeHour,
     int? wakeHour,
+    Object? preferredDrivingStartHour = _sentinel,
     BreakStyle? breakStyle,
     // Sentinel-style opt-in: pass `clearVehicleModelId: true` to wipe
     // the field. `vehicleModelId: null` on its own would collide with
@@ -279,6 +286,9 @@ class TripProfile {
             dailyDrivingCapHours ?? this.dailyDrivingCapHours,
         bedtimeHour: bedtimeHour ?? this.bedtimeHour,
         wakeHour: wakeHour ?? this.wakeHour,
+        preferredDrivingStartHour: preferredDrivingStartHour == _sentinel
+            ? this.preferredDrivingStartHour
+            : preferredDrivingStartHour as int?,
         breakStyle: breakStyle ?? this.breakStyle,
         vehicleModelId: vehicleModelId == _sentinel
             ? this.vehicleModelId
@@ -299,6 +309,8 @@ class TripProfile {
         'daily_driving_cap_hours': dailyDrivingCapHours,
         'bedtime_hour': bedtimeHour,
         'wake_hour': wakeHour,
+        if (preferredDrivingStartHour != null)
+          'preferred_driving_start_hour': preferredDrivingStartHour,
         'break_style': breakStyle.code,
         if (vehicleModelId != null) 'vehicle_model_id': vehicleModelId,
         if (currentTankLevelPercent != null)
@@ -322,6 +334,8 @@ class TripProfile {
             (j['daily_driving_cap_hours'] as num?)?.toInt() ?? 8,
         bedtimeHour: (j['bedtime_hour'] as num?)?.toInt() ?? 22,
         wakeHour: (j['wake_hour'] as num?)?.toInt() ?? 8,
+        preferredDrivingStartHour:
+            (j['preferred_driving_start_hour'] as num?)?.toInt(),
         breakStyle: BreakStyle.fromCode(j['break_style'] as String?),
         vehicleModelId: j['vehicle_model_id'] as String?,
         currentTankLevelPercent:

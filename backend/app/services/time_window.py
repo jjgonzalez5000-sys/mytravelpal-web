@@ -8,10 +8,18 @@ duration. This is MyTravelPal's core differentiating feature.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app.domain import Route, TimeWindow
 from app.providers import TrafficProvider
+
+
+# Minimum head-start we allow between "now" and the earliest sampled
+# departure. Anything below this and Salir Ahora effectively
+# suggests a time that has already passed by the time the user reads
+# the result. 10 min covers the full round-trip: plan render +
+# driver reads → picks a window → gets to the car.
+_LEAVE_NOW_SLACK = timedelta(minutes=10)
 
 
 def minutes_saved_vs_desired(
@@ -67,8 +75,21 @@ async def compute_time_windows(
     cfg = config or TimeWindowConfig()
 
     candidates: list[TimeWindow] = []
-    start = desired_departure_at - cfg.window_span
+    # Clamp the earliest sample to `now + slack` so `Salir Ahora`
+    # never surfaces a departure that has already passed. Without
+    # the clamp, `start` sits at `desired − 3h`; when the user hits
+    # Leave Now that becomes 3 h ago and the whole top-5 is a list
+    # of past times which reads as broken.
+    now = datetime.now(desired_departure_at.tzinfo or timezone.utc)
+    earliest_allowed = now + _LEAVE_NOW_SLACK
+    start = max(desired_departure_at - cfg.window_span, earliest_allowed)
     end = desired_departure_at + cfg.window_span
+    if end < start:
+        # `desired_departure_at` is in the past AND far outside the
+        # forward window; snap the whole range to a single sample at
+        # `earliest_allowed` so the caller always gets one usable
+        # recommendation instead of an empty tuple.
+        end = earliest_allowed
     cursor = start
     while cursor <= end:
         factor = await traffic.factor_at(route, cursor)

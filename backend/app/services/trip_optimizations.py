@@ -235,6 +235,16 @@ def compute(
     prefs = profile.meals
     cap_hours = float(getattr(profile, "daily_driving_cap_hours", 8) or 8)
     wake_hour = getattr(profile, "wake_hour", 8)
+    # Preferred hour the user wants to be behind the wheel on day
+    # 2+. Falls back to wake_hour when unset — matches the previous
+    # behaviour where "wake up" == "start driving". Independent of
+    # breakfast so a driver who prefers "drive first, breakfast at
+    # a service area" doesn't get their day forcibly anchored to
+    # 08:00 by MealPreferences.breakfast_hour.
+    start_hour = (
+        getattr(profile, "preferred_driving_start_hour", None)
+        or wake_hour
+    )
 
     # Multi-day loop: iterate day-by-day. Each day starts either at
     # the trip departure (day 1) or at the previous day's wake-up
@@ -313,12 +323,12 @@ def compute(
         driving_offset += driving_this_day
         if remaining_driving <= 0.01:
             break
-        # Wake up next day at `wake_hour` (respect day_sleep.at as
-        # floor — you can't wake before you slept). Fall back to
-        # day_drive_end when no sleep was selected (rare: cap
-        # exhausted with no valid rest stop).
+        # Start driving next day at `preferred_driving_start_hour`
+        # (respect day_sleep.at as floor — you can't drive before you
+        # slept). Fall back to day_drive_end when no sleep was
+        # selected (rare: cap exhausted with no valid rest stop).
         base = day_sleep.at if day_sleep is not None else day_drive_end
-        day_start = _next_wake(base, wake_hour)
+        day_start = _next_wake(base, start_hour)
 
     return Optimizations(
         meal_stops=tuple(meal_stops),

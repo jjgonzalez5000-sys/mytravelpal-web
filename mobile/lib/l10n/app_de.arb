@@ -625,6 +625,7 @@
     "styleDailyCapLabel": "Max. Fahrstunden pro Tag",
     "styleBedtimeLabel": "Schlafenszeit",
     "styleWakeLabel": "Aufstehzeit",
+    "styleDrivingStartLabel": "Bevorzugte Startzeit für die Fahrt",
     "styleBreakLabel": "Pausenstil",
     "styleBreakMinimal": "Minimal",
     "styleBreakScenic": "Landschaftlich",

@@ -603,6 +603,7 @@
     "styleDailyCapLabel": "Max hours driving per day",
     "styleBedtimeLabel": "Bedtime",
     "styleWakeLabel": "Wake time",
+    "styleDrivingStartLabel": "Preferred time to start driving",
     "styleBreakLabel": "Break style",
     "styleBreakMinimal": "Minimal",
     "styleBreakScenic": "Scenic",

@@ -770,6 +770,17 @@ class _AdvancedStyleControls extends StatelessWidget {
           min: 5, max: 11,
           onChanged: (h) => onChanged(profile.copyWith(wakeHour: h)),
         ),
+        // Preferred driving start hour — independent of wake_hour so
+        // a driver who prefers "wake at 07:00, drive at 07:30" gets
+        // that instead of being forced to eat breakfast first.
+        _HourPicker(
+          label: l.styleDrivingStartLabel,
+          value: profile.preferredDrivingStartHour ?? profile.wakeHour,
+          min: 4, max: 14,
+          onChanged: (h) => onChanged(
+            profile.copyWith(preferredDrivingStartHour: h),
+          ),
+        ),
         // Break-style picker removed (2026-08-25). Users pointed out
         // that scenic / foodie / minimal was redundant with the
         // pace choice + the ability to add restaurants manually
