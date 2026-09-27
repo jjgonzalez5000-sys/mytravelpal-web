@@ -3718,42 +3718,12 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
               // Fuel budget row removed 2026-09-27 — duplicated the
               // "Combustible" line already inside the total-trip-cost
               // card, and its €1.75/L placeholder confused testers.
-              if (opts.mealStops.isNotEmpty) ...[
-                const SizedBox(height: Tokens.space16),
-                Divider(color: scheme.outlineVariant),
-                const SizedBox(height: Tokens.space16),
-                for (final m in opts.mealStops)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: Tokens.space12),
-                    child: InkWell(
-                      onTap: m.coordinate == null ? null : () {
-                        showPoiDetailSheet(
-                          context,
-                          kind: PoiKind.restaurant,
-                          name: m.restaurantName ?? '—',
-                          subtitle: [
-                            if (m.restaurantPriceEurPerMeal != null)
-                              AppLocalizations.of(context).pricePerMeal(
-                                  m.restaurantPriceEurPerMeal!.toStringAsFixed(0)),
-                            if (m.cityHint != null) m.cityHint!,
-                          ].join(' · '),
-                          poi: m.coordinate!,
-                          origin: origin ?? m.coordinate!,
-                          destination: destination ?? m.coordinate!,
-                          routeGeometry: routeGeometry,
-                          attributes: const {},
-                          icon: Icons.restaurant_outlined,
-                          accent: scheme.tertiary,
-                          isAdded: widget.addedKeys.contains(_mealStopKey(m)),
-                          onAddToRoute: widget.onAddMealStop != null
-                              ? () => widget.onAddMealStop!(m)
-                              : null,
-                        );
-                      },
-                      child: _MealStopRow(stop: m),
-                    ),
-                  ),
-              ],
+              // Trip-wide meal-stops list removed 2026-09-27 — same
+              // reason as the "Restaurants near route" section: each
+              // meal is already visible inside its day card (with a
+              // tap-through to the same POI detail sheet). Rendering
+              // the same list twice made the results screen scroll
+              // twice as long as it needed to be.
               // Only render the sleep row when the backend picked a
               // plausible night time. Same gate the promoted card
               // uses — a bogus "sleep at 16:00" from either the
