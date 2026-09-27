@@ -1173,6 +1173,25 @@ class Restaurant {
 }
 
 @immutable
+enum RestStopType {
+  serviceArea('service_area'),
+  gasStation('gas_station'),
+  restArea('rest_area'),
+  caravanSite('caravan_site'),
+  parking('parking'),
+  unknown('unknown');
+
+  const RestStopType(this.code);
+  final String code;
+
+  static RestStopType fromCode(String? code) {
+    for (final v in RestStopType.values) {
+      if (v.code == code) return v;
+    }
+    return RestStopType.unknown;
+  }
+}
+
 class RestStop {
   const RestStop({
     required this.distanceFromOriginKm,
@@ -1182,6 +1201,9 @@ class RestStop {
     this.kidFriendly = false,
     this.petFriendly = false,
     this.rvFriendly = false,
+    this.name,
+    this.stopType = RestStopType.unknown,
+    this.reason,
   });
 
   final double distanceFromOriginKm;
@@ -1193,6 +1215,15 @@ class RestStop {
   final bool kidFriendly;
   final bool petFriendly;
   final bool rvFriendly;
+  // Real POI name from Overpass (e.g. "Área de servicio Somosierra
+  // Norte" or "Repsol A-4 km 213"). Null when no amenity matched
+  // within the search radius; UI falls back to a generic label.
+  final String? name;
+  // Shape of the closest matched amenity. Drives the row icon.
+  final RestStopType stopType;
+  // Short WHY string from backend combining OSM flags + profile
+  // prefs. Null → UI falls back to generic reasons in the sheet.
+  final String? reason;
 
   factory RestStop.fromJson(Map<String, dynamic> json) => RestStop(
         distanceFromOriginKm:
@@ -1207,6 +1238,9 @@ class RestStop {
         kidFriendly: json['kid_friendly'] as bool? ?? false,
         petFriendly: json['pet_friendly'] as bool? ?? false,
         rvFriendly: json['rv_friendly'] as bool? ?? false,
+        name: json['name'] as String?,
+        stopType: RestStopType.fromCode(json['stop_type'] as String?),
+        reason: json['reason'] as String?,
       );
 }
 

@@ -559,78 +559,88 @@ class DayPlanSection extends StatelessWidget {
                       const SizedBox(height: Tokens.space8),
                       for (final r in visibleRests)
                         Padding(
-                          padding: const EdgeInsets.only(top: 4),
+                          padding: const EdgeInsets.only(top: 6),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.local_cafe_outlined, size: 14,
-                                  color: scheme.secondary),
+                              Icon(
+                                _iconForRestStopType(r.stopType),
+                                size: 16,
+                                color: scheme.secondary,
+                              ),
                               const SizedBox(width: 6),
                               Expanded(
-                                child: Wrap(
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  spacing: 6,
-                                  runSpacing: 2,
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      () {
-                                        // Linear interpolation across the
-                                        // day's km / time range. `end_at`
-                                        // already folds in pause + meal
-                                        // overhead so the derived rest-stop
-                                        // time inherits both. Good enough for
-                                        // a "coffee around 11:15" chip — not
-                                        // a promise. Guards a zero-km day
-                                        // (dwell / edge case) by falling back
-                                        // to the day's start moment.
-                                        final span = d.toKm - d.fromKm;
-                                        final frac = span > 0
-                                            ? ((r.distanceFromOriginKm - d.fromKm)
-                                                    / span)
-                                                .clamp(0.0, 1.0)
-                                            : 0.0;
-                                        final elapsed =
-                                            d.endAt.difference(d.startAt);
-                                        final at = d.startAt.add(
-                                          Duration(
-                                            milliseconds:
-                                                (elapsed.inMilliseconds * frac)
+                                    // Primary line: time · name (if
+                                    // backend matched one) · duration.
+                                    Wrap(
+                                      crossAxisAlignment:
+                                          WrapCrossAlignment.center,
+                                      spacing: 6,
+                                      runSpacing: 2,
+                                      children: [
+                                        Text(
+                                          () {
+                                            final span = d.toKm - d.fromKm;
+                                            final frac = span > 0
+                                                ? ((r.distanceFromOriginKm -
+                                                            d.fromKm) /
+                                                        span)
+                                                    .clamp(0.0, 1.0)
+                                                : 0.0;
+                                            final elapsed = d.endAt
+                                                .difference(d.startAt);
+                                            final at = d.startAt.add(
+                                              Duration(
+                                                milliseconds: (elapsed
+                                                            .inMilliseconds *
+                                                        frac)
                                                     .round(),
+                                              ),
+                                            );
+                                            final displayName = r.name ??
+                                                'km ${r.distanceFromOriginKm.toStringAsFixed(0)}';
+                                            return '${timeFormat.format(at.toLocal())}  ·  $displayName  ·  ${r.recommendedBreakMinutes} min';
+                                          }(),
+                                          style: t.bodySmall?.copyWith(
+                                            fontWeight: FontWeight.w500,
                                           ),
-                                        );
-                                        final label =
-                                            'km ${r.distanceFromOriginKm.toStringAsFixed(0)}'
-                                            '  ·  ${r.recommendedBreakMinutes} min';
-                                        return l.dayRestStopAt(
-                                          timeFormat.format(at.toLocal()),
-                                          label,
-                                        );
-                                      }(),
-                                      style: t.bodySmall,
+                                        ),
+                                        if (r.kidFriendly)
+                                          Icon(Icons.child_care,
+                                              size: 14,
+                                              color: scheme.secondary),
+                                        if (r.petFriendly)
+                                          Icon(Icons.pets,
+                                              size: 14,
+                                              color: scheme.secondary),
+                                        if (r.rvFriendly)
+                                          Icon(Icons.rv_hookup,
+                                              size: 14,
+                                              color: scheme.secondary),
+                                      ],
                                     ),
-                                    // Tiny inline badges — one per
-                                    // active OSM flag. Rendered as
-                                    // small icons rather than emoji
-                                    // to inherit theme colour and
-                                    // scale with text size.
-                                    if (r.kidFriendly)
-                                      Icon(Icons.child_care,
-                                          size: 14,
-                                          color: scheme.secondary),
-                                    if (r.petFriendly)
-                                      Icon(Icons.pets,
-                                          size: 14,
-                                          color: scheme.secondary),
-                                    if (r.rvFriendly)
-                                      Icon(Icons.rv_hookup,
-                                          size: 14,
-                                          color: scheme.secondary),
+                                    // Secondary line: the backend-composed
+                                    // reason. Only shown when the backend
+                                    // sent one (skip for anonymous stops).
+                                    if (r.reason != null &&
+                                        r.reason!.isNotEmpty)
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 2),
+                                        child: Text(
+                                          r.reason!,
+                                          style: t.labelSmall?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                          ),
+                                        ),
+                                      ),
                                   ],
                                 ),
                               ),
-                              // Info icon → "why this stop" sheet. Uses
-                              // whichever OSM flags matched + the safety
-                              // rationale (hours driven).
                               InkWell(
                                 onTap: () => _showRestStopWhy(context, r),
                                 borderRadius: BorderRadius.circular(20),
@@ -819,6 +829,27 @@ class DayPlanSection extends StatelessWidget {
   }
 }
 
+/// Row icon that hints at the shape of the stop — a coffee cup for
+/// generic areas / unknown, a fuel pump for gas stations, etc. Kept
+/// as a plain function (no state, no context) so it can be reused
+/// from the "why this stop" sheet header too.
+IconData _iconForRestStopType(RestStopType type) {
+  switch (type) {
+    case RestStopType.serviceArea:
+      return Icons.local_cafe_outlined;
+    case RestStopType.gasStation:
+      return Icons.local_gas_station_outlined;
+    case RestStopType.restArea:
+      return Icons.park_outlined;
+    case RestStopType.caravanSite:
+      return Icons.rv_hookup;
+    case RestStopType.parking:
+      return Icons.local_parking_outlined;
+    case RestStopType.unknown:
+      return Icons.local_cafe_outlined;
+  }
+}
+
 /// Opens a bottomsheet explaining WHY the backend picked this stop:
 /// the amenity flags that matched (kid / pet / RV) and the safety
 /// rationale (EU 561/2006 driving-hours guidance). Called from the
@@ -829,6 +860,11 @@ Future<void> _showRestStopWhy(BuildContext context, RestStop stop) {
   final t = Theme.of(context).textTheme;
 
   final reasons = <(IconData, String)>[
+    // Backend-composed WHY leads when present — it can reference user
+    // prefs the client doesn't need to re-derive ("kid-friendly per
+    // tu perfil", "gasolinera 12 c/L más barata").
+    if (stop.reason != null && stop.reason!.isNotEmpty)
+      (_iconForRestStopType(stop.stopType), stop.reason!),
     if (stop.kidFriendly) (Icons.child_care, l.restStopWhyKidFriendly),
     if (stop.petFriendly) (Icons.pets, l.restStopWhyPetFriendly),
     if (stop.rvFriendly) (Icons.rv_hookup, l.restStopWhyRvFriendly),

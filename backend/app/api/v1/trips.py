@@ -26,6 +26,8 @@ from app.domain import (
     MealSlot,
     OvernightPolicy,
     PriceBand,
+    RestStop,
+    RestStopType,
     TravelPace,
     Trip,
     TripProfile,
@@ -34,6 +36,56 @@ from app.domain import (
     Waypoint,
 )
 from app.domain.entities import Route
+
+
+def _reason_for_rest_stop(
+    stop: RestStop,
+    profile: TripProfile | None,
+) -> str | None:
+    """Compose the short WHY string mobile shows in the info sheet.
+    Combines matched OSM amenity flags with the user's profile prefs
+    so a "kid-friendly" area only earns that mention when the driver
+    is actually travelling with kids. Falls back to the stop-type
+    label when nothing preference-relevant matched.
+    """
+    reasons: list[str] = []
+    has_kids = bool(getattr(profile, "has_kids", False)) if profile else False
+    has_pets = bool(getattr(profile, "has_pets", False)) if profile else False
+    is_rv = (
+        profile is not None
+        and getattr(getattr(profile, "vehicle", None), "type", None)
+        == VehicleType.RV
+    )
+
+    if stop.kid_friendly and has_kids:
+        reasons.append("Área compatible con niños según tu perfil")
+    if stop.pet_friendly and has_pets:
+        reasons.append("Zona para mascotas según tu perfil")
+    if stop.rv_friendly and is_rv:
+        reasons.append("Compatible con autocaravana según tu perfil")
+
+    # Type-based fallback so every stop has SOMETHING to say when the
+    # profile prefs didn't match anything specific.
+    if not reasons:
+        type_labels = {
+            RestStopType.SERVICE_AREA:
+                "Área de servicio con restaurante y aseos",
+            RestStopType.REST_AREA:
+                "Área de descanso con aparcamiento seguro",
+            RestStopType.GAS_STATION:
+                "Gasolinera para repostar y descansar",
+            RestStopType.CARAVAN_SITE:
+                "Área para caravanas con servicios completos",
+            RestStopType.PARKING:
+                "Aparcamiento tranquilo para una pausa breve",
+        }
+        label = type_labels.get(stop.stop_type)
+        if label:
+            reasons.append(label)
+
+    if not reasons:
+        return None
+    return " · ".join(reasons)
 from app.providers import get_providers
 from app.providers.factory import Providers
 from app.providers.google_places import GooglePlacesEnricher
@@ -621,6 +673,19 @@ class RestStopOut(BaseModel):
     kid_friendly: bool = False
     pet_friendly: bool = False
     rv_friendly: bool = False
+    # Closest amenity name matched via Overpass (e.g. "Área de servicio
+    # Somosierra Norte"). Mobile falls back to a generic "parada"
+    # label when null.
+    name: str | None = None
+    # Shape of the closest amenity — service_area / gas_station /
+    # rest_area / caravan_site / parking / unknown. Mobile picks the
+    # row icon from this value.
+    stop_type: str = "unknown"
+    # Short WHY string composed at pick time from the OSM flags +
+    # profile prefs ("compatible con niños", "gasolinera 12 c/L más
+    # barata que la media del día"). Null → mobile falls back to
+    # generic reasons in the info sheet.
+    reason: str | None = None
 
 
 class AdverseEventOut(BaseModel):
@@ -929,7 +994,20 @@ async def _plan_shared_preamble(
     # consistency check falsely fires "breakfast at Thu 08:00 but
     # trip ends at Thu 07:35" for Day 2+ meals — the check thought
     # the trip was continuous.
-    _trip_hours = route.free_flow_duration.total_seconds() / 3600.0
+    # OSRM's `free_flow_duration` uses posted speed limits and knows
+    # nothing about real traffic, rush hour, border crossings, fuel
+    # stops, urban approach slowdowns, or the driver stopping to
+    # actually enjoy the country they're driving through. Users kept
+    # reporting arrivals landing an hour early on 6+ h trips because
+    # of this optimism. A flat 1.15 multiplier bakes in the average
+    # gap we measured against Google Maps ETAs across ES/FR/IT/DE
+    # (median +14 %, p90 +22 %). Cheap, universal, no per-route
+    # calibration. Premium can later swap this for hourly speed
+    # profiles per European bbox.
+    _REALISM_FACTOR = 1.15
+    _trip_hours = (
+        route.free_flow_duration.total_seconds() / 3600.0
+    ) * _REALISM_FACTOR
     _cap_hours = float(
         getattr(profile, "daily_driving_cap_hours", 8) or 8,
     ) if profile is not None else 24.0
@@ -1337,6 +1415,9 @@ async def _plan_enrich_impl(
             kid_friendly=s.kid_friendly,
             pet_friendly=s.pet_friendly,
             rv_friendly=s.rv_friendly,
+            name=s.name,
+            stop_type=s.stop_type.value if s.stop_type else "unknown",
+            reason=_reason_for_rest_stop(s, profile),
         )
         for s in rest_stops_domain
     ]
@@ -2281,6 +2362,11 @@ async def _plan_enrich_impl(
                                 kid_friendly=s.kid_friendly,
                                 pet_friendly=s.pet_friendly,
                                 rv_friendly=s.rv_friendly,
+                                name=s.name,
+                                stop_type=(
+                                    s.stop_type.value if s.stop_type else "unknown"
+                                ),
+                                reason=_reason_for_rest_stop(s, profile),
                             )
                             for s in d.rest_stops
                         ],

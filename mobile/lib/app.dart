@@ -22,6 +22,24 @@ class MyTravelPalApp extends ConsumerWidget {
     final wantsDynamic = ref.watch(themeDynamicProvider);
     final oled = ref.watch(themeOledProvider);
     final density = ref.watch(uiDensityProvider);
+
+    // Push every app-level UX setting to the backend whenever the user
+    // tweaks it. Persists the theme / locale / density / units /
+    // currency across clean reinstalls + Google re-login, so the user
+    // doesn't have to re-configure their dark mode + Spanish + EUR
+    // every time they wipe the app.
+    void _syncSettings(_, __) {
+      ref.read(tripProfileProvider.notifier).pushSettingsChange();
+    }
+
+    ref.listen(themeModeProvider, _syncSettings);
+    ref.listen(themePresetProvider, _syncSettings);
+    ref.listen(themeDynamicProvider, _syncSettings);
+    ref.listen(themeOledProvider, _syncSettings);
+    ref.listen(uiDensityProvider, _syncSettings);
+    ref.listen(localeOverrideProvider, _syncSettings);
+    ref.listen(unitSystemProvider, _syncSettings);
+    ref.listen(currencyCodeProvider, _syncSettings);
     // DynamicColorBuilder runs the wallpaper-colour probe once per
     // context; on iOS + Android <12 both schemes come back null so
     // we fall back to the picked preset transparently.

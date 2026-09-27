@@ -23,7 +23,7 @@ import logging
 import time
 from dataclasses import replace
 
-from app.domain import Coordinate, RestStop
+from app.domain import Coordinate, RestStop, RestStopType
 from app.providers.overpass import (
     _CORRIDOR_METERS,
     _new_overpass_client,
@@ -43,26 +43,46 @@ _REST_STOP_RADIUS_M = 800
 # minutes. Key is (round(lat, 3), round(lon, 3)) so nearby coords
 # on repeated plans hit the same cache entry.
 _CACHE_TTL_S = 24 * 60 * 60
-_CACHE: dict[tuple[float, float], tuple[float, dict[str, bool]]] = {}
+# The cache now holds the full enrichment payload — flags AND the
+# closest amenity's name / type — so a re-plan for the same route
+# skips Overpass entirely.
+_CACHE: dict[tuple[float, float], tuple[float, dict]] = {}
 
 
 def _cache_key(coord: Coordinate) -> tuple[float, float]:
     return (round(coord.lat, 3), round(coord.lon, 3))
 
 
-def _cached_flags(coord: Coordinate) -> dict[str, bool] | None:
+def _cached_flags(coord: Coordinate) -> dict | None:
     entry = _CACHE.get(_cache_key(coord))
     if entry is None:
         return None
-    ts, flags = entry
+    ts, payload = entry
     if time.time() - ts > _CACHE_TTL_S:
         _CACHE.pop(_cache_key(coord), None)
         return None
-    return flags
+    return payload
 
 
-def _remember(coord: Coordinate, flags: dict[str, bool]) -> None:
-    _CACHE[_cache_key(coord)] = (time.time(), flags)
+def _remember(coord: Coordinate, payload: dict) -> None:
+    _CACHE[_cache_key(coord)] = (time.time(), payload)
+
+
+_TYPE_FROM_TAGS: tuple[tuple[str, str, RestStopType], ...] = (
+    # (tag_key, tag_value, resulting stop_type) — first match wins.
+    ("highway", "services", RestStopType.SERVICE_AREA),
+    ("highway", "rest_area", RestStopType.REST_AREA),
+    ("amenity", "fuel", RestStopType.GAS_STATION),
+    ("tourism", "caravan_site", RestStopType.CARAVAN_SITE),
+    ("amenity", "parking", RestStopType.PARKING),
+)
+
+
+def _stop_type_from_tags(tags: dict) -> RestStopType:
+    for key, value, kind in _TYPE_FROM_TAGS:
+        if tags.get(key) == value:
+            return kind
+    return RestStopType.UNKNOWN
 
 
 def _yes(value: str | None) -> bool:
@@ -120,7 +140,7 @@ async def enrich_rest_stops(
         else:
             misses.append((idx, s))
 
-    fresh_flags: dict[int, dict[str, bool]] = {}
+    fresh_flags: dict[int, dict] = {}
     if misses:
         try:
             fresh_flags = await _fetch_flags_for(misses)
@@ -130,31 +150,39 @@ async def enrich_rest_stops(
                 len(misses), exc,
             )
             fresh_flags = {}
-        # Remember misses that came back with an answer (even
-        # all-False — a genuine "no amenity tags here" is worth
-        # caching so we don't retry every plan).
+        # Remember misses that came back with an answer (even the
+        # all-False / no-name case — a genuine "nothing here" is
+        # worth caching so we don't retry every plan).
         for idx, stop in misses:
             _remember(
                 stop.coordinate,
-                fresh_flags.get(idx, {
-                    "kid_friendly": False,
-                    "pet_friendly": False,
-                    "rv_friendly": False,
-                }),
+                fresh_flags.get(idx, _empty_payload()),
             )
 
     out: list[RestStop] = []
     for idx, s in enumerate(stops):
-        flags = cache_hits.get(idx) or fresh_flags.get(idx) or {}
+        payload = cache_hits.get(idx) or fresh_flags.get(idx) or _empty_payload()
         out.append(
             replace(
                 s,
-                kid_friendly=flags.get("kid_friendly", False),
-                pet_friendly=flags.get("pet_friendly", False),
-                rv_friendly=flags.get("rv_friendly", False),
+                kid_friendly=payload.get("kid_friendly", False),
+                pet_friendly=payload.get("pet_friendly", False),
+                rv_friendly=payload.get("rv_friendly", False),
+                name=payload.get("name") or s.name,
+                stop_type=payload.get("stop_type") or s.stop_type,
             )
         )
     return tuple(out)
+
+
+def _empty_payload() -> dict:
+    return {
+        "kid_friendly": False,
+        "pet_friendly": False,
+        "rv_friendly": False,
+        "name": None,
+        "stop_type": RestStopType.UNKNOWN,
+    }
 
 
 async def _fetch_flags_for(
@@ -179,6 +207,10 @@ async def _fetch_flags_for(
 (
   node["highway"~"rest_area|services"]({around});
   way["highway"~"rest_area|services"]({around});
+  node["amenity"="fuel"]({around});
+  way["amenity"="fuel"]({around});
+  node["amenity"="parking"]["amenity"!="parking_space"]({around});
+  way["amenity"="parking"]["amenity"!="parking_space"]({around});
   node["amenity"~"playground|dog_park|dog_toilet"]({around});
   node["tourism"="caravan_site"]({around});
   way["tourism"="caravan_site"]({around});
@@ -189,7 +221,7 @@ async def _fetch_flags_for(
   node(around:{_REST_STOP_RADIUS_M},{coords})["caravan"="yes"];
   node(around:{_REST_STOP_RADIUS_M},{coords})["sanitary_dump_station"="yes"];
 );
-out center 200;
+out center 300;
 """
     client = _new_overpass_client()
     try:
@@ -201,9 +233,30 @@ out center 200;
 
     # Per-stop OR-accumulator: any nearby element that matches a
     # kid/pet/rv rule sets that flag to True for the closest miss.
-    per_stop: dict[int, dict[str, bool]] = {
-        idx: {"kid_friendly": False, "pet_friendly": False, "rv_friendly": False}
+    # Also track the CLOSEST typed amenity (name + stop_type) per
+    # miss so the mobile client can show "Área de servicio X" or
+    # "Repsol km 213" instead of a bare "km 2796".
+    per_stop: dict[int, dict] = {
+        idx: {
+            "kid_friendly": False,
+            "pet_friendly": False,
+            "rv_friendly": False,
+            "name": None,
+            "stop_type": RestStopType.UNKNOWN,
+            "_name_dist_m": float("inf"),
+        }
         for idx, _ in misses
+    }
+    # Ranking so a service area beats a gas station when they're
+    # roughly equidistant — a full service area is more useful for a
+    # break than a bare fuel pump. Lower index = higher priority.
+    _TYPE_PRIORITY = {
+        RestStopType.SERVICE_AREA: 0,
+        RestStopType.REST_AREA: 1,
+        RestStopType.GAS_STATION: 2,
+        RestStopType.CARAVAN_SITE: 3,
+        RestStopType.PARKING: 4,
+        RestStopType.UNKNOWN: 99,
     }
 
     for el in elements:
@@ -226,6 +279,22 @@ out center 200;
         for k, v in flags.items():
             if v:
                 per_stop[best_idx][k] = True
+        # Name + type: prefer higher-priority types even when
+        # slightly farther, tie-break by distance. Uses a synthetic
+        # score = (priority_index, distance_m).
+        name = tags.get("name") or tags.get("brand")
+        kind = _stop_type_from_tags(tags)
+        if name and kind != RestStopType.UNKNOWN:
+            current_kind = per_stop[best_idx]["stop_type"]
+            current_dist = per_stop[best_idx]["_name_dist_m"]
+            new_score = (_TYPE_PRIORITY[kind], best_m)
+            current_score = (
+                _TYPE_PRIORITY.get(current_kind, 99), current_dist,
+            )
+            if new_score < current_score:
+                per_stop[best_idx]["name"] = str(name)
+                per_stop[best_idx]["stop_type"] = kind
+                per_stop[best_idx]["_name_dist_m"] = best_m
 
     # Add caravan_site → rv_friendly explicitly (caravan_site
     # tourism doesn't come with a boolean; being one IS the flag).
@@ -245,6 +314,9 @@ out center 200;
             if best_idx is not None:
                 per_stop[best_idx]["rv_friendly"] = True
 
+    # Strip the internal-only distance tracker before returning.
+    for payload in per_stop.values():
+        payload.pop("_name_dist_m", None)
     return per_stop
 
 

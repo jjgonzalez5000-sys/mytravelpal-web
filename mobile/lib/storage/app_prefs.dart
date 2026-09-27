@@ -139,6 +139,62 @@ class AppPrefs {
   Future<void> setUnitSystem(UnitSystem system) =>
       _prefs.setString(_unitSystemKey, system.code);
 
+  /// Snapshot of every UX-shaping setting stored in prefs, serialisable
+  /// for backend sync. The names are wire keys — do NOT rename them
+  /// once shipped or existing profiles stop restoring their theme /
+  /// locale on reinstall.
+  Map<String, dynamic> appSettingsSnapshot() => {
+        'theme_mode': switch (themeMode) {
+          ThemeMode.light => 'light',
+          ThemeMode.dark => 'dark',
+          ThemeMode.system => 'system',
+        },
+        'theme_preset': themePreset,
+        'theme_dynamic_enabled': themeDynamicEnabled,
+        'theme_oled_enabled': themeOledEnabled,
+        'ui_density': uiDensity.slug,
+        'locale_override': localeOverride?.languageCode,
+        'unit_system': unitSystem.code,
+        'currency_code': currencyCode,
+      };
+
+  /// Apply a snapshot (as returned by the backend). Silently ignores
+  /// unknown keys so future additions are backward-compatible with
+  /// older clients that saved earlier snapshots.
+  Future<void> applyAppSettings(Map<String, dynamic> s) async {
+    Future<void> _apply(String key, Future<void> Function() body) async {
+      if (s.containsKey(key)) await body();
+    }
+
+    await _apply('theme_mode', () async {
+      switch (s['theme_mode']) {
+        case 'light':
+          await setThemeMode(ThemeMode.light);
+        case 'dark':
+          await setThemeMode(ThemeMode.dark);
+        default:
+          await setThemeMode(ThemeMode.system);
+      }
+    });
+    await _apply('theme_preset', () =>
+        setThemePreset(s['theme_preset'] as String? ?? 'forest'));
+    await _apply('theme_dynamic_enabled', () =>
+        setThemeDynamicEnabled(s['theme_dynamic_enabled'] as bool? ?? false));
+    await _apply('theme_oled_enabled', () =>
+        setThemeOledEnabled(s['theme_oled_enabled'] as bool? ?? false));
+    await _apply('ui_density', () =>
+        setUiDensity(UiDensity.fromSlug(s['ui_density'] as String?)));
+    await _apply('locale_override', () {
+      final code = s['locale_override'] as String?;
+      return setLocaleOverride(
+          code == null || code.isEmpty ? null : Locale(code));
+    });
+    await _apply('unit_system', () =>
+        setUnitSystem(UnitSystem.fromCode(s['unit_system'] as String?)));
+    await _apply('currency_code',
+        () => setCurrencyCode(s['currency_code'] as String? ?? 'EUR'));
+  }
+
   TripProfile? get tripProfile {
     final raw = _prefs.getString(_tripProfileKey);
     if (raw == null || raw.isEmpty) return null;

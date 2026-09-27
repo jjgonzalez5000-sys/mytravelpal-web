@@ -192,9 +192,19 @@ final currencyCodeProvider =
 
 /// Current [TripProfile], or null if the user hasn't set one yet.
 class TripProfileNotifier extends StateNotifier<TripProfile?> {
-  TripProfileNotifier(this._prefs, {this.api}) : super(_prefs.tripProfile);
+  TripProfileNotifier(this._prefs, {this.api, this.onAppSettingsApplied})
+      : super(_prefs.tripProfile);
   final AppPrefs _prefs;
   ApiClient? api;
+
+  /// Fired after `syncFromServer` applies an `_app_settings` snapshot
+  /// from the backend. The caller (the provider factory) wires this
+  /// to `ref.invalidate(...)` for every settings provider so the UI
+  /// picks up theme / locale / density / units / currency from the
+  /// freshly-restored prefs. Without this, a clean install + Google
+  /// login would restore the settings to disk but the running UI
+  /// would keep painting with the boot-time defaults.
+  void Function()? onAppSettingsApplied;
 
   Future<void> set(TripProfile? profile) async {
     state = profile;
@@ -208,17 +218,22 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
   /// Cheap: single PUT, fire-and-forget.
   void pushRecentsChange() => _pushToServer(state);
 
+  /// Fired by any of the app-level settings notifiers (theme, locale,
+  /// density, units, currency) when the user tweaks them. Pushes the
+  /// current TripProfile (may be null) plus a fresh
+  /// [AppPrefs.appSettingsSnapshot] to the backend so the setting
+  /// survives a clean reinstall + Google re-login. Piggybacks on the
+  /// existing PUT /v1/profile — no new endpoint.
+  void pushSettingsChange() => _pushToServer(state);
+
   void _pushToServer(TripProfile? profile) {
-    if (api == null || profile == null) return;
-    // Embed recents inside the profile blob so a single JSONB
-    // column round-trips everything. Previous code passed a
-    // `{profile: ..., recent_searches: ...}` dict where the client
-    // expected the top level and `saveProfile` re-wrapped it under
-    // `profile`, so the server persisted a doubly-nested blob and
-    // the round trip only worked by accident. Now the wire body
-    // is a single wrap: `{profile: {...profile, _recent_searches:
-    // [...]}}` — matches the server's `ProfilePayload` contract.
-    final profileJson = profile.toJson();
+    if (api == null) return;
+    // Even without a TripProfile we still push the app-settings blob
+    // — a fresh install that only changed the theme still deserves
+    // to have that persisted server-side. Empty `{}` profile means
+    // "no travel prefs yet, but here are my settings".
+    final profileJson =
+        profile != null ? profile.toJson() : <String, dynamic>{};
     final recents = _prefs.recentSearches;
     if (recents.isNotEmpty) {
       profileJson['_recent_searches'] = recents
@@ -230,6 +245,7 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
               })
           .toList();
     }
+    profileJson['_app_settings'] = _prefs.appSettingsSnapshot();
     api!.saveProfile(profileJson);
   }
 
@@ -259,6 +275,17 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
         state = profile;
         await _prefs.setTripProfile(profile);
       } catch (_) {}
+      // Apply the app-settings snapshot if the backend has one. Then
+      // notify the caller (provider factory) so it can invalidate the
+      // affected providers and the UI rebuilds with the restored
+      // theme / locale / density / units / currency.
+      final settings = profileData['_app_settings'];
+      if (settings is Map<String, dynamic>) {
+        try {
+          await _prefs.applyAppSettings(settings);
+          onAppSettingsApplied?.call();
+        } catch (_) {}
+      }
       if (recents is List && recents.isNotEmpty) {
         for (final r in recents) {
           if (r is Map<String, dynamic>) {
@@ -290,6 +317,20 @@ final tripProfileProvider =
   if (auth.token != null) {
     notifier.api = ref.read(apiClientWithPremiumProvider);
   }
+  // Wire the app-settings-applied callback so `syncFromServer` can
+  // trigger a UI rebuild across every settings provider after
+  // restoring a snapshot. Kept as a callback (not a direct ref
+  // access) so the notifier stays testable without a ProviderScope.
+  notifier.onAppSettingsApplied = () {
+    ref.invalidate(themeModeProvider);
+    ref.invalidate(themePresetProvider);
+    ref.invalidate(themeDynamicProvider);
+    ref.invalidate(themeOledProvider);
+    ref.invalidate(uiDensityProvider);
+    ref.invalidate(localeOverrideProvider);
+    ref.invalidate(unitSystemProvider);
+    ref.invalidate(currencyCodeProvider);
+  };
   return notifier;
 });
 

@@ -370,6 +370,18 @@ class TripProfile:
     break_style: BreakStyle = BreakStyle.SCENIC
 
 
+class RestStopType(str, Enum):
+    """Shape of the closest amenity we could match to a rest-stop anchor.
+    `unknown` when Overpass didn't return anything usable within the
+    search radius — mobile falls back to a generic 'parada' label."""
+    SERVICE_AREA = "service_area"
+    GAS_STATION = "gas_station"
+    REST_AREA = "rest_area"
+    CARAVAN_SITE = "caravan_site"
+    PARKING = "parking"
+    UNKNOWN = "unknown"
+
+
 @dataclass(frozen=True, slots=True)
 class RestStop:
     coordinate: Coordinate
@@ -383,6 +395,17 @@ class RestStop:
     kid_friendly: bool = False
     pet_friendly: bool = False
     rv_friendly: bool = False
+    # Name of the closest amenity we could match via Overpass — e.g.
+    # "Área de servicio Somosierra Norte" or "Repsol A-4 km 213".
+    # `None` when nothing matched within the search radius.
+    name: str | None = None
+    # Shape of the closest amenity. Mobile picks the row icon from it.
+    stop_type: RestStopType = RestStopType.UNKNOWN
+    # Short backend-computed WHY string ("gasolinera 12 c/L más barata
+    # que la media del día", "área infantil a 5 min del target de
+    # pausa"). Mobile shows it as the primary line in the info sheet.
+    # `None` → mobile falls back to the flag-derived generic reasons.
+    reason: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
