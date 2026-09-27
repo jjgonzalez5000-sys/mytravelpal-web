@@ -20,6 +20,7 @@ for local dev without credentials.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from typing import Any
@@ -43,11 +44,23 @@ _MAX_RESULTS_PER_SAMPLE = 20
 # highways adequately without exhausting request quota on long
 # trips (Zurich → Toledo ≈ 20 samples → 20 HERE requests).
 _SAMPLE_STEP_KM = 100.0
+# Hard cap on samples per call. A CH → RO trip is ~1600 km, which
+# at 100 km spacing wants 16 samples; run in parallel that's fine,
+# but a runaway route (great-circle fallback drawing 3000+ km)
+# would otherwise stack 30+ concurrent HERE calls. Cap at 20 so the
+# fan-out stays within HERE's fair-use rate and the wait_for
+# budget below.
+_MAX_SAMPLES = 20
 # Radius per sample. 15 km catches highway-adjacent stations
 # comfortably without pulling city-centre pumps that would never
 # see a highway driver.
 _SAMPLE_RADIUS_M = 15_000
 _TIMEOUT_S = 6.0
+# Wall-clock cap for the whole `prices_along` call. Individual
+# samples run concurrently, so a slow HERE endpoint can no longer
+# multiply out to `n_samples × _TIMEOUT_S` and starve the enrichment
+# gather. On timeout we return whatever partial data has arrived.
+_ALONG_BUDGET_S = 20.0
 
 # Countries where the gov feeds already carry live prices. We skip
 # HERE calls for these so the free-tier budget goes to the
@@ -84,15 +97,47 @@ class HereFuelProvider:
         if (fuel_type or "").lower() == "electric":
             return ()
         sample_points = _corridor_samples(route)
-        # Dedup stations that show up in multiple samples (a station
-        # sitting between two 100-km cells appears in both).
+        # Fire every sample concurrently — the old sequential loop
+        # multiplied out to `n × _TIMEOUT_S` on long routes (17 samples
+        # × 6 s = 102 s worst case) and was the single biggest reason a
+        # CH → RO /plan blew past the client's 120 s timeout.
+        skip_mask: list[Country | None] = []
+        browse_coros: list = []
+        for coord, _distance_km in sample_points:
+            country = detect_country(coord)
+            skip_mask.append(country)
+            if country is None or country in _SKIP_COUNTRIES:
+                # Placeholder coroutine that resolves to [] so the
+                # gather stays aligned with `sample_points` — cheaper
+                # than filtering the list twice.
+                async def _skip() -> list[dict[str, Any]]:
+                    return []
+                browse_coros.append(_skip())
+            else:
+                browse_coros.append(self._browse(coord, key))
+        try:
+            gathered = await asyncio.wait_for(
+                asyncio.gather(*browse_coros, return_exceptions=True),
+                timeout=_ALONG_BUDGET_S,
+            )
+        except asyncio.TimeoutError:
+            _log.warning(
+                "HERE fuel prices_along exceeded %.0fs budget "
+                "for %d samples; returning empty",
+                _ALONG_BUDGET_S, len(sample_points),
+            )
+            return ()
         seen_ids: set[str] = set()
         out: list[FuelPrice] = []
-        for coord, distance_km in sample_points:
-            country = detect_country(coord)
+        for (coord, distance_km), country, result in zip(
+            sample_points, skip_mask, gathered,
+        ):
             if country is None or country in _SKIP_COUNTRIES:
                 continue
-            items = await self._browse(coord, key)
+            if isinstance(result, BaseException):
+                _log.warning("HERE fuel browse errored: %r", result)
+                continue
+            items = result
             for item in items:
                 sid = str(item.get("id") or item.get("resultType") or "")
                 if not sid or sid in seen_ids:
@@ -157,7 +202,11 @@ def _corridor_samples(route: Route) -> list[tuple[Coordinate, float]]:
     if total_km <= 0:
         return [(route.geometry[0], 0.0)]
     samples: list[tuple[Coordinate, float]] = []
-    n_samples = max(1, int(total_km / _SAMPLE_STEP_KM))
+    # Adaptive spacing: aim for one sample per _SAMPLE_STEP_KM, but
+    # hard-cap at _MAX_SAMPLES so a runaway route (or great-circle
+    # fallback) can't blow up the fan-out. Long trips end up sampling
+    # every ~total_km / _MAX_SAMPLES km instead of every 100 km.
+    n_samples = max(1, min(_MAX_SAMPLES, int(total_km / _SAMPLE_STEP_KM)))
     step = 1.0 / max(1, n_samples)
     for i in range(n_samples + 1):
         fraction = min(1.0, i * step)

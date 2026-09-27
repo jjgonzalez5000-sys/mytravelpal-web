@@ -80,7 +80,16 @@ async def compute_time_windows(
     # the clamp, `start` sits at `desired − 3h`; when the user hits
     # Leave Now that becomes 3 h ago and the whole top-5 is a list
     # of past times which reads as broken.
-    now = datetime.now(desired_departure_at.tzinfo or timezone.utc)
+    #
+    # Match `desired`'s awareness — `datetime.now(tzinfo=None)`
+    # returns a naive datetime; passing `timezone.utc` returns an
+    # aware one. Mixing the two later (subtraction / max) raises
+    # `TypeError: can't compare offset-naive and offset-aware
+    # datetimes`, which the test suite catches. Keep them in sync.
+    if desired_departure_at.tzinfo is None:
+        now = datetime.now()
+    else:
+        now = datetime.now(desired_departure_at.tzinfo)
     earliest_allowed = now + _LEAVE_NOW_SLACK
     start = max(desired_departure_at - cfg.window_span, earliest_allowed)
     end = desired_departure_at + cfg.window_span

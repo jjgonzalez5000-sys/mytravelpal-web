@@ -55,9 +55,24 @@ from app.providers.restaurants import _classify_meal_price
 _log = logging.getLogger(__name__)
 
 _URL = "https://api.geoapify.com/v2/places"
-_TIMEOUT = httpx.Timeout(connect=10.0, read=40.0, write=10.0, pool=5.0)
+# Per-request timeout. Tightened from read=40 → read=15 after long
+# international trips (CH → RO) stalled the whole /plan while a
+# single Geoapify chunk retried a 40 s window twice. 15 s covers the
+# 99th percentile of successful Places responses in practice; slower
+# responses now fail fast so the outer `wait_for` budget (see
+# `_ALONG_BUDGET_S`) can move on with partial data instead of blocking
+# the client past its 120 s cap.
+_TIMEOUT = httpx.Timeout(connect=8.0, read=15.0, write=8.0, pool=5.0)
 _LIMIT = 40
 _USER_AGENT = "MyTravelPal/1.0 (+https://mytravelpal.app)"
+
+# Wall-clock cap for a whole `hotels_along` / `restaurants_along` /
+# `prices_along` invocation. If the fan-out over corridor chunks
+# hasn't finished within this window the call returns whatever it
+# has (usually `()`), logs, and lets the enrichment gather move on.
+# Enrichment must degrade gracefully — a slow Geoapify chunk should
+# never take down fuel + weather + adverse along with it.
+_ALONG_BUDGET_S = 25.0
 
 
 def _api_key() -> str | None:
@@ -265,15 +280,28 @@ class GeoapifyHotelsProvider:
         cat = self._CATEGORY_ALL if include_other else self._CATEGORY_HOTEL_ONLY
         boxes = _corridor_viewboxes(route)
         reference = _route_reference_points(route)
-        results = await asyncio.gather(
-            *[_search(self._client, cat, _rect_filter(vb), key,
-                      conditions=conditions) for vb in boxes],
-            return_exceptions=True,
-        )
-        features: list[dict[str, Any]] = []
-        for r in results:
-            if isinstance(r, list):
-                features.extend(r)
+
+        async def _fanout() -> list[dict[str, Any]]:
+            results = await asyncio.gather(
+                *[_search(self._client, cat, _rect_filter(vb), key,
+                          conditions=conditions) for vb in boxes],
+                return_exceptions=True,
+            )
+            features: list[dict[str, Any]] = []
+            for r in results:
+                if isinstance(r, list):
+                    features.extend(r)
+            return features
+
+        try:
+            features = await asyncio.wait_for(_fanout(), timeout=_ALONG_BUDGET_S)
+        except asyncio.TimeoutError:
+            _log.warning(
+                "Geoapify hotels_along exceeded %.0fs budget for a "
+                "%.0f km route (%d chunks); returning empty",
+                _ALONG_BUDGET_S, route.distance_km, len(boxes),
+            )
+            return ()
         return tuple(self._hotels_from(features, route, reference))
 
     async def hotels_near(
@@ -390,15 +418,28 @@ class GeoapifyRestaurantsProvider:
             return ()
         boxes = _corridor_viewboxes(route)
         reference = _route_reference_points(route)
-        gathered = await asyncio.gather(
-            *[_search(self._client, self._CATEGORIES, _rect_filter(vb), key,
-                      conditions=conditions) for vb in boxes],
-            return_exceptions=True,
-        )
-        features: list[dict[str, Any]] = []
-        for r in gathered:
-            if isinstance(r, list):
-                features.extend(r)
+
+        async def _fanout() -> list[dict[str, Any]]:
+            gathered = await asyncio.gather(
+                *[_search(self._client, self._CATEGORIES, _rect_filter(vb), key,
+                          conditions=conditions) for vb in boxes],
+                return_exceptions=True,
+            )
+            features: list[dict[str, Any]] = []
+            for r in gathered:
+                if isinstance(r, list):
+                    features.extend(r)
+            return features
+
+        try:
+            features = await asyncio.wait_for(_fanout(), timeout=_ALONG_BUDGET_S)
+        except asyncio.TimeoutError:
+            _log.warning(
+                "Geoapify restaurants_along exceeded %.0fs budget for a "
+                "%.0f km route (%d chunks); returning empty",
+                _ALONG_BUDGET_S, route.distance_km, len(boxes),
+            )
+            return ()
         result = tuple(self._restaurants_from(features, route, reference))
         _log.info(
             "restaurants_along: %d raw features → %d after corridor filter",
@@ -526,9 +567,18 @@ class GeoapifyFuelProvider:
         reference = _route_reference_points(route)
         is_ev = (fuel_type or "").lower() == "electric"
         category = self._CATEGORY_CHARGING if is_ev else self._CATEGORY
-        features = await _search(
-            self._client, category, _rect_filter(vb), key,
-        )
+        try:
+            features = await asyncio.wait_for(
+                _search(self._client, category, _rect_filter(vb), key),
+                timeout=_ALONG_BUDGET_S,
+            )
+        except asyncio.TimeoutError:
+            _log.warning(
+                "Geoapify fuel prices_along exceeded %.0fs budget for a "
+                "%.0f km route; returning empty",
+                _ALONG_BUDGET_S, route.distance_km,
+            )
+            return ()
         prices: list[FuelPrice] = []
         for f in features:
             coord = _coord(f)

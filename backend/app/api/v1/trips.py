@@ -1458,6 +1458,38 @@ async def _plan_enrich_impl(
     # Every enrich provider that doesn't depend on another's result is
     # fired concurrently here. Post-gather we still do the sequential
     # bits that need the alt route or the hotel/restaurant pool.
+    #
+    # Every leaf coroutine below is wrapped in `_bounded_provider` so
+    # a single slow / hung provider can never block the whole gather
+    # past its own budget. On timeout the provider degrades to its
+    # empty fallback and the plan ships with partial enrichment
+    # instead of returning 500 or blocking the mobile client past
+    # its 120 s cap. Numbers tuned so the sum of individual budgets
+    # comfortably fits inside the client timeout even in pathological
+    # cases where every provider hits its ceiling in parallel.
+
+    # Per-provider wall-clock budgets. Hotels + restaurants get the
+    # largest slice because they fan out over corridor chunks
+    # (Geoapify's own internal budget is 25 s, so give the outer
+    # wrapper a hair more so it doesn't fire before the inner one).
+    _HOTELS_BUDGET_S = 28.0
+    _RESTAURANTS_BUDGET_S = 28.0
+    _FUEL_BUDGET_S = 30.0  # Hybrid: gov + HERE + Nominatim in series
+    _ADVERSE_BUDGET_S = 15.0
+    _WEATHER_BUDGET_S = 15.0
+    _ALT_ROUTE_BUDGET_S = 20.0
+    _PARKING_BUDGET_S = 10.0
+    _VARIANTS_BUDGET_S = 25.0
+
+    async def _bounded_provider(coro, *, budget_s: float, label: str, fallback):
+        try:
+            return await asyncio.wait_for(coro, timeout=budget_s)
+        except asyncio.TimeoutError:
+            _log.warning(
+                "%s exceeded %.0fs budget; degrading to empty",
+                label, budget_s,
+            )
+            return fallback
 
     async def _fetch_hotels_along() -> tuple:
         if not effective_hotel_detour or effective_hotel_detour <= 0:
@@ -1580,14 +1612,42 @@ async def _plan_enrich_impl(
         parkings_raw,
         variants_raw,
     ) = await asyncio.gather(
-        _fetch_hotels_along(),
-        _fetch_restaurants_along(),
-        _fetch_fuel_along(),
-        _fetch_adverse(),
-        _fetch_weather(),
-        _fetch_alt_route(),
-        _fetch_parking(),
-        _fetch_variants(),
+        _bounded_provider(
+            _fetch_hotels_along(),
+            budget_s=_HOTELS_BUDGET_S, label="hotels_along", fallback=(),
+        ),
+        _bounded_provider(
+            _fetch_restaurants_along(),
+            budget_s=_RESTAURANTS_BUDGET_S,
+            label="restaurants_along", fallback=(),
+        ),
+        _bounded_provider(
+            _fetch_fuel_along(),
+            budget_s=_FUEL_BUDGET_S, label="fuel prices_along", fallback=(),
+        ),
+        _bounded_provider(
+            _fetch_adverse(),
+            budget_s=_ADVERSE_BUDGET_S, label="adverse events_along",
+            fallback=(),
+        ),
+        _bounded_provider(
+            _fetch_weather(),
+            budget_s=_WEATHER_BUDGET_S, label="weather_along_route",
+            fallback=(),
+        ),
+        _bounded_provider(
+            _fetch_alt_route(),
+            budget_s=_ALT_ROUTE_BUDGET_S, label="toll_alternative routing",
+            fallback=None,
+        ),
+        _bounded_provider(
+            _fetch_parking(),
+            budget_s=_PARKING_BUDGET_S, label="parking_near", fallback=[],
+        ),
+        _bounded_provider(
+            _fetch_variants(),
+            budget_s=_VARIANTS_BUDGET_S, label="route_variants", fallback=(),
+        ),
     )
 
     fuel: tuple = tuple(fuel_raw)
