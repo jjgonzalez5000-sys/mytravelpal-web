@@ -1777,6 +1777,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             onEditDay: _replanning ? null : _openDayEditSheet,
             overriddenDayIndices: _dayOverrides.keys.toSet(),
             activeReplanDayIndex: _activeReplanDayIndex,
+            fuelPrices: _response.fuelPrices,
           ),
         ),
       ],
@@ -1789,47 +1790,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // — the merge happened in `heroStatsCard`.
       // Next-stop hero: pulls the first meal stop of the trip so the
       // driver always sees "next planned stop" up top without hunting
-      // through the Optimizations section.
-      if (_response.optimizations != null &&
-          _response.optimizations!.mealStops.isNotEmpty) ...[
-        Builder(builder: (context) {
-          final meal = _response.optimizations!.mealStops.first;
-          final coordSuffix = meal.restaurantCoordinate == null
-              ? ':nocoord'
-              : ':${meal.restaurantCoordinate!.lat.toStringAsFixed(4)},'
-                  '${meal.restaurantCoordinate!.lon.toStringAsFixed(4)}';
-          final stopKey = 'restaurant:${meal.restaurantName ?? ""}$coordSuffix';
-          return NextStopHero(
-            mealStop: meal,
-            timeFormat: DateFormat.Hm(),
-            isAdded: _isAdded(stopKey),
-            onAdd: () => _toggleStop(stopKey, 0),
-            onTap: meal.restaurantCoordinate == null
-                ? null
-                : () => showPoiDetailSheet(
-                      context,
-                      kind: PoiKind.restaurant,
-                      name: meal.restaurantName ?? '—',
-                      subtitle: [
-                        DateFormat.Hm().format(meal.at.toLocal()),
-                        if (meal.restaurantPriceEurPerMeal != null)
-                          AppLocalizations.of(context).pricePerMeal(
-                              meal.restaurantPriceEurPerMeal!.toStringAsFixed(0)),
-                        AppLocalizations.of(context).kmFromOrigin(
-                            meal.distanceFromOriginKm.toStringAsFixed(0)),
-                      ].join(' · '),
-                      poi: meal.restaurantCoordinate!,
-                      origin: widget.request.origin,
-                      destination: widget.request.destination,
-                      routeGeometry: _response.route.geometry,
-                      attributes: const {},
-                      icon: Icons.restaurant_menu,
-                      accent: Theme.of(context).colorScheme.primary,
-                    ),
-          );
-        }),
-        const SizedBox(height: Tokens.space16),
-      ],
+      // "Next suggested stop" hero removed 2026-09-27 — each day
+      // card already surfaces its meal stops with tap-through to
+      // the same POI sheet, so pulling one to the top duplicated
+      // the info + burned vertical space above the day plan.
       // Gate on !requiresOvernight — `arrivalAfterBedtime` assumes
       // one continuous drive, which is only relevant when the plan
       // doesn't already break for the night. On a multi-day trip

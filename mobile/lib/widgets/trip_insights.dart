@@ -128,7 +128,15 @@ class DayPlanSection extends StatelessWidget {
     this.onEditDay,
     this.overriddenDayIndices = const {},
     this.activeReplanDayIndex,
+    this.fuelPrices = const [],
   });
+
+  /// Fuel stations along the whole route. The day card filters this
+  /// list by its own `fromKm..toKm` range and renders up to 2 rows
+  /// per day (cheapest by savings-vs-median). Empty = no fuel row
+  /// on the day card. Kept plan-wide so the day cards stay in sync
+  /// when enrich fires a swap.
+  final List<FuelPrice> fuelPrices;
   final List<DayPlan> days;
   final DateFormat timeFormat;
 
@@ -863,6 +871,94 @@ class DayPlanSection extends StatelessWidget {
                             ],
                           ),
                         ),
+                        ),
+                    ],
+                  );
+                }),
+                // Cheap fuel stops within this day's km range.
+                // Only surfaces stations that are (a) inside the
+                // day tramo, (b) cheaper than their country median.
+                // Cap at 2 rows per day so the card doesn't
+                // sprawl; tap opens the shared POI sheet.
+                Builder(builder: (context) {
+                  final candidates = fuelPrices.where((p) =>
+                    p.distanceFromOriginKm >= d.fromKm &&
+                    p.distanceFromOriginKm <= d.toKm &&
+                    p.priceAvailable &&
+                    (p.savingsVsCountryMedianEurPerL ?? 0) > 0,
+                  ).toList()
+                    ..sort((a, b) => (b.savingsVsCountryMedianEurPerL ?? 0)
+                        .compareTo(a.savingsVsCountryMedianEurPerL ?? 0));
+                  final top = candidates.take(2).toList();
+                  if (top.isEmpty) return const SizedBox.shrink();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: Tokens.space8),
+                      for (final p in top)
+                        InkWell(
+                          onTap: p.coordinate == null ? null : () =>
+                              showPoiDetailSheet(
+                                context,
+                                kind: PoiKind.fuel,
+                                name: p.stationName,
+                                subtitle:
+                                    '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel}'
+                                    '  ·  '
+                                    '−${p.savingsVsCountryMedianEurPerL!.toStringAsFixed(2)} ${p.unitLabel}',
+                                poi: p.coordinate!,
+                                origin: origin ?? p.coordinate!,
+                                destination: destination ?? p.coordinate!,
+                                routeGeometry: routeGeometry,
+                                attributes: p.attributes,
+                                icon: p.isChargingStation
+                                    ? Icons.electric_bolt
+                                    : Icons.local_gas_station_outlined,
+                                accent: scheme.primary,
+                              ),
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  p.isChargingStation
+                                      ? Icons.electric_bolt
+                                      : Icons.local_gas_station_outlined,
+                                  size: 14, color: scheme.primary,
+                                ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    '${p.stationName}  ·  '
+                                    'km ${p.distanceFromOriginKm.toStringAsFixed(0)}  ·  '
+                                    '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel}',
+                                    style: t.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.shade700
+                                        .withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    '−${p.savingsVsCountryMedianEurPerL!.toStringAsFixed(2)} ${p.unitLabel}',
+                                    style: t.labelSmall?.copyWith(
+                                      color: Colors.green.shade700,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                     ],
                   );
