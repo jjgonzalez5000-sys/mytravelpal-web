@@ -1821,7 +1821,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         }),
         const SizedBox(height: Tokens.space16),
       ],
-      if (scope != null && scope.arrivalAfterBedtime) ...[
+      // Gate on !requiresOvernight — `arrivalAfterBedtime` assumes
+      // one continuous drive, which is only relevant when the plan
+      // doesn't already break for the night. On a multi-day trip
+      // the driver ends the LAST day well before their bedtime;
+      // showing "arrive at 23:00" from the raw single-day math
+      // reads as broken. When multi-day the day plan itself shows
+      // the last-day end time.
+      if (scope != null && scope.arrivalAfterBedtime && !scope.requiresOvernight) ...[
         _ArrivalHintCard(
           arrivalHour: scope.arrivalLocalHour,
           bedtimeHour: bedtimeHour,
