@@ -1044,10 +1044,20 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         }
                         departure = candidate;
                       }
+                      // Full reset of trip-specific state before
+                      // seeding the recent pick — previously only
+                      // origin/dest/departure changed, so leftover
+                      // waypoints, round-trip toggle and profile
+                      // override from the currently-viewed trip
+                      // silently polluted the new plan.
                       setState(() {
                         _origin = trip.origin;
                         _destination = trip.destination;
                         _departure = departure;
+                        _stops.clear();
+                        _overrideProfile = null;
+                        _isRoundTrip = false;
+                        _returnDeparture = _defaultReturnDeparture();
                       });
                     },
                   ),
