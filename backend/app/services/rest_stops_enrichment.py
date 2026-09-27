@@ -156,14 +156,27 @@ async def enrich_rest_stops(
                 len(misses), exc,
             )
             fresh_flags = {}
-        # Remember misses that came back with an answer (even the
-        # all-False / no-name case — a genuine "nothing here" is
-        # worth caching so we don't retry every plan).
+        # Only cache payloads that carry SOMETHING — either a name,
+        # a stop_type, or at least one amenity flag. Empty payloads
+        # are indistinguishable from a silent Overpass failure (every
+        # mirror timed out → we got zero elements back), so caching
+        # them for 24 h means a single bad Overpass moment locks the
+        # coord to "unknown" for a day even after the mirrors recover.
+        # Retrying on the next plan costs one small Overpass query
+        # per coord — cheap.
         for idx, stop in misses:
-            _remember(
-                stop.coordinate,
-                fresh_flags.get(idx, _empty_payload()),
+            payload = fresh_flags.get(idx)
+            if payload is None:
+                continue
+            has_signal = (
+                payload.get("name")
+                or payload.get("stop_type") not in (None, RestStopType.UNKNOWN)
+                or any(payload.get(k, False) for k in (
+                    "kid_friendly", "pet_friendly", "rv_friendly"
+                ))
             )
+            if has_signal:
+                _remember(stop.coordinate, payload)
 
     out: list[RestStop] = []
     for idx, s in enumerate(stops):
