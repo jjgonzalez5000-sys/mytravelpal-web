@@ -103,6 +103,7 @@ def compute(
     waypoints: tuple[Waypoint, ...] = (),
     origin_label: str | None = None,
     destination_label: str | None = None,
+    day_overrides: dict[int, dict[str, int | None]] | None = None,
 ) -> MultiDayPlan | None:
     """Return `None` for single-day trips. For multi-day trips returns
     the per-day breakdown.
@@ -116,6 +117,14 @@ def compute(
     """
     arrival_at = departure_at + timedelta(hours=trip_duration_hours)
     cap_hours = float(profile.daily_driving_cap_hours)
+    _overrides = day_overrides or {}
+    # Profile-level preferred driving start hour — used on days 2+
+    # when no per-day override says otherwise. Falls back to
+    # `wake_hour` for pre-preferred-hour profiles.
+    _default_start_hour = (
+        getattr(profile, "preferred_driving_start_hour", None)
+        or profile.wake_hour
+    )
     arrival_local_hour = arrival_at.hour
     # A trip with any dwell waypoint is inherently multi-day even
     # if the driving alone would fit in one day (you can't stay
@@ -227,6 +236,11 @@ def compute(
     pause_ratio = _pause_ratio(profile)
     while remaining_hours > 0:
         day_index += 1
+        # Per-day override tweaks (from the ResultScreen edit sheet).
+        _day_over = _overrides.get(day_index) or {}
+        _this_day_cap = float(
+            _day_over.get("daily_driving_cap_hours") or cap_hours
+        )
         # Day 1: honour the opt sleep-stop when present. It already
         # respects `cap_hours` and pause overhead, and its `at` is
         # what the promoted card shows.
@@ -238,7 +252,7 @@ def compute(
             end_km = opt_sleep.rest_stop.distance_from_origin_km
             opt_sleep_consumed = True
         else:
-            driving_this_day = min(cap_hours, remaining_hours)
+            driving_this_day = min(_this_day_cap, remaining_hours)
             raw_drive_end = current_start + timedelta(
                 hours=_wall_hours(driving_this_day, pause_ratio),
             )
@@ -298,6 +312,9 @@ def compute(
                 clipped_at_dwell.coordinate,
                 clipped_at_dwell.label,
             )
+            # Dwell arrival day: preserve profile wake_hour for stay
+            # boundaries (they don't drive). The per-day override
+            # applies only to driving-day starts.
             stay_start = _next_wake(day_end_driving_at, profile.wake_hour)
             for _ in range(clipped_at_dwell.dwell_nights - 1):
                 stay_end = stay_start.replace(
@@ -318,8 +335,14 @@ def compute(
             continue
         if remaining_hours <= 0:
             break
-        # Sleep until wake_hour of the next day.
-        next_wake = _next_wake(day_end_driving_at, profile.wake_hour)
+        # Start next driving day at the profile's preferred hour,
+        # unless the NEXT day (day_index + 1) has an explicit
+        # start_hour override from the ResultScreen edit sheet.
+        _next_over = _overrides.get(day_index + 1) or {}
+        _next_start_hour = (
+            _next_over.get("start_hour") or _default_start_hour
+        )
+        next_wake = _next_wake(day_end_driving_at, _next_start_hour)
         current_start = next_wake
 
     days: list[DayPlan] = []

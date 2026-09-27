@@ -488,7 +488,7 @@ class TripPlanRequest(BaseModel):
     # defaults. Backend loops through days by index; a matching
     # `day_index` here overrides that day only, subsequent days
     # revert to the profile defaults.
-    day_overrides: list["DayOverrideIn"] = Field(default_factory=list)
+    day_overrides: list[DayOverrideIn] = Field(default_factory=list)
 
     # -- Garage (multi-vehicle) --
     # When set AND the caller is authenticated, the backend looks up
@@ -1309,6 +1309,7 @@ async def _plan_core_impl(
             route_distance_km=route.distance_km,
             route=route,
             waypoints=preamble.dwell_waypoints,
+            day_overrides=_day_overrides_map(payload),
         )
         if multiday is not None:
             for d in multiday.days:
@@ -2016,6 +2017,7 @@ async def _plan_enrich_impl(
                 rest_stops=rest_stops_domain,
                 route_distance_km=route.distance_km,
                 route=route,
+                day_overrides=_day_overrides_map(payload),
             )
             _preview_days = (
                 _preview_multiday.days if _preview_multiday else ()
@@ -2384,6 +2386,7 @@ async def _plan_enrich_impl(
             waypoints=dwell_waypoints,
             origin_label=_origin_label,
             destination_label=_dest_label,
+            day_overrides=_day_overrides_map(payload),
         )
         _log.info(
             "day_plan OUT: is_multiday=%s days=%d per_day_labels=%s",
