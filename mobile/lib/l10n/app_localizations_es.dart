@@ -2443,6 +2443,9 @@ class AppLocalizationsEs extends AppLocalizations {
       'Los proveedores no cubren esta ruta. Los precios reales aparecerán en zonas con datos oficiales.';
 
   @override
+  String get resultReplanning => 'Recalculando...';
+
+  @override
   String get onboardEyebrowFuel => 'PRECIOS REALES';
 
   @override

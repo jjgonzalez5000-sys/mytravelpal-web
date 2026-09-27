@@ -122,9 +122,11 @@ class DayPlanSection extends StatelessWidget {
     this.addedStops = const [],
     this.weatherSegments = const [],
     this.enrichPending = false,
+    this.replanning = false,
     this.hotelsRequested = true,
     this.onEditDay,
     this.overriddenDayIndices = const {},
+    this.activeReplanDayIndex,
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
@@ -144,6 +146,19 @@ class DayPlanSection extends StatelessWidget {
   /// instead of the misleading "activa hoteles en las preferencias"
   /// empty state (which is only correct when prefs were disabled).
   final bool enrichPending;
+
+  /// True while a per-day override re-plan (triggered by tapping the
+  /// pencil on a day header) is in flight. Same UX role as
+  /// [enrichPending] for the child hotel blocks: keep the "searching"
+  /// affordance instead of briefly flashing the empty state while the
+  /// new plan is en route.
+  final bool replanning;
+
+  /// The 1-based day index the user just edited via the pencil sheet.
+  /// While [replanning] is true, that specific day card renders a
+  /// small "Recalculando..." pill so the affordance is anchored to
+  /// the card that changed. Null when no replan is in flight.
+  final int? activeReplanDayIndex;
 
   /// True when the user opted-in to hotel search (hotelMaxDetourMinutes
   /// > 0 on the plan form). Forwarded to `_SleepHotelsBlock` so the
@@ -459,11 +474,26 @@ class DayPlanSection extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Anchored "Recalculando..." pill for the day
+                    // that carries the in-flight override edit. Sits
+                    // next to the pencil so the driver's finger's
+                    // origin point tells them the tap was heard while
+                    // the global LinearProgressIndicator above the
+                    // section reinforces "something is loading".
+                    if (!d.isDwellDay &&
+                        replanning &&
+                        activeReplanDayIndex == d.dayIndex) ...[
+                      const SizedBox(width: Tokens.space8),
+                      _ReplanningPill(),
+                    ],
                     // Pencil icon → per-day edit sheet (start hour +
                     // max driving hours). Only rendered on driving
                     // days (skips dwell) and only when the parent
                     // provided a handler. Highlighted primary color
-                    // when the day carries an active override.
+                    // when the day carries an active override. Also
+                    // disabled globally while any replan is in flight
+                    // (the parent already passes null in that case,
+                    // this is a defensive duplicate for clarity).
                     if (!d.isDwellDay && onEditDay != null) ...[
                       const SizedBox(width: Tokens.space4),
                       IconButton(
@@ -475,7 +505,9 @@ class DayPlanSection extends StatelessWidget {
                               : scheme.onSurfaceVariant,
                         ),
                         tooltip: 'Ajustar día',
-                        onPressed: () => onEditDay!(d.dayIndex),
+                        onPressed: replanning
+                            ? null
+                            : () => onEditDay!(d.dayIndex),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(
                           minWidth: 32, minHeight: 32,
@@ -601,7 +633,20 @@ class DayPlanSection extends StatelessWidget {
                     children: [
                       const SizedBox(height: Tokens.space8),
                       for (final r in visibleRests)
-                        Padding(
+                        // Row is wholly tappable → opens the shared
+                        // POI detail sheet with the mini-map + POI
+                        // marker + amenity chips. The (i) info icon
+                        // inside the row keeps its own onTap for the
+                        // concise "why this stop" reason sheet, so
+                        // the driver can pick between "see on map"
+                        // (whole row) and "why" (icon only).
+                        InkWell(
+                          onTap: () => _openRestStopSheet(
+                            context, r, origin, destination,
+                            routeGeometry,
+                          ),
+                          borderRadius: BorderRadius.circular(6),
+                          child: Padding(
                           padding: const EdgeInsets.only(top: 6),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -699,6 +744,7 @@ class DayPlanSection extends StatelessWidget {
                             ],
                           ),
                         ),
+                        ),
                     ],
                   );
                 }),
@@ -738,7 +784,7 @@ class DayPlanSection extends StatelessWidget {
                           ? const []
                           : _hotelsNear(d.sleepCoord!),
                       hotelsPresent: hotels.isNotEmpty,
-                      enrichPending: enrichPending,
+                      enrichPending: enrichPending || replanning,
                       hotelsRequested: hotelsRequested,
                       isDestination: false,
                       origin: origin,
@@ -760,7 +806,7 @@ class DayPlanSection extends StatelessWidget {
                   _SleepHotelsBlock(
                     entries: _hotelsNear(destination!),
                     hotelsPresent: true,
-                    enrichPending: enrichPending,
+                    enrichPending: enrichPending || replanning,
                     hotelsRequested: hotelsRequested,
                     isDestination: true,
                     origin: origin,
@@ -893,6 +939,62 @@ IconData _iconForRestStopType(RestStopType type) {
     case RestStopType.unknown:
       return Icons.local_cafe_outlined;
   }
+}
+
+/// Opens the shared POI detail sheet (mini-map + amenity chips +
+/// Google Maps CTA) for a rest stop. Fired when the driver taps the
+/// row itself (as opposed to the `(i)` info icon, which surfaces
+/// the concise "why this stop" WHY sheet via `_showRestStopWhy`).
+/// Origin/destination default to the stop itself if the caller
+/// didn't have them handy — the shared sheet only uses them for the
+/// route polyline overlay and gracefully degrades to no polyline.
+Future<void> _openRestStopSheet(
+  BuildContext context,
+  RestStop stop,
+  LatLon? origin,
+  LatLon? destination,
+  List<LatLon> routeGeometry,
+) {
+  final scheme = Theme.of(context).colorScheme;
+  // Build the attribute grid from the RestStop facts. Keys follow the
+  // OSM-tag-style used by hotels/restaurants so the sheet's `_icons`
+  // fallback + `_prettifyValue('yes')` logic reuses cleanly. Values
+  // that need a unit are pre-formatted into human strings.
+  final attributes = <String, String>{
+    'km': stop.distanceFromOriginKm.toStringAsFixed(0),
+    'driving':
+        '${stop.cumulativeDrivingHours.toStringAsFixed(1)} h',
+    'break': '${stop.recommendedBreakMinutes} min',
+    'type': stop.stopType.code,
+    if (stop.kidFriendly) 'kid_friendly': 'yes',
+    if (stop.petFriendly) 'pet_friendly': 'yes',
+    if (stop.rvFriendly) 'rv_friendly': 'yes',
+    if (stop.reason != null && stop.reason!.isNotEmpty)
+      'note': stop.reason!,
+  };
+  final safeOrigin = origin ?? stop.coordinate;
+  final safeDestination = destination ?? stop.coordinate;
+  // Fallback when the backend didn't match a named POI within the
+  // search radius: anchor the sheet to a distance-based label so the
+  // driver still gets a stable identifier.
+  final displayName =
+      stop.name ?? 'km ${stop.distanceFromOriginKm.toStringAsFixed(0)}';
+  final subtitle =
+      '${stop.distanceFromOriginKm.toStringAsFixed(0)} km  ·  '
+      '${stop.recommendedBreakMinutes} min';
+  return showPoiDetailSheet(
+    context,
+    kind: PoiKind.rest,
+    name: displayName,
+    subtitle: subtitle,
+    poi: stop.coordinate,
+    origin: safeOrigin,
+    destination: safeDestination,
+    routeGeometry: routeGeometry,
+    attributes: attributes,
+    icon: _iconForRestStopType(stop.stopType),
+    accent: scheme.secondary,
+  );
 }
 
 /// Opens a bottomsheet explaining WHY the backend picked this stop:
@@ -1930,6 +2032,50 @@ class _WaypointTimelineRow extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Tiny anchored badge shown next to the pencil icon on a day header
+/// while that day's per-day override re-plan is in flight. Combines
+/// a spinner + "Recalculando..." label so the driver has a local
+/// affordance in addition to the global LinearProgressIndicator
+/// above the day plan section.
+class _ReplanningPill extends StatelessWidget {
+  const _ReplanningPill();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: 10,
+            height: 10,
+            child: CircularProgressIndicator(
+              strokeWidth: 1.6,
+              color: scheme.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            l.resultReplanning,
+            style: t.labelSmall?.copyWith(
+              color: scheme.onPrimaryContainer,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

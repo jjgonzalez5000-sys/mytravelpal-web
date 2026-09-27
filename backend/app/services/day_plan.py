@@ -166,6 +166,20 @@ def compute(
         ]
     ] = []
     current_start = departure_at
+    # Day-1 start_hour override — when the user tapped the pencil on
+    # day 1 and picked a specific hour (e.g. leave at 10:00 instead
+    # of the planned 09:00), shift the departure forward. If the
+    # picked hour is BEFORE departure_at (they picked 07:00 and
+    # departure was 09:00), the earliest legal option is departure_at
+    # itself — don't move backwards.
+    _day1_over = (day_overrides or {}).get(1) or {}
+    _day1_start_hour = _day1_over.get("start_hour")
+    if _day1_start_hour is not None:
+        shifted = current_start.replace(
+            hour=_day1_start_hour, minute=0, second=0, microsecond=0,
+        )
+        if shifted > current_start:
+            current_start = shifted
     current_start_km = 0.0
     # Project dwell waypoints onto the route geometry so we can
     # detect when the driving cap for a day would carry us past a

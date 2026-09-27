@@ -2433,6 +2433,9 @@ class AppLocalizationsIt extends AppLocalizations {
       'Providers don\'t cover this route. Live prices will appear in areas with official data.';
 
   @override
+  String get resultReplanning => 'Ricalcolo in corso...';
+
+  @override
   String get onboardEyebrowFuel => 'PREZZI REALI';
 
   @override

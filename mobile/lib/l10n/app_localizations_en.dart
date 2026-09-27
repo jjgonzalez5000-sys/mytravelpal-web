@@ -2428,6 +2428,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Providers don\'t cover this route. Live prices will appear in areas with official data.';
 
   @override
+  String get resultReplanning => 'Recalculating...';
+
+  @override
   String get onboardEyebrowFuel => 'REAL PRICES';
 
   @override

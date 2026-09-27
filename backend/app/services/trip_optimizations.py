@@ -263,6 +263,17 @@ def compute(
     first_sleep: SleepStop | None = None
     all_sleeps: list[SleepStop] = []
     day_start = departure_at
+    # Day-1 start_hour override — mirror the same guard as
+    # `day_plan.compute` so meal/sleep positioning stays consistent
+    # with the day boundaries the response ships.
+    _day1_over = (day_overrides or {}).get(1) or {}
+    _day1_start_hour = _day1_over.get("start_hour")
+    if _day1_start_hour is not None:
+        shifted = day_start.replace(
+            hour=_day1_start_hour, minute=0, second=0, microsecond=0,
+        )
+        if shifted > day_start:
+            day_start = shifted
     driving_offset = 0.0  # cumulative driving hours before day_start
     remaining_driving = trip_duration_hours
     day_index = 0

@@ -4382,6 +4382,12 @@ abstract class AppLocalizations {
   /// **'Providers don\'t cover this route. Live prices will appear in areas with official data.'**
   String get emptyFuelNotFoundBody;
 
+  /// No description provided for @resultReplanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculating...'**
+  String get resultReplanning;
+
   /// No description provided for @onboardEyebrowFuel.
   ///
   /// In en, this message translates to:

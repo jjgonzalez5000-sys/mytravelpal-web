@@ -2852,13 +2852,15 @@ async def plan_trip_enrich(
 
     preamble = await _plan_shared_preamble(payload, providers)
     resp = await _plan_enrich_impl(payload, providers, premium, user, preamble)
-    # Strip core-owned fields on the wire. The compute produced them
-    # for the /plan legacy merge, but the client parsing this response
-    # already has its own copy from /plan/core.
+    # Strip core-owned fields on the wire. Days STAY on the response
+    # because their per-day `rest_stops` carry the Overpass-enriched
+    # POI names / types / reasons — clearing them (as the earlier
+    # version did) meant the mobile client, whose progressive merge
+    # takes days from /plan/core, kept rendering empty per-day
+    # rest_stop rows until the driver forced a full re-plan.
     resp = resp.model_copy(update={
         "route": _empty_route(),
         "time_windows": [],
-        "days": [],
         "optimizations": None,
         "recommendation_scope": None,
         "consistency_issues": [],

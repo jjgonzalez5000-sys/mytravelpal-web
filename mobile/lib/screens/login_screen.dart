@@ -144,7 +144,22 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  // _signInDemo removed 2026-08-30.
+  /// Restored 2026-09-27: a lightweight "Continuar como demo" path
+  /// so testers + the beta funnel can bypass Google/Facebook when
+  /// evaluating features. Backend still accepts provider="demo" +
+  /// demo_email / demo_name (see backend/app/api/v1/auth.py:14 —
+  /// never removed). No dialog, no persistence — the account is
+  /// ephemeral and lives inside this install only.
+  Future<void> _signInDemo() async {
+    await _finish(
+      'demo',
+      // Backend demo provider ignores the id_token entirely — send
+      // a stable dummy string so the wire contract is satisfied.
+      'demo-id-token',
+      demoEmail: 'demo@mytravelpal.local',
+      demoName: 'Demo user',
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -184,11 +199,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 onPressed: _busy ? null : _signInWithFacebook,
               ),
               const SizedBox(height: Tokens.space16),
-              // Demo login removed 2026-08-30 — Google covers
-              // ~95 % of Android users and demo accounts kept
-              // being mistaken for real ones (users lost data
-              // when the ephemeral session was wiped). Facebook
-              // sign-in button above stays as secondary path.
+              // Demo login RESTORED 2026-09-27 for tester funnel —
+              // ephemeral, install-scoped, no OAuth roundtrip.
+              // Backend endpoint still supported it the whole time
+              // (see backend/app/api/v1/auth.py:14).
+              TextButton(
+                onPressed: _busy ? null : _signInDemo,
+                child: Text(l.loginContinueDemo),
+              ),
               if (_error != null)
                 Text(
                   _error!,

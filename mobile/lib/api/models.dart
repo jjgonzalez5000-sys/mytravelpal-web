@@ -1871,7 +1871,12 @@ class TripPlanResponse {
         // -- core-owned --
         route: core.route,
         timeWindows: core.timeWindows,
-        days: core.days,
+        // Days come from enrich when non-empty — enrich's per-day
+        // rest_stops carry the Overpass POI names + types + reasons
+        // that core doesn't have. Fall back to core.days only when
+        // enrich returned nothing (e.g. single-day trip; enrich still
+        // ships full per-day rest_stops in the multi-day case).
+        days: enrich.days.isNotEmpty ? enrich.days : core.days,
         savings: core.savings,
         optimizations: core.optimizations,
         recommendationScope: core.recommendationScope,

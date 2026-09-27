@@ -10,8 +10,11 @@ import 'osm_attribution.dart';
 
 /// Kind of POI the sheet is describing. Governs which external CTAs
 /// appear (a hotel gets Booking + Google Maps; a restaurant gets
-/// TheFork + Google Maps + Google reviews; fuel gets Google Maps only).
-enum PoiKind { hotel, restaurant, fuel }
+/// TheFork + Google Maps + Google reviews; fuel gets Google Maps only;
+/// rest stops get Google Maps only — the row already exposes the
+/// backend's WHY sheet via the (i) icon so no third-party lookup is
+/// warranted here).
+enum PoiKind { hotel, restaurant, fuel, rest }
 
 /// Reusable detail sheet for hotels, restaurants and fuel stations.
 ///

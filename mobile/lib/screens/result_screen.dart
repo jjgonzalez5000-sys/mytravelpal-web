@@ -181,6 +181,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// the driver knows the tap was heard.
   bool _replanning = false;
 
+  /// 1-based index of the day the driver just edited via the pencil
+  /// sheet. While `_replanning == true`, `DayPlanSection` renders a
+  /// small "Recalculando..." pill on this day card so the affordance
+  /// is anchored to the day that changed (the LinearProgressIndicator
+  /// above the section handles the global "something is happening"
+  /// affordance). Null when no replan is in flight.
+  int? _activeReplanDayIndex;
+
   // Hero landing moment: on the very first build after the plan
   // arrives, the top sections play a small staggered entrance and a
   // "plan ready" chip pops in for ~2s. Both are strictly one-shot —
@@ -609,6 +617,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       } else {
         _dayOverrides[dayIndex] = saved;
       }
+      // Tag the day whose override just changed so DayPlanSection can
+      // anchor the "Recalculando..." pill to that specific card. The
+      // pill fades away when `_replanWithOverrides` flips
+      // `_replanning` back to false below.
+      _activeReplanDayIndex = dayIndex;
     });
     await _replanWithOverrides();
   }
@@ -630,10 +643,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       setState(() {
         _response = response;
         _replanning = false;
+        _activeReplanDayIndex = null;
       });
     } catch (_) {
       if (!mounted) return;
-      setState(() => _replanning = false);
+      setState(() {
+        _replanning = false;
+        _activeReplanDayIndex = null;
+      });
       // TODO(dev): surface a discreet snackbar on replan failure.
     }
   }
@@ -1680,6 +1697,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         hasWeather: _response.weatherSegments.isNotEmpty,
         hasAdverse: _response.adverseEvents.isNotEmpty,
       ),
+      // Thin indeterminate progress bar shown ONLY while a per-day
+      // override re-plan is in flight. Anchored right above the day
+      // plan section so the driver's eyes (already on the day being
+      // edited) catch the movement without a full-screen modal that
+      // would blow away the scroll position. The specific day card
+      // renders an anchored "Recalculando..." pill (see
+      // `activeReplanDayIndex` prop) for double-affordance.
+      if (_replanning) ...[
+        const SizedBox(height: Tokens.space8),
+        const LinearProgressIndicator(minHeight: 2.0),
+      ],
       if (_response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -1714,10 +1742,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             addedStops: _resolveAddedStops(),
             weatherSegments: _response.weatherSegments,
             enrichPending: _enrichPending,
+            replanning: _replanning,
             hotelsRequested:
                 (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
             onEditDay: _replanning ? null : _openDayEditSheet,
             overriddenDayIndices: _dayOverrides.keys.toSet(),
+            activeReplanDayIndex: _activeReplanDayIndex,
           ),
         ),
       ],
@@ -1910,18 +1940,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           widget.request.restaurantMaxDetourMinutes != null &&
           widget.request.restaurantMaxDetourMinutes! > 0 &&
           _response.restaurants.isEmpty &&
-          _enrichPending) ...[
+          (_enrichPending || _replanning)) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(
           title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
         ),
         const _EnrichListSkeleton(),
       ],
+      // The true empty state fires ONLY when both the enrich phase AND
+      // any pending re-plan (per-day override edit) have finished — a
+      // replan re-issues the monolithic /plan and can transiently reset
+      // fuel/restaurants to [] before the response lands. Without the
+      // `!_replanning` guard the driver briefly sees "no restaurants"
+      // right after tapping Save on the pencil sheet even though the
+      // new plan is still in flight.
       if (showRestaurants &&
           widget.request.restaurantMaxDetourMinutes != null &&
           widget.request.restaurantMaxDetourMinutes! > 0 &&
           _response.restaurants.isEmpty &&
-          !_enrichPending) ...[
+          !_enrichPending &&
+          !_replanning) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(
           title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
@@ -1961,9 +1999,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
       ],
       // Fuel prices: same pattern as restaurants above. Show a
-      // skeleton while enrich hasn't landed so the driver's mental
-      // model is "loading" instead of "no data".
-      if (_response.fuelPrices.isEmpty && _enrichPending) ...[
+      // skeleton while enrich hasn't landed OR a per-day override
+      // replan is still fetching, so the driver's mental model is
+      // "loading" instead of "no data".
+      if (_response.fuelPrices.isEmpty &&
+          (_enrichPending || _replanning)) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(
           title: l.resultFuel,
@@ -1971,12 +2011,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const _EnrichListSkeleton(),
       ],
-      // Fuel "no results" state: enrichment finished, provider had
-      // nothing on this corridor (fuel is always "requested", there
-      // is no per-user opt-out flag). Without this branch the whole
-      // section vanished silently and the driver couldn't tell if
-      // the search failed or was still loading.
-      if (_response.fuelPrices.isEmpty && !_enrichPending) ...[
+      // Fuel "no results" state: enrichment finished, no active
+      // replan in flight, provider had nothing on this corridor
+      // (fuel is always "requested", there is no per-user opt-out
+      // flag). Without this branch the whole section vanished
+      // silently and the driver couldn't tell if the search failed
+      // or was still loading. The `!_replanning` guard prevents the
+      // brief flash of "no fuel" while a pencil-edit re-plan is
+      // still resolving.
+      if (_response.fuelPrices.isEmpty &&
+          !_enrichPending &&
+          !_replanning) ...[
         const SizedBox(height: Tokens.space24),
         SectionHeader(
           title: l.resultFuel,
