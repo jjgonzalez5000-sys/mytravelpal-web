@@ -111,10 +111,19 @@ osrm-check:
 
 .PHONY: mobile-local
 mobile-local:
-	cd $(MOBILE_DIR) && flutter run \
+	cd $(MOBILE_DIR) && flutter build apk --debug --no-tree-shake-icons \
 	  --dart-define=API_BASE_URL=http://$(LOCAL_IP):8000 \
 	  --dart-define=API_KEY=devkey \
 	  --dart-define=SENTRY_DSN=
+	@echo ">>> uninstalling previous build (clean state)"
+	@adb uninstall $(APP_PACKAGE) 2>&1 | tail -1
+	cd $(MOBILE_DIR) && flutter install --debug
+	@echo ">>> launching app"
+	@adb shell monkey -p $(APP_PACKAGE) -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+	@echo ""
+	@echo "  App launched.  Backend: http://$(LOCAL_IP):8000"
+	@echo "  Tail app logs: adb logcat | grep -iE 'mytravelpal|flutter'"
+	@echo "  Tail backend:  make logs-api"
 
 .PHONY: mobile-prod
 mobile-prod:

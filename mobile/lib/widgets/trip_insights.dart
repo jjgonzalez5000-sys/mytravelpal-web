@@ -121,9 +121,16 @@ class DayPlanSection extends StatelessWidget {
     this.routeTotalKm,
     this.addedStops = const [],
     this.weatherSegments = const [],
+    this.enrichPending = false,
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
+
+  /// True while the `/plan/enrich` future is still in flight. When
+  /// true, per-day hotel blocks show a "buscando hoteles..." message
+  /// instead of the misleading "activa hoteles en las preferencias"
+  /// empty state (which is only correct when prefs were disabled).
+  final bool enrichPending;
 
   /// Full hotels list from the response.
   final List<Hotel> hotels;
@@ -408,18 +415,21 @@ class DayPlanSection extends StatelessWidget {
                               color: scheme.onSurfaceVariant,
                             ),
                           ),
-                          // Day 1 shows the user's actual departure —
-                          // the rest of the days start at wake_hour
-                          // which is a profile constant, not news.
-                          // Surfacing "Sale a las 08:15" here makes
-                          // the day timeline self-contained so the
-                          // driver doesn't have to backtrack to the
-                          // plan form to remember when they leave.
-                          if (!d.isDwellDay && d.dayIndex == 1) ...[
+                          // Show start + end times on EVERY driving day.
+                          // Previously only day 1 showed the departure
+                          // ("wake_hour is a constant, not news") — but
+                          // testers reported they still had to scroll
+                          // back up to remember when each day starts /
+                          // ends. Showing it inline per day makes each
+                          // card self-contained.
+                          if (!d.isDwellDay) ...[
                             const SizedBox(height: 2),
                             Text(
-                              l.dayStartsAt(
+                              l.dayDriveWindow(
                                 timeFormat.format(d.startAt.toLocal()),
+                                timeFormat.format(
+                                  (d.sleepAt ?? d.endAt).toLocal(),
+                                ),
                               ),
                               style: t.bodySmall?.copyWith(
                                 color: scheme.primary,
@@ -618,6 +628,21 @@ class DayPlanSection extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              // Info icon → "why this stop" sheet. Uses
+                              // whichever OSM flags matched + the safety
+                              // rationale (hours driven).
+                              InkWell(
+                                onTap: () => _showRestStopWhy(context, r),
+                                borderRadius: BorderRadius.circular(20),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(4),
+                                  child: Icon(
+                                    Icons.info_outline,
+                                    size: 16,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -660,6 +685,7 @@ class DayPlanSection extends StatelessWidget {
                           ? const []
                           : _hotelsNear(d.sleepCoord!),
                       hotelsPresent: hotels.isNotEmpty,
+                      enrichPending: enrichPending,
                       isDestination: false,
                       origin: origin,
                       destination: destination,
@@ -680,6 +706,7 @@ class DayPlanSection extends StatelessWidget {
                   _SleepHotelsBlock(
                     entries: _hotelsNear(destination!),
                     hotelsPresent: true,
+                    enrichPending: enrichPending,
                     isDestination: true,
                     origin: origin,
                     destination: destination,
@@ -790,6 +817,72 @@ class DayPlanSection extends StatelessWidget {
           const SizedBox(height: Tokens.space12),
     ];
   }
+}
+
+/// Opens a bottomsheet explaining WHY the backend picked this stop:
+/// the amenity flags that matched (kid / pet / RV) and the safety
+/// rationale (EU 561/2006 driving-hours guidance). Called from the
+/// `Icons.info_outline` icon at the end of each rest-stop row.
+Future<void> _showRestStopWhy(BuildContext context, RestStop stop) {
+  final l = AppLocalizations.of(context);
+  final scheme = Theme.of(context).colorScheme;
+  final t = Theme.of(context).textTheme;
+
+  final reasons = <(IconData, String)>[
+    if (stop.kidFriendly) (Icons.child_care, l.restStopWhyKidFriendly),
+    if (stop.petFriendly) (Icons.pets, l.restStopWhyPetFriendly),
+    if (stop.rvFriendly) (Icons.rv_hookup, l.restStopWhyRvFriendly),
+    (
+      Icons.local_hospital_outlined,
+      l.restStopWhySafety(
+        stop.cumulativeDrivingHours.toStringAsFixed(1),
+      ),
+    ),
+  ];
+
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    builder: (ctx) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          Tokens.space24, Tokens.space8, Tokens.space24, Tokens.space24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.restStopWhyTitle,
+                style: t.titleMedium
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+            const SizedBox(height: Tokens.space16),
+            for (final (icon, reason) in reasons) ...[
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(icon, size: 20, color: scheme.primary),
+                  const SizedBox(width: Tokens.space12),
+                  Expanded(
+                    child: Text(reason,
+                        style: t.bodyMedium?.copyWith(height: 1.4)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: Tokens.space12),
+            ],
+            const SizedBox(height: Tokens.space8),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text(l.restStopWhyClose),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Filter chip row displayed above the day cards when any rest
@@ -1131,6 +1224,7 @@ class _SleepHotelsBlock extends StatelessWidget {
   const _SleepHotelsBlock({
     required this.entries,
     required this.hotelsPresent,
+    this.enrichPending = false,
     this.isDestination = false,
     this.origin,
     this.destination,
@@ -1141,6 +1235,11 @@ class _SleepHotelsBlock extends StatelessWidget {
   });
   final List<(Hotel, double)> entries;
   final bool hotelsPresent;
+  /// True while the /plan/enrich request is still in flight. Swaps the
+  /// misleading "activa hoteles en preferencias" empty state for a
+  /// live "buscando hoteles..." indicator so drivers know why the
+  /// section is blank.
+  final bool enrichPending;
   final bool isDestination;
   final LatLon? origin;
   final LatLon? destination;
@@ -1171,6 +1270,36 @@ class _SleepHotelsBlock extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     if (!hotelsPresent) {
+      // Two very different messages depending on why the block is
+      // empty: enrich still fetching (live search) vs prefs disabled
+      // (user opt-out). Getting these mixed makes the app look broken.
+      if (enrichPending) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 12,
+                height: 12,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.6,
+                  color: scheme.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  l.daySleepHotelsSearching,
+                  style: t.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
       return Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Text(

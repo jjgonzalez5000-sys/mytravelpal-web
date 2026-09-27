@@ -35,6 +35,7 @@ import '../widgets/adverse_event_sheet.dart';
 import '../widgets/battery_whitelist_dialog.dart';
 import '../widgets/consistency_banner.dart';
 import '../widgets/empty_state_card.dart';
+import '../widgets/enrichment_progress.dart';
 import '../widgets/hotel_preferences.dart' show HotelPreferences;
 import '../widgets/restaurant_preferences.dart' show RestaurantPreferences;
 import '../widgets/trip_insights.dart';
@@ -1511,6 +1512,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       heroCompanionButton,
       const SizedBox(height: Tokens.space12),
       heroStatsCard,
+      // Progress card for the enrich phase — visible while /plan/enrich
+      // is in flight, auto-fades when it lands. Renders as SizedBox
+      // once done so it doesn't take vertical space.
+      const SizedBox(height: Tokens.space12),
+      EnrichmentProgress(
+        pending: _enrichPending,
+        hotelsRequested: (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
+        restaurantsRequested:
+            (widget.request.restaurantMaxDetourMinutes ?? 0) > 0,
+        adverseRequested: widget.request.includeAdverseEvents,
+        hasHotels: _response.hotels.isNotEmpty,
+        hasRestaurants: _response.restaurants.isNotEmpty,
+        hasFuel: _response.fuelPrices.isNotEmpty,
+        hasWeather: _response.weatherSegments.isNotEmpty,
+        hasAdverse: _response.adverseEvents.isNotEmpty,
+      ),
       if (_response.days.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -1544,6 +1561,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             routeTotalKm: _response.route.distanceKm,
             addedStops: _resolveAddedStops(),
             weatherSegments: _response.weatherSegments,
+            enrichPending: _enrichPending,
           ),
         ),
       ],

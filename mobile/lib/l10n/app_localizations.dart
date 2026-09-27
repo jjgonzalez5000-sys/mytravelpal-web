@@ -3902,6 +3902,48 @@ abstract class AppLocalizations {
   /// **'Departs at {time}'**
   String dayStartsAt(String time);
 
+  /// No description provided for @dayDriveWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'{start} → {end}'**
+  String dayDriveWindow(String start, String end);
+
+  /// No description provided for @restStopWhyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Why this stop?'**
+  String get restStopWhyTitle;
+
+  /// No description provided for @restStopWhyKidFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'Service area marked as kid-friendly'**
+  String get restStopWhyKidFriendly;
+
+  /// No description provided for @restStopWhyPetFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'Dog / pet area nearby'**
+  String get restStopWhyPetFriendly;
+
+  /// No description provided for @restStopWhyRvFriendly.
+  ///
+  /// In en, this message translates to:
+  /// **'Motorhome-compatible (sanitary / dump station)'**
+  String get restStopWhyRvFriendly;
+
+  /// No description provided for @restStopWhySafety.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended for road safety: you\'ve been driving {hours}h. EU regulation 561/2006 suggests at least a 45 min break after 4h30 at the wheel.'**
+  String restStopWhySafety(String hours);
+
+  /// No description provided for @restStopWhyClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get restStopWhyClose;
+
   /// No description provided for @dayMealStopAt.
   ///
   /// In en, this message translates to:
@@ -3991,6 +4033,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enable hotels in the plan preferences to see overnight options here.'**
   String get daySleepHotelsEmpty;
+
+  /// No description provided for @daySleepHotelsSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for hotels near your stop...'**
+  String get daySleepHotelsSearching;
+
+  /// No description provided for @enrichmentLoadingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading extras'**
+  String get enrichmentLoadingTitle;
+
+  /// No description provided for @enrichmentChipHotels.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotels'**
+  String get enrichmentChipHotels;
+
+  /// No description provided for @enrichmentChipRestaurants.
+  ///
+  /// In en, this message translates to:
+  /// **'Restaurants'**
+  String get enrichmentChipRestaurants;
+
+  /// No description provided for @enrichmentChipFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel stations'**
+  String get enrichmentChipFuel;
+
+  /// No description provided for @enrichmentChipWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather'**
+  String get enrichmentChipWeather;
+
+  /// No description provided for @enrichmentChipAdverse.
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get enrichmentChipAdverse;
 
   /// No description provided for @restaurantPrefCuisinesLabel.
   ///

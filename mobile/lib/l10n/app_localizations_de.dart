@@ -2144,6 +2144,32 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String dayDriveWindow(String start, String end) {
+    return '$start → $end';
+  }
+
+  @override
+  String get restStopWhyTitle => 'Warum dieser Halt?';
+
+  @override
+  String get restStopWhyKidFriendly => 'Rastplatz mit Kinderbereich';
+
+  @override
+  String get restStopWhyPetFriendly => 'Hunde- / Haustierbereich in der Nähe';
+
+  @override
+  String get restStopWhyRvFriendly =>
+      'Wohnmobil-kompatibel (Sanitär / Entsorgung)';
+
+  @override
+  String restStopWhySafety(String hours) {
+    return 'Für die Verkehrssicherheit empfohlen: du fährst seit ${hours}h. Die EU-Verordnung 561/2006 empfiehlt eine Pause von mindestens 45 Min nach 4h30 am Steuer.';
+  }
+
+  @override
+  String get restStopWhyClose => 'Verstanden';
+
+  @override
   String dayMealStopAt(String time, String name) {
     return '🍽 $time · $name';
   }
@@ -2203,6 +2229,28 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get daySleepHotelsEmpty =>
       'Hotels in den Präferenzen aktivieren, um Übernachtungsoptionen zu sehen.';
+
+  @override
+  String get daySleepHotelsSearching =>
+      'Suche Hotels in der Nähe deines Stopps...';
+
+  @override
+  String get enrichmentLoadingTitle => 'Zusatzdaten werden geladen';
+
+  @override
+  String get enrichmentChipHotels => 'Hotels';
+
+  @override
+  String get enrichmentChipRestaurants => 'Restaurants';
+
+  @override
+  String get enrichmentChipFuel => 'Tankstellen';
+
+  @override
+  String get enrichmentChipWeather => 'Wetter';
+
+  @override
+  String get enrichmentChipAdverse => 'Warnungen';
 
   @override
   String get restaurantPrefCuisinesLabel => 'Küche';
