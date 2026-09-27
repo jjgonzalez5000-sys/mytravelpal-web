@@ -129,6 +129,8 @@ class DayPlanSection extends StatelessWidget {
     this.overriddenDayIndices = const {},
     this.activeReplanDayIndex,
     this.fuelPrices = const [],
+    this.addedFuelKeys = const {},
+    this.onToggleFuelPick,
   });
 
   /// Fuel stations along the whole route. The day card filters this
@@ -137,6 +139,16 @@ class DayPlanSection extends StatelessWidget {
   /// on the day card. Kept plan-wide so the day cards stay in sync
   /// when enrich fires a swap.
   final List<FuelPrice> fuelPrices;
+
+  /// Keys of the fuel picks currently added to the route. The row's
+  /// POI sheet uses this to render "+" vs "−" (added state) so the
+  /// same tap flow toggles.
+  final Set<String> addedFuelKeys;
+
+  /// Fires when the user hits "+" (or "-") on a day-card fuel row's
+  /// POI sheet. Parent stores the pick + rolls its €-savings into
+  /// the trip cost card.
+  final void Function(FuelPrice p)? onToggleFuelPick;
   final List<DayPlan> days;
   final DateFormat timeFormat;
 
@@ -896,7 +908,14 @@ class DayPlanSection extends StatelessWidget {
                     children: [
                       const SizedBox(height: Tokens.space8),
                       for (final p in top)
-                        InkWell(
+                        Builder(builder: (context) {
+                          final coordSuffix = p.coordinate == null
+                              ? ':nocoord'
+                              : ':${p.coordinate!.lat.toStringAsFixed(4)},'
+                                  '${p.coordinate!.lon.toStringAsFixed(4)}';
+                          final fuelKey = 'fuel:${p.stationName}$coordSuffix';
+                          final isAdded = addedFuelKeys.contains(fuelKey);
+                          return InkWell(
                           onTap: p.coordinate == null ? null : () =>
                               showPoiDetailSheet(
                                 context,
@@ -915,6 +934,10 @@ class DayPlanSection extends StatelessWidget {
                                     ? Icons.electric_bolt
                                     : Icons.local_gas_station_outlined,
                                 accent: scheme.primary,
+                                isAdded: isAdded,
+                                onAddToRoute: onToggleFuelPick == null
+                                    ? null
+                                    : () => onToggleFuelPick!(p),
                               ),
                           child: Padding(
                             padding: const EdgeInsets.only(top: 4),
@@ -959,7 +982,8 @@ class DayPlanSection extends StatelessWidget {
                               ],
                             ),
                           ),
-                        ),
+                        );
+                        }),
                     ],
                   );
                 }),

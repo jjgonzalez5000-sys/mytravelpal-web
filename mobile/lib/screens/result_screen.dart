@@ -410,6 +410,45 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
   static const double _fuelStopMinutes = 8.0;
 
+  /// Savings from cheap fuel stations the driver added via the "+"
+  /// button on a day-card fuel row. Keyed by the same station key
+  /// used in [_addedStops] / [_addedRouteWaypoints] so removing a
+  /// pick clears its savings too. Sum flows into the trip cost
+  /// card's "€ saved" chip via [_addedFuelSavingsEur].
+  final Map<String, double> _pickedFuelSavings = <String, double>{};
+
+  /// Toggle a day-card fuel station's pick. Also rolls the €/L
+  /// savings-vs-median into a €-total for the trip cost card by
+  /// multiplying by an assumed 50 L fill (falls back to the
+  /// profile's tank capacity when set).
+  void _toggleDayFuel(FuelPrice p) {
+    if (p.coordinate == null) return;
+    final coordSuffix =
+        ':${p.coordinate!.lat.toStringAsFixed(4)},'
+        '${p.coordinate!.lon.toStringAsFixed(4)}';
+    final key = 'fuel:${p.stationName}$coordSuffix';
+    final removing = _addedStops.containsKey(key);
+    setState(() {
+      if (removing) {
+        _addedStops.remove(key);
+        _addedRouteWaypoints.remove(key);
+        _pickedFuelSavings.remove(key);
+      } else {
+        _addedStops[key] = _fuelStopMinutes;
+        _addedRouteWaypoints[key] = (p.coordinate!, p.stationName);
+        final perL = p.savingsVsCountryMedianEurPerL ?? 0.0;
+        if (perL > 0) {
+          final tank = widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0;
+          // Assume the driver tops up to the tank size at this
+          // station — realistic upper bound for a "cheap stop"
+          // detour. Prefer overshoot to undershoot; the €-savings
+          // chip is aspirational anyway.
+          _pickedFuelSavings[key] = perL * tank;
+        }
+      }
+    });
+  }
+
   double get _addedMinutesTotal =>
       _addedStops.values.fold(0.0, (sum, v) => sum + v);
 
@@ -681,16 +720,30 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// which is €/L not € total. Returns 0 when nothing eligible is
   /// added.
   double get _addedFuelSavingsEur {
+    var total = 0.0;
+    // Backend-suggested station: exact pre-computed savings.
     final rw = _response.refuelWindow;
     final s = rw?.suggestedStation;
-    if (s == null || rw?.suggestedSavingsEur == null) return 0.0;
-    final coordSuffix = s.coordinate == null
-        ? ':nocoord'
-        : ':${s.coordinate!.lat.toStringAsFixed(4)},'
-            '${s.coordinate!.lon.toStringAsFixed(4)}';
-    final key = 'fuel:${s.stationName}$coordSuffix';
-    if (!_addedRouteWaypoints.containsKey(key)) return 0.0;
-    return rw!.suggestedSavingsEur!;
+    if (s != null && rw?.suggestedSavingsEur != null) {
+      final coordSuffix = s.coordinate == null
+          ? ':nocoord'
+          : ':${s.coordinate!.lat.toStringAsFixed(4)},'
+              '${s.coordinate!.lon.toStringAsFixed(4)}';
+      final key = 'fuel:${s.stationName}$coordSuffix';
+      if (_addedRouteWaypoints.containsKey(key)) {
+        total += rw!.suggestedSavingsEur!;
+      }
+    }
+    // Day-card fuel picks: sum the €-savings computed at pick
+    // time (savings_vs_country_median_eur_per_l × tank_liters).
+    // Guarded by _addedStops.containsKey so a stale entry
+    // doesn't leak in after a manual clear.
+    for (final entry in _pickedFuelSavings.entries) {
+      if (_addedStops.containsKey(entry.key)) {
+        total += entry.value;
+      }
+    }
+    return total;
   }
 
   /// Sum of picked-hotel prices across nights. Passed to the cost
@@ -1778,6 +1831,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             overriddenDayIndices: _dayOverrides.keys.toSet(),
             activeReplanDayIndex: _activeReplanDayIndex,
             fuelPrices: _response.fuelPrices,
+            addedFuelKeys: _pickedFuelSavings.keys
+                .where(_addedStops.containsKey)
+                .toSet(),
+            onToggleFuelPick: _toggleDayFuel,
           ),
         ),
       ],
