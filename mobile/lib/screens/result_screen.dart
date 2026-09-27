@@ -1587,6 +1587,35 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               for (final d in _response.days)
                 _DayStripRow(day: d),
             ],
+            // Trip-cost breakdown moved into the hero card 2026-09-27
+            // — was a standalone SoftCard below; consolidating keeps
+            // distance / tolls / fuel / meals / hotels / savings all
+            // in one glanceable place at the top.
+            if (_response.optimizations != null) ...[
+              const SizedBox(height: Tokens.space16),
+              Divider(color: scheme.outlineVariant),
+              const SizedBox(height: Tokens.space12),
+              _TotalTripCostCard(
+                fuelCostEur: _response.optimizations!.fuelCost.totalCostEur,
+                tollCostEur: route.tollCostEur,
+                mealStops: _response.optimizations!.mealStops,
+                sleepStop: _response.optimizations!.sleepStop,
+                tollSkipSavingsEur: _tollSkipSavingsEur,
+                travellers: widget.request.tripProfile?.travellers ?? 1,
+                tripDays: _response.days.length,
+                pickedHotelsCostEur: _selectedNightHotels.isEmpty
+                    ? null
+                    : _selectedHotelsCostEur,
+                pickedHotelsNights: _selectedNightHotels.length,
+                savings: _response.savings.copyWith(
+                  fuelSavingsEur: _addedFuelSavingsEur > 0
+                      ? _addedFuelSavingsEur
+                      : null,
+                ),
+                tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
+                intraSectionSkips: _response.intraSectionSkips,
+              ),
+            ],
           ],
         ),
       ),
@@ -1754,30 +1783,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       const SizedBox(height: Tokens.space24),
       if (_response.consistencyIssues.isNotEmpty)
         ConsistencyBanner(issues: _response.consistencyIssues),
-      // Trip cost hero: the first thing the user wants to know.
-      if (_response.optimizations != null) ...[
-        _TotalTripCostCard(
-          fuelCostEur: _response.optimizations!.fuelCost.totalCostEur,
-          tollCostEur: route.tollCostEur,
-          mealStops: _response.optimizations!.mealStops,
-          sleepStop: _response.optimizations!.sleepStop,
-          tollSkipSavingsEur: _tollSkipSavingsEur,
-          travellers: widget.request.tripProfile?.travellers ?? 1,
-          tripDays: _response.days.length,
-          pickedHotelsCostEur: _selectedNightHotels.isEmpty
-              ? null
-              : _selectedHotelsCostEur,
-          pickedHotelsNights: _selectedNightHotels.length,
-          savings: _response.savings.copyWith(
-            fuelSavingsEur: _addedFuelSavingsEur > 0
-                ? _addedFuelSavingsEur
-                : null,
-          ),
-          tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
-          intraSectionSkips: _response.intraSectionSkips,
-        ),
-        const SizedBox(height: Tokens.space16),
-      ],
+      // Trip cost breakdown moved INTO the hero stats card at the
+      // top so distance / tolls / fuel / meals / hotels / savings
+      // all live together (2026-09-27). This section is empty now
+      // — the merge happened in `heroStatsCard`.
       // Next-stop hero: pulls the first meal stop of the trip so the
       // driver always sees "next planned stop" up top without hunting
       // through the Optimizations section.
@@ -2908,9 +2917,7 @@ class _TotalTripCostCard extends ConsumerWidget {
     final effectiveTolls = (tollCostEur - tollSkipSavingsEur).clamp(0.0, tollCostEur);
     final total = fuelCostEur + effectiveTolls + mealsCost + hotelCost;
 
-    return SoftCard(
-      padding: const EdgeInsets.all(Tokens.space20),
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -3080,9 +3087,26 @@ class _TotalTripCostCard extends ConsumerWidget {
               );
             }(),
           ],
+          // Per-person / per-day breakdown — only when the numbers
+          // actually add information (multi-traveller or multi-day
+          // trips). One line, subtle color, so it doesn't fight
+          // with the total.
+          if (pax > 1 || tripDays > 1) ...[
+            const SizedBox(height: Tokens.space4),
+            Text(
+              [
+                if (pax > 1)
+                  '${formatMoney(total / pax, ccy)} / persona',
+                if (tripDays > 1)
+                  '${formatMoney(total / tripDays, ccy)} / día',
+              ].join('  ·  '),
+              style: t.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
-      ),
-    );
+      );
   }
 }
 
