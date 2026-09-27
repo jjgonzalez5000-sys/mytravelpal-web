@@ -144,6 +144,12 @@ async def enrich_rest_stops(
     if misses:
         try:
             fresh_flags = await _fetch_flags_for(misses)
+            _log.info(
+                "rest-stop enrichment: %d/%d stops enriched (%d with name)",
+                sum(1 for v in fresh_flags.values() if any(v.get(k, False) for k in ("kid_friendly", "pet_friendly", "rv_friendly")) or v.get("name")),
+                len(misses),
+                sum(1 for v in fresh_flags.values() if v.get("name")),
+            )
         except Exception as exc:  # noqa: BLE001
             _log.warning(
                 "rest-stop enrichment failed (%d stops): %r",
@@ -187,41 +193,64 @@ def _empty_payload() -> dict:
 
 async def _fetch_flags_for(
     misses: list[tuple[int, RestStop]],
-) -> dict[int, dict[str, bool]]:
-    """One Overpass query around every miss coord. Elements returned
-    are matched to the nearest miss coord (within radius) and their
-    tags merged into a single per-stop flag dict.
+) -> dict[int, dict]:
+    """Per-stop Overpass queries fanned out in parallel.
+
+    Earlier version sent a single union query around ALL coords at
+    once. Overpass evaluates `around:` per-subquery per-coord, so a
+    3-stop plan with 4 subqueries × 3 coords = 12 spatial ops on the
+    Iberia bbox. Every public mirror timed out at 15-70 s.
+
+    Splitting into N tiny queries (one per stop) trades a bit of
+    request overhead for a much cheaper server-side scan — each hits
+    a ~800 m circle around a single coord. Overpass mirrors return
+    each in ~1-3 s comfortably. `asyncio.gather` keeps total
+    wall-time close to the slowest single query, not the sum.
     """
-    coords = ",".join(
-        f"{s.coordinate.lat:.5f},{s.coordinate.lon:.5f}"
-        for _, s in misses
+    import asyncio
+
+    async def _one(idx: int, stop: RestStop) -> tuple[int, dict]:
+        return (idx, await _fetch_single_stop_amenities(stop))
+
+    results = await asyncio.gather(
+        *(_one(idx, s) for idx, s in misses),
+        return_exceptions=True,
     )
-    around = f"around:{_REST_STOP_RADIUS_M},{coords}"
+    per_stop: dict[int, dict] = {}
+    for entry in results:
+        if isinstance(entry, tuple):
+            idx, payload = entry
+            per_stop[idx] = payload
+    return per_stop
+
+
+async def _fetch_single_stop_amenities(stop: RestStop) -> dict:
+    """One tiny Overpass query around a single rest-stop coord.
+    Returns the aggregated payload the caller expects (flags + name
+    + stop_type). Never raises — a mirror failure produces the empty
+    payload so the caller can treat the stop as un-enriched.
+    """
+    around = f"around:{_REST_STOP_RADIUS_M},{stop.coordinate.lat:.5f},{stop.coordinate.lon:.5f}"
     # Union of all OSM node/way types that plausibly carry a
     # kid/pet/rv-relevant tag. `highway=rest_area|services` is the
     # anchor; we also pull `amenity=playground|dog_park|dog_toilet`
     # because those are usually mapped as separate nodes NEXT to
     # a service area, not on the service-area polygon itself.
+    # Lean query: nodes only + the highest-value tag families. The
+    # earlier version fanned out 15 subqueries × N coords which timed
+    # out on Overpass main (68 s server-side). Nodes ONLY halves the
+    # scan cost vs including `way` — service_area polygons are almost
+    # always also mapped as a labelled node these days, so we lose
+    # very little. amenity=fuel is by definition a node.
     query = f"""
-[out:json][timeout:20];
+[out:json][timeout:15];
 (
   node["highway"~"rest_area|services"]({around});
-  way["highway"~"rest_area|services"]({around});
   node["amenity"="fuel"]({around});
-  way["amenity"="fuel"]({around});
-  node["amenity"="parking"]["amenity"!="parking_space"]({around});
-  way["amenity"="parking"]["amenity"!="parking_space"]({around});
-  node["amenity"~"playground|dog_park|dog_toilet"]({around});
   node["tourism"="caravan_site"]({around});
-  way["tourism"="caravan_site"]({around});
-  node(around:{_REST_STOP_RADIUS_M},{coords})["playground"="yes"];
-  node(around:{_REST_STOP_RADIUS_M},{coords})["changing_table"="yes"];
-  node(around:{_REST_STOP_RADIUS_M},{coords})["dog_area"="yes"];
-  node(around:{_REST_STOP_RADIUS_M},{coords})["motorhome"="yes"];
-  node(around:{_REST_STOP_RADIUS_M},{coords})["caravan"="yes"];
-  node(around:{_REST_STOP_RADIUS_M},{coords})["sanitary_dump_station"="yes"];
+  node["amenity"~"playground|dog_park|dog_toilet"]({around});
 );
-out center 300;
+out center 200;
 """
     client = _new_overpass_client()
     try:
@@ -229,24 +258,9 @@ out center 300;
     finally:
         await client.aclose()
     if not elements:
-        return {}
+        return _empty_payload()
 
-    # Per-stop OR-accumulator: any nearby element that matches a
-    # kid/pet/rv rule sets that flag to True for the closest miss.
-    # Also track the CLOSEST typed amenity (name + stop_type) per
-    # miss so the mobile client can show "Área de servicio X" or
-    # "Repsol km 213" instead of a bare "km 2796".
-    per_stop: dict[int, dict] = {
-        idx: {
-            "kid_friendly": False,
-            "pet_friendly": False,
-            "rv_friendly": False,
-            "name": None,
-            "stop_type": RestStopType.UNKNOWN,
-            "_name_dist_m": float("inf"),
-        }
-        for idx, _ in misses
-    }
+    payload: dict = _empty_payload()
     # Ranking so a service area beats a gas station when they're
     # roughly equidistant — a full service area is more useful for a
     # break than a bare fuel pump. Lower index = higher priority.
@@ -258,66 +272,35 @@ out center 300;
         RestStopType.PARKING: 4,
         RestStopType.UNKNOWN: 99,
     }
+    best_name_score: tuple[int, float] = (99, float("inf"))
 
     for el in elements:
         coord = _element_coord(el)
         if coord is None:
             continue
-        # Nearest miss within radius wins. Ties are broken by first
-        # miss (deterministic under equal distance).
-        best_idx: int | None = None
-        best_m = float("inf")
-        for idx, stop in misses:
-            d = _haversine_m(coord, stop.coordinate)
-            if d < best_m and d <= _REST_STOP_RADIUS_M:
-                best_m = d
-                best_idx = idx
-        if best_idx is None:
+        d = _haversine_m(coord, stop.coordinate)
+        if d > _REST_STOP_RADIUS_M:
             continue
         tags = el.get("tags") or {}
         flags = _classify(tags)
         for k, v in flags.items():
             if v:
-                per_stop[best_idx][k] = True
-        # Name + type: prefer higher-priority types even when
-        # slightly farther, tie-break by distance. Uses a synthetic
-        # score = (priority_index, distance_m).
+                payload[k] = True
+        # Caravan site is implicit rv_friendly.
+        if tags.get("tourism") == "caravan_site":
+            payload["rv_friendly"] = True
+        # Name + type: keep the highest-priority typed amenity, tie
+        # break by proximity.
         name = tags.get("name") or tags.get("brand")
         kind = _stop_type_from_tags(tags)
         if name and kind != RestStopType.UNKNOWN:
-            current_kind = per_stop[best_idx]["stop_type"]
-            current_dist = per_stop[best_idx]["_name_dist_m"]
-            new_score = (_TYPE_PRIORITY[kind], best_m)
-            current_score = (
-                _TYPE_PRIORITY.get(current_kind, 99), current_dist,
-            )
-            if new_score < current_score:
-                per_stop[best_idx]["name"] = str(name)
-                per_stop[best_idx]["stop_type"] = kind
-                per_stop[best_idx]["_name_dist_m"] = best_m
+            score = (_TYPE_PRIORITY[kind], d)
+            if score < best_name_score:
+                best_name_score = score
+                payload["name"] = str(name)
+                payload["stop_type"] = kind
 
-    # Add caravan_site → rv_friendly explicitly (caravan_site
-    # tourism doesn't come with a boolean; being one IS the flag).
-    for el in elements:
-        tags = el.get("tags") or {}
-        if tags.get("tourism") == "caravan_site":
-            coord = _element_coord(el)
-            if coord is None:
-                continue
-            best_idx: int | None = None
-            best_m = float("inf")
-            for idx, stop in misses:
-                d = _haversine_m(coord, stop.coordinate)
-                if d < best_m and d <= _REST_STOP_RADIUS_M:
-                    best_m = d
-                    best_idx = idx
-            if best_idx is not None:
-                per_stop[best_idx]["rv_friendly"] = True
-
-    # Strip the internal-only distance tracker before returning.
-    for payload in per_stop.values():
-        payload.pop("_name_dist_m", None)
-    return per_stop
+    return payload
 
 
 def _element_coord(el: dict) -> Coordinate | None:

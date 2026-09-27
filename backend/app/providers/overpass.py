@@ -390,6 +390,16 @@ async def _query(client: httpx.AsyncClient, query: str) -> list[dict]:
                 body = response.json()
             except ValueError:
                 return (url, "non-JSON", None)
+            # Overpass 200 + `remark: "runtime error: Query timed out"`
+            # is a server-side failure disguised as success. Elements
+            # comes back empty in that case — treat it as an error so
+            # the sibling mirrors get their turn. Without this the
+            # timed-out response wins the "first back" race, cancels
+            # the healthy mirrors mid-flight, and enrichment silently
+            # returns nothing.
+            remark = body.get("remark") or ""
+            if "timed out" in remark.lower() or "runtime error" in remark.lower():
+                return (url, f"remark: {remark[:80]}", None)
             return (url, 200, body.get("elements") or [])
         return (url, status, None)
 
