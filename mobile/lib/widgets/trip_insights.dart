@@ -344,6 +344,30 @@ class DayPlanSection extends StatelessWidget {
         _ => slot,
       };
 
+  /// Subtitle for the meal-tap POI sheet: slot · price band · city.
+  String _mealSubtitle(AppLocalizations l, MealStopOpt m) {
+    final parts = <String>[_slotLabel(l, m.slot)];
+    if (m.restaurantPriceEurPerMeal != null) {
+      parts.add('${m.restaurantPriceEurPerMeal!.toStringAsFixed(0)} €');
+    }
+    if (m.cityHint != null) parts.add(m.cityHint!);
+    return parts.join(' · ');
+  }
+
+  /// Attribute chips for the meal-tap POI sheet. Keeps the format
+  /// consistent with rest-stop / hotel sheets that already use a
+  /// key→value map for `attributes`.
+  Map<String, String> _mealAttributes(AppLocalizations l, MealStopOpt m) {
+    final out = <String, String>{};
+    out['km'] = m.distanceFromOriginKm.toStringAsFixed(0);
+    out['slot'] = _slotLabel(l, m.slot);
+    if (m.restaurantPriceEurPerMeal != null) {
+      out['price'] = '${m.restaurantPriceEurPerMeal!.toStringAsFixed(0)} €';
+    }
+    if (m.cityHint != null) out['city'] = m.cityHint!;
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (days.isEmpty) return const SizedBox.shrink();
@@ -571,9 +595,34 @@ class DayPlanSection extends StatelessWidget {
                 if (d.mealStops.isNotEmpty) ...[
                   const SizedBox(height: Tokens.space8),
                   for (final m in d.mealStops)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Row(
+                    InkWell(
+                      // Tapping the meal row opens the shared POI
+                      // detail sheet (mini-map + POI marker +
+                      // amenity chips) when the meal has an actual
+                      // restaurant pick. Pre-enrich rows (name
+                      // still null) stay unclickable — there's
+                      // nothing to show yet, and the skeleton makes
+                      // that visible.
+                      onTap: (m.restaurantName != null
+                              && m.restaurantCoordinate != null)
+                          ? () => showPoiDetailSheet(
+                                context,
+                                kind: PoiKind.restaurant,
+                                name: m.restaurantName!,
+                                subtitle: _mealSubtitle(l, m),
+                                poi: m.restaurantCoordinate!,
+                                origin: origin ?? m.restaurantCoordinate!,
+                                destination:
+                                    destination ?? m.restaurantCoordinate!,
+                                routeGeometry: routeGeometry,
+                                attributes: _mealAttributes(l, m),
+                                icon: Icons.restaurant,
+                                accent: scheme.tertiary,
+                              )
+                          : null,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.restaurant, size: 14,
@@ -632,6 +681,7 @@ class DayPlanSection extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
                       ),
                     ),
                 ],

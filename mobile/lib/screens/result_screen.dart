@@ -1936,68 +1936,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // request that IS going to return restaurants a few seconds
       // later. Once enrich lands the branch below decides between
       // populated list and the true empty state.
-      if (showRestaurants &&
-          widget.request.restaurantMaxDetourMinutes != null &&
-          widget.request.restaurantMaxDetourMinutes! > 0 &&
-          _response.restaurants.isEmpty &&
-          (_enrichPending || _replanning)) ...[
-        const SizedBox(height: Tokens.space24),
-        SectionHeader(
-          title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
-        ),
-        const _EnrichListSkeleton(),
-      ],
-      // The true empty state fires ONLY when both the enrich phase AND
-      // any pending re-plan (per-day override edit) have finished — a
-      // replan re-issues the monolithic /plan and can transiently reset
-      // fuel/restaurants to [] before the response lands. Without the
-      // `!_replanning` guard the driver briefly sees "no restaurants"
-      // right after tapping Save on the pencil sheet even though the
-      // new plan is still in flight.
-      if (showRestaurants &&
-          widget.request.restaurantMaxDetourMinutes != null &&
-          widget.request.restaurantMaxDetourMinutes! > 0 &&
-          _response.restaurants.isEmpty &&
-          !_enrichPending &&
-          !_replanning) ...[
-        const SizedBox(height: Tokens.space24),
-        SectionHeader(
-          title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
-        ),
-        // Distinct copy from `emptyRestaurantsTitle` (which reads as
-        // "no match on filters"): this one fires when the enrichment
-        // finished with zero features from the provider, i.e. the
-        // corridor itself has no restaurant coverage in Geoapify.
-        EmptyStateCard(
-          icon: Icons.restaurant_outlined,
-          title: l.emptyRestaurantsNotFoundTitle,
-          body: l.emptyRestaurantsNotFoundBody,
-        ),
-      ],
-      if (showRestaurants && _response.restaurants.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        Theme(
-          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-          child: ExpansionTile(
-            tilePadding: EdgeInsets.zero,
-            childrenPadding: EdgeInsets.zero,
-            initiallyExpanded: false,
-            title: Text(
-              l.resultRestaurants,
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            subtitle: Text(
-              l.resultEyebrowNearRoute,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            leading: Icon(
-              Icons.restaurant_outlined,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            children: _restaurantSectionsBySlot(l),
-          ),
-        ),
-      ],
+      // "Restaurants near route" section removed 2026-09-27 — meal
+      // rows inside each day card already surface the picked
+      // restaurants (with name, city, time). The bottom-of-screen
+      // list duplicated the info and made the scroll longer than
+      // it needed to be.
       // Fuel prices: same pattern as restaurants above. Show a
       // skeleton while enrich hasn't landed OR a per-day override
       // replan is still fetching, so the driver's mental model is
