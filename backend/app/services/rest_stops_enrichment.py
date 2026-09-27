@@ -32,15 +32,16 @@ from app.providers.overpass import (
 
 _log = logging.getLogger(__name__)
 
-# ~3 km radius around each rest-stop coord. The anchor from
+# ~8 km radius around each rest-stop coord. The anchor from
 # `compute_rest_stops` is a pure km-along-route mark that lands
 # wherever the driver has been 2 h — usually near but not exactly
-# on a service area. 3 km gives the enrichment room to pick the
-# BEST nearby amenity (matching kid/pet/RV prefs) and shift the
-# RestStop to its coord. Max detour cost at 100 km/h: ~2 min there
-# + 2 min back = 4 min per stop — inside the noise of the 45 min
-# pause the stop already carries.
-_REST_STOP_RADIUS_M = 3000
+# on a service area. 8 km gives the enrichment room to shift the
+# stop onto an actual amenity even when the closest service area
+# is one exit away. Max detour cost at 100 km/h: ~5 min each way
+# ~= 10 min round trip. A driver who was going to pause 45 min at
+# a random highway coord will happily add 10 min to end up at a
+# real place with toilets + coffee.
+_REST_STOP_RADIUS_M = 8000
 
 # 24 h cache — OSM amenity tags change over days/weeks, not
 # minutes. Key is (round(lat, 3), round(lon, 3)) so nearby coords
@@ -189,23 +190,39 @@ async def enrich_rest_stops(
                 _remember(stop.coordinate, payload)
 
     out: list[RestStop] = []
+    # A stop is DROPPED (not returned) when Overpass definitively
+    # responded for its coord and returned no typed amenity within
+    # `_REST_STOP_RADIUS_M`. Users prefer "no stop shown" over
+    # "stop in the middle of the road" (2026-09-27 tester feedback):
+    # a random highway coord isn't a place they can actually pull
+    # over. We can only tell "responded with nothing" apart from
+    # "provider was down" by checking whether the miss got an entry
+    # in `fresh_flags` — if it did, Overpass answered; if not, the
+    # provider silently timed out and we fall through to the raw
+    # coord so the day plan still has SOMETHING to render.
+    #
+    # We also always keep stops that were already named upstream
+    # (e.g. cache-hit with a name from a previous run).
+    responded_indices = set(fresh_flags.keys())
     for idx, s in enumerate(stops):
         payload = cache_hits.get(idx) or fresh_flags.get(idx) or _empty_payload()
-        # Shift the anchor onto the amenity coord when the scorer
-        # picked one. Keeps the original coord if the payload didn't
-        # bring one (empty result or cache without a winner).
         shifted_coord = payload.get("coordinate") or s.coordinate
-        out.append(
-            replace(
-                s,
-                coordinate=shifted_coord,
-                kid_friendly=payload.get("kid_friendly", False),
-                pet_friendly=payload.get("pet_friendly", False),
-                rv_friendly=payload.get("rv_friendly", False),
-                name=payload.get("name") or s.name,
-                stop_type=payload.get("stop_type") or s.stop_type,
-            )
+        candidate = replace(
+            s,
+            coordinate=shifted_coord,
+            kid_friendly=payload.get("kid_friendly", False),
+            pet_friendly=payload.get("pet_friendly", False),
+            rv_friendly=payload.get("rv_friendly", False),
+            name=payload.get("name") or s.name,
+            stop_type=payload.get("stop_type") or s.stop_type,
         )
+        was_probed = idx in responded_indices or idx in cache_hits
+        has_named_amenity = candidate.name is not None
+        if was_probed and not has_named_amenity:
+            # Overpass answered, no typed amenity within radius —
+            # drop rather than surface a mid-road coord.
+            continue
+        out.append(candidate)
     return tuple(out)
 
 
