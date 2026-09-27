@@ -1766,6 +1766,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get dayEditReset => 'Zurücksetzen';
 
   @override
+  String get resultReplanning => 'Neu berechnen...';
+
+  @override
   String get styleBreakLabel => 'Pausenstil';
 
   @override
@@ -2434,9 +2437,6 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get emptyFuelNotFoundBody =>
       'Providers don\'t cover this route. Live prices will appear in areas with official data.';
-
-  @override
-  String get resultReplanning => 'Neu berechnen...';
 
   @override
   String get onboardEyebrowFuel => 'ECHTE PREISE';

@@ -10,6 +10,7 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import 'added_stops_map_sheet.dart';
 import 'poi_detail_sheet.dart';
+import 'skeleton.dart';
 
 const double _earthRadiusKm = 6371.0088;
 
@@ -576,9 +577,29 @@ class DayPlanSection extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(Icons.restaurant, size: 14,
-                              color: scheme.tertiary),
+                              color: m.restaurantName == null && enrichPending
+                                  ? scheme.tertiary.withValues(alpha: 0.4)
+                                  : scheme.tertiary),
                           const SizedBox(width: 6),
-                          Expanded(
+                          if (m.restaurantName == null && enrichPending)
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${timeFormat.format(m.at.toLocal())}  ·  ${_slotLabel(l, m.slot)}',
+                                    style: t.bodySmall,
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Skeleton(
+                                    width: 160,
+                                    height: 10,
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ],
+                              ),
+                            )
+                          else Expanded(
                             child: Text(
                               // Time is now the row's anchor (driver
                               // scans clock-first). Fall back to the
@@ -627,7 +648,55 @@ class DayPlanSection extends StatelessWidget {
                   final visibleRests = d.restStops
                       .where((r) => _restStopMatchesFilter(r, filter))
                       .toList();
-                  if (visibleRests.isEmpty) return const SizedBox.shrink();
+                  if (visibleRests.isEmpty) {
+                    // While enrich is still fetching, show a subtle
+                    // 2-row skeleton so the driver sees the section
+                    // exists AND is loading — instead of the day
+                    // card silently omitting rest stops until data
+                    // arrives.
+                    if (enrichPending) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: Tokens.space8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (var i = 0; i < 2; i++) ...[
+                              Row(
+                                children: [
+                                  Icon(Icons.local_cafe_outlined,
+                                      size: 14,
+                                      color: scheme.secondary
+                                          .withValues(alpha: 0.35)),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Skeleton(
+                                          width: double.infinity, height: 12,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Skeleton(
+                                          width: 180, height: 10,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (i == 0) const SizedBox(height: 8),
+                            ],
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [

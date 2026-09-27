@@ -3271,6 +3271,12 @@ abstract class AppLocalizations {
   /// **'Reset'**
   String get dayEditReset;
 
+  /// No description provided for @resultReplanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculating...'**
+  String get resultReplanning;
+
   /// No description provided for @styleBreakLabel.
   ///
   /// In en, this message translates to:
@@ -4381,12 +4387,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Providers don\'t cover this route. Live prices will appear in areas with official data.'**
   String get emptyFuelNotFoundBody;
-
-  /// No description provided for @resultReplanning.
-  ///
-  /// In en, this message translates to:
-  /// **'Recalculating...'**
-  String get resultReplanning;
 
   /// No description provided for @onboardEyebrowFuel.
   ///

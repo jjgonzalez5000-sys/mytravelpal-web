@@ -1774,6 +1774,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get dayEditReset => 'Restablecer';
 
   @override
+  String get resultReplanning => 'Recalculando...';
+
+  @override
   String get styleBreakLabel => 'Estilo de parada';
 
   @override
@@ -2441,9 +2444,6 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get emptyFuelNotFoundBody =>
       'Los proveedores no cubren esta ruta. Los precios reales aparecerán en zonas con datos oficiales.';
-
-  @override
-  String get resultReplanning => 'Recalculando...';
 
   @override
   String get onboardEyebrowFuel => 'PRECIOS REALES';
