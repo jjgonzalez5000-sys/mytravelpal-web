@@ -124,7 +124,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   // point. Backend caps at 8.
   final List<PlannedStop> _stops = [];
   static const _maxStops = 8;
-  late DateTime _departure = _defaultDeparture();
+  // Seeded in initState so it can read the trip profile's preferred
+  // driving start hour (needs `ref.read`, which isn't legal in a
+  // field initializer). Falls back to the static tomorrow-at-08:00
+  // when no profile is set.
+  late DateTime _departure;
 
   // Coach-mark tutorial GlobalKeys
   final _originKey = GlobalKey();
@@ -178,6 +182,19 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     return DateTime(now.year, now.month, now.day + 1, 8);
   }
 
+  /// Same-as-default but respects the profile's preferred driving
+  /// start hour (or wake_hour fallback). Called from `initState` +
+  /// on "Reset" so a driver who set 10:00 in their profile doesn't
+  /// see the default clock start at 08:00 every time.
+  DateTime _defaultDepartureFromProfile() {
+    final profile = ref.read(tripProfileProvider);
+    final hour = profile?.preferredDrivingStartHour
+        ?? profile?.wakeHour
+        ?? 8;
+    final now = DateTime.now();
+    return DateTime(now.year, now.month, now.day + 1, hour);
+  }
+
   /// Locale-aware `geocode(query)` closure. Every field on this
   /// screen must call this rather than `api.geocode` directly so
   /// results land in the app language (tester bug: "Toledo" from
@@ -196,6 +213,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   @override
   void initState() {
     super.initState();
+    // Default the departure clock to the profile's preferred driving
+    // start hour so a driver who set 10:00 doesn't see 08:00 pre-
+    // filled every plan.
+    _departure = _defaultDepartureFromProfile();
     final incoming = widget.initialShared;
     if (incoming != null) {
       _origin = GeocodeResult(
@@ -402,7 +423,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     }
     setState(() {
       _origin = res.place;
-      _departure = _defaultDeparture();
+      _departure = _defaultDepartureFromProfile();
     });
     // Reuse the full plan flow — it already does loading dialog,
     // notifications, storage, everything.

@@ -1015,17 +1015,18 @@ async def _plan_shared_preamble(
     # still uses the unenriched coords to slice into per-day buckets.
     rest_stops_domain = compute_rest_stops(route, profile=profile)
 
-    # Effective departure: the recommended window when we have one,
-    # else the user's original desired time. This anchor drives BOTH
+    # Effective departure: ALWAYS the user's picked time. Previously
+    # this defaulted to `windows[0].departure_at` (the fastest
+    # sample), which meant a driver with profile preferred_driving_
+    # start_hour=10:00 saw their whole plan built around a 05:30
+    # departure just because 05:30 happened to be the fastest slot.
+    # The recommended window is still surfaced under `time_windows`
+    # so the user can opt in explicitly with one tap (mobile fires
+    # `_replanWithDeparture` on tap). Anchor drives BOTH
     # `compute_optimizations` (meal / sleep clocks) AND the
-    # consistency check (arrival timestamp). They MUST match — an
-    # earlier version used the recommended anchor for opts but the
-    # desired anchor for the consistency check, producing a spurious
-    # "breakfast at 07:03 but trip ends at 03:37" error on
-    # multi-day trips where windows[0] shifted by hours.
-    effective_departure_at = (
-        windows[0].departure_at if windows else payload.desired_departure_at
-    )
+    # consistency check (arrival timestamp); they stay in sync
+    # because they both consume `effective_departure_at`.
+    effective_departure_at = payload.desired_departure_at
     # Pace-dependent pause overhead — same table as
     # `trip_optimizations._PAUSE_RATIO_BY_PACE`. Kept inline here so
     # the check can compute an accurate arrival even before `opt` is
