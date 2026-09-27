@@ -146,13 +146,11 @@ y "A" del PlanScreen (icon + temp actual). Tap → sheet con forecast
 de 7 días (Open-Meteo daily endpoint, gratis). Ayuda al planner a
 decidir si posponer el viaje. Coste: 1-2 h wire-up.
 
-**Reverse geocode con dirección completa** (2026-08-29): el botón
-"Usar mi ubicación actual" resuelve al pueblo/ciudad, pero no a la
-calle + número. Bug de precisión: la API Geoapify reverse ya soporta
-`type=address` pero probablemente estamos pasando el default `city`.
-Fix en `providers/geoapify_poi.py` o donde viva reverse_geocode:
-cambiar el `type` param y añadir `street` y `housenumber` al
-`GeocodeResult.displayName` cuando estén disponibles. Coste: 1 h.
+**Reverse geocode con dirección completa** (2026-08-29 → cerrado
+2026-09-27): esto YA funcionaba. El pointer a `providers/geoapify_poi.py`
+era stale — la implementación real vive en `providers/geocoding.py`
+(`HybridGeocodingProvider.reverse` que prefiere Nominatim con
+`zoom=18` y compone `"{road} {housenumber}, {city}"`).
 
 ## Backlog (existing)
 
@@ -174,7 +172,10 @@ cambiar el `type` param y añadir `street` y `housenumber` al
   quería un botón "añadir a la ruta / marcar como reservado" que salga en el
   cálculo de gasto. Actualmente hay toggle manual por noche en day view; la
   automatización llega cuando integramos el callback de reservas de Booking.
-- Add more adverse event types (landslide, earthquake, avalanche, road
-  closure, heatwave) — tester ask 2026-08-28. Enum ya soporta FLOOD; falta
-  extender el enum + wire a proveedores (EFFIS fires ok; landslides/quakes
-  necesitarían USGS o Copernicus EMS).
+- ~~Add more adverse event types (landslide, earthquake, avalanche, road
+  closure, heatwave)~~ — CERRADO 2026-09-27. Todos los tipos + iconos +
+  l10n ya estaban implementados en un sprint anterior; se activaron
+  USGS earthquakes + Open-Meteo heatwave via env vars (`MYTRAVELPAL_QUAKES=usgs`,
+  `MYTRAVELPAL_HEATWAVE=on`) en compose + fly.toml. Landslide + avalanche +
+  road closure siguen con stub-provider — feeds documentados en el código
+  para wire-up futuro (Copernicus EMS RSS, DGT/Bison Futé/ANAS/DATEX II).
