@@ -3229,6 +3229,48 @@ abstract class AppLocalizations {
   /// **'Wake time'**
   String get styleWakeLabel;
 
+  /// No description provided for @styleDrivingStartLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferred time to start driving'**
+  String get styleDrivingStartLabel;
+
+  /// No description provided for @dayEditSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust day {day}'**
+  String dayEditSheetTitle(int day);
+
+  /// No description provided for @dayEditStartHour.
+  ///
+  /// In en, this message translates to:
+  /// **'Start driving hour'**
+  String get dayEditStartHour;
+
+  /// No description provided for @dayEditMaxDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'Max driving hours: {hours} h (includes breaks)'**
+  String dayEditMaxDriving(int hours);
+
+  /// No description provided for @dayEditSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get dayEditSave;
+
+  /// No description provided for @dayEditCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get dayEditCancel;
+
+  /// No description provided for @dayEditReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get dayEditReset;
+
   /// No description provided for @styleBreakLabel.
   ///
   /// In en, this message translates to:
@@ -4034,6 +4076,12 @@ abstract class AppLocalizations {
   /// **'Enable hotels in the plan preferences to see overnight options here.'**
   String get daySleepHotelsEmpty;
 
+  /// No description provided for @daySleepHotelsNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find hotels close to this route. Try widening the max detour in Preferences.'**
+  String get daySleepHotelsNotFound;
+
   /// No description provided for @daySleepHotelsSearching.
   ///
   /// In en, this message translates to:
@@ -4309,6 +4357,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Widen the max detour or clear cuisine filters to see more options.'**
   String get emptyRestaurantsBody;
+
+  /// No description provided for @emptyRestaurantsNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No restaurants close to the route'**
+  String get emptyRestaurantsNotFoundTitle;
+
+  /// No description provided for @emptyRestaurantsNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The search returned no options. Try widening the max detour in Preferences.'**
+  String get emptyRestaurantsNotFoundBody;
+
+  /// No description provided for @emptyFuelNotFoundTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No fuel data in this area'**
+  String get emptyFuelNotFoundTitle;
+
+  /// No description provided for @emptyFuelNotFoundBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Providers don\'t cover this route. Live prices will appear in areas with official data.'**
+  String get emptyFuelNotFoundBody;
 
   /// No description provided for @onboardEyebrowFuel.
   ///

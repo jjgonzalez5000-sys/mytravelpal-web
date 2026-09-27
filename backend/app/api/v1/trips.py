@@ -38,6 +38,24 @@ from app.domain import (
 from app.domain.entities import Route
 
 
+def _day_overrides_map(
+    payload: "TripPlanRequest",
+) -> dict[int, dict[str, int | None]]:
+    """Flatten `payload.day_overrides` into the dict shape
+    `trip_optimizations.compute` wants. Keeps None values so the
+    picker in `compute` can distinguish "not overridden" from "value
+    is 0" — 0 is out of the pydantic Field range anyway, but the
+    explicit None keeps intent clear.
+    """
+    out: dict[int, dict[str, int | None]] = {}
+    for ov in getattr(payload, "day_overrides", None) or ():
+        out[ov.day_index] = {
+            "start_hour": ov.start_hour,
+            "daily_driving_cap_hours": ov.daily_driving_cap_hours,
+        }
+    return out
+
+
 def _reason_for_rest_stop(
     stop: RestStop,
     profile: TripProfile | None,
@@ -126,6 +144,23 @@ router = APIRouter(prefix="/trips", tags=["trips"])
 class CoordinateIn(BaseModel):
     lat: float = Field(ge=-90.0, le=90.0)
     lon: float = Field(ge=-180.0, le=180.0)
+
+
+class DayOverrideIn(BaseModel):
+    """Per-day tweak of `start_hour` / `daily_driving_cap_hours` for
+    a single day in the multi-day plan. Set by the driver tapping an
+    edit icon on a day header in ResultScreen.
+
+    `day_index` is 1-based (day 1 = departure day). Values default to
+    the profile-level equivalents when absent. Overrides ONLY apply
+    to their own day — subsequent days revert to the profile defaults.
+    """
+
+    day_index: int = Field(ge=1, le=30)
+    start_hour: int | None = Field(default=None, ge=4, le=14)
+    daily_driving_cap_hours: int | None = Field(
+        default=None, ge=4, le=14,
+    )
 
 
 class WaypointIn(BaseModel):
@@ -445,6 +480,15 @@ class TripPlanRequest(BaseModel):
         ),
     )
     trip_profile: TripProfileIn | None = None
+
+    # Per-day overrides for start_hour / driving_cap. Set by the
+    # user tapping an edit icon on a day header in the ResultScreen
+    # to say "on day 3 I want to leave at 10:00 and drive at most
+    # 6 hours". Empty (default) means every day uses the profile
+    # defaults. Backend loops through days by index; a matching
+    # `day_index` here overrides that day only, subsequent days
+    # revert to the profile defaults.
+    day_overrides: list["DayOverrideIn"] = Field(default_factory=list)
 
     # -- Garage (multi-vehicle) --
     # When set AND the caller is authenticated, the backend looks up
@@ -1197,6 +1241,7 @@ async def _plan_core_impl(
             hotels=(),
             profile=profile,
             include_meal_stops=include_meal_stops,
+            day_overrides=_day_overrides_map(payload),
         )
         opt_domain = opt
         # Placeholder fuel cost — real one is computed in enrich. Falls
@@ -1884,6 +1929,7 @@ async def _plan_enrich_impl(
             hotels=filtered_hotels_for_sleep,
             profile=profile,
             include_meal_stops=restaurants_requested,
+            day_overrides=_day_overrides_map(payload),
         )
         # ---- Densification (meal restaurants + per-day hotels) ------
         near_restaurants = getattr(

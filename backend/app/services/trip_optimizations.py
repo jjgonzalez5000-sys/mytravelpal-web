@@ -218,6 +218,7 @@ def compute(
     hotels: tuple[Hotel, ...],
     profile: TripProfile,
     include_meal_stops: bool = True,
+    day_overrides: dict[int, dict[str, int | None]] | None = None,
 ) -> Optimizations:
     """Bind rest stops to meals (and, when the drive rolls past bedtime,
     to a sleep hotel).
@@ -266,9 +267,17 @@ def compute(
     remaining_driving = trip_duration_hours
     day_index = 0
 
+    _overrides = day_overrides or {}
     while remaining_driving > 0.01:
         day_index += 1
-        driving_this_day = min(cap_hours, remaining_driving)
+        # Apply per-day override (from the ResultScreen edit sheet)
+        # for the driving cap. `override_cap` supersedes the profile
+        # `cap_hours` for THIS day only; subsequent days revert.
+        _override = _overrides.get(day_index) or {}
+        this_day_cap = float(
+            _override.get("daily_driving_cap_hours") or cap_hours
+        )
+        driving_this_day = min(this_day_cap, remaining_driving)
         # Wall-clock end of driving for this day (before any post-
         # driving meal/sleep). Includes pause overhead.
         day_drive_end = day_start + timedelta(
@@ -323,12 +332,16 @@ def compute(
         driving_offset += driving_this_day
         if remaining_driving <= 0.01:
             break
-        # Start driving next day at `preferred_driving_start_hour`
-        # (respect day_sleep.at as floor — you can't drive before you
-        # slept). Fall back to day_drive_end when no sleep was
-        # selected (rare: cap exhausted with no valid rest stop).
+        # Start driving next day at the profile's preferred hour,
+        # unless the next day has an explicit `start_hour` override
+        # from the ResultScreen edit sheet. Same day_sleep floor
+        # (can't drive before you slept).
+        next_override = _overrides.get(day_index + 1) or {}
+        next_start_hour = (
+            next_override.get("start_hour") or start_hour
+        )
         base = day_sleep.at if day_sleep is not None else day_drive_end
-        day_start = _next_wake(base, start_hour)
+        day_start = _next_wake(base, next_start_hour)
 
     return Optimizations(
         meal_stops=tuple(meal_stops),

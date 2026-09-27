@@ -1741,6 +1741,31 @@ class AppLocalizationsDe extends AppLocalizations {
   String get styleWakeLabel => 'Aufstehzeit';
 
   @override
+  String get styleDrivingStartLabel => 'Bevorzugte Startzeit für die Fahrt';
+
+  @override
+  String dayEditSheetTitle(int day) {
+    return 'Tag $day anpassen';
+  }
+
+  @override
+  String get dayEditStartHour => 'Startzeit am Steuer';
+
+  @override
+  String dayEditMaxDriving(int hours) {
+    return 'Max. Fahrzeit: $hours h (inkl. Pausen)';
+  }
+
+  @override
+  String get dayEditSave => 'Übernehmen';
+
+  @override
+  String get dayEditCancel => 'Abbrechen';
+
+  @override
+  String get dayEditReset => 'Zurücksetzen';
+
+  @override
   String get styleBreakLabel => 'Pausenstil';
 
   @override
@@ -2231,6 +2256,10 @@ class AppLocalizationsDe extends AppLocalizations {
       'Hotels in den Präferenzen aktivieren, um Übernachtungsoptionen zu sehen.';
 
   @override
+  String get daySleepHotelsNotFound =>
+      'We couldn\'t find hotels close to this route. Try widening the max detour in Preferences.';
+
+  @override
   String get daySleepHotelsSearching =>
       'Suche Hotels in der Nähe deines Stopps...';
 
@@ -2390,6 +2419,21 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get emptyRestaurantsBody =>
       'Erweitere den maximalen Umweg oder entferne Küchen-Filter.';
+
+  @override
+  String get emptyRestaurantsNotFoundTitle =>
+      'No restaurants close to the route';
+
+  @override
+  String get emptyRestaurantsNotFoundBody =>
+      'The search returned no options. Try widening the max detour in Preferences.';
+
+  @override
+  String get emptyFuelNotFoundTitle => 'No fuel data in this area';
+
+  @override
+  String get emptyFuelNotFoundBody =>
+      'Providers don\'t cover this route. Live prices will appear in areas with official data.';
 
   @override
   String get onboardEyebrowFuel => 'ECHTE PREISE';

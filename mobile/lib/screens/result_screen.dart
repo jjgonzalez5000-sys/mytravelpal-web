@@ -171,6 +171,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// enrich call has even returned).
   bool _enrichPending = false;
 
+  /// Per-day overrides applied via the ResultScreen edit sheet (tap
+  /// the pencil icon on a day header). Keyed by 1-based day index.
+  /// Sent to `/plan` on the next re-plan; empty on first render.
+  Map<int, DayOverride> _dayOverrides = {};
+
+  /// True while a re-plan triggered by a day override is in flight.
+  /// Shown as a small progress overlay on the affected day card so
+  /// the driver knows the tap was heard.
+  bool _replanning = false;
+
   // Hero landing moment: on the very first build after the plan
   // arrives, the top sections play a small staggered entrance and a
   // "plan ready" chip pops in for ~2s. Both are strictly one-shot —
@@ -484,6 +494,148 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         newDeparture: widget.desiredDepartureAt,
         avoidMotorways: widget.request.avoidMotorways,
         overrideRequest: replan);
+  }
+
+  /// Opens the per-day override sheet (pencil icon on a day header).
+  /// Two pickers: preferred start hour + max driving hours (incl.
+  /// pauses). On save, mutates `_dayOverrides` and re-fires /plan
+  /// so every downstream field (arrival, meal stops, sleep stops,
+  /// rest stops) updates coherently. In-place setState instead of
+  /// pushReplacement so the driver keeps their scroll position and
+  /// the hero doesn't re-tease.
+  Future<void> _openDayEditSheet(int dayIndex) async {
+    final l = AppLocalizations.of(context);
+    final current = _dayOverrides[dayIndex];
+    final defaultStart =
+        widget.request.tripProfile?.preferredDrivingStartHour ??
+            widget.request.tripProfile?.wakeHour ??
+            8;
+    final defaultCap =
+        widget.request.tripProfile?.dailyDrivingCapHours ?? 8;
+    int startHour = current?.startHour ?? defaultStart;
+    int capHours = current?.dailyDrivingCapHours ?? defaultCap;
+    final saved = await showModalBottomSheet<DayOverride?>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheetState) => SafeArea(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              Tokens.space24, Tokens.space8, Tokens.space24,
+              MediaQuery.of(ctx).viewInsets.bottom + Tokens.space24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.dayEditSheetTitle(dayIndex),
+                  style: Theme.of(ctx).textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: Tokens.space16),
+                Text(l.dayEditStartHour,
+                    style: Theme.of(ctx).textTheme.labelMedium),
+                const SizedBox(height: 4),
+                DropdownButton<int>(
+                  value: startHour,
+                  isExpanded: true,
+                  items: [
+                    for (var h = 4; h <= 14; h++)
+                      DropdownMenuItem(
+                        value: h,
+                        child: Text('${h.toString().padLeft(2, '0')}:00'),
+                      ),
+                  ],
+                  onChanged: (v) {
+                    if (v != null) setSheetState(() => startHour = v);
+                  },
+                ),
+                const SizedBox(height: Tokens.space16),
+                Text(l.dayEditMaxDriving(capHours),
+                    style: Theme.of(ctx).textTheme.labelMedium),
+                Slider(
+                  value: capHours.toDouble(),
+                  min: 4, max: 14, divisions: 10,
+                  label: '$capHours h',
+                  onChanged: (v) =>
+                      setSheetState(() => capHours = v.round()),
+                ),
+                const SizedBox(height: Tokens.space16),
+                Row(
+                  children: [
+                    if (current != null) ...[
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(
+                          DayOverride(dayIndex: dayIndex),
+                        ),
+                        child: Text(l.dayEditReset),
+                      ),
+                      const SizedBox(width: Tokens.space8),
+                    ],
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.of(ctx).pop(null),
+                      child: Text(l.dayEditCancel),
+                    ),
+                    const SizedBox(width: Tokens.space8),
+                    FilledButton(
+                      onPressed: () => Navigator.of(ctx).pop(
+                        DayOverride(
+                          dayIndex: dayIndex,
+                          startHour: startHour,
+                          dailyDrivingCapHours: capHours,
+                        ),
+                      ),
+                      child: Text(l.dayEditSave),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (saved == null) return;
+    setState(() {
+      // Reset returns a DayOverride with both fields null — treat as
+      // "remove this day's override, go back to profile defaults".
+      final isReset =
+          saved.startHour == null && saved.dailyDrivingCapHours == null;
+      if (isReset) {
+        _dayOverrides.remove(dayIndex);
+      } else {
+        _dayOverrides[dayIndex] = saved;
+      }
+    });
+    await _replanWithOverrides();
+  }
+
+  /// Fire a full /plan with the current `_dayOverrides` map. In-place
+  /// swap of `_response` so scroll position + saved-hotel selection
+  /// survive. Enrich landed data (hotels / restaurants / fuel) stays
+  /// because we call `.planTrip` (monolithic endpoint) rather than
+  /// the core/enrich split — user is willing to wait once for the
+  /// full picture after an edit.
+  Future<void> _replanWithOverrides() async {
+    final api = ref.read(apiClientWithPremiumProvider);
+    setState(() => _replanning = true);
+    try {
+      final replan = widget.request
+          .withDayOverrides(_dayOverrides.values.toList());
+      final response = await api.planTrip(replan);
+      if (!mounted) return;
+      setState(() {
+        _response = response;
+        _replanning = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _replanning = false);
+      // TODO(dev): surface a discreet snackbar on replan failure.
+    }
   }
 
   /// Toggle a night's picked hotel. Only one hotel per day — tapping
@@ -1562,6 +1714,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             addedStops: _resolveAddedStops(),
             weatherSegments: _response.weatherSegments,
             enrichPending: _enrichPending,
+            hotelsRequested:
+                (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
+            onEditDay: _replanning ? null : _openDayEditSheet,
+            overriddenDayIndices: _dayOverrides.keys.toSet(),
           ),
         ),
       ],
@@ -1770,10 +1926,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         SectionHeader(
           title: l.resultRestaurants, eyebrow: l.resultEyebrowNearRoute,
         ),
+        // Distinct copy from `emptyRestaurantsTitle` (which reads as
+        // "no match on filters"): this one fires when the enrichment
+        // finished with zero features from the provider, i.e. the
+        // corridor itself has no restaurant coverage in Geoapify.
         EmptyStateCard(
           icon: Icons.restaurant_outlined,
-          title: l.emptyRestaurantsTitle,
-          body: l.emptyRestaurantsBody,
+          title: l.emptyRestaurantsNotFoundTitle,
+          body: l.emptyRestaurantsNotFoundBody,
         ),
       ],
       if (showRestaurants && _response.restaurants.isNotEmpty) ...[
@@ -1810,6 +1970,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           eyebrow: l.resultEyebrowNearRoute,
         ),
         const _EnrichListSkeleton(),
+      ],
+      // Fuel "no results" state: enrichment finished, provider had
+      // nothing on this corridor (fuel is always "requested", there
+      // is no per-user opt-out flag). Without this branch the whole
+      // section vanished silently and the driver couldn't tell if
+      // the search failed or was still loading.
+      if (_response.fuelPrices.isEmpty && !_enrichPending) ...[
+        const SizedBox(height: Tokens.space24),
+        SectionHeader(
+          title: l.resultFuel,
+          eyebrow: l.resultEyebrowNearRoute,
+        ),
+        EmptyStateCard(
+          icon: Icons.local_gas_station_outlined,
+          title: l.emptyFuelNotFoundTitle,
+          body: l.emptyFuelNotFoundBody,
+        ),
       ],
       if (_response.fuelPrices.isNotEmpty) ...[
         const SizedBox(height: Tokens.space24),

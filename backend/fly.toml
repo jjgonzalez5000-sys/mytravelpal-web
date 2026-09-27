@@ -11,6 +11,12 @@ primary_region = 'cdg'
 
 [env]
   MYTRAVELPAL_FIRES = 'effis'
+  # USGS FDSN earthquake feed (free, keyless). Filtered to route bbox
+  # with a 24 h lookback + minmagnitude 4.5 downstream.
+  MYTRAVELPAL_QUAKES = 'usgs'
+  # Open-Meteo daily-max heatwave synth (threshold 38 °C). One extra
+  # HTTP round-trip per /plan; keyless.
+  MYTRAVELPAL_HEATWAVE = 'on'
   MYTRAVELPAL_ROUTING = 'osrm'
   MYTRAVELPAL_WEATHER = 'openmeteo'
   # Skip the parallel fuel dataset download at boot — with 3 concurrent

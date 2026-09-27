@@ -451,6 +451,7 @@ class TripPlanRequest {
     this.tripProfile,
     this.includeParking = false,
     this.garageVehicleId,
+    this.dayOverrides = const [],
   });
 
   final LatLon origin;
@@ -550,6 +551,12 @@ class TripPlanRequest {
   /// to the profile pair when unknown / anonymous.
   final String? garageVehicleId;
 
+  /// Per-day tweaks applied from the ResultScreen edit sheet (day
+  /// header tap). Each override supersedes the profile's global
+  /// `preferredDrivingStartHour` / `dailyDrivingCapHours` for its
+  /// own day only. Empty list = every day uses the profile defaults.
+  final List<DayOverride> dayOverrides;
+
   Map<String, dynamic> toJson() => {
         'origin': origin.toJson(),
         'destination': destination.toJson(),
@@ -598,7 +605,78 @@ class TripPlanRequest {
         if (tripProfile != null) 'trip_profile': tripProfile!.toJson(),
         if (garageVehicleId != null && garageVehicleId!.isNotEmpty)
           'garage_vehicle_id': garageVehicleId,
+        if (dayOverrides.isNotEmpty)
+          'day_overrides': dayOverrides.map((o) => o.toJson()).toList(),
       };
+
+  /// Returns a new request with the same fields plus the given
+  /// [overrides] applied. Convenience for the ResultScreen re-plan
+  /// flow — pass the mutated overrides map through the same request
+  /// otherwise unchanged.
+  TripPlanRequest withDayOverrides(List<DayOverride> overrides) =>
+      TripPlanRequest(
+        origin: origin,
+        destination: destination,
+        desiredDepartureAt: desiredDepartureAt,
+        waypoints: waypoints,
+        countries: countries,
+        hotelMaxDetourMinutes: hotelMaxDetourMinutes,
+        hotelPriceBand: hotelPriceBand,
+        hotelPriceBands: hotelPriceBands,
+        hotelMinStars: hotelMinStars,
+        restaurantMaxDetourMinutes: restaurantMaxDetourMinutes,
+        restaurantPriceBand: restaurantPriceBand,
+        restaurantPriceBands: restaurantPriceBands,
+        restaurantCuisines: restaurantCuisines,
+        hotelIncludeOther: hotelIncludeOther,
+        hotelDestinationRadiusKm: hotelDestinationRadiusKm,
+        hotelConditions: hotelConditions,
+        restaurantConditions: restaurantConditions,
+        includeAdverseEvents: includeAdverseEvents,
+        adverseEventsMaxDistanceKm: adverseEventsMaxDistanceKm,
+        includeTollAlternative: includeTollAlternative,
+        includeRouteComparison: includeRouteComparison,
+        includeHourlyTollAnalysis: includeHourlyTollAnalysis,
+        avoidMotorways: avoidMotorways,
+        preferScenic: preferScenic,
+        timeWindowSpanHours: timeWindowSpanHours,
+        timeWindowTopN: timeWindowTopN,
+        tripProfile: tripProfile,
+        includeParking: includeParking,
+        garageVehicleId: garageVehicleId,
+        dayOverrides: overrides,
+      );
+}
+
+/// Per-day override for a single day in the multi-day plan. `dayIndex`
+/// is 1-based (day 1 = departure day). Either / both hour fields may
+/// be null — the backend falls back to the profile default for the
+/// null ones.
+@immutable
+class DayOverride {
+  const DayOverride({
+    required this.dayIndex,
+    this.startHour,
+    this.dailyDrivingCapHours,
+  });
+  final int dayIndex;
+  final int? startHour;
+  final int? dailyDrivingCapHours;
+
+  Map<String, dynamic> toJson() => {
+        'day_index': dayIndex,
+        if (startHour != null) 'start_hour': startHour,
+        if (dailyDrivingCapHours != null)
+          'daily_driving_cap_hours': dailyDrivingCapHours,
+      };
+
+  DayOverride copyWith({int? startHour, int? dailyDrivingCapHours}) =>
+      DayOverride(
+        dayIndex: dayIndex,
+        startHour: startHour ?? this.startHour,
+        dailyDrivingCapHours:
+            dailyDrivingCapHours ?? this.dailyDrivingCapHours,
+      );
 }
 
 @immutable

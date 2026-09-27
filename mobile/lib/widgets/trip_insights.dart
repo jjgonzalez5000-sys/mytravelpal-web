@@ -122,15 +122,34 @@ class DayPlanSection extends StatelessWidget {
     this.addedStops = const [],
     this.weatherSegments = const [],
     this.enrichPending = false,
+    this.hotelsRequested = true,
+    this.onEditDay,
+    this.overriddenDayIndices = const {},
   });
   final List<DayPlan> days;
   final DateFormat timeFormat;
+
+  /// Fired when the driver taps the pencil icon on a day header —
+  /// parent opens the per-day override sheet + re-plans. `null` hides
+  /// the icon entirely.
+  final void Function(int dayIndex)? onEditDay;
+
+  /// 1-based day indices that currently carry an active override.
+  /// Used to highlight the pencil icon on those days so the driver
+  /// remembers which days they've tweaked.
+  final Set<int> overriddenDayIndices;
 
   /// True while the `/plan/enrich` future is still in flight. When
   /// true, per-day hotel blocks show a "buscando hoteles..." message
   /// instead of the misleading "activa hoteles en las preferencias"
   /// empty state (which is only correct when prefs were disabled).
   final bool enrichPending;
+
+  /// True when the user opted-in to hotel search (hotelMaxDetourMinutes
+  /// > 0 on the plan form). Forwarded to `_SleepHotelsBlock` so the
+  /// empty state can distinguish "opt-out" vs "searched but nothing
+  /// on this route".
+  final bool hotelsRequested;
 
   /// Full hotels list from the response.
   final List<Hotel> hotels;
@@ -440,6 +459,30 @@ class DayPlanSection extends StatelessWidget {
                         ],
                       ),
                     ),
+                    // Pencil icon → per-day edit sheet (start hour +
+                    // max driving hours). Only rendered on driving
+                    // days (skips dwell) and only when the parent
+                    // provided a handler. Highlighted primary color
+                    // when the day carries an active override.
+                    if (!d.isDwellDay && onEditDay != null) ...[
+                      const SizedBox(width: Tokens.space4),
+                      IconButton(
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          size: 18,
+                          color: overriddenDayIndices.contains(d.dayIndex)
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant,
+                        ),
+                        tooltip: 'Ajustar día',
+                        onPressed: () => onEditDay!(d.dayIndex),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32,
+                        ),
+                        visualDensity: VisualDensity.compact,
+                      ),
+                    ],
                     if (!d.isDwellDay && routeGeometry.isNotEmpty) ...[
                       const SizedBox(width: Tokens.space8),
                       GestureDetector(
@@ -696,6 +739,7 @@ class DayPlanSection extends StatelessWidget {
                           : _hotelsNear(d.sleepCoord!),
                       hotelsPresent: hotels.isNotEmpty,
                       enrichPending: enrichPending,
+                      hotelsRequested: hotelsRequested,
                       isDestination: false,
                       origin: origin,
                       destination: destination,
@@ -717,6 +761,7 @@ class DayPlanSection extends StatelessWidget {
                     entries: _hotelsNear(destination!),
                     hotelsPresent: true,
                     enrichPending: enrichPending,
+                    hotelsRequested: hotelsRequested,
                     isDestination: true,
                     origin: origin,
                     destination: destination,
@@ -1261,6 +1306,7 @@ class _SleepHotelsBlock extends StatelessWidget {
     required this.entries,
     required this.hotelsPresent,
     this.enrichPending = false,
+    this.hotelsRequested = true,
     this.isDestination = false,
     this.origin,
     this.destination,
@@ -1276,6 +1322,13 @@ class _SleepHotelsBlock extends StatelessWidget {
   /// live "buscando hoteles..." indicator so drivers know why the
   /// section is blank.
   final bool enrichPending;
+
+  /// True when the user opted-in to hotel search (hotelMaxDetourMinutes
+  /// > 0 on the plan form). When true + enrich finished + zero results,
+  /// we show a "no hotels found on this route" hint instead of the
+  /// prefs-off message. Defaults true because the parent screen already
+  /// gates rendering of this block on the user having requested hotels.
+  final bool hotelsRequested;
   final bool isDestination;
   final LatLon? origin;
   final LatLon? destination;
@@ -1306,9 +1359,14 @@ class _SleepHotelsBlock extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     if (!hotelsPresent) {
-      // Two very different messages depending on why the block is
-      // empty: enrich still fetching (live search) vs prefs disabled
-      // (user opt-out). Getting these mixed makes the app look broken.
+      // Three distinct empty states depending on WHY the block is
+      // empty. Mixing them makes the app look broken.
+      //   1. enrich in flight → "searching..."
+      //   2. enrich finished + hotels requested → "no hotels on this
+      //      route" (widen detour hint)
+      //   3. hotels NOT requested → "enable hotels in prefs"
+      // Case 3 is defensive — the parent gates rendering on
+      // showHotelSections, so in practice we only fall into 1 or 2.
       if (enrichPending) {
         return Padding(
           padding: const EdgeInsets.only(top: 4),
@@ -1339,7 +1397,9 @@ class _SleepHotelsBlock extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(top: 4),
         child: Text(
-          l.daySleepHotelsEmpty,
+          hotelsRequested
+              ? l.daySleepHotelsNotFound
+              : l.daySleepHotelsEmpty,
           style: t.bodySmall?.copyWith(
             color: scheme.onSurfaceVariant,
             fontStyle: FontStyle.italic,

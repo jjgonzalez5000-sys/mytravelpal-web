@@ -52,6 +52,12 @@ services:
       MYTRAVELPAL_OSRM_URL: http://osrm:5000
       MYTRAVELPAL_WEATHER: openmeteo
       MYTRAVELPAL_FIRES: effis
+      # Earthquakes: USGS FDSN, free + keyless — 24 h lookback,
+      # min magnitude 4.5, filtered to the route bbox.
+      MYTRAVELPAL_QUAKES: usgs
+      # Heatwaves: derived from Open-Meteo daily max (threshold 38 °C),
+      # keyless; one extra HTTP round-trip per /plan.
+      MYTRAVELPAL_HEATWAVE: "on"
       MYTRAVELPAL_SKIP_PREWARM: "1"
       # MYTRAVELPAL_API_KEY unset on purpose → auth middleware is a
       # no-op locally (see backend/app/api/api_key.py). Set it in your

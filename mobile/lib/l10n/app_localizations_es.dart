@@ -1749,6 +1749,31 @@ class AppLocalizationsEs extends AppLocalizations {
   String get styleWakeLabel => 'Hora de despertarse';
 
   @override
+  String get styleDrivingStartLabel => 'Hora preferida para empezar a conducir';
+
+  @override
+  String dayEditSheetTitle(int day) {
+    return 'Ajustar día $day';
+  }
+
+  @override
+  String get dayEditStartHour => 'Hora de empezar a conducir';
+
+  @override
+  String dayEditMaxDriving(int hours) {
+    return 'Máximo horas al volante: $hours h (incluye descansos)';
+  }
+
+  @override
+  String get dayEditSave => 'Aplicar';
+
+  @override
+  String get dayEditCancel => 'Cancelar';
+
+  @override
+  String get dayEditReset => 'Restablecer';
+
+  @override
   String get styleBreakLabel => 'Estilo de parada';
 
   @override
@@ -2238,6 +2263,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Activa hoteles en las preferencias del plan para ver opciones de pernocta.';
 
   @override
+  String get daySleepHotelsNotFound =>
+      'No encontramos hoteles cerca de esta ruta. Prueba a ampliar la desviación máxima en Preferencias.';
+
+  @override
   String get daySleepHotelsSearching =>
       'Buscando hoteles cerca de tu parada...';
 
@@ -2397,6 +2426,21 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get emptyRestaurantsBody =>
       'Amplía el desvío máximo o quita filtros de cocina para ver más opciones.';
+
+  @override
+  String get emptyRestaurantsNotFoundTitle =>
+      'Sin restaurantes cerca de la ruta';
+
+  @override
+  String get emptyRestaurantsNotFoundBody =>
+      'El buscador no encontró opciones. Prueba a ampliar la desviación máxima en Preferencias.';
+
+  @override
+  String get emptyFuelNotFoundTitle => 'Sin datos de gasolina en esta zona';
+
+  @override
+  String get emptyFuelNotFoundBody =>
+      'Los proveedores no cubren esta ruta. Los precios reales aparecerán en zonas con datos oficiales.';
 
   @override
   String get onboardEyebrowFuel => 'PRECIOS REALES';
