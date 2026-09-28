@@ -78,13 +78,9 @@ class _PolylineWalker:
         self._pts = pts
         self._cum = cum
 
-    def anchor(self, km: float) -> Coordinate | None:
-        """Return the polyline point closest to `km` from origin.
-        None when the route has no geometry."""
-        if not self._pts:
-            return None
+    def _index_at(self, km: float) -> int:
+        """Polyline index at approximately `km` from origin."""
         target = max(0.0, min(km, self._cum[-1]))
-        # Binary search — the cum list is monotonically non-decreasing.
         lo, hi = 0, len(self._cum) - 1
         while lo < hi:
             mid = (lo + hi) // 2
@@ -92,7 +88,26 @@ class _PolylineWalker:
                 lo = mid + 1
             else:
                 hi = mid
-        return self._pts[lo]
+        return lo
+
+    def anchor(self, km: float) -> Coordinate | None:
+        """Return the polyline point closest to `km` from origin.
+        None when the route has no geometry."""
+        if not self._pts:
+            return None
+        return self._pts[self._index_at(km)]
+
+    def distance_between(self, km_from: float, km_to: float) -> float:
+        """Real polyline km between two km-from-origin marks. Used
+        to derive the original leg's actual distance (curvy roads
+        are longer than the great-circle 2*_ANCHOR_KM assumption)."""
+        if not self._pts:
+            return 0.0
+        i0 = self._index_at(km_from)
+        i1 = self._index_at(km_to)
+        if i1 < i0:
+            i0, i1 = i1, i0
+        return max(0.0, self._cum[i1] - self._cum[i0])
 
 
 def _cache_key(a: Coordinate, b: Coordinate) -> tuple[float, float, float, float]:
@@ -212,17 +227,18 @@ async def enrich_skips_with_alternatives(
     route: Route,
     skips: tuple[PartialTollSkip, ...],
     *,
-    average_kmh: float = 110.0,
+    average_kmh: float = 125.0,
 ) -> tuple[PartialTollSkip, ...]:
     """For each skip, replace the heuristic penalty + generic
     ``extra_distance_km`` with real HERE-derived numbers and attach
     the alternative polyline geometry. Returns a NEW tuple — never
     mutates the input skips.
 
-    ``average_kmh`` is the assumed speed on the original toll route
-    for the same span, used to derive the ORIGINAL leg's duration
-    without another HERE call. Rough but adequate — the interesting
-    number for the driver is the DELTA, not either absolute figure.
+    ``average_kmh`` is the assumed cruising speed on the original
+    TOLL motorway for the same span (~125 km/h covers EU motorway
+    reality: 130 in FR, 120 in ES/IT, 110 with rain). Used only for
+    the delta calculation — the mobile client shows the delta, not
+    the absolute values.
     """
     key = _api_key()
     if not key or not skips:
@@ -252,11 +268,28 @@ async def enrich_skips_with_alternatives(
         if result is None:
             return skip
         alt_duration_min, alt_distance_km, geom = result
-        # Original leg duration ~= 2 * anchor_km at average_kmh.
-        original_duration_min = (2.0 * _ANCHOR_KM / average_kmh) * 60.0
-        original_distance_km = 2.0 * _ANCHOR_KM
-        penalty_min = max(0.0, alt_duration_min - original_duration_min)
-        extra_km = max(0.0, alt_distance_km - original_distance_km)
+        # Real polyline distance for the ORIGINAL toll leg between
+        # the anchors — curvy roads are longer than the great-circle
+        # `2 * _ANCHOR_KM` estimate. Missing → fall back to the
+        # 30 km straight-line default.
+        original_distance_km = walker.distance_between(
+            km0 - _ANCHOR_KM, km0 + _ANCHOR_KM,
+        )
+        if original_distance_km <= 0:
+            original_distance_km = 2.0 * _ANCHOR_KM
+        original_duration_min = (original_distance_km / average_kmh) * 60.0
+        # Guard against negative deltas (a shorter alt route wraps
+        # to 0). A FLOOR of ~2 min / 0.5 km reflects the real cost
+        # of exiting + re-entering the motorway even when the
+        # secondary parallel road happens to be similar in length.
+        penalty_min = max(
+            2.0,
+            alt_duration_min - original_duration_min,
+        )
+        extra_km = max(
+            0.5,
+            alt_distance_km - original_distance_km,
+        )
         return replace(
             skip,
             time_penalty_minutes=round(penalty_min, 1),

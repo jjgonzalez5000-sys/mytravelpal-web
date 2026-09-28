@@ -1136,6 +1136,7 @@
     "onRouteEmpty": "Tap to pick options",
     "exportShareTitle": "Share route",
     "exportOpenInMaps": "Open in Google Maps",
+    "exportOpenInMapsSub": "With added stops and detours",
     "exportCopyLink": "Copy link",
     "exportLinkCopied": "Link copied to clipboard",
     "exportShareOs": "Share…",

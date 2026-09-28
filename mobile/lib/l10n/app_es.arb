@@ -1145,6 +1145,7 @@
     "onRouteEmpty": "Toca para elegir opciones",
     "exportShareTitle": "Compartir ruta",
     "exportOpenInMaps": "Abrir en Google Maps",
+    "exportOpenInMapsSub": "Con paradas y desvíos añadidos",
     "exportCopyLink": "Copiar enlace",
     "exportLinkCopied": "Enlace copiado al portapapeles",
     "exportShareOs": "Compartir…",

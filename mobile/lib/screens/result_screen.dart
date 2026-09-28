@@ -1228,7 +1228,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => PlanLoadingDialog(title: loadingTitle),
+      builder: (_) => PlanLoadingDialog(
+        title: loadingTitle,
+        // Replan flows already know the departure hour, so drop
+        // the "sampling traffic to pick the best hour" step —
+        // the caption was misleading here. Keep every other
+        // provider caption so the driver still sees progress
+        // through hotels / restaurants / fuel etc.
+        steps: const [
+          PlanStep.routing,
+          PlanStep.fuel,
+          PlanStep.hotels,
+          PlanStep.restaurants,
+          PlanStep.alerts,
+          PlanStep.tolls,
+        ],
+      ),
     ));
     try {
       final api = ref.read(apiClientWithPremiumProvider);
@@ -1665,10 +1680,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
-  /// Two share modes. Text-only reuses the existing `shareTrip`
-  /// with the deep link. Image mode renders a story-format card
-  /// and hands it to the share sheet — perfect for Instagram
-  /// Stories / WhatsApp / X.
+  /// Unified share sheet — three modes, both the AppBar share icon
+  /// AND the "share" button under the hero map now open THIS sheet
+  /// so the two buttons don't behave differently.
+  ///
+  ///   1. Ver ruta en Google Maps → opens the export sheet (deep-
+  ///      link to Google Maps with detour waypoints baked in).
+  ///   2. Compartir imagen → renders a story-format card and hands
+  ///      it to the OS share dialog (Instagram / WhatsApp / X).
+  ///   3. Compartir enlace → sends a text summary with the deep-
+  ///      link (WhatsApp / SMS / email).
   Future<void> _openShareMenu(AppLocalizations l) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -1677,6 +1698,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.map_outlined),
+              title: Text(l.exportOpenInMaps),
+              subtitle: Text(l.exportOpenInMapsSub),
+              onTap: () => Navigator.of(context).pop('maps'),
+            ),
             ListTile(
               leading: const Icon(Icons.image_outlined),
               title: Text(l.shareCardOption),
@@ -1694,7 +1721,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
     );
     if (!mounted || choice == null) return;
-    if (choice == 'image') {
+    if (choice == 'maps') {
+      _openExportSheet();
+    } else if (choice == 'image') {
       await shareTripCard(
         context,
         originName: _shortName(widget.origin),
@@ -1808,9 +1837,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               minWidth: 32, minHeight: 32,
             ),
             visualDensity: VisualDensity.compact,
-            tooltip: l.exportShareTitle,
+            // Same unified share menu as the AppBar icon — the two
+            // buttons used to do different things (this one opened
+            // only the Google-Maps export, the AppBar one offered
+            // image/link) which confused testers. Both surfaces
+            // now open the same 3-option sheet.
+            tooltip: l.resultShareTooltip,
             icon: const Icon(Icons.ios_share, size: 18),
-            onPressed: _openExportSheet,
+            onPressed: () => _openShareMenu(l),
           ),
         ],
       ),

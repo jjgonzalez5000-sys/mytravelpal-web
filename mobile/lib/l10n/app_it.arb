@@ -1153,6 +1153,7 @@
     "onRouteEmpty": "Tocca per scegliere le opzioni",
     "exportShareTitle": "Condividi il percorso",
     "exportOpenInMaps": "Apri in Google Maps",
+    "exportOpenInMapsSub": "Con fermate e deviazioni aggiunte",
     "exportCopyLink": "Copia link",
     "exportLinkCopied": "Link copiato negli appunti",
     "exportShareOs": "Condividi…",

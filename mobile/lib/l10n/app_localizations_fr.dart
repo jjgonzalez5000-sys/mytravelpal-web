@@ -3106,6 +3106,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get exportOpenInMaps => 'Ouvrir dans Google Maps';
 
   @override
+  String get exportOpenInMapsSub => 'Avec arrêts et détours ajoutés';
+
+  @override
   String get exportCopyLink => 'Copier le lien';
 
   @override

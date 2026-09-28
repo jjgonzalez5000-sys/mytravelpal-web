@@ -5518,6 +5518,12 @@ abstract class AppLocalizations {
   /// **'Open in Google Maps'**
   String get exportOpenInMaps;
 
+  /// No description provided for @exportOpenInMapsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'With added stops and detours'**
+  String get exportOpenInMapsSub;
+
   /// No description provided for @exportCopyLink.
   ///
   /// In en, this message translates to:
