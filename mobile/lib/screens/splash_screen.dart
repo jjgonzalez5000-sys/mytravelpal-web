@@ -181,6 +181,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // fresh install doesn't stop the dogfood flow at the first
       // "welcome to the planner" overlay.
       await markTutorialsSeen();
+      // Force dark + OLED for the dogfood / screenshot-capture
+      // builds. Pure-black backgrounds read cleaner on Play Store
+      // listings than the light-grey default. Uses the notifiers
+      // (not the raw prefs) so the running MaterialApp rebuilds
+      // immediately — writing to prefs alone wouldn't repaint.
+      await ref.read(themeModeProvider.notifier).set(ThemeMode.dark);
+      await ref.read(themeOledProvider.notifier).set(true);
       // Pre-seed a Yaris 4 Hybrid at 25% tank in the garage so the
       // dogfood profile has a realistic car to plan against without
       // the tester having to fill the garage form on every fresh
