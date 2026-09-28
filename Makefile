@@ -158,6 +158,14 @@ mobile-prod:
 deploy:
 	cd $(BACKEND_DIR) && fly deploy
 
+# --- Play Store screenshot capture --------------------------------
+# Prompts you to navigate through 8 screens, snaps each with adb.
+# Defaults to Spanish set. Override with `make screenshots LOCALE=en`.
+LOCALE ?= es
+.PHONY: screenshots
+screenshots:
+	cd $(MOBILE_DIR) && ./tool/take_screenshots.sh $(LOCALE)
+
 .PHONY: clean
 clean:
 	$(COMPOSE) down -v
