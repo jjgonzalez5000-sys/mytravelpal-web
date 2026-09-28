@@ -6,7 +6,7 @@ import logging
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from pydantic import BaseModel, Field
 
 from app.api.premium import is_premium
@@ -56,9 +56,82 @@ def _day_overrides_map(
     return out
 
 
+# Localized reason strings — the mobile app used to show the raw
+# Spanish only, which leaked into EN / FR / IT / DE UIs. Backend
+# now composes in the locale the client asked for via
+# `Accept-Language` (fallback: EN). Keep the reason short — the
+# mobile row is a single line.
+_REASON_STRINGS: dict[str, dict[str, str]] = {
+    "en": {
+        "kid_match": "Kid-friendly area matching your profile",
+        "pet_match": "Pet-friendly stop matching your profile",
+        "rv_match": "Camper-friendly stop matching your profile",
+        "type_service_area": "Service area with restaurant and toilets",
+        "type_rest_area": "Rest area with safe parking",
+        "type_gas_station": "Fuel + rest stop",
+        "type_caravan_site": "Camper site with full services",
+        "type_parking": "Quiet parking for a short break",
+    },
+    "es": {
+        "kid_match": "Área compatible con niños según tu perfil",
+        "pet_match": "Zona para mascotas según tu perfil",
+        "rv_match": "Compatible con autocaravana según tu perfil",
+        "type_service_area": "Área de servicio con restaurante y aseos",
+        "type_rest_area": "Área de descanso con aparcamiento seguro",
+        "type_gas_station": "Gasolinera para repostar y descansar",
+        "type_caravan_site": "Área para caravanas con servicios completos",
+        "type_parking": "Aparcamiento tranquilo para una pausa breve",
+    },
+    "fr": {
+        "kid_match": "Aire adaptée aux enfants selon ton profil",
+        "pet_match": "Aire pet-friendly selon ton profil",
+        "rv_match": "Aire adaptée aux camping-cars selon ton profil",
+        "type_service_area": "Aire de service avec restaurant et sanitaires",
+        "type_rest_area": "Aire de repos avec parking sécurisé",
+        "type_gas_station": "Station-service pour faire le plein",
+        "type_caravan_site": "Aire camping-car avec services complets",
+        "type_parking": "Parking calme pour une courte pause",
+    },
+    "it": {
+        "kid_match": "Area a misura di bambino secondo il tuo profilo",
+        "pet_match": "Area pet-friendly secondo il tuo profilo",
+        "rv_match": "Area per camper secondo il tuo profilo",
+        "type_service_area": "Area di servizio con ristorante e servizi igienici",
+        "type_rest_area": "Area di sosta con parcheggio sicuro",
+        "type_gas_station": "Distributore per rifornirsi e riposare",
+        "type_caravan_site": "Area camper con servizi completi",
+        "type_parking": "Parcheggio tranquillo per una breve pausa",
+    },
+    "de": {
+        "kid_match": "Kinderfreundlicher Stopp laut deinem Profil",
+        "pet_match": "Haustierfreundlicher Stopp laut deinem Profil",
+        "rv_match": "Wohnmobilfreundlicher Stopp laut deinem Profil",
+        "type_service_area": "Raststätte mit Restaurant und Toiletten",
+        "type_rest_area": "Rastplatz mit sicherem Parkplatz",
+        "type_gas_station": "Tankstelle für Tanken und Pause",
+        "type_caravan_site": "Wohnmobilstellplatz mit vollem Service",
+        "type_parking": "Ruhiger Parkplatz für eine kurze Pause",
+    },
+}
+
+
+def _pick_reason_locale(accept_language: str | None) -> str:
+    """Pick a locale bucket from a raw `Accept-Language` header.
+    Defaults to `en` when nothing recognisable is present so a
+    missing / malformed header never leaks Spanish into an EN client.
+    """
+    if not accept_language:
+        return "en"
+    primary = accept_language.split(",", 1)[0].strip().lower()
+    lang = primary.split("-", 1)[0]
+    return lang if lang in _REASON_STRINGS else "en"
+
+
 def _reason_for_rest_stop(
     stop: RestStop,
     profile: TripProfile | None,
+    *,
+    locale: str = "en",
 ) -> str | None:
     """Compose the short WHY string mobile shows in the info sheet.
     Combines matched OSM amenity flags with the user's profile prefs
@@ -66,6 +139,7 @@ def _reason_for_rest_stop(
     is actually travelling with kids. Falls back to the stop-type
     label when nothing preference-relevant matched.
     """
+    strings = _REASON_STRINGS.get(locale, _REASON_STRINGS["en"])
     reasons: list[str] = []
     has_kids = bool(getattr(profile, "has_kids", False)) if profile else False
     has_pets = bool(getattr(profile, "has_pets", False)) if profile else False
@@ -76,26 +150,21 @@ def _reason_for_rest_stop(
     )
 
     if stop.kid_friendly and has_kids:
-        reasons.append("Área compatible con niños según tu perfil")
+        reasons.append(strings["kid_match"])
     if stop.pet_friendly and has_pets:
-        reasons.append("Zona para mascotas según tu perfil")
+        reasons.append(strings["pet_match"])
     if stop.rv_friendly and is_rv:
-        reasons.append("Compatible con autocaravana según tu perfil")
+        reasons.append(strings["rv_match"])
 
     # Type-based fallback so every stop has SOMETHING to say when the
     # profile prefs didn't match anything specific.
     if not reasons:
         type_labels = {
-            RestStopType.SERVICE_AREA:
-                "Área de servicio con restaurante y aseos",
-            RestStopType.REST_AREA:
-                "Área de descanso con aparcamiento seguro",
-            RestStopType.GAS_STATION:
-                "Gasolinera para repostar y descansar",
-            RestStopType.CARAVAN_SITE:
-                "Área para caravanas con servicios completos",
-            RestStopType.PARKING:
-                "Aparcamiento tranquilo para una pausa breve",
+            RestStopType.SERVICE_AREA:  strings["type_service_area"],
+            RestStopType.REST_AREA:     strings["type_rest_area"],
+            RestStopType.GAS_STATION:   strings["type_gas_station"],
+            RestStopType.CARAVAN_SITE:  strings["type_caravan_site"],
+            RestStopType.PARKING:       strings["type_parking"],
         }
         label = type_labels.get(stop.stop_type)
         if label:
@@ -1269,6 +1338,8 @@ async def _plan_core_impl(
     premium: bool,
     user: AuthUser | None,
     preamble: _Preamble,
+    *,
+    reason_locale: str = "en",
 ) -> TripPlanResponse:
     """Fast compute path — route + days + savings + windows.
 
@@ -1544,6 +1615,8 @@ async def _plan_enrich_impl(
     premium: bool,
     user: AuthUser | None,
     preamble: _Preamble,
+    *,
+    reason_locale: str = "en",
 ) -> TripPlanResponse:
     """Slow compute path — every provider fan-out core skipped.
 
@@ -1591,7 +1664,7 @@ async def _plan_enrich_impl(
             rv_friendly=s.rv_friendly,
             name=s.name,
             stop_type=s.stop_type.value if s.stop_type else "unknown",
-            reason=_reason_for_rest_stop(s, profile),
+            reason=_reason_for_rest_stop(s, profile, locale=reason_locale),
         )
         for s in rest_stops_domain
     ]
@@ -2713,7 +2786,7 @@ async def _plan_enrich_impl(
                                 stop_type=(
                                     s.stop_type.value if s.stop_type else "unknown"
                                 ),
-                                reason=_reason_for_rest_stop(s, profile),
+                                reason=_reason_for_rest_stop(s, profile, locale=reason_locale),
                             )
                             for s in d.rest_stops
                         ],
@@ -2989,6 +3062,7 @@ async def plan_trip(
     providers: Providers = Depends(_providers),
     premium: bool = Depends(is_premium),
     user: AuthUser | None = Depends(current_user_optional),
+    accept_language: str | None = Header(default=None),
 ) -> TripPlanResponse:
     """Monolithic /plan — backwards compat with pre-progressive clients.
 
@@ -3006,9 +3080,16 @@ async def plan_trip(
     _log.info("plan_cache MISS slot=full key=%s", key[:8])
 
     preamble = await _plan_shared_preamble(payload, providers)
+    reason_locale = _pick_reason_locale(accept_language)
     core_resp, enrich_resp = await asyncio.gather(
-        _plan_core_impl(payload, providers, premium, user, preamble),
-        _plan_enrich_impl(payload, providers, premium, user, preamble),
+        _plan_core_impl(
+            payload, providers, premium, user, preamble,
+            reason_locale=reason_locale,
+        ),
+        _plan_enrich_impl(
+            payload, providers, premium, user, preamble,
+            reason_locale=reason_locale,
+        ),
     )
     merged = _merge_full(core_resp, enrich_resp)
     await cache.set(key, merged)
@@ -3021,6 +3102,7 @@ async def plan_trip_core(
     providers: Providers = Depends(_providers),
     premium: bool = Depends(is_premium),
     user: AuthUser | None = Depends(current_user_optional),
+    accept_language: str | None = Header(default=None),
 ) -> TripPlanResponse:
     """Fast phase — returns route + days + savings + windows.
 
@@ -3040,7 +3122,10 @@ async def plan_trip_core(
     _log.info("plan_cache MISS slot=core key=%s", key[:8])
 
     preamble = await _plan_shared_preamble(payload, providers)
-    resp = await _plan_core_impl(payload, providers, premium, user, preamble)
+    resp = await _plan_core_impl(
+        payload, providers, premium, user, preamble,
+        reason_locale=_pick_reason_locale(accept_language),
+    )
     await cache.set(key, resp)
     return resp
 
@@ -3051,6 +3136,7 @@ async def plan_trip_enrich(
     providers: Providers = Depends(_providers),
     premium: bool = Depends(is_premium),
     user: AuthUser | None = Depends(current_user_optional),
+    accept_language: str | None = Header(default=None),
 ) -> TripPlanResponse:
     """Slow phase — hotels, restaurants, fuel, weather, adverse
     events, toll alternative, parking, route variants.
@@ -3073,7 +3159,10 @@ async def plan_trip_enrich(
     _log.info("plan_cache MISS slot=enrich key=%s", key[:8])
 
     preamble = await _plan_shared_preamble(payload, providers)
-    resp = await _plan_enrich_impl(payload, providers, premium, user, preamble)
+    resp = await _plan_enrich_impl(
+        payload, providers, premium, user, preamble,
+        reason_locale=_pick_reason_locale(accept_language),
+    )
     # Strip core-owned fields on the wire. Days STAY on the response
     # because their per-day `rest_stops` carry the Overpass-enriched
     # POI names / types / reasons — clearing them (as the earlier
