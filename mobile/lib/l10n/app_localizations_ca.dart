@@ -1500,6 +1500,60 @@ class AppLocalizationsCa extends AppLocalizations {
       'Your vehicle can\'t cover the route on a single tank/charge — you\'ll need to refuel or recharge during the trip.';
 
   @override
+  String consistencyMealBeforeDeparture(String slot, String km) {
+    return '$slot is scheduled at km $km before the trip departs. Adjust the stop time or the departure hour.';
+  }
+
+  @override
+  String consistencyMealAfterArrival(String slot, String km) {
+    return '$slot is scheduled at km $km after the trip already ends. Adjust the stop time or the trip pace.';
+  }
+
+  @override
+  String consistencyMealImpossibleSpeed(String slot, String km, String kmh) {
+    return 'Reaching $slot at km $km from departure would need ~$kmh km/h — not possible. Review the stop.';
+  }
+
+  @override
+  String consistencyMealSuspiciousSpeed(String slot, String km, String kmh) {
+    return 'Reaching $slot at km $km from departure would need ~$kmh km/h. Check if that pace is realistic.';
+  }
+
+  @override
+  String consistencyMealTooCloseToArrival(String slot, String km, String mins) {
+    return '$slot at km $km is very close to arrival ($mins min before). You might as well eat at the destination.';
+  }
+
+  @override
+  String consistencySleepBeforeDeparture(String km) {
+    return 'Overnight rest is scheduled before departure (km $km). Check the time.';
+  }
+
+  @override
+  String consistencySleepAfterArrival(String km) {
+    return 'Overnight rest is scheduled after arrival (km $km). It may not be needed.';
+  }
+
+  @override
+  String consistencySleepImpossibleSpeed(String km, String kmh) {
+    return 'Reaching the overnight rest at km $km needs ~$kmh km/h — impossible. Review the leg.';
+  }
+
+  @override
+  String consistencySleepSuspiciousSpeed(String km, String kmh) {
+    return 'The overnight rest at km $km implies ~$kmh km/h average. Check the pace.';
+  }
+
+  @override
+  String get mealSlotBreakfastCap => 'Breakfast';
+
+  @override
+  String get mealSlotLunchCap => 'Lunch';
+
+  @override
+  String get mealSlotDinnerCap => 'Dinner';
+
+  @override
   String get consistencyHeadsUp => 'Heads-up on your trip plan';
 
   @override

@@ -801,10 +801,62 @@ class RecommendationScopeOut(BaseModel):
     reason: str
 
 
+def _issue_day_index(
+    issue,
+    days_out: list["DayPlanOut"],
+) -> int | None:
+    """Locate the day (1-based) an Issue belongs to by matching its
+    context km against each day's `[from_km, to_km]` range. Returns
+    None when the issue carries no km hint (e.g. fuel warnings) or
+    when no day covers the km. Kept small so both plan endpoints can
+    call it right after check_trip_consistency.
+    """
+    ctx = getattr(issue, "context", None)
+    if not ctx:
+        return None
+    km = ctx.get("km") if isinstance(ctx, dict) else None
+    if km is None:
+        return None
+    try:
+        km_val = float(km)
+    except (TypeError, ValueError):
+        return None
+    for d in days_out:
+        if d.from_km <= km_val <= d.to_km + 0.001:
+            return d.day_index
+    return None
+
+
+def _issue_to_out(
+    issue,
+    days_out: list["DayPlanOut"],
+) -> "ConsistencyIssueOut":
+    """Serialize an Issue into its wire model, attaching `day_index`
+    and `context` so the mobile client can localize + inline the
+    warning inside the matching day card."""
+    return ConsistencyIssueOut(
+        code=issue.code,
+        severity=issue.severity.value,
+        message=issue.message,
+        context=(dict(issue.context) if issue.context else None),
+        day_index=_issue_day_index(issue, days_out),
+    )
+
+
 class ConsistencyIssueOut(BaseModel):
     code: str
     severity: str
     message: str
+    # Structured context so mobile clients can render a fully
+    # localized message off `code` + these placeholders. Keys vary
+    # per code (see `Issue.context` docstring in consistency.py).
+    context: dict | None = None
+    # 1-based itinerary day this issue anchors to. Populated for
+    # meal / sleep codes after the days list is materialised so the
+    # mobile client can inline the warning INTO the day card
+    # instead of only rendering it in the global banner. Absent for
+    # trip-wide codes (e.g. `fuel.no_stations_visible`).
+    day_index: int | None = None
 
 
 class WeatherSegmentOut(BaseModel):
@@ -1371,9 +1423,7 @@ async def _plan_core_impl(
     )
 
     consistency_out = [
-        ConsistencyIssueOut(
-            code=i.code, severity=i.severity.value, message=i.message,
-        )
+        _issue_to_out(i, days_out)
         for i in check_trip_consistency(
             departure_at=effective_departure_at,
             arrival_at=effective_arrival_at,
@@ -2729,9 +2779,7 @@ async def _plan_enrich_impl(
     # For /plan/enrich HTTP we drop this on the wire (core owns it),
     # but the merged /plan payload uses it when core's list is empty.
     consistency_out = [
-        ConsistencyIssueOut(
-            code=i.code, severity=i.severity.value, message=i.message,
-        )
+        _issue_to_out(i, days_out)
         for i in check_trip_consistency(
             departure_at=effective_departure_at,
             arrival_at=effective_arrival_at,

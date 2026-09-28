@@ -2779,6 +2779,78 @@ abstract class AppLocalizations {
   /// **'Your vehicle can\'t cover the route on a single tank/charge — you\'ll need to refuel or recharge during the trip.'**
   String get consistencyFuelRangeExceeded;
 
+  /// No description provided for @consistencyMealBeforeDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'{slot} is scheduled at km {km} before the trip departs. Adjust the stop time or the departure hour.'**
+  String consistencyMealBeforeDeparture(String slot, String km);
+
+  /// No description provided for @consistencyMealAfterArrival.
+  ///
+  /// In en, this message translates to:
+  /// **'{slot} is scheduled at km {km} after the trip already ends. Adjust the stop time or the trip pace.'**
+  String consistencyMealAfterArrival(String slot, String km);
+
+  /// No description provided for @consistencyMealImpossibleSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reaching {slot} at km {km} from departure would need ~{kmh} km/h — not possible. Review the stop.'**
+  String consistencyMealImpossibleSpeed(String slot, String km, String kmh);
+
+  /// No description provided for @consistencyMealSuspiciousSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reaching {slot} at km {km} from departure would need ~{kmh} km/h. Check if that pace is realistic.'**
+  String consistencyMealSuspiciousSpeed(String slot, String km, String kmh);
+
+  /// No description provided for @consistencyMealTooCloseToArrival.
+  ///
+  /// In en, this message translates to:
+  /// **'{slot} at km {km} is very close to arrival ({mins} min before). You might as well eat at the destination.'**
+  String consistencyMealTooCloseToArrival(String slot, String km, String mins);
+
+  /// No description provided for @consistencySleepBeforeDeparture.
+  ///
+  /// In en, this message translates to:
+  /// **'Overnight rest is scheduled before departure (km {km}). Check the time.'**
+  String consistencySleepBeforeDeparture(String km);
+
+  /// No description provided for @consistencySleepAfterArrival.
+  ///
+  /// In en, this message translates to:
+  /// **'Overnight rest is scheduled after arrival (km {km}). It may not be needed.'**
+  String consistencySleepAfterArrival(String km);
+
+  /// No description provided for @consistencySleepImpossibleSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Reaching the overnight rest at km {km} needs ~{kmh} km/h — impossible. Review the leg.'**
+  String consistencySleepImpossibleSpeed(String km, String kmh);
+
+  /// No description provided for @consistencySleepSuspiciousSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'The overnight rest at km {km} implies ~{kmh} km/h average. Check the pace.'**
+  String consistencySleepSuspiciousSpeed(String km, String kmh);
+
+  /// No description provided for @mealSlotBreakfastCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakfast'**
+  String get mealSlotBreakfastCap;
+
+  /// No description provided for @mealSlotLunchCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch'**
+  String get mealSlotLunchCap;
+
+  /// No description provided for @mealSlotDinnerCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Dinner'**
+  String get mealSlotDinnerCap;
+
   /// No description provided for @consistencyHeadsUp.
   ///
   /// In en, this message translates to:

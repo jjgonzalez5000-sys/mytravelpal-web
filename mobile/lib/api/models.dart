@@ -1977,6 +1977,8 @@ class ConsistencyIssue {
     required this.code,
     required this.severity,
     required this.message,
+    this.context,
+    this.dayIndex,
   });
 
   /// Machine-readable code (e.g. `meal.impossible_speed`,
@@ -1988,6 +1990,18 @@ class ConsistencyIssue {
   final String severity;
   final String message;
 
+  /// Structured placeholders the mobile client uses to render a
+  /// fully-localised message off `code`. Keys vary per code (see
+  /// backend `Issue.context` docs) — e.g. meal codes carry `slot`,
+  /// `km`, `at`, optionally `implied_kmh`. Null for legacy codes.
+  final Map<String, dynamic>? context;
+
+  /// 1-based day index this issue anchors to. When set the mobile
+  /// client inlines the warning inside the matching day card in
+  /// [DayPlanSection] instead of surfacing it in the global
+  /// ConsistencyBanner. Null for trip-wide codes.
+  final int? dayIndex;
+
   bool get isError => severity == 'error';
   bool get isWarning => severity == 'warning';
 
@@ -1996,6 +2010,8 @@ class ConsistencyIssue {
         code: json['code'] as String,
         severity: json['severity'] as String,
         message: json['message'] as String,
+        context: json['context'] as Map<String, dynamic>?,
+        dayIndex: (json['day_index'] as num?)?.toInt(),
       );
 }
 

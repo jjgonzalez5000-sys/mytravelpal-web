@@ -2111,6 +2111,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             profileHasPets: widget.request.tripProfile?.hasPets ?? false,
             profileIsCamper: widget.request.tripProfile?.vehicle.type
                     == VehicleType.camper,
+            consistencyIssues: _response.consistencyIssues,
           ),
         ),
       ],

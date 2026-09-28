@@ -9,6 +9,7 @@ import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import 'added_stops_map_sheet.dart';
+import 'consistency_banner.dart' show DayConsistencyChip;
 import 'poi_detail_sheet.dart';
 import 'skeleton.dart';
 
@@ -190,7 +191,15 @@ class DayPlanSection extends StatelessWidget {
     this.profileHasKids = false,
     this.profileHasPets = false,
     this.profileIsCamper = false,
+    this.consistencyIssues = const [],
   });
+
+  /// Backend consistency issues (meal / sleep sanity failures)
+  /// anchored to a day. Rendered inline in the matching day card
+  /// via [DayConsistencyChip] so the driver sees the warning next
+  /// to the day it applies to. Trip-wide issues (no `dayIndex`)
+  /// stay in the global banner above the section.
+  final List<ConsistencyIssue> consistencyIssues;
 
   /// Keys of the meal-row restaurants currently added to the route.
   /// Shared with the standalone restaurants list so a restaurant
@@ -380,10 +389,81 @@ class DayPlanSection extends StatelessWidget {
     );
     if (slice.isEmpty) return;
     final scheme = Theme.of(context).colorScheme;
+
+    // POIs relevant to this day: hotels near the sleep coord,
+    // restaurants + fuel + rest_stops with distance_from_origin_km
+    // inside the day's [from_km, to_km] range. Small padding on
+    // both ends so a POI right at a boundary still surfaces on the
+    // day it belongs to.
+    bool inRange(double km) =>
+        km >= (d.fromKm - 1) && km <= (d.toKm + 1);
+    final dayFuel = fuelPrices
+        .where((p) => p.coordinate != null && inRange(p.distanceFromOriginKm))
+        .toList(growable: false);
+    final dayRests = d.restStops;
+    final dayMeals = d.mealStops.where(
+      (m) => m.restaurantCoordinate != null,
+    ).toList(growable: false);
+    // Hotels: show only the one picked for THIS night, plus a small
+    // radius fallback if none picked (top 3 by proximity to sleep
+    // coord). Keeps the map from becoming a wall of hotel pins.
+    final dayHotels = <Hotel>[];
+    final pickedH = selectedNightHotels[d.dayIndex];
+    if (pickedH != null) {
+      dayHotels.add(pickedH);
+    } else if (d.sleepCoord != null) {
+      final sc = d.sleepCoord!;
+      final ranked = hotels
+          .map((h) => (
+                h,
+                (h.coordinate.lat - sc.lat).abs() +
+                    (h.coordinate.lon - sc.lon).abs(),
+              ))
+          .toList()
+        ..sort((a, b) => a.$2.compareTo(b.$2));
+      dayHotels.addAll(ranked.take(3).map((e) => e.$1));
+    }
+
+    // Bounds cover the polyline slice + every POI marker so nothing
+    // is clipped off-screen on first paint.
     final boundsPoints = <ll.LatLng>[...slice];
     if (d.sleepCoord != null) {
       boundsPoints.add(ll.LatLng(d.sleepCoord!.lat, d.sleepCoord!.lon));
     }
+    for (final p in dayFuel) {
+      boundsPoints.add(ll.LatLng(p.coordinate!.lat, p.coordinate!.lon));
+    }
+    for (final m in dayMeals) {
+      boundsPoints.add(ll.LatLng(
+          m.restaurantCoordinate!.lat, m.restaurantCoordinate!.lon));
+    }
+    for (final r in dayRests) {
+      boundsPoints.add(ll.LatLng(r.coordinate.lat, r.coordinate.lon));
+    }
+    for (final h in dayHotels) {
+      boundsPoints.add(ll.LatLng(h.coordinate.lat, h.coordinate.lon));
+    }
+
+    fmap.Marker markerFor(
+      double lat, double lon, IconData icon, Color color,
+    ) =>
+        fmap.Marker(
+          point: ll.LatLng(lat, lon),
+          width: 30, height: 30,
+          child: Container(
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [
+                BoxShadow(color: Color(0x66000000), blurRadius: 4,
+                    offset: Offset(0, 2)),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white, size: 16),
+          ),
+        );
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -414,16 +494,32 @@ class DayPlanSection extends StatelessWidget {
                 ),
               ],
             ),
-            if (d.sleepCoord != null)
-              fmap.MarkerLayer(
-                markers: [
-                  fmap.Marker(
-                    point: ll.LatLng(d.sleepCoord!.lat, d.sleepCoord!.lon),
-                    width: 28, height: 28,
-                    child: Icon(Icons.bedtime, color: scheme.primary, size: 28),
-                  ),
-                ],
-              ),
+            fmap.MarkerLayer(
+              markers: [
+                // Fuel stations
+                for (final p in dayFuel)
+                  markerFor(p.coordinate!.lat, p.coordinate!.lon,
+                      Icons.local_gas_station, Colors.deepOrange.shade600),
+                // Rest stops
+                for (final r in dayRests)
+                  markerFor(r.coordinate.lat, r.coordinate.lon,
+                      _iconForRestStopType(r.stopType), Colors.brown.shade400),
+                // Meal restaurants
+                for (final m in dayMeals)
+                  markerFor(m.restaurantCoordinate!.lat,
+                      m.restaurantCoordinate!.lon,
+                      Icons.restaurant, Colors.orange.shade700),
+                // Hotels (picked + fallback near sleep coord)
+                for (final h in dayHotels)
+                  markerFor(h.coordinate.lat, h.coordinate.lon,
+                      Icons.hotel, scheme.primary),
+                // Sleep waypoint marker on top so it's not hidden by
+                // the hotel pin for the same night.
+                if (d.sleepCoord != null)
+                  markerFor(d.sleepCoord!.lat, d.sleepCoord!.lon,
+                      Icons.bedtime, scheme.tertiary),
+              ],
+            ),
           ],
         ),
       ),
@@ -671,6 +767,13 @@ class DayPlanSection extends StatelessWidget {
                     ],
                   ],
                 ),
+                // Backend consistency issues (meal / sleep sanity
+                // warnings) anchored to THIS day, inlined below the
+                // header row so the driver reads the localized copy
+                // next to the day it applies to.
+                for (final issue in consistencyIssues
+                    .where((i) => i.dayIndex == d.dayIndex))
+                  DayConsistencyChip(issue: issue),
                 // Line 2: primary summary strip.
                 // "07:00  Toledo  →  15:32  Bordeaux" — hh:mm in
                 // primary color (labelMedium bold) so the driver

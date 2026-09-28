@@ -30,19 +30,26 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
 
   @override
   Widget build(BuildContext context) {
-    if (widget.issues.isEmpty) return const SizedBox.shrink();
+    // Issues anchored to a specific day are rendered inside that
+    // day card by `DayPlanSection.build`. The global banner only
+    // shows trip-wide codes (`fuel.*`, and any meal/sleep issue the
+    // backend couldn't map to a day, e.g. km outside all day ranges).
+    final tripWide = widget.issues
+        .where((i) => i.dayIndex == null)
+        .toList(growable: false);
+    if (tripWide.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
 
-    final worst = widget.issues.first;
+    final worst = tripWide.first;
     final color = _severityColor(worst.severity, scheme);
     final icon = _severityIcon(worst.severity);
 
-    final showAll = _expanded || widget.issues.length <= widget.maxVisible;
+    final showAll = _expanded || tripWide.length <= widget.maxVisible;
     final shown = showAll
-        ? widget.issues
-        : widget.issues.take(widget.maxVisible).toList();
-    final hiddenCount = widget.issues.length - shown.length;
+        ? tripWide
+        : tripWide.take(widget.maxVisible).toList();
+    final hiddenCount = tripWide.length - shown.length;
 
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.space16),
@@ -63,7 +70,7 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
               const SizedBox(width: Tokens.space8),
               Expanded(
                 child: Text(
-                  _headerLabel(widget.issues),
+                  _headerLabel(tripWide),
                   style: t.labelLarge?.copyWith(
                     color: color, fontWeight: FontWeight.w700,
                   ),
@@ -142,18 +149,58 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
 
   /// Prefer a locale-aware message keyed on the backend `code` when
   /// we have one; fall back to the raw server text otherwise. The
-  /// server ships English-only text — this keeps the polished
-  /// consistency banner intelligible in every locale for the codes
-  /// users actually hit.
+  /// server ships English-only text + a structured `context` map —
+  /// this method reads the codes we understand and interpolates the
+  /// context values so the polished consistency banner stays
+  /// intelligible in every locale.
   String _localizedMessage(AppLocalizations l, ConsistencyIssue issue) {
+    final ctx = issue.context ?? const <String, dynamic>{};
+    String km() => (ctx['km'] ?? '?').toString();
+    String slot() => _slotLabel(l, ctx['slot']?.toString());
+    String kmh() => (ctx['implied_kmh'] ?? '?').toString();
+    String mins() => (ctx['remaining_min'] ?? '?').toString();
     switch (issue.code) {
       case 'fuel.no_stations_visible':
-        final km = _extractKm(issue.message);
-        return l.consistencyFuelNoStations(km);
+        final dk = (ctx['distance_km'] ?? _extractKm(issue.message)).toString();
+        return l.consistencyFuelNoStations(dk);
       case 'fuel.range_exceeded':
         return l.consistencyFuelRangeExceeded;
+      case 'meal.before_departure':
+        return l.consistencyMealBeforeDeparture(slot(), km());
+      case 'meal.after_arrival':
+        return l.consistencyMealAfterArrival(slot(), km());
+      case 'meal.impossible_speed':
+        return l.consistencyMealImpossibleSpeed(slot(), km(), kmh());
+      case 'meal.suspicious_speed':
+        return l.consistencyMealSuspiciousSpeed(slot(), km(), kmh());
+      case 'meal.too_close_to_arrival':
+        return l.consistencyMealTooCloseToArrival(slot(), km(), mins());
+      case 'sleep.before_departure':
+        return l.consistencySleepBeforeDeparture(km());
+      case 'sleep.after_arrival':
+        return l.consistencySleepAfterArrival(km());
+      case 'sleep.impossible_speed':
+        return l.consistencySleepImpossibleSpeed(km(), kmh());
+      case 'sleep.suspicious_speed':
+        return l.consistencySleepSuspiciousSpeed(km(), kmh());
       default:
         return issue.message;
+    }
+  }
+
+  /// Backend meal codes carry `slot` as one of "breakfast", "lunch",
+  /// "dinner" (raw enum values). Map to the localized display label
+  /// so the interpolated message reads naturally in every locale.
+  String _slotLabel(AppLocalizations l, String? slot) {
+    switch ((slot ?? '').toLowerCase()) {
+      case 'breakfast':
+        return l.mealSlotBreakfastCap;
+      case 'lunch':
+        return l.mealSlotLunchCap;
+      case 'dinner':
+        return l.mealSlotDinnerCap;
+      default:
+        return slot ?? '?';
     }
   }
 
@@ -218,5 +265,119 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
       default:
         return Icons.info_outline;
     }
+  }
+}
+
+/// Compact inline chip for a single consistency issue anchored to a
+/// specific day. Rendered inside the day card by [DayPlanSection]
+/// so the driver sees the warning next to the day it applies to
+/// instead of hunting for a raw English message at the top of the
+/// screen.
+class DayConsistencyChip extends StatelessWidget {
+  const DayConsistencyChip({super.key, required this.issue});
+  final ConsistencyIssue issue;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    // Local mini-state helper to reuse the same localization logic
+    // the top-level banner uses. `_ConsistencyBannerState` owns
+    // `_localizedMessage`, so we replicate its dispatch in a
+    // stateless helper below to avoid coupling this widget to the
+    // banner's private state class.
+    final l = AppLocalizations.of(context);
+    final localized = _localizeIssue(l, issue);
+    final Color bg;
+    final Color fg;
+    final IconData icon;
+    switch (issue.severity) {
+      case 'error':
+        bg = scheme.error.withValues(alpha: 0.10);
+        fg = scheme.error;
+        icon = Icons.error_outline;
+        break;
+      case 'warning':
+        bg = scheme.tertiary.withValues(alpha: 0.10);
+        fg = scheme.tertiary;
+        icon = Icons.warning_amber_outlined;
+        break;
+      default:
+        bg = scheme.outline.withValues(alpha: 0.08);
+        fg = scheme.onSurfaceVariant;
+        icon = Icons.info_outline;
+    }
+    return Container(
+      margin: const EdgeInsets.only(top: Tokens.space8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space12, vertical: 8,
+      ),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(Tokens.radiusSm),
+        border: Border.all(color: fg.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: fg),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              localized,
+              style: t.labelSmall?.copyWith(
+                color: fg, fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Free-function version of `_ConsistencyBannerState._localizedMessage`
+/// so [DayConsistencyChip] (a stateless widget in the same file) can
+/// call it without exposing private state. Keep the two dispatches in
+/// sync — adding a new backend `code` needs an entry in both.
+String _localizeIssue(AppLocalizations l, ConsistencyIssue issue) {
+  final ctx = issue.context ?? const <String, dynamic>{};
+  String km() => (ctx['km'] ?? '?').toString();
+  String kmh() => (ctx['implied_kmh'] ?? '?').toString();
+  String mins() => (ctx['remaining_min'] ?? '?').toString();
+  String slot() {
+    final s = (ctx['slot'] ?? '').toString().toLowerCase();
+    switch (s) {
+      case 'breakfast':
+        return l.mealSlotBreakfastCap;
+      case 'lunch':
+        return l.mealSlotLunchCap;
+      case 'dinner':
+        return l.mealSlotDinnerCap;
+      default:
+        return s.isEmpty ? '?' : s;
+    }
+  }
+  switch (issue.code) {
+    case 'meal.before_departure':
+      return l.consistencyMealBeforeDeparture(slot(), km());
+    case 'meal.after_arrival':
+      return l.consistencyMealAfterArrival(slot(), km());
+    case 'meal.impossible_speed':
+      return l.consistencyMealImpossibleSpeed(slot(), km(), kmh());
+    case 'meal.suspicious_speed':
+      return l.consistencyMealSuspiciousSpeed(slot(), km(), kmh());
+    case 'meal.too_close_to_arrival':
+      return l.consistencyMealTooCloseToArrival(slot(), km(), mins());
+    case 'sleep.before_departure':
+      return l.consistencySleepBeforeDeparture(km());
+    case 'sleep.after_arrival':
+      return l.consistencySleepAfterArrival(km());
+    case 'sleep.impossible_speed':
+      return l.consistencySleepImpossibleSpeed(km(), kmh());
+    case 'sleep.suspicious_speed':
+      return l.consistencySleepSuspiciousSpeed(km(), kmh());
+    default:
+      return issue.message;
   }
 }

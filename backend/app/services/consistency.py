@@ -55,6 +55,21 @@ class Issue:
     code: str
     severity: Severity
     message: str
+    # Structured context so the mobile client can render a fully
+    # localized message without parsing the English `message`.
+    # Populated per-code — keys are stable:
+    #   meal.*         -> {"slot": str, "km": int, "at": ISO str,
+    #                     "implied_kmh": int (speed variants only)}
+    #   sleep.*        -> {"at": ISO str, "implied_kmh": int}
+    #   fuel.no_stations_visible -> {"distance_km": int}
+    # `context` is None for legacy codes (nothing depends on this
+    # today, so the field is fully additive).
+    context: dict | None = None
+    # 1-based day index the issue belongs to (for meal/sleep issues
+    # anchored to a specific day of the itinerary). Attached at the
+    # trips.py layer after the days list is materialised — the
+    # consistency checks themselves don't know about day boundaries.
+    day_index: int | None = None
 
 
 def check_trip(
@@ -127,15 +142,18 @@ def _check_meal_stop(
     """
     out: list[Issue] = []
     label = meal.slot.value
+    km_int = int(round(meal.rest_stop.distance_from_origin_km))
+    meal_iso = meal.at.isoformat()
 
     if meal.at < departure_at:
         out.append(Issue(
             code="meal.before_departure",
             severity=Severity.ERROR,
             message=(
-                f"{label} stop scheduled at {meal.at.isoformat()} but the "
+                f"{label} stop scheduled at {meal_iso} but the "
                 f"trip only starts at {departure_at.isoformat()}."
             ),
+            context={"slot": label, "km": km_int, "at": meal_iso},
         ))
         return out
 
@@ -144,35 +162,43 @@ def _check_meal_stop(
             code="meal.after_arrival",
             severity=Severity.ERROR,
             message=(
-                f"{label} stop scheduled at {meal.at.isoformat()} but the "
+                f"{label} stop scheduled at {meal_iso} but the "
                 f"trip already ends at {arrival_at.isoformat()}."
             ),
+            context={"slot": label, "km": km_int, "at": meal_iso},
         ))
         return out
 
     elapsed_hours = (meal.at - departure_at).total_seconds() / 3600.0
-    km = meal.rest_stop.distance_from_origin_km
-    if elapsed_hours > 0 and km > 0:
-        implied_kmh = km / elapsed_hours
+    if elapsed_hours > 0 and km_int > 0:
+        implied_kmh = km_int / elapsed_hours
         if implied_kmh > _MAX_PLAUSIBLE_KMH:
             out.append(Issue(
                 code="meal.impossible_speed",
                 severity=Severity.ERROR,
                 message=(
-                    f"{label} stop at km {km:.0f} would need ~"
+                    f"{label} stop at km {km_int} would need ~"
                     f"{implied_kmh:.0f} km/h from a {departure_at.isoformat()} "
                     f"departure — physically impossible."
                 ),
+                context={
+                    "slot": label, "km": km_int, "at": meal_iso,
+                    "implied_kmh": int(round(implied_kmh)),
+                },
             ))
         elif implied_kmh > _SUSPICIOUS_KMH:
             out.append(Issue(
                 code="meal.suspicious_speed",
                 severity=Severity.WARNING,
                 message=(
-                    f"{label} stop at km {km:.0f} implies ~"
+                    f"{label} stop at km {km_int} implies ~"
                     f"{implied_kmh:.0f} km/h average — check the rest-stop "
                     f"cumulative time."
                 ),
+                context={
+                    "slot": label, "km": km_int, "at": meal_iso,
+                    "implied_kmh": int(round(implied_kmh)),
+                },
             ))
 
     remaining_min = (arrival_at - meal.at).total_seconds() / 60.0
@@ -184,6 +210,10 @@ def _check_meal_stop(
                 f"{label} stop lands {remaining_min:.0f} min before arrival — "
                 f"the driver would reach the destination before finishing."
             ),
+            context={
+                "slot": label, "km": km_int, "at": meal_iso,
+                "remaining_min": int(round(remaining_min)),
+            },
         ))
 
     return out
@@ -201,14 +231,18 @@ def _check_sleep_stop(
     reuse the same thresholds.
     """
     out: list[Issue] = []
+    sleep_iso = sleep.at.isoformat()
+    km_int = int(round(sleep.rest_stop.distance_from_origin_km))
+    ctx_base = {"at": sleep_iso, "km": km_int}
     if sleep.at < departure_at:
         out.append(Issue(
             code="sleep.before_departure",
             severity=Severity.ERROR,
             message=(
-                f"Sleep stop scheduled at {sleep.at.isoformat()} but the "
+                f"Sleep stop scheduled at {sleep_iso} but the "
                 f"trip only starts at {departure_at.isoformat()}."
             ),
+            context=dict(ctx_base),
         ))
         return out
 
@@ -217,34 +251,36 @@ def _check_sleep_stop(
             code="sleep.after_arrival",
             severity=Severity.ERROR,
             message=(
-                f"Sleep stop scheduled at {sleep.at.isoformat()} but the "
+                f"Sleep stop scheduled at {sleep_iso} but the "
                 f"trip already ends at {arrival_at.isoformat()}."
             ),
+            context=dict(ctx_base),
         ))
         return out
 
     elapsed_hours = (sleep.at - departure_at).total_seconds() / 3600.0
-    km = sleep.rest_stop.distance_from_origin_km
-    if elapsed_hours > 0 and km > 0:
-        implied_kmh = km / elapsed_hours
+    if elapsed_hours > 0 and km_int > 0:
+        implied_kmh = km_int / elapsed_hours
         if implied_kmh > _MAX_PLAUSIBLE_KMH:
             out.append(Issue(
                 code="sleep.impossible_speed",
                 severity=Severity.ERROR,
                 message=(
-                    f"Sleep stop at km {km:.0f} would need ~{implied_kmh:.0f} "
+                    f"Sleep stop at km {km_int} would need ~{implied_kmh:.0f} "
                     f"km/h from a {departure_at.isoformat()} departure — "
                     f"physically impossible."
                 ),
+                context={**ctx_base, "implied_kmh": int(round(implied_kmh))},
             ))
         elif implied_kmh > _SUSPICIOUS_KMH:
             out.append(Issue(
                 code="sleep.suspicious_speed",
                 severity=Severity.WARNING,
                 message=(
-                    f"Sleep stop at km {km:.0f} implies ~{implied_kmh:.0f} "
+                    f"Sleep stop at km {km_int} implies ~{implied_kmh:.0f} "
                     f"km/h average — check the rest-stop cumulative time."
                 ),
+                context={**ctx_base, "implied_kmh": int(round(implied_kmh))},
             ))
     return out
 
@@ -307,5 +343,6 @@ def _check_fuel(
                 f"are visible along the route — pricing and refuel picks "
                 f"are unavailable for this leg."
             ),
+            context={"distance_km": int(round(route.distance_km))},
         ))
     return out

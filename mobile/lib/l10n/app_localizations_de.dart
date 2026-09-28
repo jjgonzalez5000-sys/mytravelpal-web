@@ -1502,6 +1502,60 @@ class AppLocalizationsDe extends AppLocalizations {
       'Dein Fahrzeug schafft die Strecke nicht mit einer Tankfüllung / Ladung — du musst unterwegs tanken oder laden.';
 
   @override
+  String consistencyMealBeforeDeparture(String slot, String km) {
+    return '$slot ist bei km $km vor Reisebeginn geplant. Passe die Zeit der Pause oder der Abfahrt an.';
+  }
+
+  @override
+  String consistencyMealAfterArrival(String slot, String km) {
+    return '$slot ist bei km $km nach der Ankunft geplant. Passe die Zeit der Pause oder das Tempo an.';
+  }
+
+  @override
+  String consistencyMealImpossibleSpeed(String slot, String km, String kmh) {
+    return 'Um $slot bei km $km zu erreichen bräuchte man ~$kmh km/h — unmöglich. Prüfe die Pause.';
+  }
+
+  @override
+  String consistencyMealSuspiciousSpeed(String slot, String km, String kmh) {
+    return 'Um $slot bei km $km zu erreichen sind ~$kmh km/h nötig. Prüfe, ob das realistisch ist.';
+  }
+
+  @override
+  String consistencyMealTooCloseToArrival(String slot, String km, String mins) {
+    return '$slot bei km $km liegt sehr nah an der Ankunft ($mins min davor). Vielleicht besser am Ziel essen.';
+  }
+
+  @override
+  String consistencySleepBeforeDeparture(String km) {
+    return 'Die Übernachtung ist vor der Abfahrt geplant (km $km). Prüfe die Zeit.';
+  }
+
+  @override
+  String consistencySleepAfterArrival(String km) {
+    return 'Die Übernachtung ist nach der Ankunft geplant (km $km). Sie könnte überflüssig sein.';
+  }
+
+  @override
+  String consistencySleepImpossibleSpeed(String km, String kmh) {
+    return 'Die Übernachtung bei km $km erfordert ~$kmh km/h — unmöglich. Prüfe die Etappe.';
+  }
+
+  @override
+  String consistencySleepSuspiciousSpeed(String km, String kmh) {
+    return 'Die Übernachtung bei km $km bedeutet ~$kmh km/h im Schnitt. Prüfe das Tempo.';
+  }
+
+  @override
+  String get mealSlotBreakfastCap => 'Frühstück';
+
+  @override
+  String get mealSlotLunchCap => 'Mittagessen';
+
+  @override
+  String get mealSlotDinnerCap => 'Abendessen';
+
+  @override
   String get consistencyHeadsUp => 'Hinweis zu deinem Plan';
 
   @override

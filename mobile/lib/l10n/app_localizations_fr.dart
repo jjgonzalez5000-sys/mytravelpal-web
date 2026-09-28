@@ -1506,6 +1506,60 @@ class AppLocalizationsFr extends AppLocalizations {
       'Ton véhicule ne peut pas parcourir l\'itinéraire avec un seul plein ou une seule charge — tu devras faire le plein ou recharger pendant le voyage.';
 
   @override
+  String consistencyMealBeforeDeparture(String slot, String km) {
+    return '$slot est programmé au km $km avant le départ du voyage. Ajuste l\'horaire de la pause ou du départ.';
+  }
+
+  @override
+  String consistencyMealAfterArrival(String slot, String km) {
+    return '$slot est programmé au km $km après l\'arrivée. Ajuste l\'horaire de la pause ou le rythme du voyage.';
+  }
+
+  @override
+  String consistencyMealImpossibleSpeed(String slot, String km, String kmh) {
+    return 'Atteindre $slot au km $km depuis le départ demanderait ~$kmh km/h — impossible. Revois la pause.';
+  }
+
+  @override
+  String consistencyMealSuspiciousSpeed(String slot, String km, String kmh) {
+    return 'Atteindre $slot au km $km depuis le départ demande ~$kmh km/h. Vérifie si le rythme est réaliste.';
+  }
+
+  @override
+  String consistencyMealTooCloseToArrival(String slot, String km, String mins) {
+    return '$slot au km $km est très proche de l\'arrivée ($mins min avant). Il vaut peut-être mieux manger à destination.';
+  }
+
+  @override
+  String consistencySleepBeforeDeparture(String km) {
+    return 'Le repos nocturne est programmé avant le départ (km $km). Vérifie l\'horaire.';
+  }
+
+  @override
+  String consistencySleepAfterArrival(String km) {
+    return 'Le repos nocturne est programmé après l\'arrivée (km $km). Il n\'est peut-être pas nécessaire.';
+  }
+
+  @override
+  String consistencySleepImpossibleSpeed(String km, String kmh) {
+    return 'Atteindre le repos nocturne au km $km demande ~$kmh km/h — impossible. Revois l\'étape.';
+  }
+
+  @override
+  String consistencySleepSuspiciousSpeed(String km, String kmh) {
+    return 'Le repos nocturne au km $km implique ~$kmh km/h de moyenne. Vérifie le rythme.';
+  }
+
+  @override
+  String get mealSlotBreakfastCap => 'Petit-déj.';
+
+  @override
+  String get mealSlotLunchCap => 'Déjeuner';
+
+  @override
+  String get mealSlotDinnerCap => 'Dîner';
+
+  @override
   String get consistencyHeadsUp => 'Info sur votre plan';
 
   @override
