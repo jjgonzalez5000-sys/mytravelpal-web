@@ -177,10 +177,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Text(l.appName, style: t.displayMedium)
-                  .animate()
-                  .fadeIn(duration: Tokens.motionBase)
-                  .moveY(begin: 8, end: 0, curve: Tokens.curveOut),
+              // FittedBox scales the app name down on narrow phones
+              // instead of overflowing (tester report 2026-09-28: a
+              // 6px overflow on the "MyTravelPal" displayMedium on
+              // an sdk gphone screen). Alignment left keeps the
+              // rest of the stretch column feeling natural.
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(l.appName, style: t.displayMedium)
+                    .animate()
+                    .fadeIn(duration: Tokens.motionBase)
+                    .moveY(begin: 8, end: 0, curve: Tokens.curveOut),
+              ),
               const SizedBox(height: Tokens.space8),
               Text(
                 '${l.appTagline}.',
