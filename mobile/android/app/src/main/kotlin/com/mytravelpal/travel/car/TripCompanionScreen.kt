@@ -1,4 +1,4 @@
-package com.mytravelpal.mytravelpal.car
+package com.mytravelpal.travel.car
 
 import android.content.Context
 import android.os.Handler
@@ -18,7 +18,7 @@ import androidx.car.app.model.PlaceMarker
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
 import androidx.core.graphics.drawable.IconCompat
-import com.mytravelpal.mytravelpal.R
+import com.mytravelpal.travel.R
 
 /**
  * Main Android Auto screen — the live trip overview.

@@ -1,8 +1,8 @@
-package com.mytravelpal.mytravelpal
+package com.mytravelpal.travel
 
 import android.content.Intent
 import android.os.Bundle
-import com.mytravelpal.mytravelpal.car.CarNotificationBridge
+import com.mytravelpal.travel.car.CarNotificationBridge
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel

@@ -68,6 +68,12 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Integration tests + full-auto Play Store screenshot capture
+  # via `tool/take_screenshots_auto.sh`. Screenshots are shipped
+  # to `store_assets/play_console/screenshots/` from the host
+  # side via `test_driver/screenshots_test.dart`.
+  integration_test:
+    sdk: flutter
   flutter_lints: ^5.0.0
 
 flutter:

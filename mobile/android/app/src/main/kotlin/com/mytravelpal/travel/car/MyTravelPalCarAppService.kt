@@ -1,4 +1,4 @@
-package com.mytravelpal.mytravelpal.car
+package com.mytravelpal.travel.car
 
 import androidx.car.app.CarAppService
 import androidx.car.app.Session

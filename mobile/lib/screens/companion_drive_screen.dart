@@ -2127,7 +2127,7 @@ class _CompanionLiveMapState extends State<_CompanionLiveMap>
           children: [
             fmap.TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+              userAgentPackageName: 'com.mytravelpal.travel',
             ),
             if (polylinePts.length >= 2)
               fmap.PolylineLayer(

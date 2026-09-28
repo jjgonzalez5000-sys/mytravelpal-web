@@ -4921,7 +4921,7 @@ class _MiniMapThumb extends StatelessWidget {
             fmap.TileLayer(
               urlTemplate:
                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+              userAgentPackageName: 'com.mytravelpal.travel',
             ),
             fmap.MarkerLayer(
               markers: [

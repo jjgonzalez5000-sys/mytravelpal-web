@@ -20,7 +20,7 @@ if (hasReleaseSigning) {
 }
 
 android {
-    namespace = "com.mytravelpal.mytravelpal"
+    namespace = "com.mytravelpal.travel"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -33,7 +33,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.mytravelpal.mytravelpal"
+        applicationId = "com.mytravelpal.travel"
         // flutter_local_notifications' zonedSchedule needs SDK 21+; the
         // default Flutter minSdk is 21 today so this is a no-op most of
         // the time but explicit is better than implicit.

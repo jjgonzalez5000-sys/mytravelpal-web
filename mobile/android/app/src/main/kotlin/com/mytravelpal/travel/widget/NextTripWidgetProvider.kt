@@ -1,4 +1,4 @@
-package com.mytravelpal.mytravelpal.widget
+package com.mytravelpal.travel.widget
 
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -7,8 +7,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.widget.RemoteViews
-import com.mytravelpal.mytravelpal.MainActivity
-import com.mytravelpal.mytravelpal.R
+import com.mytravelpal.travel.MainActivity
+import com.mytravelpal.travel.R
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId

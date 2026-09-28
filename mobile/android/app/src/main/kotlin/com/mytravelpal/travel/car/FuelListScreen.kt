@@ -1,4 +1,4 @@
-package com.mytravelpal.mytravelpal.car
+package com.mytravelpal.travel.car
 
 import android.content.Context
 import androidx.car.app.CarContext
@@ -14,7 +14,7 @@ import androidx.car.app.model.PlaceListMapTemplate
 import androidx.car.app.model.PlaceMarker
 import androidx.car.app.model.Row
 import androidx.car.app.model.Template
-import com.mytravelpal.mytravelpal.R
+import com.mytravelpal.travel.R
 import org.json.JSONArray
 
 /**

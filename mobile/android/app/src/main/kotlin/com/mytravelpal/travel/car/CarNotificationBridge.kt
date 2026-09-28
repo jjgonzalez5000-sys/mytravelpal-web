@@ -1,4 +1,4 @@
-package com.mytravelpal.mytravelpal.car
+package com.mytravelpal.travel.car
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -6,7 +6,7 @@ import android.content.Context
 import android.os.Build
 import androidx.car.app.notification.CarAppExtender
 import androidx.core.app.NotificationCompat
-import com.mytravelpal.mytravelpal.R
+import com.mytravelpal.travel.R
 import io.flutter.plugin.common.MethodChannel
 
 /**

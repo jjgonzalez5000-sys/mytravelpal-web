@@ -9,7 +9,7 @@ OSRM_READY    := $(OSRM_DATA)/osrm-graph.osrm.cell_metrics
 PROD_API_URL  := https://mytravelpal-api.fly.dev
 PROD_API_KEY  := 7637fb236013308ebf998843d924e15e56dce87457187e22a1a03c9c1e164d7a
 PROD_SENTRY   := https://3c46e071b627ae7c6c5cb4592cadbf60@o4511977727590400.ingest.de.sentry.io/4511977749086288
-APP_PACKAGE   := com.mytravelpal.mytravelpal
+APP_PACKAGE   := com.mytravelpal.travel
 APK_OUT       := $(MOBILE_DIR)/build/app/outputs/flutter-apk/app-release.apk
 RCLONE_DEST   := blu3g3_drive_jjgonzalez5000:Desarrollo_APPS/APKs/
 
@@ -159,12 +159,18 @@ deploy:
 	cd $(BACKEND_DIR) && fly deploy
 
 # --- Play Store screenshot capture --------------------------------
-# Prompts you to navigate through 8 screens, snaps each with adb.
-# Defaults to Spanish set. Override with `make screenshots LOCALE=en`.
+# Semi-auto: prompts you to navigate + snaps each with adb.
+# Full-auto: `flutter drive` runs the demo end-to-end via
+# `integration_test/screenshots_test.dart`. Both default to
+# Spanish; override with `LOCALE=en`.
 LOCALE ?= es
 .PHONY: screenshots
 screenshots:
 	cd $(MOBILE_DIR) && ./tool/take_screenshots.sh $(LOCALE)
+
+.PHONY: screenshots-auto
+screenshots-auto:
+	cd $(MOBILE_DIR) && ./tool/take_screenshots_auto.sh $(LOCALE)
 
 .PHONY: clean
 clean:

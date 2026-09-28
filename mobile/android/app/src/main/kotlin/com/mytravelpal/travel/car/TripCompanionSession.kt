@@ -1,4 +1,4 @@
-package com.mytravelpal.mytravelpal.car
+package com.mytravelpal.travel.car
 
 import android.content.Intent
 import androidx.car.app.Screen

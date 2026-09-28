@@ -499,7 +499,7 @@ class DayPlanSection extends StatelessWidget {
             fmap.TileLayer(
               urlTemplate:
                   'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.mytravelpal.mytravelpal',
+              userAgentPackageName: 'com.mytravelpal.travel',
             ),
             fmap.PolylineLayer(
               polylines: [
@@ -2708,7 +2708,7 @@ class _WaypointTimelineRow extends StatelessWidget {
                       fmap.TileLayer(
                         urlTemplate:
                             'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                        userAgentPackageName: 'com.mytravelpal.mytravelpal',
+                        userAgentPackageName: 'com.mytravelpal.travel',
                       ),
                       fmap.MarkerLayer(
                         markers: [

@@ -134,7 +134,7 @@
         <!-- Home-screen widget with countdown to the next saved
              trip. See `widget/NextTripWidgetProvider.kt`. -->
         <receiver
-            android:name="com.mytravelpal.mytravelpal.widget.NextTripWidgetProvider"
+            android:name="com.mytravelpal.travel.widget.NextTripWidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -162,7 +162,7 @@
             android:stopWithTask="false" />
 
         <service
-            android:name="com.mytravelpal.mytravelpal.car.MyTravelPalCarAppService"
+            android:name="com.mytravelpal.travel.car.MyTravelPalCarAppService"
             android:exported="true">
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
