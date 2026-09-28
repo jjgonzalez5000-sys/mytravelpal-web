@@ -1521,11 +1521,15 @@ async def _plan_enrich_impl(
 
     # Per-provider wall-clock budgets. Hotels + restaurants get the
     # largest slice because they fan out over corridor chunks
-    # (Geoapify's own internal budget is 25 s, so give the outer
-    # wrapper a hair more so it doesn't fire before the inner one).
-    _HOTELS_BUDGET_S = 28.0
-    _RESTAURANTS_BUDGET_S = 28.0
-    _FUEL_BUDGET_S = 30.0  # Hybrid: gov + HERE + Nominatim in series
+    # (Geoapify's own internal budget is 45 s after 2026-09-28 fix
+    # for multi-country trips; give the outer wrapper a small buffer
+    # so it fires AFTER the inner one and we return partial data
+    # instead of nothing). Fuel is `HybridFuelProvider` (gov feeds
+    # for ES/FR/IT + HERE fallback in series) so it needs the same
+    # headroom on trips that touch several country boundaries.
+    _HOTELS_BUDGET_S = 50.0
+    _RESTAURANTS_BUDGET_S = 50.0
+    _FUEL_BUDGET_S = 50.0  # Hybrid: gov + HERE + Nominatim in series
     _ADVERSE_BUDGET_S = 15.0
     _WEATHER_BUDGET_S = 15.0
     _ALT_ROUTE_BUDGET_S = 20.0

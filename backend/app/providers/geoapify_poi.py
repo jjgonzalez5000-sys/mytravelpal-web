@@ -55,24 +55,25 @@ from app.providers.restaurants import _classify_meal_price
 _log = logging.getLogger(__name__)
 
 _URL = "https://api.geoapify.com/v2/places"
-# Per-request timeout. Tightened from read=40 → read=15 after long
-# international trips (CH → RO) stalled the whole /plan while a
-# single Geoapify chunk retried a 40 s window twice. 15 s covers the
-# 99th percentile of successful Places responses in practice; slower
-# responses now fail fast so the outer `wait_for` budget (see
-# `_ALONG_BUDGET_S`) can move on with partial data instead of blocking
-# the client past its 120 s cap.
-_TIMEOUT = httpx.Timeout(connect=8.0, read=15.0, write=8.0, pool=5.0)
+# Per-request timeout. Bumped read=15 → read=25 after 2026-09-28
+# Toledo → Turda dogfood — 6-chunk fanouts on ~2800 km routes need a
+# bit more headroom per rectangle because Geoapify's own scan is
+# proportional to the bbox area, and a 500-km chunk can breach the
+# tighter ceiling. 25 s still covers the 99th percentile of
+# short-trip responses; the outer `wait_for` (`_ALONG_BUDGET_S`)
+# keeps a hard stop so a stall doesn't propagate.
+_TIMEOUT = httpx.Timeout(connect=8.0, read=25.0, write=8.0, pool=5.0)
 _LIMIT = 40
 _USER_AGENT = "MyTravelPal/1.0 (+https://mytravelpal.app)"
 
 # Wall-clock cap for a whole `hotels_along` / `restaurants_along` /
-# `prices_along` invocation. If the fan-out over corridor chunks
-# hasn't finished within this window the call returns whatever it
-# has (usually `()`), logs, and lets the enrichment gather move on.
-# Enrichment must degrade gracefully — a slow Geoapify chunk should
-# never take down fuel + weather + adverse along with it.
-_ALONG_BUDGET_S = 25.0
+# `prices_along` invocation. Bumped 25 → 45 to survive multi-country
+# trips (ES → RO, DE → PT) where the 6-chunk fanout can legitimately
+# take ~30 s even on a warm cache. The outer per-provider budget in
+# `trips.py` should always be ≥ this value + a small buffer so the
+# inner timeout fires first and returns partial data instead of the
+# outer axing the coroutine mid-flight.
+_ALONG_BUDGET_S = 45.0
 
 
 def _api_key() -> str | None:

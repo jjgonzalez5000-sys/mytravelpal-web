@@ -115,7 +115,15 @@ def _route_viewbox(route: Route) -> tuple[float, float, float, float]:
 # `restaurants_near` densification (trips.py) fills the gaps
 # around each picked rest stop when the corridor pass is sparse.
 _CORRIDOR_CHUNK_KM = 500.0
-_MAX_CORRIDOR_CHUNKS = 4
+# Bumped 4 → 6 after 2026-09-28 dogfood: Toledo → Turda (RO) is
+# ~2800 km, capped at 4 chunks it meant each Geoapify bbox spanned
+# ~700 km. Places API kept timing out on those huge rectangles →
+# every provider returned empty and the driver saw a bare plan.
+# Six chunks = ~467 km each → bboxes small enough that Geoapify's
+# 15 s per-request timeout is workable, still under the free tier's
+# 5 req/s ceiling (6 chunks × 3 categories = 18 requests fired in
+# parallel, but Geoapify pools per key so effective peak is lower).
+_MAX_CORRIDOR_CHUNKS = 6
 _MIN_CORRIDOR_CHUNKS = 1
 
 
