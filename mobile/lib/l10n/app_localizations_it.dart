@@ -2293,6 +2293,97 @@ class AppLocalizationsIt extends AppLocalizations {
   String get enrichmentChipAdverse => 'Avvisi';
 
   @override
+  String get enrichPulseHeader => 'In questo momento…';
+
+  @override
+  String get enrichPulseHotels =>
+      'Ricerca hotel col miglior rapporto prezzo/stelle';
+
+  @override
+  String get enrichPulseRestaurants =>
+      'Filtro ristoranti nella tua fascia di prezzo';
+
+  @override
+  String get enrichPulseFuel => 'Localizzazione dei distributori più economici';
+
+  @override
+  String get enrichPulseTolls =>
+      'Individuazione dei pedaggi evitabili senza deviazione';
+
+  @override
+  String get enrichPulseWindows => 'Confronto orari per traffico previsto';
+
+  @override
+  String get enrichPulseWeather => 'Previsione orario su 5 tratti della rotta';
+
+  @override
+  String get enrichPulseAdverse =>
+      'Incroci con incendi e terremoti attivi sul tuo percorso';
+
+  @override
+  String get enrichPulseKids => 'Aree di sosta con parco giochi vicine';
+
+  @override
+  String get enrichPulsePets => 'Localizzazione aree cani e soste pet-friendly';
+
+  @override
+  String get enrichPulseCamper => 'Aree camper con scarico e servizi igienici';
+
+  @override
+  String enrichPulseVehicle(String vehicle, String tank) {
+    return 'Calcolo rifornimento per il tuo $vehicle ($tank L)';
+  }
+
+  @override
+  String get windowsSheetTitle => 'Finestre di partenza';
+
+  @override
+  String get windowsSheetHint =>
+      'Tocca una scheda per ripianificare con quella partenza.';
+
+  @override
+  String get windowsSheetOpen => 'Dettaglio orario';
+
+  @override
+  String get windowsBadgeCurrent => 'Attuale';
+
+  @override
+  String get windowsBadgeRecommended => 'Consigliata';
+
+  @override
+  String get windowsMetaDuration => 'Durata';
+
+  @override
+  String get windowsMetaArrival => 'Arrivo';
+
+  @override
+  String get windowsMetaTraffic => 'Traffico';
+
+  @override
+  String get trafficLight => 'Leggero';
+
+  @override
+  String get trafficMedium => 'Moderato';
+
+  @override
+  String get trafficDense => 'Intenso';
+
+  @override
+  String get todEarlyMorning => 'Prima mattina';
+
+  @override
+  String get todMorning => 'Mattina';
+
+  @override
+  String get todNoon => 'Mezzogiorno';
+
+  @override
+  String get todAfternoon => 'Pomeriggio';
+
+  @override
+  String get todNight => 'Notte';
+
+  @override
   String get restaurantPrefCuisinesLabel => 'Tipo di cucina';
 
   @override

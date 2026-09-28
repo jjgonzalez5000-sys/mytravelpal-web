@@ -903,6 +903,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return (bestIndex / (geom.length - 1)) * totalKm;
   }
 
+  /// Best-effort human label for the trip vehicle — used by the
+  /// enrichment progress card's rotating "tuning refuel plan for
+  /// your <car>" pulse line. Prefers the catalogue entry when the
+  /// user has picked a specific model; falls back to null (which
+  /// silences that particular pulse) if the catalogue hasn't loaded
+  /// or the profile is on the default generic vehicle.
+  String? _enrichmentVehicleLabel() {
+    final modelId = widget.request.tripProfile?.vehicleModelId;
+    if (modelId == null) return null;
+    final cat = ref.read(vehicleCatalogueProvider).valueOrNull;
+    if (cat == null) return null;
+    for (final v in cat) {
+      if (v.id == modelId) return '${v.make} ${v.model}';
+    }
+    return null;
+  }
+
   /// Resolve the flat `_addedStops` map (keyed by string ids) into
   /// full `AddedStop` records with coord + label so the map sheet can
   /// plot markers. Order preserved from the API response so nearby
@@ -1807,6 +1824,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         hasFuel: _response.fuelPrices.isNotEmpty,
         hasWeather: _response.weatherSegments.isNotEmpty,
         hasAdverse: _response.adverseEvents.isNotEmpty,
+        profileHasKids: widget.request.tripProfile?.hasKids ?? false,
+        profileHasPets: widget.request.tripProfile?.hasPets ?? false,
+        profileIsCamper: widget.request.tripProfile?.vehicle.type ==
+            VehicleType.camper,
+        vehicleLabel: _enrichmentVehicleLabel(),
+        vehicleTankL: widget.request.tripProfile?.vehicle.fuelTankL,
       ),
       // Thin indeterminate progress bar shown ONLY while a per-day
       // override re-plan is in flight. Anchored right above the day
@@ -3187,7 +3210,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton.icon(
               icon: const Icon(Icons.open_in_full, size: 16),
-              label: const Text('Ver detalle por hora'),
+              label: Text(l.windowsSheetOpen),
               onPressed: () => _showAllWindowsSheet(
                 context,
                 windows,
@@ -3217,6 +3240,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
   ) async {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final dateFmt = DateFormat.MMMEd();
     final timeFmt = DateFormat.Hm();
 
@@ -3224,20 +3248,20 @@ class _TripCostWindowsDropdown extends StatelessWidget {
     ({String label, Color bg, Color fg}) trafficStyle(double f) {
       if (f <= 1.05) {
         return (
-          label: 'Ligero',
+          label: l.trafficLight,
           bg: Colors.green.shade50,
           fg: Colors.green.shade800,
         );
       }
       if (f <= 1.20) {
         return (
-          label: 'Moderado',
+          label: l.trafficMedium,
           bg: Colors.amber.shade50,
           fg: Colors.amber.shade900,
         );
       }
       return (
-        label: 'Denso',
+        label: l.trafficDense,
         bg: Colors.red.shade50,
         fg: Colors.red.shade800,
       );
@@ -3248,11 +3272,11 @@ class _TripCostWindowsDropdown extends StatelessWidget {
     // glance without doing math on 24h clock times.
     ({String label, IconData icon}) tod(DateTime local) {
       final h = local.hour;
-      if (h < 6) return (label: 'Madrugada', icon: Icons.nightlight_round);
-      if (h < 12) return (label: 'Mañana', icon: Icons.wb_sunny_outlined);
-      if (h < 14) return (label: 'Mediodía', icon: Icons.wb_sunny);
-      if (h < 20) return (label: 'Tarde', icon: Icons.wb_twilight);
-      return (label: 'Noche', icon: Icons.bedtime_outlined);
+      if (h < 6) return (label: l.todEarlyMorning, icon: Icons.nightlight_round);
+      if (h < 12) return (label: l.todMorning, icon: Icons.wb_sunny_outlined);
+      if (h < 14) return (label: l.todNoon, icon: Icons.wb_sunny);
+      if (h < 20) return (label: l.todAfternoon, icon: Icons.wb_twilight);
+      return (label: l.todNight, icon: Icons.bedtime_outlined);
     }
 
     await showModalBottomSheet<void>(
@@ -3271,12 +3295,12 @@ class _TripCostWindowsDropdown extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Ventanas de salida',
+                Text(l.windowsSheetTitle,
                     style: t.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 4),
                 Text(
-                  'Toca una tarjeta para replanificar con esa salida.',
+                  l.windowsSheetHint,
                   style: t.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                   ),
@@ -3381,7 +3405,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                                         borderRadius:
                                             BorderRadius.circular(999),
                                       ),
-                                      child: Text('Actual',
+                                      child: Text(l.windowsBadgeCurrent,
                                           style: t.labelSmall?.copyWith(
                                             color: scheme.onPrimary,
                                             fontWeight: FontWeight.w700,
@@ -3393,7 +3417,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                                           size: 16,
                                           color: scheme.primary),
                                       const SizedBox(width: 3),
-                                      Text('Recomendada',
+                                      Text(l.windowsBadgeRecommended,
                                           style: t.labelSmall?.copyWith(
                                             color: scheme.primary,
                                             fontWeight: FontWeight.w700,
@@ -3432,7 +3456,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                                 children: [
                                   _MetaChip(
                                     icon: Icons.schedule,
-                                    label: 'Duración',
+                                    label: l.windowsMetaDuration,
                                     value: durationCompact(
                                         w.estimatedMinutes),
                                     scheme: scheme,
@@ -3440,7 +3464,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                                   ),
                                   _MetaChip(
                                     icon: Icons.flag_outlined,
-                                    label: 'Llegada',
+                                    label: l.windowsMetaArrival,
                                     value: '${timeFmt.format(arrivalLocal)}'
                                         '${arrivalDeltaMin.abs() >= 5 && !isBaseline ? "  (${arrivalDeltaMin >= 0 ? "+" : "−"}${durationCompact(arrivalDeltaMin.abs().toDouble())})" : ""}',
                                     scheme: scheme,
@@ -3448,7 +3472,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                                   ),
                                   _MetaChip(
                                     icon: Icons.traffic,
-                                    label: 'Tráfico',
+                                    label: l.windowsMetaTraffic,
                                     value:
                                         '${tf.label}  (×${w.trafficFactor.toStringAsFixed(2)})',
                                     scheme: scheme,

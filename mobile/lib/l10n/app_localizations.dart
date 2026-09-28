@@ -4142,6 +4142,174 @@ abstract class AppLocalizations {
   /// **'Alerts'**
   String get enrichmentChipAdverse;
 
+  /// No description provided for @enrichPulseHeader.
+  ///
+  /// In en, this message translates to:
+  /// **'Right now…'**
+  String get enrichPulseHeader;
+
+  /// No description provided for @enrichPulseHotels.
+  ///
+  /// In en, this message translates to:
+  /// **'Finding hotels with the best price/stars'**
+  String get enrichPulseHotels;
+
+  /// No description provided for @enrichPulseRestaurants.
+  ///
+  /// In en, this message translates to:
+  /// **'Filtering restaurants in your price band'**
+  String get enrichPulseRestaurants;
+
+  /// No description provided for @enrichPulseFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Locating the cheapest gas stations along the corridor'**
+  String get enrichPulseFuel;
+
+  /// No description provided for @enrichPulseTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'Spotting tolls you can skip without a detour'**
+  String get enrichPulseTolls;
+
+  /// No description provided for @enrichPulseWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Comparing departure hours by expected traffic'**
+  String get enrichPulseWindows;
+
+  /// No description provided for @enrichPulseWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Hour-by-hour forecast across 5 route segments'**
+  String get enrichPulseWeather;
+
+  /// No description provided for @enrichPulseAdverse.
+  ///
+  /// In en, this message translates to:
+  /// **'Cross-checking active fires and quakes against your route'**
+  String get enrichPulseAdverse;
+
+  /// No description provided for @enrichPulseKids.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest stops with playgrounds nearby'**
+  String get enrichPulseKids;
+
+  /// No description provided for @enrichPulsePets.
+  ///
+  /// In en, this message translates to:
+  /// **'Locating dog areas and pet-friendly stops'**
+  String get enrichPulsePets;
+
+  /// No description provided for @enrichPulseCamper.
+  ///
+  /// In en, this message translates to:
+  /// **'Camper areas with dump and sanitary facilities'**
+  String get enrichPulseCamper;
+
+  /// No description provided for @enrichPulseVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuning refuel plan for your {vehicle} ({tank} L)'**
+  String enrichPulseVehicle(String vehicle, String tank);
+
+  /// No description provided for @windowsSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Departure windows'**
+  String get windowsSheetTitle;
+
+  /// No description provided for @windowsSheetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a card to replan with that departure.'**
+  String get windowsSheetHint;
+
+  /// No description provided for @windowsSheetOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'See hour-by-hour detail'**
+  String get windowsSheetOpen;
+
+  /// No description provided for @windowsBadgeCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get windowsBadgeCurrent;
+
+  /// No description provided for @windowsBadgeRecommended.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended'**
+  String get windowsBadgeRecommended;
+
+  /// No description provided for @windowsMetaDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get windowsMetaDuration;
+
+  /// No description provided for @windowsMetaArrival.
+  ///
+  /// In en, this message translates to:
+  /// **'Arrival'**
+  String get windowsMetaArrival;
+
+  /// No description provided for @windowsMetaTraffic.
+  ///
+  /// In en, this message translates to:
+  /// **'Traffic'**
+  String get windowsMetaTraffic;
+
+  /// No description provided for @trafficLight.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get trafficLight;
+
+  /// No description provided for @trafficMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get trafficMedium;
+
+  /// No description provided for @trafficDense.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy'**
+  String get trafficDense;
+
+  /// No description provided for @todEarlyMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Early morning'**
+  String get todEarlyMorning;
+
+  /// No description provided for @todMorning.
+  ///
+  /// In en, this message translates to:
+  /// **'Morning'**
+  String get todMorning;
+
+  /// No description provided for @todNoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Midday'**
+  String get todNoon;
+
+  /// No description provided for @todAfternoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Afternoon'**
+  String get todAfternoon;
+
+  /// No description provided for @todNight.
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get todNight;
+
   /// No description provided for @restaurantPrefCuisinesLabel.
   ///
   /// In en, this message translates to:

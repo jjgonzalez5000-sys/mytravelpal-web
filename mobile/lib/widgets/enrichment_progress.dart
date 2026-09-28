@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../design/tokens.dart';
@@ -9,6 +11,16 @@ import '../l10n/app_localizations.dart';
 /// flash for a request that IS going to bring hotels a few seconds
 /// later.
 ///
+/// Above the chip row we now also render a tailored rotating pulse
+/// line ("Ahora mismo..." / "Right now...") that cycles through the
+/// concrete search operations we're actually running for this trip:
+/// hotels, restaurants, fuel arbitrage, toll skips, weather, adverse
+/// event corridor, plus profile-specific extras (playgrounds when
+/// travelling with kids, pet areas, camper facilities, and the user's
+/// vehicle tank size). The messages are ALL real work happening
+/// during enrichment — the rotation is just so the user perceives
+/// the intelligence instead of a generic spinner.
+///
 /// Rendering rules:
 /// - Only shows chips for categories the user actually requested
 ///   (hotel prefs on / restaurant prefs on / etc). If a category isn't
@@ -16,7 +28,7 @@ import '../l10n/app_localizations.dart';
 /// - Each chip transitions from spinner → check when its data lands.
 /// - The whole card auto-fades and slides out when `pending` flips
 ///   false (all categories done).
-class EnrichmentProgress extends StatelessWidget {
+class EnrichmentProgress extends StatefulWidget {
   const EnrichmentProgress({
     super.key,
     required this.pending,
@@ -28,6 +40,11 @@ class EnrichmentProgress extends StatelessWidget {
     required this.hasFuel,
     required this.hasWeather,
     required this.hasAdverse,
+    this.profileHasKids = false,
+    this.profileHasPets = false,
+    this.profileIsCamper = false,
+    this.vehicleLabel,
+    this.vehicleTankL,
   });
 
   /// True while the enrich future is still in flight. When false the
@@ -44,6 +61,78 @@ class EnrichmentProgress extends StatelessWidget {
   final bool hasWeather;
   final bool hasAdverse;
 
+  /// Profile flags — drive the tailored pulse messages. Passing them
+  /// as opt-in booleans keeps the widget free of a hard dependency on
+  /// TripProfile (some call-sites don't have one).
+  final bool profileHasKids;
+  final bool profileHasPets;
+  final bool profileIsCamper;
+
+  /// Display label for the vehicle (e.g. "Toyota Yaris 4 HEV"). If
+  /// null, the vehicle pulse line is dropped.
+  final String? vehicleLabel;
+
+  /// Tank size in litres — only used to render the vehicle pulse
+  /// line ("Ajustando repostaje a tu Yaris (50 L)").
+  final double? vehicleTankL;
+
+  @override
+  State<EnrichmentProgress> createState() => _EnrichmentProgressState();
+}
+
+class _EnrichmentProgressState extends State<EnrichmentProgress> {
+  Timer? _rotator;
+  int _pulseIndex = 0;
+
+  static const Duration _pulsePeriod = Duration(milliseconds: 2600);
+
+  @override
+  void initState() {
+    super.initState();
+    _rotator = Timer.periodic(_pulsePeriod, (_) {
+      if (!mounted) return;
+      setState(() => _pulseIndex += 1);
+    });
+  }
+
+  @override
+  void dispose() {
+    _rotator?.cancel();
+    super.dispose();
+  }
+
+  List<_PulseMessage> _pulses(AppLocalizations l) {
+    final out = <_PulseMessage>[
+      if (widget.hotelsRequested)
+        _PulseMessage(Icons.hotel_outlined, l.enrichPulseHotels),
+      if (widget.restaurantsRequested)
+        _PulseMessage(Icons.restaurant_outlined, l.enrichPulseRestaurants),
+      _PulseMessage(Icons.local_gas_station_outlined, l.enrichPulseFuel),
+      _PulseMessage(Icons.toll_outlined, l.enrichPulseTolls),
+      _PulseMessage(Icons.access_time, l.enrichPulseWindows),
+      _PulseMessage(Icons.wb_cloudy_outlined, l.enrichPulseWeather),
+      if (widget.adverseRequested)
+        _PulseMessage(Icons.warning_amber_outlined, l.enrichPulseAdverse),
+      if (widget.profileHasKids)
+        _PulseMessage(Icons.child_care_outlined, l.enrichPulseKids),
+      if (widget.profileHasPets)
+        _PulseMessage(Icons.pets_outlined, l.enrichPulsePets),
+      if (widget.profileIsCamper)
+        _PulseMessage(Icons.rv_hookup, l.enrichPulseCamper),
+    ];
+    final vehicle = widget.vehicleLabel;
+    final tank = widget.vehicleTankL;
+    if (vehicle != null && vehicle.isNotEmpty && tank != null) {
+      out.add(
+        _PulseMessage(
+          Icons.directions_car_outlined,
+          l.enrichPulseVehicle(vehicle, tank.round().toString()),
+        ),
+      );
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -55,44 +144,49 @@ class EnrichmentProgress extends StatelessWidget {
     // response when the backend has data; there's no per-user opt-out
     // in the plan form yet). Adverse is gated by an explicit flag.
     final chips = <_EnrichChipData>[
-      if (hotelsRequested)
+      if (widget.hotelsRequested)
         _EnrichChipData(
           icon: Icons.hotel_outlined,
           label: l.enrichmentChipHotels,
-          done: hasHotels,
+          done: widget.hasHotels,
         ),
-      if (restaurantsRequested)
+      if (widget.restaurantsRequested)
         _EnrichChipData(
           icon: Icons.restaurant_outlined,
           label: l.enrichmentChipRestaurants,
-          done: hasRestaurants,
+          done: widget.hasRestaurants,
         ),
       _EnrichChipData(
         icon: Icons.local_gas_station_outlined,
         label: l.enrichmentChipFuel,
-        done: hasFuel,
+        done: widget.hasFuel,
       ),
       _EnrichChipData(
         icon: Icons.wb_cloudy_outlined,
         label: l.enrichmentChipWeather,
-        done: hasWeather,
+        done: widget.hasWeather,
       ),
-      if (adverseRequested)
+      if (widget.adverseRequested)
         _EnrichChipData(
           icon: Icons.warning_amber_outlined,
           label: l.enrichmentChipAdverse,
-          done: hasAdverse,
+          done: widget.hasAdverse,
         ),
     ];
+
+    final pulses = _pulses(l);
+    final current = pulses.isEmpty
+        ? null
+        : pulses[_pulseIndex % pulses.length];
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
       alignment: Alignment.topCenter,
       child: AnimatedOpacity(
-        opacity: pending ? 1.0 : 0.0,
+        opacity: widget.pending ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 300),
-        child: pending
+        child: widget.pending
             ? Card(
                 elevation: 0,
                 color: scheme.surfaceContainerHigh,
@@ -140,6 +234,13 @@ class EnrichmentProgress extends StatelessWidget {
                           color: scheme.primary,
                         ),
                       ),
+                      if (current != null) ...[
+                        const SizedBox(height: Tokens.space12),
+                        _PulseLine(
+                          header: l.enrichPulseHeader,
+                          message: current,
+                        ),
+                      ],
                       const SizedBox(height: Tokens.space12),
                       Wrap(
                         spacing: Tokens.space8,
@@ -154,6 +255,75 @@ class EnrichmentProgress extends StatelessWidget {
               )
             : const SizedBox.shrink(),
       ),
+    );
+  }
+}
+
+class _PulseMessage {
+  const _PulseMessage(this.icon, this.text);
+  final IconData icon;
+  final String text;
+}
+
+/// The rotating "Ahora mismo..." row. Uses AnimatedSwitcher with a
+/// short cross-fade so the change reads as a soft pulse rather than
+/// a jump. Kept intentionally compact (single line, ellipsis) so
+/// long translations don't shove the chips down.
+class _PulseLine extends StatelessWidget {
+  const _PulseLine({required this.header, required this.message});
+  final String header;
+  final _PulseMessage message;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Text(
+          header,
+          style: t.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.15),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            ),
+            child: Row(
+              key: ValueKey(message.text),
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(message.icon, size: 14, color: scheme.primary),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    message.text,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.labelMedium?.copyWith(
+                      color: scheme.onSurface,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
