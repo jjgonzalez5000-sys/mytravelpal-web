@@ -119,6 +119,13 @@ class PlanScreen extends ConsumerStatefulWidget {
 class _PlanScreenState extends ConsumerState<PlanScreen> {
   GeocodeResult? _origin;
   GeocodeResult? _destination;
+
+  /// Saved-trip user-selections blob to forward on the NEXT submit —
+  /// populated when the driver picks a saved trip via
+  /// `_RecentTripsDropdown`. Cleared to null on any subsequent
+  /// manual field change so a hand-edited plan doesn't inherit the
+  /// original trip's picks (they'd rehydrate to the wrong stations).
+  Map<String, dynamic>? _pendingSelections;
   // Intermediate stops between origin and destination, in the
   // order the driver picked them. Empty = classic point-to-
   // point. Backend caps at 8.
@@ -822,6 +829,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             // for hotels / restaurants / fuel / adverse events and
             // hydrates them when this future resolves.
             enrichFuture: enrichFuture,
+            // Forward any pending user-selections carried in from a
+            // recent-trip pick, so the fresh plan lands with the
+            // driver's earlier fuel / hotel picks pre-applied.
+            initialSelections: _pendingSelections,
           ),
         ),
       );
@@ -1058,6 +1069,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         _overrideProfile = null;
                         _isRoundTrip = false;
                         _returnDeparture = _defaultReturnDeparture();
+                        // Carry the saved user-selections blob through
+                        // to the next plan submission so the driver's
+                        // earlier fuel / hotel / restaurant picks
+                        // rehydrate on the fresh ResultScreen.
+                        _pendingSelections = trip.userSelections;
                       });
                     },
                   ),

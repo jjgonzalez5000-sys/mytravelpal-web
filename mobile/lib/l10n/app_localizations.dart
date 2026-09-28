@@ -1410,6 +1410,12 @@ abstract class AppLocalizations {
   /// **'Save trip'**
   String get resultSaveTooltip;
 
+  /// No description provided for @resultSaveChangesTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get resultSaveChangesTooltip;
+
   /// No description provided for @resultSavedTooltip.
   ///
   /// In en, this message translates to:

@@ -258,6 +258,7 @@
     "resultShareTooltip": "Partager ce voyage",
     "resultExplainTooltip": "Expliquer mon voyage (Premium)",
     "resultSaveTooltip": "Enregistrer",
+    "resultSaveChangesTooltip": "Enregistrer les changements",
     "resultSavedTooltip": "Enregistré",
     "resultTripSaved": "Voyage enregistré",
 

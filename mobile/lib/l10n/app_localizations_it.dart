@@ -724,6 +724,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get resultSaveTooltip => 'Salva viaggio';
 
   @override
+  String get resultSaveChangesTooltip => 'Salva modifiche';
+
+  @override
   String get resultSavedTooltip => 'Salvato';
 
   @override

@@ -236,6 +236,7 @@
     "resultShareTooltip": "Share this trip",
     "resultExplainTooltip": "Explain my trip (Premium)",
     "resultSaveTooltip": "Save trip",
+    "resultSaveChangesTooltip": "Save changes",
     "resultSavedTooltip": "Saved",
     "resultTripSaved": "Trip saved",
 

@@ -723,6 +723,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultSaveTooltip => 'Enregistrer';
 
   @override
+  String get resultSaveChangesTooltip => 'Enregistrer les changements';
+
+  @override
   String get resultSavedTooltip => 'Enregistré';
 
   @override

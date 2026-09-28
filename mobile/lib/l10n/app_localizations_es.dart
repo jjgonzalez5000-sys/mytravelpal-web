@@ -729,6 +729,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get resultSaveTooltip => 'Guardar viaje';
 
   @override
+  String get resultSaveChangesTooltip => 'Guardar cambios';
+
+  @override
   String get resultSavedTooltip => 'Guardado';
 
   @override

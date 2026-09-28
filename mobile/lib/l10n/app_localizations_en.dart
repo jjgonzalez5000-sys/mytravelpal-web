@@ -718,6 +718,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultSaveTooltip => 'Save trip';
 
   @override
+  String get resultSaveChangesTooltip => 'Save changes';
+
+  @override
   String get resultSavedTooltip => 'Saved';
 
   @override

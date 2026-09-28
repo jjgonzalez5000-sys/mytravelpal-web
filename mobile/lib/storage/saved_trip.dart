@@ -21,6 +21,7 @@ class SavedTrip {
     this.fuelCostEur = 0,
     this.reminderMinutesBefore = 0,
     this.notificationId,
+    this.userSelections,
   });
 
   final String id;
@@ -57,6 +58,23 @@ class SavedTrip {
   /// disabled at save time.
   final int? notificationId;
 
+  /// Free-form JSON blob capturing the user's per-trip tweaks that
+  /// the /plan response alone can't reconstruct: picked fuel-station
+  /// keys, selected per-night hotel keys, picked meal-restaurant
+  /// keys, the departure window they chose (if not the recommended
+  /// one) and any per-day override sheet edits.
+  ///
+  /// Kept as an opaque map so we can grow it without a migration
+  /// path every sprint. Consumer of the field is
+  /// [ResultScreen], which rehydrates known shape keys on load:
+  ///   picked_fuel_keys: [String]
+  ///   picked_restaurant_keys: [String]
+  ///   picked_hotel_keys_by_day: {String dayIndex: {name,lat,lon}}
+  ///   chosen_departure_at: ISO String (only when not the recommended)
+  ///   day_overrides: {String dayIndex: {start_hour, cap_hours}}
+  ///   destination_hotel: {name,lat,lon}
+  final Map<String, dynamic>? userSelections;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'origin': _geocodeJson(origin),
@@ -73,6 +91,8 @@ class SavedTrip {
         'fuel_cost_eur': fuelCostEur,
         'reminder_minutes_before': reminderMinutesBefore,
         if (notificationId != null) 'notification_id': notificationId,
+        if (userSelections != null && userSelections!.isNotEmpty)
+          'user_selections': userSelections,
       };
 
   factory SavedTrip.fromJson(Map<String, dynamic> json) => SavedTrip(
@@ -96,6 +116,7 @@ class SavedTrip {
         reminderMinutesBefore:
             (json['reminder_minutes_before'] as num?)?.toInt() ?? 0,
         notificationId: (json['notification_id'] as num?)?.toInt(),
+        userSelections: json['user_selections'] as Map<String, dynamic>?,
       );
 }
 

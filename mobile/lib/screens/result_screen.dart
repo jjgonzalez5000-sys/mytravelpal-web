@@ -116,7 +116,15 @@ class ResultScreen extends ConsumerStatefulWidget {
     this.hotelPrefs,
     this.enrichFuture,
     this.departureClaimed = false,
+    this.initialSelections,
   });
+
+  /// Pre-populated user selections carried over from a `SavedTrip`
+  /// (fuel picks, hotel picks, chosen departure, per-day overrides).
+  /// When non-null the screen rehydrates its state after the first
+  /// enrich frame lands so re-opening a saved trip reads back with
+  /// the driver's earlier tweaks intact. Null on a fresh plan.
+  final Map<String, dynamic>? initialSelections;
 
   final TripPlanRequest request;
   final GeocodeResult origin;
@@ -166,6 +174,14 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _saved = false;
   bool _saving = false;
+
+  /// Flips true when the user tweaks anything AFTER the trip has
+  /// been saved (fuel pick, meal / hotel pick, day override, chosen
+  /// departure window). Drives the "Guardar cambios" affordance on
+  /// the AppBar bookmark so a re-save persists the modified state.
+  /// Reset to false inside [_save] once the write lands.
+  bool _dirty = false;
+
 
   /// Response actually rendered by the tree. Seeded from `widget.response`
   /// (the core, fast phase). When `widget.enrichFuture` resolves, the
@@ -307,6 +323,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     _tollSkipEnabled = {
       for (var i = 0; i < _response.partialTollSkips.length; i++) i,
     };
+    // If this ResultScreen was opened from a SavedTrip, seed the
+    // user-selections state from the persisted blob now for the
+    // parts that don't need enrich data (day overrides). Fuel /
+    // restaurant / hotel picks reference response objects that
+    // arrive in enrich — those get applied after the merge below.
+    if (widget.initialSelections != null) {
+      _applyOverrideSelections(widget.initialSelections!);
+      // If enrich isn't a two-phase flow (already merged), the picks
+      // can also be applied right now — response objects are already
+      // populated. The two-phase path handles this after `.then` of
+      // enrichFuture instead. Both branches then set _saved / _dirty.
+      if (widget.enrichFuture == null) {
+        _applyPickSelections(widget.initialSelections!);
+        _saved = true;
+        _dirty = false;
+      }
+    }
     // Progressive hydration: swap enrich data into _response when the
     // second phase lands. Merge is idempotent (Core-owned fields come
     // from core, enrich-owned from enrich) so the visible route /
@@ -333,6 +366,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   i++)
                 i,
             };
+          }
+          // Rehydrate the picks that reference enrich-only response
+          // objects (fuel stations, hotels, restaurants). Safe to
+          // call every time — helper only patches state when the
+          // saved keys resolve to an entry in the merged response.
+          if (widget.initialSelections != null) {
+            _applyPickSelections(widget.initialSelections!);
+            // Rehydration must NOT flip _dirty — the trip is exactly
+            // as the driver last saved it, so start clean.
+            _saved = true;
+            _dirty = false;
           }
         });
         // Now that partial toll skips (may) exist, offer the coach
@@ -456,6 +500,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           _pickedFuelSavings[key] = perL * tank;
         }
       }
+      _markDirty();
     });
   }
 
@@ -491,6 +536,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           _addedRouteWaypoints[key] = (coord, label);
         }
       }
+      _markDirty();
     });
   }
 
@@ -671,6 +717,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       } else {
         _dayOverrides[dayIndex] = saved;
       }
+      _markDirty();
       // Tag the day whose override just changed so DayPlanSection can
       // anchor the "Recalculando..." pill to that specific card. The
       // pill fades away when `_replanWithOverrides` flips
@@ -722,7 +769,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       } else {
         _selectedNightHotels[dayIndex] = hotel;
       }
+      _markDirty();
     });
+  }
+
+  /// Flip [_dirty] on user tweaks that happen AFTER the trip has
+  /// been saved. Called from the mutation helpers ([_toggleStop],
+  /// [_toggleDayFuel], [_toggleNightHotel], per-day override apply,
+  /// departure-window re-plan). Must be called from inside the
+  /// enclosing setState so the AppBar bookmark re-evaluates its
+  /// tooltip/enabled state on the same frame.
+  void _markDirty() {
+    if (_saved && !_dirty) _dirty = true;
   }
 
   /// Running € saved by the driver's chosen fuel stops. Currently
@@ -1370,6 +1428,145 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return null;
   }
 
+  /// Rehydrate day-override state from a SavedTrip's opaque
+  /// selections blob. Runs synchronously in initState before enrich
+  /// lands (day overrides don't depend on enrich data — they're
+  /// per-day timing tweaks). Silently ignores unknown / malformed
+  /// entries so an old saved trip from a future schema doesn't
+  /// break the screen.
+  void _applyOverrideSelections(Map<String, dynamic> selections) {
+    final raw = selections['day_overrides'];
+    if (raw is! Map) return;
+    final restored = <int, DayOverride>{};
+    raw.forEach((k, v) {
+      final day = int.tryParse(k.toString());
+      if (day == null || v is! Map) return;
+      final startHour = (v['start_hour'] as num?)?.toInt();
+      final cap = (v['cap_hours'] as num?)?.toInt();
+      if (startHour == null && cap == null) return;
+      restored[day] = DayOverride(
+        dayIndex: day,
+        startHour: startHour,
+        dailyDrivingCapHours: cap,
+      );
+    });
+    if (restored.isNotEmpty) {
+      _dayOverrides = restored;
+    }
+  }
+
+  /// Rehydrate the fuel / restaurant / hotel picks from the saved
+  /// blob. Called AFTER the enrich merge lands (from inside the
+  /// enrich `.then` in initState), so `_response.fuelPrices`,
+  /// `_response.restaurants`, `_response.hotels` are populated and
+  /// key-based lookups can resolve. No-op for keys that don't match
+  /// anything in the current response — trip enrichment may not
+  /// return the exact same station on a re-plan, and we prefer to
+  /// silently drop stale picks over crashing.
+  void _applyPickSelections(Map<String, dynamic> selections) {
+    // Fuel picks: match on the same key format used by
+    // `_toggleDayFuel` (fuel:name:lat.4,lon.4).
+    final fuelKeys = selections['picked_fuel_keys'];
+    if (fuelKeys is List) {
+      for (final k in fuelKeys.whereType<String>()) {
+        for (final p in _response.fuelPrices) {
+          if (p.coordinate == null) continue;
+          final key = 'fuel:${p.stationName}:'
+              '${p.coordinate!.lat.toStringAsFixed(4)},'
+              '${p.coordinate!.lon.toStringAsFixed(4)}';
+          if (key == k) {
+            _addedStops[key] = _fuelStopMinutes;
+            _addedRouteWaypoints[key] = (p.coordinate!, p.stationName);
+            final perL = p.savingsVsCountryMedianEurPerL ?? 0.0;
+            if (perL > 0) {
+              final tank =
+                  widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0;
+              _pickedFuelSavings[key] = perL * tank;
+            }
+            break;
+          }
+        }
+      }
+    }
+    // Restaurant picks: match on restaurant:<name>:<lat>,<lon>.
+    final restKeys = selections['picked_restaurant_keys'];
+    if (restKeys is List) {
+      for (final k in restKeys.whereType<String>()) {
+        for (final r in _response.restaurants) {
+          final key = 'restaurant:${r.name}:'
+              '${r.coordinate.lat.toStringAsFixed(4)},'
+              '${r.coordinate.lon.toStringAsFixed(4)}';
+          if (key == k) {
+            _addedStops[key] = 0;
+            _addedRouteWaypoints[key] = (r.coordinate, r.name);
+            break;
+          }
+        }
+      }
+    }
+    // Per-night hotels: keyed by dayIndex string → {name,lat,lon}.
+    // Fuzzy match on name + coord tolerance since the enrich pass
+    // may not return the identical hotel object on a re-plan.
+    final hotelsByDay = selections['picked_hotel_keys_by_day'];
+    if (hotelsByDay is Map) {
+      hotelsByDay.forEach((k, v) {
+        final day = int.tryParse(k.toString());
+        if (day == null || v is! Map) return;
+        final name = v['name'] as String?;
+        final lat = (v['lat'] as num?)?.toDouble();
+        final lon = (v['lon'] as num?)?.toDouble();
+        if (name == null || lat == null || lon == null) return;
+        for (final h in _response.hotels) {
+          final sameName = h.name == name;
+          final closeCoord =
+              (h.coordinate.lat - lat).abs() < 0.001 &&
+                  (h.coordinate.lon - lon).abs() < 0.001;
+          if (sameName || closeCoord) {
+            _selectedNightHotels[day] = h;
+            break;
+          }
+        }
+      });
+    }
+  }
+
+  /// Snapshot of the driver's per-trip tweaks in the shape SavedTrip
+  /// expects (opaque JSON map). The ResultScreen consumer rehydrates
+  /// the same keys on load so a re-opened trip lands back with the
+  /// picks still applied. Returns null when nothing is set — no need
+  /// to leak an empty object into storage.
+  Map<String, dynamic>? _currentSelections() {
+    final fuelKeys = _addedStops.keys
+        .where((k) => k.startsWith('fuel:'))
+        .toList(growable: false);
+    final restaurantKeys = _addedStops.keys
+        .where((k) => k.startsWith('restaurant:'))
+        .toList(growable: false);
+    final hotelsByDay = <String, Map<String, dynamic>>{};
+    _selectedNightHotels.forEach((day, h) {
+      hotelsByDay['$day'] = {
+        'name': h.name,
+        'lat': h.coordinate.lat,
+        'lon': h.coordinate.lon,
+      };
+    });
+    final overrides = <String, Map<String, dynamic>>{};
+    _dayOverrides.forEach((day, o) {
+      overrides['${o.dayIndex}'] = {
+        if (o.startHour != null) 'start_hour': o.startHour,
+        if (o.dailyDrivingCapHours != null)
+          'cap_hours': o.dailyDrivingCapHours,
+      };
+    });
+    final map = <String, dynamic>{
+      if (fuelKeys.isNotEmpty) 'picked_fuel_keys': fuelKeys,
+      if (restaurantKeys.isNotEmpty) 'picked_restaurant_keys': restaurantKeys,
+      if (hotelsByDay.isNotEmpty) 'picked_hotel_keys_by_day': hotelsByDay,
+      if (overrides.isNotEmpty) 'day_overrides': overrides,
+    };
+    return map.isEmpty ? null : map;
+  }
+
   Future<void> _save() async {
     final recommended = _recommended;
     if (recommended == null || _saving) return;
@@ -1409,6 +1606,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             _response.optimizations?.fuelCost.totalCostEur ?? 0,
         reminderMinutesBefore: reminderMinutes,
         notificationId: notificationId,
+        userSelections: _currentSelections(),
       );
       await storage.save(trip);
       // Schedule fuel arbitrage notification if the trip crosses
@@ -1434,7 +1632,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         );
       }
       if (!mounted) return;
-      setState(() => _saved = true);
+      setState(() {
+        _saved = true;
+        _dirty = false;
+      });
       // Snackbar augmented with a tiny Lottie check circle that
       // plays once (~1.5s). `errorBuilder` swaps in an inline icon
       // so a broken asset can't hide the confirmation copy.
@@ -2119,9 +2320,46 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             onPressed: _openNarrative,
           ),
           IconButton(
-            tooltip: _saved ? l.resultSavedTooltip : l.resultSaveTooltip,
-            icon: Icon(_saved ? Icons.bookmark : Icons.bookmark_outline),
-            onPressed: _saved || _saving ? null : _save,
+            // Three states: (1) not saved yet — outlined bookmark,
+            // fires _save. (2) saved & clean — solid bookmark,
+            // disabled. (3) saved & dirty (user tweaked something
+            // AFTER save) — small change-badge overlay + primary
+            // color + "Guardar cambios" tooltip; tap re-saves the
+            // current selections snapshot.
+            tooltip: _saved
+                ? (_dirty
+                    ? l.resultSaveChangesTooltip
+                    : l.resultSavedTooltip)
+                : l.resultSaveTooltip,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Icon(
+                  _saved
+                      ? (_dirty ? Icons.bookmark_add : Icons.bookmark)
+                      : Icons.bookmark_outline,
+                  color: _saved && _dirty ? scheme.primary : null,
+                ),
+                if (_saved && _dirty)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: scheme.surface,
+                          width: 1.2,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            onPressed: _saving || (_saved && !_dirty) ? null : _save,
           ),
           const SizedBox(width: Tokens.space8),
         ],

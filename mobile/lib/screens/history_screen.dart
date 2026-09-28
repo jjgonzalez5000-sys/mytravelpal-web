@@ -138,6 +138,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             destination: trip.destination,
             response: response,
             desiredDepartureAt: departure,
+            initialSelections: trip.userSelections,
           ),
         ),
       );
