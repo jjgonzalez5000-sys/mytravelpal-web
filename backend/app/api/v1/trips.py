@@ -541,6 +541,14 @@ class PartialTollSkipOut(BaseModel):
     worth_it: bool
     lat: float
     lon: float
+    # Polyline of the non-toll alternative route around this skip
+    # (from HERE `avoid=tollRoad`, when the key is set). Encoded as
+    # a flat list of [lon, lat] pairs — matches the existing mobile
+    # `PartialTollSkip.detourGeometry` field so both the day-map
+    # overlay AND the Google-Maps deep-link waypoint builder read
+    # from one source of truth. Empty list → mobile just places
+    # the pin without an alternate polyline.
+    detour_geometry: list[list[float]] = Field(default_factory=list)
 
 
 class IntraSectionSkipOut(BaseModel):
@@ -1843,7 +1851,25 @@ async def _plan_enrich_impl(
     toll_alternative_out: TollAlternativeOut | None = None
     partial_skips_out: list[PartialTollSkipOut] = []
     if payload.include_toll_alternative and route.toll_cost_eur > 0:
-        for skip in compute_partial_skips(route, real_tolls=real_tolls):
+        raw_skips = compute_partial_skips(route, real_tolls=real_tolls)
+        # Upgrade the heuristic penalty / extra_km numbers to REAL
+        # figures from HERE Routing v8 (avoid=tollRoad) and attach
+        # the alternative polyline so the mobile day map can draw
+        # the detour. Silently degrades to the heuristic values
+        # when the HERE key is missing or a request fails.
+        try:
+            from app.providers.here_toll_alternatives import (
+                enrich_skips_with_alternatives,
+            )
+            raw_skips = await asyncio.wait_for(
+                enrich_skips_with_alternatives(route, raw_skips),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            _log.warning("here_toll_alternatives budget exceeded — heuristics only")
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("here_toll_alternatives failed: %r", exc)
+        for skip in raw_skips:
             partial_skips_out.append(
                 PartialTollSkipOut(
                     label=skip.label,
@@ -1857,6 +1883,9 @@ async def _plan_enrich_impl(
                     worth_it=skip.worth_it,
                     lat=skip.coordinate.lat,
                     lon=skip.coordinate.lon,
+                    detour_geometry=[
+                        [c.lon, c.lat] for c in skip.alternative_geometry
+                    ],
                 )
             )
 

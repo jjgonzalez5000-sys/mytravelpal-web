@@ -28,6 +28,11 @@ dependencies = [
     # In-process TTL cache used as fallback for the plan endpoint
     # when Redis is unavailable (no REDIS_URL / connect fails).
     "cachetools>=5.3",
+    # HERE Routing v8 returns polylines in their Flexible Polyline
+    # format — we decode them for the toll-skip alternative
+    # visualisation on the day map so the driver sees the actual
+    # secondary road they'd take instead of a rough straight line.
+    "flexpolyline>=0.1.0",
 ]
 
 [project.optional-dependencies]

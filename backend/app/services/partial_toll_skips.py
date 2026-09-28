@@ -58,6 +58,12 @@ class PartialTollSkip:
     extra_distance_km: float
     worth_it: bool
     coordinate: Coordinate         # approximate exit point on the map
+    # Polyline of the non-toll alternative route around this skip,
+    # populated by `here_toll_alternatives.enrich_skips_with_alternatives`
+    # when the HERE key is available. Empty tuple → the mobile client
+    # falls back to just placing a pin at `coordinate` without
+    # drawing an alternate route on the map.
+    alternative_geometry: tuple[Coordinate, ...] = ()
 
 
 def compute(

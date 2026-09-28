@@ -389,6 +389,7 @@ class DayPlanSection extends StatelessWidget {
     );
     if (slice.isEmpty) return;
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
 
     // POIs relevant to this day: hotels near the sleep coord,
     // restaurants + fuel + rest_stops with distance_from_origin_km
@@ -445,30 +446,45 @@ class DayPlanSection extends StatelessWidget {
     }
 
     fmap.Marker markerFor(
-      double lat, double lon, IconData icon, Color color,
-    ) =>
+      double lat, double lon, IconData icon, Color color, {
+      VoidCallback? onTap,
+    }) =>
         fmap.Marker(
           point: ll.LatLng(lat, lon),
-          width: 30, height: 30,
-          child: Container(
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
-              boxShadow: const [
-                BoxShadow(color: Color(0x66000000), blurRadius: 4,
-                    offset: Offset(0, 2)),
-              ],
+          width: 32, height: 32,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: Container(
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x66000000), blurRadius: 4,
+                      offset: Offset(0, 2)),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 16),
             ),
-            child: Icon(icon, color: Colors.white, size: 16),
           ),
         );
+
+    // Route endpoints for the shared POI sheet — use the DAY's
+    // slice endpoints so the mini-map inside the sheet shows the
+    // correct segment, not the whole trip's origin/destination.
+    final dayOrigin = origin ?? LatLon(
+      lat: slice.first.latitude, lon: slice.first.longitude,
+    );
+    final dayDestination = destination ?? LatLon(
+      lat: slice.last.latitude, lon: slice.last.longitude,
+    );
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => SizedBox(
-        height: MediaQuery.of(context).size.height * 0.6,
+      builder: (sheetCtx) => SizedBox(
+        height: MediaQuery.of(sheetCtx).size.height * 0.6,
         child: fmap.FlutterMap(
           options: fmap.MapOptions(
             initialCameraFit: fmap.CameraFit.bounds(
@@ -492,27 +508,114 @@ class DayPlanSection extends StatelessWidget {
                   color: Colors.blue.shade700,
                   strokeWidth: 4.0,
                 ),
+                // Alternative toll-skip detour polylines (HERE
+                // `avoid=tollRoad`). One dashed orange overlay per
+                // skip whose km falls inside this day's range and
+                // whose backend responded with a geometry. The
+                // driver sees the real secondary road they'd take
+                // instead of "+8 min +2.5 km" abstract numbers.
+                for (final skip in partialTollSkips)
+                  if (skip.detourGeometry.length >= 2 &&
+                      inRange(skip.distanceFromOriginKm))
+                    fmap.Polyline(
+                      points: [
+                        for (final c in skip.detourGeometry)
+                          ll.LatLng(c.lat, c.lon),
+                      ],
+                      color: Colors.deepOrange.shade600,
+                      strokeWidth: 3.5,
+                      pattern: fmap.StrokePattern.dashed(
+                        segments: const [10, 6],
+                      ),
+                    ),
               ],
             ),
             fmap.MarkerLayer(
               markers: [
-                // Fuel stations
+                // Fuel stations — tap opens shared POI sheet with
+                // fuel type + price attributes so the driver reads
+                // the same detail card the day-card row surfaces.
                 for (final p in dayFuel)
-                  markerFor(p.coordinate!.lat, p.coordinate!.lon,
-                      Icons.local_gas_station, Colors.deepOrange.shade600),
-                // Rest stops
+                  markerFor(
+                    p.coordinate!.lat, p.coordinate!.lon,
+                    p.isChargingStation
+                        ? Icons.electric_bolt
+                        : Icons.local_gas_station,
+                    Colors.deepOrange.shade600,
+                    onTap: () => showPoiDetailSheet(
+                      sheetCtx,
+                      kind: PoiKind.fuel,
+                      name: p.stationName,
+                      subtitle: '${p.priceEurPerL.toStringAsFixed(3)}'
+                          ' ${p.unitLabel}',
+                      poi: p.coordinate!,
+                      origin: dayOrigin,
+                      destination: dayDestination,
+                      routeGeometry: routeGeometry,
+                      attributes: p.attributes,
+                      icon: p.isChargingStation
+                          ? Icons.electric_bolt
+                          : Icons.local_gas_station_outlined,
+                      accent: Colors.deepOrange.shade600,
+                    ),
+                  ),
+                // Rest stops (only named / typed ones — parking-
+                // only anchors already dropped upstream via
+                // `_restStopIsReliable`).
                 for (final r in dayRests)
-                  markerFor(r.coordinate.lat, r.coordinate.lon,
-                      _iconForRestStopType(r.stopType), Colors.brown.shade400),
+                  markerFor(
+                    r.coordinate.lat, r.coordinate.lon,
+                    _iconForRestStopType(r.stopType),
+                    Colors.brown.shade400,
+                    onTap: r.name == null ? null : () =>
+                        _openRestStopSheet(
+                          sheetCtx, r,
+                          origin ?? r.coordinate,
+                          destination ?? r.coordinate,
+                          routeGeometry,
+                        ),
+                  ),
                 // Meal restaurants
                 for (final m in dayMeals)
-                  markerFor(m.restaurantCoordinate!.lat,
-                      m.restaurantCoordinate!.lon,
-                      Icons.restaurant, Colors.orange.shade700),
+                  markerFor(
+                    m.restaurantCoordinate!.lat,
+                    m.restaurantCoordinate!.lon,
+                    Icons.restaurant, Colors.orange.shade700,
+                    onTap: () => showPoiDetailSheet(
+                      sheetCtx,
+                      kind: PoiKind.restaurant,
+                      name: m.restaurantName ?? '',
+                      subtitle: _mealSubtitle(l, m),
+                      poi: m.restaurantCoordinate!,
+                      origin: dayOrigin,
+                      destination: dayDestination,
+                      routeGeometry: routeGeometry,
+                      attributes: _mealAttributes(l, m),
+                      icon: Icons.restaurant,
+                      accent: Colors.orange.shade700,
+                    ),
+                  ),
                 // Hotels (picked + fallback near sleep coord)
                 for (final h in dayHotels)
-                  markerFor(h.coordinate.lat, h.coordinate.lon,
-                      Icons.hotel, scheme.primary),
+                  markerFor(
+                    h.coordinate.lat, h.coordinate.lon,
+                    Icons.hotel, scheme.primary,
+                    onTap: () => showPoiDetailSheet(
+                      sheetCtx,
+                      kind: PoiKind.hotel,
+                      name: h.name,
+                      subtitle:
+                          '${h.priceEurPerNight.toStringAsFixed(0)} €'
+                          '  ·  +${h.detourMinutes.toStringAsFixed(0)} min',
+                      poi: h.coordinate,
+                      origin: dayOrigin,
+                      destination: dayDestination,
+                      routeGeometry: routeGeometry,
+                      attributes: h.attributes,
+                      icon: Icons.hotel_outlined,
+                      accent: scheme.primary,
+                    ),
+                  ),
                 // Sleep waypoint marker on top so it's not hidden by
                 // the hotel pin for the same night.
                 if (d.sleepCoord != null)
