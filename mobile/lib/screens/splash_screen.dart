@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../api/models.dart';
 import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/biometric_auth.dart';
 import '../services/trip_session_persistence.dart';
+import '../storage/saved_trip.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
 import 'app_shell.dart';
@@ -169,6 +171,57 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // `set` persists to AppPrefs AND fires _pushToServer (fire-and-
       // forget) so the backend sees the profile too.
       await profileNotifier.set(demoProfile);
+      // Skip the intro/onboarding wizard on auto-demo — the tester
+      // just wants to land in the planner. Persisted so subsequent
+      // launches also skip it.
+      final prefs = ref.read(appPrefsProvider);
+      await prefs.markOnboardingShown();
+      // Pre-seed a Yaris 4 Hybrid at 25% tank in the garage so the
+      // dogfood profile has a realistic car to plan against without
+      // the tester having to fill the garage form on every fresh
+      // install. Silently swallow failures — garage endpoint being
+      // down shouldn't block the demo path.
+      try {
+        await authedApi.addGarageVehicle(
+          name: 'Yaris',
+          modelId: 'toyota_yaris_4_hev',
+          defaultTankPercent: 25,
+        );
+      } catch (e) {
+        debugPrint('AUTO_DEMO garage pre-seed failed: $e');
+      }
+      // Pre-seed a Toledo → Paris trip in the local saved-trips
+      // storage so the "Recent trips" dropdown on the PlanScreen
+      // has something to demo the picker with. Uses the same
+      // helper the manual "Save this plan" button uses.
+      try {
+        final now = DateTime.now();
+        final toledo = GeocodeResult(
+          displayName: 'Toledo, España',
+          coordinate: const LatLon(lat: 39.8628, lon: -4.0273),
+          country: Country.es,
+        );
+        final paris = GeocodeResult(
+          displayName: 'Paris, France',
+          coordinate: const LatLon(lat: 48.8566, lon: 2.3522),
+          country: Country.fr,
+        );
+        final departure =
+            DateTime(now.year, now.month, now.day + 1, 10);
+        await storage.save(SavedTrip(
+          id: 'demo:toledo-paris',
+          origin: toledo,
+          destination: paris,
+          desiredDepartureAt: departure,
+          savedAt: now,
+          distanceKm: 1450,
+          recommendedDepartureAt: departure,
+          recommendedMinutes: 900,
+          countriesCrossed: const [Country.es, Country.fr],
+        ));
+      } catch (e) {
+        debugPrint('AUTO_DEMO saved-trip pre-seed failed: $e');
+      }
       return true;
     } catch (e, stack) {
       debugPrint('AUTO_DEMO auto-login failed: $e\n$stack');

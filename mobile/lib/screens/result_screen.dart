@@ -11,7 +11,7 @@ import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
 
 import '../api/models.dart';
-import '../domain/trip_profile.dart' show FuelType;
+import '../domain/trip_profile.dart' show FuelType, VehicleType;
 import '../design/components.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
@@ -1864,6 +1864,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 .where(_addedStops.containsKey)
                 .toSet(),
             onToggleFuelPick: _toggleDayFuel,
+            profileHasKids: widget.request.tripProfile?.hasKids ?? false,
+            profileHasPets: widget.request.tripProfile?.hasPets ?? false,
+            profileIsCamper: widget.request.tripProfile?.vehicle.type
+                    == VehicleType.camper,
           ),
         ),
       ],
@@ -3078,9 +3082,9 @@ class _TotalTripCostCard extends ConsumerWidget {
             Text(
               [
                 if (pax > 1)
-                  '${formatMoney(total / pax, ccy)} / persona',
+                  l.tripCostPerPerson(formatMoney(total / pax, ccy)),
                 if (tripDays > 1)
-                  '${formatMoney(total / tripDays, ccy)} / día',
+                  l.tripCostPerDay(formatMoney(total / tripDays, ccy)),
               ].join('  ·  '),
               style: t.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
@@ -3198,10 +3202,12 @@ class _TripCostWindowsDropdown extends StatelessWidget {
     );
   }
 
-  /// Full-height bottom sheet listing every candidate window with
-  /// its exact departure, estimated duration, savings-vs-baseline
-  /// delta, and traffic factor. Tapping a row fires the same
-  /// `onWindowSelect` as the compact chip Wrap.
+  /// Full-height bottom sheet with a rich card per candidate window:
+  /// time-of-day pill, exact departure date+time, estimated
+  /// duration, computed arrival hour, traffic-factor pill with a
+  /// qualitative label (Ligero / Moderado / Denso), delta vs the
+  /// current window in both duration and arrival hour, and a
+  /// "Recomendada" / "Actual" badge.
   Future<void> _showAllWindowsSheet(
     BuildContext context,
     List<TimeWindow> windows,
@@ -3211,6 +3217,44 @@ class _TripCostWindowsDropdown extends StatelessWidget {
   ) async {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final dateFmt = DateFormat.MMMEd();
+    final timeFmt = DateFormat.Hm();
+
+    // Qualitative label + colour for the traffic-factor pill.
+    ({String label, Color bg, Color fg}) trafficStyle(double f) {
+      if (f <= 1.05) {
+        return (
+          label: 'Ligero',
+          bg: Colors.green.shade50,
+          fg: Colors.green.shade800,
+        );
+      }
+      if (f <= 1.20) {
+        return (
+          label: 'Moderado',
+          bg: Colors.amber.shade50,
+          fg: Colors.amber.shade900,
+        );
+      }
+      return (
+        label: 'Denso',
+        bg: Colors.red.shade50,
+        fg: Colors.red.shade800,
+      );
+    }
+
+    // Time-of-day pill copy — driver-friendly context so they can
+    // compare "salgo de madrugada" vs "salgo por la tarde" at a
+    // glance without doing math on 24h clock times.
+    ({String label, IconData icon}) tod(DateTime local) {
+      final h = local.hour;
+      if (h < 6) return (label: 'Madrugada', icon: Icons.nightlight_round);
+      if (h < 12) return (label: 'Mañana', icon: Icons.wb_sunny_outlined);
+      if (h < 14) return (label: 'Mediodía', icon: Icons.wb_sunny);
+      if (h < 20) return (label: 'Tarde', icon: Icons.wb_twilight);
+      return (label: 'Noche', icon: Icons.bedtime_outlined);
+    }
+
     await showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -3221,109 +3265,267 @@ class _TripCostWindowsDropdown extends StatelessWidget {
             Tokens.space20, 0, Tokens.space20,
             MediaQuery.of(ctx).viewInsets.bottom + Tokens.space16,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Ventanas de salida',
-                  style: t.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              Text(
-                'Toca una ventana para replanificar con esa salida.',
-                style: t.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
+          child: FractionallySizedBox(
+            heightFactor: 0.82,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Ventanas de salida',
+                    style: t.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(
+                  'Toca una tarjeta para replanificar con esa salida.',
+                  style: t.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
-              const SizedBox(height: Tokens.space16),
-              Flexible(
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    for (final w in windows)
-                      Builder(builder: (rowCtx) {
-                        final saved = baselineMinutes - w.estimatedMinutes;
-                        final isBaseline = identical(w, baseline);
-                        return InkWell(
-                          onTap: onWindowSelect == null
-                              ? null
-                              : () {
-                                  Navigator.of(ctx).pop();
-                                  onWindowSelect(w);
-                                },
-                          borderRadius:
-                              BorderRadius.circular(Tokens.radiusMd),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: Tokens.space12,
-                              vertical: Tokens.space12,
+                const SizedBox(height: Tokens.space16),
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: windows.length,
+                    separatorBuilder: (_, __) =>
+                        const SizedBox(height: Tokens.space8),
+                    itemBuilder: (_, i) {
+                      final w = windows[i];
+                      final saved = baselineMinutes - w.estimatedMinutes;
+                      final isBaseline = identical(w, baseline);
+                      final depLocal = w.departureAt.toLocal();
+                      final arrivalLocal = depLocal.add(
+                        Duration(minutes: w.estimatedMinutes.round()),
+                      );
+                      final t0 = tod(depLocal);
+                      final tf = trafficStyle(w.trafficFactor);
+                      final baselineArrival = baseline.departureAt
+                          .toLocal()
+                          .add(Duration(
+                              minutes: baselineMinutes.round()));
+                      final arrivalDeltaMin = arrivalLocal
+                          .difference(baselineArrival)
+                          .inMinutes;
+
+                      return InkWell(
+                        onTap: onWindowSelect == null || isBaseline
+                            ? null
+                            : () {
+                                Navigator.of(ctx).pop();
+                                onWindowSelect(w);
+                              },
+                        borderRadius:
+                            BorderRadius.circular(Tokens.radiusLg),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: w.recommended
+                                ? scheme.primaryContainer
+                                    .withValues(alpha: 0.4)
+                                : scheme.surfaceContainerHighest
+                                    .withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(
+                                Tokens.radiusLg),
+                            border: Border.all(
+                              color: isBaseline
+                                  ? scheme.primary
+                                  : scheme.outlineVariant,
+                              width: isBaseline ? 1.6 : 0.5,
                             ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  w.recommended
-                                      ? Icons.star_rounded
-                                      : Icons.schedule,
-                                  color: w.recommended
-                                      ? scheme.primary
-                                      : scheme.onSurfaceVariant,
-                                ),
-                                const SizedBox(width: Tokens.space12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        DateFormat.MMMEd()
-                                                .add_Hm()
-                                                .format(w.departureAt
-                                                    .toLocal()),
-                                        style: t.titleSmall,
-                                      ),
-                                      Text(
-                                        'Duración: ${durationCompact(w.estimatedMinutes)}'
-                                        '  ·  tráfico ×${w.trafficFactor.toStringAsFixed(2)}',
-                                        style: t.bodySmall?.copyWith(
-                                          color: scheme.onSurfaceVariant,
-                                        ),
-                                      ),
-                                    ],
+                          ),
+                          padding: const EdgeInsets.all(Tokens.space16),
+                          child: Column(
+                            crossAxisAlignment:
+                                CrossAxisAlignment.start,
+                            children: [
+                              // Row 1: time-of-day pill + big time + delta / recomendada / actual
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: scheme.surfaceContainerHighest,
+                                      borderRadius:
+                                          BorderRadius.circular(999),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(t0.icon,
+                                            size: 13,
+                                            color: scheme.onSurfaceVariant),
+                                        const SizedBox(width: 4),
+                                        Text(t0.label,
+                                            style: t.labelSmall?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                              fontWeight: FontWeight.w600,
+                                            )),
+                                      ],
+                                    ),
                                   ),
-                                ),
-                                if (isBaseline)
-                                  Text('Actual',
-                                      style: t.labelSmall?.copyWith(
-                                        color: scheme.onSurfaceVariant,
-                                      ))
-                                else
+                                  const SizedBox(width: Tokens.space12),
                                   Text(
-                                    saved >= 1
-                                        ? '−${durationCompact(saved)}'
-                                        : saved <= -1
-                                            ? '+${durationCompact(-saved)}'
-                                            : '=',
-                                    style: t.labelMedium?.copyWith(
-                                      color: saved >= 1
-                                          ? Colors.green.shade700
-                                          : saved <= -1
-                                              ? scheme.error
-                                              : scheme.onSurfaceVariant,
+                                    timeFmt.format(depLocal),
+                                    style: t.headlineSmall?.copyWith(
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures()
+                                      ],
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                              ],
-                            ),
+                                  const Spacer(),
+                                  if (isBaseline)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 3),
+                                      decoration: BoxDecoration(
+                                        color: scheme.primary,
+                                        borderRadius:
+                                            BorderRadius.circular(999),
+                                      ),
+                                      child: Text('Actual',
+                                          style: t.labelSmall?.copyWith(
+                                            color: scheme.onPrimary,
+                                            fontWeight: FontWeight.w700,
+                                          )),
+                                    )
+                                  else if (w.recommended)
+                                    Row(children: [
+                                      Icon(Icons.star_rounded,
+                                          size: 16,
+                                          color: scheme.primary),
+                                      const SizedBox(width: 3),
+                                      Text('Recomendada',
+                                          style: t.labelSmall?.copyWith(
+                                            color: scheme.primary,
+                                            fontWeight: FontWeight.w700,
+                                          )),
+                                    ])
+                                  else
+                                    Text(
+                                      saved >= 1
+                                          ? '−${durationCompact(saved)}'
+                                          : saved <= -1
+                                              ? '+${durationCompact(-saved)}'
+                                              : '±0',
+                                      style: t.labelMedium?.copyWith(
+                                        color: saved >= 1
+                                            ? Colors.green.shade700
+                                            : saved <= -1
+                                                ? scheme.error
+                                                : scheme.onSurfaceVariant,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                dateFmt.format(depLocal),
+                                style: t.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: Tokens.space12),
+                              // Row 2: duration + arrival + traffic
+                              Wrap(
+                                spacing: Tokens.space16,
+                                runSpacing: 6,
+                                children: [
+                                  _MetaChip(
+                                    icon: Icons.schedule,
+                                    label: 'Duración',
+                                    value: durationCompact(
+                                        w.estimatedMinutes),
+                                    scheme: scheme,
+                                    text: t,
+                                  ),
+                                  _MetaChip(
+                                    icon: Icons.flag_outlined,
+                                    label: 'Llegada',
+                                    value: '${timeFmt.format(arrivalLocal)}'
+                                        '${arrivalDeltaMin.abs() >= 5 && !isBaseline ? "  (${arrivalDeltaMin >= 0 ? "+" : "−"}${durationCompact(arrivalDeltaMin.abs().toDouble())})" : ""}',
+                                    scheme: scheme,
+                                    text: t,
+                                  ),
+                                  _MetaChip(
+                                    icon: Icons.traffic,
+                                    label: 'Tráfico',
+                                    value:
+                                        '${tf.label}  (×${w.trafficFactor.toStringAsFixed(2)})',
+                                    scheme: scheme,
+                                    text: t,
+                                    bg: tf.bg,
+                                    fg: tf.fg,
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
-                        );
-                      }),
-                  ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.scheme,
+    required this.text,
+    this.bg,
+    this.fg,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+  final ColorScheme scheme;
+  final TextTheme text;
+  final Color? bg;
+  final Color? fg;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = fg ?? scheme.onSurface;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: foreground.withValues(alpha: 0.75)),
+        const SizedBox(width: 4),
+        Text(
+          '$label:  ',
+          style: text.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        Container(
+          padding: bg != null
+              ? const EdgeInsets.symmetric(horizontal: 6, vertical: 2)
+              : EdgeInsets.zero,
+          decoration: bg != null
+              ? BoxDecoration(
+                  color: bg,
+                  borderRadius: BorderRadius.circular(4),
+                )
+              : null,
+          child: Text(
+            value,
+            style: text.bodySmall?.copyWith(
+              color: foreground,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -4015,6 +4217,19 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    // After 2026-09-27's polish sweep (fuel budget row + trip-wide
+    // meals + destination hotels all removed), the SoftCard shell
+    // could ship empty on trips where none of the remaining sub-
+    // branches (weather / plausible sleep_stop / fuel notes) fire.
+    // Gate the whole card so it isn't rendered as an empty rounded
+    // pill.
+    final hasWeather = widget.weatherSegments.isNotEmpty;
+    final hasSleep = opts.sleepStop != null &&
+        isPlausibleSleepTime(opts.sleepStop!.at);
+    final hasFuelNotes = opts.fuelCost.notes.isNotEmpty;
+    if (!hasWeather && !hasSleep && !hasFuelNotes) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [

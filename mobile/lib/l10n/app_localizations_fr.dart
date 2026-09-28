@@ -2584,6 +2584,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tripCostTotal => 'Total estimé';
 
   @override
+  String tripCostPerPerson(String amount) {
+    return '$amount / personne';
+  }
+
+  @override
+  String tripCostPerDay(String amount) {
+    return '$amount / jour';
+  }
+
+  @override
   String get addToRouteLabel => 'Ajouter à l\'itinéraire';
 
   @override

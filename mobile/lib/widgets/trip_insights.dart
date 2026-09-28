@@ -86,15 +86,30 @@ class FuelArbitrageBanner extends StatelessWidget {
 /// Filter buckets for the rest-stops row inside `DayPlanSection`.
 /// `all` shows every stop the backend returned; the other three
 /// hide stops that don't carry the matching OSM-tag-derived flag.
-enum _RestStopFilter { all, kidFriendly, petFriendly, rvFriendly }
+/// Multi-select (Set) after 2026-09-28 — driver may want e.g. both
+/// kid + pet friendly stops surfaced at once. Which chips actually
+/// render is gated on the trip profile: only kids-friendly appears
+/// if `hasKids`, etc. — no reason to offer a filter the driver
+/// wouldn't use anyway.
+enum _RestStopFilter { kidFriendly, petFriendly, rvFriendly }
 
-/// Does this stop pass the current filter? `all` always passes.
-bool _restStopMatchesFilter(RestStop r, _RestStopFilter f) => switch (f) {
-      _RestStopFilter.all => true,
-      _RestStopFilter.kidFriendly => r.kidFriendly,
-      _RestStopFilter.petFriendly => r.petFriendly,
-      _RestStopFilter.rvFriendly => r.rvFriendly,
-    };
+/// Does this stop pass the current filter set? An empty set matches
+/// everything (no filter active). Non-empty is an OR — the stop
+/// passes if it carries ANY of the requested flags.
+bool _restStopMatchesFilter(RestStop r, Set<_RestStopFilter> active) {
+  if (active.isEmpty) return true;
+  for (final f in active) {
+    switch (f) {
+      case _RestStopFilter.kidFriendly:
+        if (r.kidFriendly) return true;
+      case _RestStopFilter.petFriendly:
+        if (r.petFriendly) return true;
+      case _RestStopFilter.rvFriendly:
+        if (r.rvFriendly) return true;
+    }
+  }
+  return false;
+}
 
 /// Renders the per-day breakdown for multi-day trips. One card per
 /// day showing distance range, meal stops on that day, and the
@@ -131,7 +146,17 @@ class DayPlanSection extends StatelessWidget {
     this.fuelPrices = const [],
     this.addedFuelKeys = const {},
     this.onToggleFuelPick,
+    this.profileHasKids = false,
+    this.profileHasPets = false,
+    this.profileIsCamper = false,
   });
+
+  /// Trip profile flags — gate which amenity filter chips render.
+  /// Only chips that match the driver's context show up (no point
+  /// offering "kid friendly" filter for a solo driver).
+  final bool profileHasKids;
+  final bool profileHasPets;
+  final bool profileIsCamper;
 
   /// Fuel stations along the whole route. The day card filters this
   /// list by its own `fromKm..toKm` range and renders up to 2 rows
@@ -398,22 +423,36 @@ class DayPlanSection extends StatelessWidget {
           (r) => r.kidFriendly || r.petFriendly || r.rvFriendly,
         ));
 
+    // Only offer the amenity filter chips that MATCH the trip
+    // profile — no point showing "kid friendly" filter for a solo
+    // driver. Empty set → chip row is skipped entirely.
+    final available = <_RestStopFilter>{
+      if (profileHasKids) _RestStopFilter.kidFriendly,
+      if (profileHasPets) _RestStopFilter.petFriendly,
+      if (profileIsCamper) _RestStopFilter.rvFriendly,
+    };
+
     return StatefulBuilder(
       builder: (context, setState) {
-        _RestStopFilter filter = _restStopFilter;
-        void setFilter(_RestStopFilter f) {
+        final Set<_RestStopFilter> filter = _restStopFilter;
+        void toggleFilter(_RestStopFilter f) {
           setState(() {
-            _restStopFilter = f;
+            if (_restStopFilter.contains(f)) {
+              _restStopFilter = {..._restStopFilter}..remove(f);
+            } else {
+              _restStopFilter = {..._restStopFilter, f};
+            }
           });
         }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (anyFlagged) ...[
+            if (anyFlagged && available.isNotEmpty) ...[
               _RestStopFilterChips(
-                current: filter,
-                onChanged: setFilter,
+                available: available,
+                active: filter,
+                onToggle: toggleFilter,
               ),
               const SizedBox(height: Tokens.space8),
             ],
@@ -427,11 +466,9 @@ class DayPlanSection extends StatelessWidget {
   }
 
   // Filter state persists across rebuilds of DayPlanSection within
-  // the same ResultScreen frame. This is intentionally a mutable
-  // field on a StatelessWidget: DayPlanSection is only reconstructed
-  // when the plan itself changes, at which point resetting to "all"
-  // is the right behaviour (the driver re-planned).
-  static _RestStopFilter _restStopFilter = _RestStopFilter.all;
+  // the same ResultScreen frame. Set-based (multi-select) since
+  // 2026-09-28. Empty set = no filter, matches everything.
+  static Set<_RestStopFilter> _restStopFilter = <_RestStopFilter>{};
 
   /// Split day-card composition out of `build` so `StatefulBuilder`
   /// can call it repeatedly on filter change without duplicating
@@ -442,7 +479,7 @@ class DayPlanSection extends StatelessWidget {
     ColorScheme scheme,
     TextTheme t,
     DayPlan d,
-    _RestStopFilter filter,
+    Set<_RestStopFilter> filter,
   ) {
     // Original body inlined below unchanged. The `filter` parameter
     // is applied at the rest-stops loop only.
@@ -1372,42 +1409,59 @@ Future<void> _showRestStopWhy(BuildContext context, RestStop stop) {
 /// non-All chip hides rest stops that don't match the flag.
 class _RestStopFilterChips extends StatelessWidget {
   const _RestStopFilterChips({
-    required this.current,
-    required this.onChanged,
+    required this.available,
+    required this.active,
+    required this.onToggle,
   });
-  final _RestStopFilter current;
-  final ValueChanged<_RestStopFilter> onChanged;
+  /// Which filter categories to render as chips — driven by the
+  /// trip profile so a solo-traveller doesn't see a "kid friendly"
+  /// filter they'd never use.
+  final Set<_RestStopFilter> available;
+
+  /// Currently-selected filters (multi-select).
+  final Set<_RestStopFilter> active;
+
+  /// Tap a chip → toggles it in the active set.
+  final ValueChanged<_RestStopFilter> onToggle;
 
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    Widget chip(_RestStopFilter f, String label, IconData? icon) {
-      final selected = f == current;
+    Widget chip(_RestStopFilter f, String label, IconData icon) {
+      final selected = active.contains(f);
       return Padding(
         padding: const EdgeInsets.only(right: 6),
         child: FilterChip(
           label: Text(label),
-          avatar: icon != null
-              ? Icon(icon, size: 16, color: scheme.onSurfaceVariant)
-              : null,
+          avatar: Icon(icon,
+              size: 16,
+              color: selected ? scheme.onPrimary : scheme.onSurfaceVariant),
           selected: selected,
-          onSelected: (_) => onChanged(f),
+          onSelected: (_) => onToggle(f),
           visualDensity: VisualDensity.compact,
           materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          selectedColor: scheme.primary,
+          checkmarkColor: scheme.onPrimary,
+          labelStyle: TextStyle(
+            color: selected ? scheme.onPrimary : scheme.onSurface,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+          ),
         ),
       );
     }
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(children: [
-        chip(_RestStopFilter.all, l.restStopFilterAll, null),
-        chip(_RestStopFilter.kidFriendly,
-            l.restStopFilterKidFriendly, Icons.child_care),
-        chip(_RestStopFilter.petFriendly,
-            l.restStopFilterPetFriendly, Icons.pets),
-        chip(_RestStopFilter.rvFriendly,
-            l.restStopFilterRvFriendly, Icons.rv_hookup),
+        if (available.contains(_RestStopFilter.kidFriendly))
+          chip(_RestStopFilter.kidFriendly,
+              l.restStopFilterKidFriendly, Icons.child_care),
+        if (available.contains(_RestStopFilter.petFriendly))
+          chip(_RestStopFilter.petFriendly,
+              l.restStopFilterPetFriendly, Icons.pets),
+        if (available.contains(_RestStopFilter.rvFriendly))
+          chip(_RestStopFilter.rvFriendly,
+              l.restStopFilterRvFriendly, Icons.rv_hookup),
       ]),
     );
   }

@@ -4652,6 +4652,18 @@ abstract class AppLocalizations {
   /// **'Total estimated'**
   String get tripCostTotal;
 
+  /// No description provided for @tripCostPerPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} / person'**
+  String tripCostPerPerson(String amount);
+
+  /// No description provided for @tripCostPerDay.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount} / day'**
+  String tripCostPerDay(String amount);
+
   /// No description provided for @addToRouteLabel.
   ///
   /// In en, this message translates to:

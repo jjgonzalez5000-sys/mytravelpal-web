@@ -52,7 +52,14 @@ Future<void> _boot() async {
   final prefs = await AppPrefs.open();
   final inspirations = await InspirationStorage.open();
 
-  await NotificationService.instance.init();
+  // Skip notification-permission prompt in AUTO_DEMO builds — the
+  // dogfood profile doesn't drive any reminders, and the system
+  // dialog interrupts the "land straight in AppShell" flow. Real
+  // users on production builds always get the prompt.
+  const _kAutoDemoFlag = String.fromEnvironment('AUTO_DEMO');
+  if (_kAutoDemoFlag != '1') {
+    await NotificationService.instance.init();
+  }
   await TripForegroundService.instance.init();
   await ReviewPrompter.instance.markLaunched();
 
