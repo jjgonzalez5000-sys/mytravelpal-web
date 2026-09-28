@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Delete your MyTravelPal account &mdash; MyTravelPal</title>
+<meta name="description" content="Steps to request deletion of your MyTravelPal account and the data linked to it. Play Store requirement.">
+<meta property="og:title" content="Delete your MyTravelPal account">
+<meta property="og:description" content="How to delete your MyTravelPal account and associated data.">
+<meta property="og:url" content="https://www.mytravelpal.io/en/account-deletion">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#F44F72">
+<link rel="alternate" hreflang="es" href="https://www.mytravelpal.io/account-deletion">
+<link rel="alternate" hreflang="en" href="https://www.mytravelpal.io/en/account-deletion">
+<link rel="alternate" hreflang="x-default" href="https://www.mytravelpal.io/account-deletion">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><nav class="container">
+  <a class="brand" href="/en/">MyTravelPal</a>
+  <div class="links">
+    <a href="/en/#features">Features</a>
+    <a href="/en/about">About</a>
+    <a href="/en/blog/">Blog</a>
+    <a href="/en/support">Support</a>
+    <a href="/en/privacy">Privacy</a>
+    <a href="/en/terms">Terms</a>
+    <div class="lang-switch">
+      <a href="/account-deletion" data-lang="es">ES</a>
+      <span>|</span>
+      <a href="/en/account-deletion" class="active" data-lang="en">EN</a>
+    </div>
+  </div>
+</nav></header>
+<main class="page"><div class="container">
+<h1>Delete your MyTravelPal account</h1>
+<p><strong>Last updated: 2026-09-28</strong></p>
+<p>MyTravelPal is a road-trip planning Android app. You can request
+deletion of your account and every piece of data linked to it at any
+time. This page describes both self-service (in-app) and manual (email)
+paths.</p>
+
+<hr />
+
+<h2>Option 1 &mdash; In-app deletion (recommended)</h2>
+<p>This is the fastest route. It runs synchronously against our
+backend and removes every server-side row we hold for your account.</p>
+<ol>
+  <li>Open the <strong>MyTravelPal</strong> app on your Android device.</li>
+  <li>Tap the <strong>Profile</strong> tab in the bottom navigation.</li>
+  <li>Scroll to <strong>Account &rarr; Delete my account</strong>.</li>
+  <li>Read the confirmation dialog, then tap <strong>Delete permanently</strong>.</li>
+  <li>The app calls <code>DELETE /v1/me/account</code>, wipes the
+  local trip storage and signs you out.</li>
+</ol>
+<p>You will land on the login screen. Any device that was signed in with
+the same account is signed out on its next open.</p>
+
+<hr />
+
+<h2>Option 2 &mdash; Email request</h2>
+<p>If you can&apos;t open the app (for example the phone is lost or you&apos;ve
+already uninstalled), send an email to
+<a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>
+with:</p>
+<ul>
+  <li>Subject: <em>Account deletion request</em></li>
+  <li>The email address you used to sign in (Google or Facebook)</li>
+  <li>Optional: the approximate date of your last login</li>
+</ul>
+<p>We reply within <strong>7 working days</strong> confirming the
+deletion. GDPR requires we complete the request within 30 days at most.</p>
+
+<hr />
+
+<h2>What gets deleted</h2>
+<ul>
+  <li><strong>Profile</strong>: your traveller preferences (departure
+    hour, driving cap, meal windows, dietary flags, hotel &amp;
+    restaurant preferences).</li>
+  <li><strong>Saved trips</strong>: every trip you saved from the
+    result screen, including the tweaks you re-saved (picked hotels,
+    fuel stops, day overrides).</li>
+  <li><strong>Garage vehicles</strong>: every car you added, with tank
+    size and fuel-type defaults.</li>
+  <li><strong>Emergency contacts</strong>: the phones you added for the
+    crash-detection SOS flow (if any).</li>
+  <li><strong>Authentication rows</strong>: the account record itself,
+    the JWT session tokens on our servers, and the OAuth link to Google
+    or Facebook.</li>
+</ul>
+
+<h2>What we keep, and for how long</h2>
+<ul>
+  <li><strong>Anonymous crash logs</strong> collected by Sentry keep
+    a hashed device fingerprint for <strong>90 days</strong> for
+    stability triage &mdash; they carry no personal data.</li>
+  <li><strong>Aggregated, non-identifiable metrics</strong> (e.g.
+    "N plans computed on 2026-09-25", "median trip distance in FR")
+    are kept indefinitely for product analytics. These cannot be
+    re-associated with an individual account.</li>
+  <li><strong>Legal / financial obligations</strong>: if you made
+    a payment (currently none &mdash; we&apos;re free during beta),
+    invoicing records are kept for the period required by Spanish tax
+    law (4-6 years) with only your billing name and amount.</li>
+</ul>
+
+<p>Everything else is deleted &mdash; there is no cold-storage backup
+of your account after the deletion completes.</p>
+
+<hr />
+
+<h2>Just delete some data, keep the account?</h2>
+<p>You don&apos;t have to delete everything to trim the data we hold on
+you. From the app you can:</p>
+<ul>
+  <li>Delete a single saved trip: <strong>Trips</strong> tab &rarr;
+    long-press a trip &rarr; <strong>Delete</strong>.</li>
+  <li>Delete a garage vehicle: <strong>Profile</strong> &rarr;
+    <strong>My garage</strong> &rarr; swipe left on a vehicle.</li>
+  <li>Clear recent searches: <strong>Profile</strong> &rarr;
+    <strong>Privacy</strong> &rarr; <strong>Clear recent searches</strong>.</li>
+</ul>
+
+<hr />
+
+<p>Full data-handling detail is on the
+<a href="/en/privacy">Privacy Policy</a>. Questions?
+<a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>.</p>
+
+</div></main>
+<footer><div class="container">
+<small>&copy; 2026 MyTravelPal &middot; <a href="/en/about">About</a> &middot; <a href="/en/blog/">Blog</a> &middot; <a href="/en/privacy">Privacy</a> &middot; <a href="/en/terms">Terms</a> &middot; <a href="/en/support">Support</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
+</div></footer>
+<script>
+  document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){
+    el.addEventListener('click', function(){
+      try { localStorage.setItem('mtp-lang', el.getAttribute('data-lang')); } catch(e){}
+    });
+  });
+</script>
+</body></html>

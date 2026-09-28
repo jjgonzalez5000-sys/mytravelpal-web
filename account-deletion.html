@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eliminar tu cuenta de MyTravelPal &mdash; MyTravelPal</title>
+<meta name="description" content="Pasos para solicitar la eliminación de tu cuenta de MyTravelPal y los datos asociados. Requisito de Google Play.">
+<meta property="og:title" content="Eliminar tu cuenta de MyTravelPal">
+<meta property="og:description" content="Cómo eliminar tu cuenta de MyTravelPal y los datos asociados.">
+<meta property="og:url" content="https://www.mytravelpal.io/account-deletion">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#F44F72">
+<link rel="alternate" hreflang="es" href="https://www.mytravelpal.io/account-deletion">
+<link rel="alternate" hreflang="en" href="https://www.mytravelpal.io/en/account-deletion">
+<link rel="alternate" hreflang="x-default" href="https://www.mytravelpal.io/account-deletion">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<header><nav class="container">
+  <a class="brand" href="/">MyTravelPal</a>
+  <div class="links">
+    <a href="/#features">Funciones</a>
+    <a href="/about">Sobre</a>
+    <a href="/blog/">Blog</a>
+    <a href="/support">Soporte</a>
+    <a href="/privacy">Privacidad</a>
+    <a href="/terms">Términos</a>
+    <div class="lang-switch">
+      <a href="/account-deletion" class="active" data-lang="es">ES</a>
+      <span>|</span>
+      <a href="/en/account-deletion" data-lang="en">EN</a>
+    </div>
+  </div>
+</nav></header>
+<main class="page"><div class="container">
+<h1>Eliminar tu cuenta de MyTravelPal</h1>
+<p><strong>Última actualización: 2026-09-28</strong></p>
+<p>MyTravelPal es una app Android para planificar road-trips por
+Europa. Puedes solicitar la eliminación de tu cuenta y de todos los
+datos asociados en cualquier momento. Esta página describe las dos
+vías: auto-servicio (desde la propia app) y manual (por email).</p>
+
+<hr />
+
+<h2>Opción 1 &mdash; Eliminar desde la app (recomendado)</h2>
+<p>Es la ruta más rápida. Ejecuta la eliminación de forma síncrona
+contra nuestro backend y borra todos los registros de tu cuenta.</p>
+<ol>
+  <li>Abre la app <strong>MyTravelPal</strong> en tu Android.</li>
+  <li>Toca la pestaña <strong>Perfil</strong> en la barra inferior.</li>
+  <li>Baja hasta <strong>Cuenta &rarr; Eliminar mi cuenta</strong>.</li>
+  <li>Lee el diálogo de confirmación y pulsa
+    <strong>Eliminar permanentemente</strong>.</li>
+  <li>La app llama a <code>DELETE /v1/me/account</code>, borra los
+    viajes guardados en local y cierra sesión.</li>
+</ol>
+<p>Aterrizarás en la pantalla de login. Cualquier otro dispositivo
+que tenga la misma cuenta se desconectará en la siguiente apertura.</p>
+
+<hr />
+
+<h2>Opción 2 &mdash; Solicitud por email</h2>
+<p>Si no puedes abrir la app (por ejemplo, el móvil perdido o
+desinstalada), envía un correo a
+<a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>
+con:</p>
+<ul>
+  <li>Asunto: <em>Solicitud de eliminación de cuenta</em></li>
+  <li>El email con el que iniciabas sesión (Google o Facebook)</li>
+  <li>Opcional: fecha aproximada del último login</li>
+</ul>
+<p>Respondemos en un plazo de <strong>7 días laborables</strong>
+confirmando la eliminación. El RGPD nos obliga a completar la
+solicitud en 30 días como máximo.</p>
+
+<hr />
+
+<h2>Qué se elimina</h2>
+<ul>
+  <li><strong>Perfil</strong>: tus preferencias de viajero (hora de
+    salida, límite diario de conducción, ventanas de comidas,
+    restricciones dietéticas, preferencias de hoteles y
+    restaurantes).</li>
+  <li><strong>Viajes guardados</strong>: todos los viajes que
+    guardaste desde la pantalla de resultado, incluidos los ajustes
+    re-guardados (hoteles elegidos, gasolineras seleccionadas,
+    overrides por día).</li>
+  <li><strong>Ubicaciones origen y destino</strong> almacenadas dentro
+    de esos viajes guardados (coordenadas y etiquetas de las
+    direcciones que escribiste o seleccionaste en el mapa). También
+    las <strong>búsquedas recientes</strong> del planificador.</li>
+  <li><strong>Vehículos del garaje</strong>: cada coche que añadiste,
+    con tamaño del depósito y tipo de combustible.</li>
+  <li><strong>Contactos de emergencia</strong>: los teléfonos que
+    diste de alta para el SOS de detección de accidente (si los
+    tenías).</li>
+  <li><strong>Registros de autenticación</strong>: la propia cuenta,
+    los tokens JWT de sesión en nuestros servidores y el vínculo
+    OAuth con Google o Facebook.</li>
+</ul>
+
+<h2>Qué se conserva y durante cuánto tiempo</h2>
+<ul>
+  <li><strong>Ubicación durante la sesión</strong>: la posición del
+    GPS del móvil solo se procesa en memoria durante el cálculo del
+    plan y del modo Companion; no se persiste en el servidor. Nada
+    que borrar aquí, se descarta al cerrar la app.</li>
+  <li><strong>Registros anónimos de fallos</strong> recogidos por
+    Sentry conservan una huella de dispositivo hasheada durante
+    <strong>90 días</strong> para triaje de estabilidad. No llevan
+    datos personales.</li>
+  <li><strong>Métricas agregadas no identificables</strong>
+    (p.ej. "N planes calculados el 2026-09-25", "distancia media de
+    viaje en FR") se conservan de forma indefinida para analítica
+    de producto. No se pueden re-asociar con una cuenta
+    individual.</li>
+  <li><strong>Obligaciones legales / fiscales</strong>: si has
+    realizado un pago (ahora mismo ninguno &mdash; la beta es
+    gratuita), los registros de facturación se mantienen durante el
+    plazo que exige la ley fiscal española (4-6 años) solo con tu
+    nombre de facturación y el importe.</li>
+</ul>
+
+<p>Todo lo demás se elimina &mdash; no guardamos backups en frío de
+tu cuenta una vez completada la eliminación.</p>
+
+<hr />
+
+<h2>&iquest;Borrar solo algunos datos, sin borrar la cuenta?</h2>
+<p>No hace falta eliminarlo todo para reducir los datos que
+manejamos sobre ti. Desde la propia app puedes:</p>
+<ul>
+  <li>Borrar un viaje guardado: pestaña <strong>Viajes</strong>
+    &rarr; pulsación larga sobre un viaje &rarr;
+    <strong>Eliminar</strong>.</li>
+  <li>Borrar un vehículo del garaje: <strong>Perfil</strong>
+    &rarr; <strong>Mi garaje</strong> &rarr; desliza a la
+    izquierda sobre el vehículo.</li>
+  <li>Limpiar búsquedas recientes: <strong>Perfil</strong> &rarr;
+    <strong>Privacidad</strong> &rarr;
+    <strong>Limpiar búsquedas recientes</strong>.</li>
+</ul>
+
+<hr />
+
+<p>El detalle completo del tratamiento de datos está en la
+<a href="/privacy">Política de Privacidad</a>. &iquest;Dudas?
+<a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>.</p>
+
+</div></main>
+<footer><div class="container">
+<small>&copy; 2026 MyTravelPal &middot; <a href="/about">Sobre</a> &middot; <a href="/blog/">Blog</a> &middot; <a href="/privacy">Privacidad</a> &middot; <a href="/terms">Términos</a> &middot; <a href="/support">Soporte</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
+</div></footer>
+<script>
+  document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){
+    el.addEventListener('click', function(){
+      try { localStorage.setItem('mtp-lang', el.getAttribute('data-lang')); } catch(e){}
+    });
+  });
+</script>
+</body></html>
