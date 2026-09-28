@@ -12,6 +12,15 @@ Future<bool> _shouldShow(String key) async {
   return !(prefs.getBool(key) ?? false);
 }
 
+/// Persists the plan + result coach marks as already-seen. Used by
+/// the AUTO_DEMO bootstrap so a dogfood build doesn't stop at the
+/// tutorial overlays on every fresh install.
+Future<void> markTutorialsSeen() async {
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setBool(_kPlanTutorialSeen, true);
+  await prefs.setBool(_kResultTutorialSeen, true);
+}
+
 Future<void> _markSeen(String key) async {
   final prefs = await SharedPreferences.getInstance();
   await prefs.setBool(key, true);

@@ -9,6 +9,7 @@ import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/app_tutorial.dart';
 import '../services/biometric_auth.dart';
 import '../services/trip_session_persistence.dart';
 import '../storage/saved_trip.dart';
@@ -176,6 +177,10 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // launches also skip it.
       final prefs = ref.read(appPrefsProvider);
       await prefs.markOnboardingShown();
+      // Also silence the plan + result coach-mark tutorials so a
+      // fresh install doesn't stop the dogfood flow at the first
+      // "welcome to the planner" overlay.
+      await markTutorialsSeen();
       // Pre-seed a Yaris 4 Hybrid at 25% tank in the garage so the
       // dogfood profile has a realistic car to plan against without
       // the tester having to fill the garage form on every fresh
