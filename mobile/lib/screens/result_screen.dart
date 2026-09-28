@@ -1690,6 +1690,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 timeWindows: _response.timeWindows,
                 desiredDepartureAt: widget.desiredDepartureAt,
                 onWindowSelect: _replanWithDeparture,
+                pickedFuelStationsCount: _pickedFuelSavings.keys
+                    .where(_addedStops.containsKey)
+                    .length,
+                assumedTankLiters:
+                    widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0,
                 windowsKey: _timeWindowKey,
               ),
             ],
@@ -2763,7 +2768,20 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.desiredDepartureAt,
     this.onWindowSelect,
     this.windowsKey,
+    this.pickedFuelStationsCount = 0,
+    this.assumedTankLiters = 50.0,
   });
+
+  /// How many cheap fuel stations the driver added via the day
+  /// cards. Rendered as "N gasolineras" alongside the assumed
+  /// tank size so the driver knows how the fuel savings figure was
+  /// computed.
+  final int pickedFuelStationsCount;
+
+  /// Tank size used to convert €/L savings into a €-total for each
+  /// picked station. Defaults to 50 L when the profile hasn't set
+  /// one — matches `_toggleDayFuel` on ResultScreen.
+  final double assumedTankLiters;
   final double fuelCostEur;
   final double tollCostEur;
   final List<MealStopOpt> mealStops;
@@ -3012,6 +3030,27 @@ class _TotalTripCostCard extends ConsumerWidget {
                       ],
                     ],
                   ),
+                  // Fuel savings breakdown — how the number was
+                  // computed. Only rendered when there IS a fuel
+                  // saving AND at least one station was picked
+                  // via a day card (not the backend-suggested
+                  // one, which has an exact pre-computed figure).
+                  if (fuelSavedEur > 0 && pickedFuelStationsCount > 0) ...[
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 17),
+                      child: Text(
+                        '⛽ Combustible: '
+                        '$pickedFuelStationsCount '
+                        '${pickedFuelStationsCount == 1 ? "gasolinera" : "gasolineras"} '
+                        '· depósito ${assumedTankLiters.toStringAsFixed(0)} L',
+                        style: t.labelSmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               );
             }(),
@@ -3139,7 +3178,151 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                 ),
             ],
           ),
+          const SizedBox(height: Tokens.space8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              icon: const Icon(Icons.open_in_full, size: 16),
+              label: const Text('Ver detalle por hora'),
+              onPressed: () => _showAllWindowsSheet(
+                context,
+                windows,
+                baseline,
+                baselineMinutes,
+                onWindowSelect,
+              ),
+            ),
+          ),
         ],
+      ),
+    );
+  }
+
+  /// Full-height bottom sheet listing every candidate window with
+  /// its exact departure, estimated duration, savings-vs-baseline
+  /// delta, and traffic factor. Tapping a row fires the same
+  /// `onWindowSelect` as the compact chip Wrap.
+  Future<void> _showAllWindowsSheet(
+    BuildContext context,
+    List<TimeWindow> windows,
+    TimeWindow baseline,
+    double baselineMinutes,
+    ValueChanged<TimeWindow>? onWindowSelect,
+  ) async {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            Tokens.space20, 0, Tokens.space20,
+            MediaQuery.of(ctx).viewInsets.bottom + Tokens.space16,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Ventanas de salida',
+                  style: t.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text(
+                'Toca una ventana para replanificar con esa salida.',
+                style: t.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              const SizedBox(height: Tokens.space16),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final w in windows)
+                      Builder(builder: (rowCtx) {
+                        final saved = baselineMinutes - w.estimatedMinutes;
+                        final isBaseline = identical(w, baseline);
+                        return InkWell(
+                          onTap: onWindowSelect == null
+                              ? null
+                              : () {
+                                  Navigator.of(ctx).pop();
+                                  onWindowSelect(w);
+                                },
+                          borderRadius:
+                              BorderRadius.circular(Tokens.radiusMd),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: Tokens.space12,
+                              vertical: Tokens.space12,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  w.recommended
+                                      ? Icons.star_rounded
+                                      : Icons.schedule,
+                                  color: w.recommended
+                                      ? scheme.primary
+                                      : scheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: Tokens.space12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        DateFormat.MMMEd()
+                                                .add_Hm()
+                                                .format(w.departureAt
+                                                    .toLocal()),
+                                        style: t.titleSmall,
+                                      ),
+                                      Text(
+                                        'Duración: ${durationCompact(w.estimatedMinutes)}'
+                                        '  ·  tráfico ×${w.trafficFactor.toStringAsFixed(2)}',
+                                        style: t.bodySmall?.copyWith(
+                                          color: scheme.onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (isBaseline)
+                                  Text('Actual',
+                                      style: t.labelSmall?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                      ))
+                                else
+                                  Text(
+                                    saved >= 1
+                                        ? '−${durationCompact(saved)}'
+                                        : saved <= -1
+                                            ? '+${durationCompact(-saved)}'
+                                            : '=',
+                                    style: t.labelMedium?.copyWith(
+                                      color: saved >= 1
+                                          ? Colors.green.shade700
+                                          : saved <= -1
+                                              ? scheme.error
+                                              : scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
