@@ -70,6 +70,51 @@ class HotelPreferences {
         destinationRadiusKm:
             destinationRadiusKm ?? this.destinationRadiusKm,
       );
+
+  /// Serialise for SharedPreferences persistence. PriceBand set is
+  /// stored as a list of `slug` values (backend-compatible enum names)
+  /// so a future schema change in the enum doesn't break stored prefs.
+  Map<String, dynamic> toJson() => {
+        'enabled': enabled,
+        'max_detour_minutes': maxDetourMinutes,
+        'price_bands':
+            priceBands.map((b) => b.name).toList(growable: false),
+        'min_stars': minStars,
+        'require_parking': requireParking,
+        'require_wifi': requireWifi,
+        'require_wheelchair': requireWheelchair,
+        'include_other_accommodation': includeOtherAccommodation,
+        'destination_radius_km': destinationRadiusKm,
+      };
+
+  factory HotelPreferences.fromJson(Map<String, dynamic> j) {
+    Set<PriceBand> bands = const {PriceBand.any};
+    final raw = j['price_bands'];
+    if (raw is List) {
+      final parsed = raw
+          .whereType<String>()
+          .map((s) =>
+              PriceBand.values.firstWhere(
+                (b) => b.name == s,
+                orElse: () => PriceBand.any,
+              ))
+          .toSet();
+      if (parsed.isNotEmpty) bands = parsed;
+    }
+    return HotelPreferences(
+      enabled: j['enabled'] as bool? ?? true,
+      maxDetourMinutes: (j['max_detour_minutes'] as num?)?.toInt() ?? 45,
+      priceBands: bands,
+      minStars: (j['min_stars'] as num?)?.toInt() ?? 0,
+      requireParking: j['require_parking'] as bool? ?? false,
+      requireWifi: j['require_wifi'] as bool? ?? false,
+      requireWheelchair: j['require_wheelchair'] as bool? ?? false,
+      includeOtherAccommodation:
+          j['include_other_accommodation'] as bool? ?? false,
+      destinationRadiusKm:
+          (j['destination_radius_km'] as num?)?.toInt() ?? 40,
+    );
+  }
 }
 
 class HotelPreferencesSection extends StatelessWidget {

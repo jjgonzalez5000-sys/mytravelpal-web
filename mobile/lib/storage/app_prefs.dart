@@ -9,6 +9,8 @@ import '../domain/emergency_contact.dart';
 import '../domain/favorite_place.dart';
 import '../domain/trip_profile.dart';
 import '../domain/units.dart';
+import '../widgets/hotel_preferences.dart';
+import '../widgets/restaurant_preferences.dart';
 
 /// UI spacing tier — controls global `visualDensity`, card margins,
 /// chip padding and body-font scaling so power users can pack more
@@ -55,6 +57,11 @@ class AppPrefs {
   static const _favoritePlacesKey = 'favorite_places.v1';
   static const _emergencyContactsKey = 'emergency_contacts.v1';
   static const _currencyCodeKey = 'currency_code.v1';
+  // Trip planning prefs — persisted so hotel/restaurant search
+  // preferences survive across app launches and re-installs (via
+  // the profile push, which piggybacks on `appSettingsSnapshot`).
+  static const _hotelPrefsKey = 'hotel_prefs.v1';
+  static const _restaurantPrefsKey = 'restaurant_prefs.v1';
   static const _recentSearchesLimit = 8;
   static const _emergencyContactsLimit = 3;
 
@@ -212,6 +219,49 @@ class AppPrefs {
       await _prefs.setString(_tripProfileKey, jsonEncode(profile.toJson()));
     }
   }
+
+  /// Persisted hotel-search preferences (max detour, price bands,
+  /// stars, wifi/parking flags, etc). Falls back to
+  /// `HotelPreferences.enabledDefault` when the user hasn't opened
+  /// the plan form yet so the first plan already has sensible
+  /// choices instead of empty defaults.
+  HotelPreferences get hotelPrefs {
+    final raw = _prefs.getString(_hotelPrefsKey);
+    if (raw == null || raw.isEmpty) return HotelPreferences.enabledDefault;
+    try {
+      return HotelPreferences.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return HotelPreferences.enabledDefault;
+    }
+  }
+
+  Future<void> setHotelPrefs(HotelPreferences prefs) =>
+      _prefs.setString(_hotelPrefsKey, jsonEncode(prefs.toJson()));
+
+  /// Persisted restaurant-search preferences (max detour, price
+  /// bands, cuisines, diet toggles). Defaults to
+  /// `RestaurantPreferences.enabledDefault` (search ON) for the
+  /// first plan after a fresh install — tester ask 2026-09-28:
+  /// most drivers want meal suggestions along the corridor without
+  /// having to toggle a switch first.
+  RestaurantPreferences get restaurantPrefs {
+    final raw = _prefs.getString(_restaurantPrefsKey);
+    if (raw == null || raw.isEmpty) {
+      return RestaurantPreferences.enabledDefault;
+    }
+    try {
+      return RestaurantPreferences.fromJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      return RestaurantPreferences.enabledDefault;
+    }
+  }
+
+  Future<void> setRestaurantPrefs(RestaurantPreferences prefs) =>
+      _prefs.setString(_restaurantPrefsKey, jsonEncode(prefs.toJson()));
 
   // Premium defaults ON until we wire real receipt validation
   // (App Store / Play Billing). During the closed beta every feature

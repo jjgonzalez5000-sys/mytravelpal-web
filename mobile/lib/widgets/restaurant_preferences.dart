@@ -56,6 +56,15 @@ class RestaurantPreferences {
     priceBands: {PriceBand.any},
   );
 
+  /// Default with search ENABLED — most drivers on a long trip want
+  /// meal suggestions along the corridor. Was OFF by default (`disabled`)
+  /// but tester 2026-09-28: "por defecto se deben buscar restaurantes".
+  static const RestaurantPreferences enabledDefault = RestaurantPreferences(
+    enabled: true,
+    maxDetourMinutes: 20,
+    priceBands: {PriceBand.any},
+  );
+
   RestaurantPreferences copyWith({
     bool? enabled,
     int? maxDetourMinutes,
@@ -78,6 +87,51 @@ class RestaurantPreferences {
         halal: halal ?? this.halal,
         kosher: kosher ?? this.kosher,
       );
+
+  /// Serialise for SharedPreferences persistence.
+  Map<String, dynamic> toJson() => {
+        'enabled': enabled,
+        'max_detour_minutes': maxDetourMinutes,
+        'price_bands':
+            priceBands.map((b) => b.name).toList(growable: false),
+        'cuisines': cuisines.toList(growable: false),
+        'vegetarian': vegetarian,
+        'vegan': vegan,
+        'gluten_free': glutenFree,
+        'halal': halal,
+        'kosher': kosher,
+      };
+
+  factory RestaurantPreferences.fromJson(Map<String, dynamic> j) {
+    Set<PriceBand> bands = const {PriceBand.any};
+    final raw = j['price_bands'];
+    if (raw is List) {
+      final parsed = raw
+          .whereType<String>()
+          .map((s) => PriceBand.values.firstWhere(
+                (b) => b.name == s,
+                orElse: () => PriceBand.any,
+              ))
+          .toSet();
+      if (parsed.isNotEmpty) bands = parsed;
+    }
+    Set<String> cuisines = const {};
+    final rawCuisines = j['cuisines'];
+    if (rawCuisines is List) {
+      cuisines = rawCuisines.whereType<String>().toSet();
+    }
+    return RestaurantPreferences(
+      enabled: j['enabled'] as bool? ?? true,
+      maxDetourMinutes: (j['max_detour_minutes'] as num?)?.toInt() ?? 20,
+      priceBands: bands,
+      cuisines: cuisines,
+      vegetarian: j['vegetarian'] as bool? ?? false,
+      vegan: j['vegan'] as bool? ?? false,
+      glutenFree: j['gluten_free'] as bool? ?? false,
+      halal: j['halal'] as bool? ?? false,
+      kosher: j['kosher'] as bool? ?? false,
+    );
+  }
 }
 
 class RestaurantPreferencesSection extends StatelessWidget {

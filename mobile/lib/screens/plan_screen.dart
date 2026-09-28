@@ -141,11 +141,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   final _originKey = GlobalKey();
   final _destinationKey = GlobalKey();
   final _preferencesKey = GlobalKey();
-  // On-by-default so multi-day / overnight trips have hotel context
-  // without asking the user to toggle first. The section still hides
-  // when the toggle is off.
+  // Loaded from `AppPrefs` in initState so hotel / restaurant search
+  // preferences (max detour, price bands, cuisines...) survive
+  // across app launches. Default values ONLY seed the first plan
+  // form on a fresh install: hotels + restaurants both ON.
   HotelPreferences _hotelPrefs = HotelPreferences.enabledDefault;
-  RestaurantPreferences _restaurantPrefs = RestaurantPreferences.disabled;
+  RestaurantPreferences _restaurantPrefs =
+      RestaurantPreferences.enabledDefault;
   // Two toggles now default-on (2026-08-26 tester ask): drivers
   // consistently forgot to enable adverse events + the toll
   // alternative and then wondered why the sections were missing.
@@ -220,6 +222,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   @override
   void initState() {
     super.initState();
+    // Restore persisted hotel + restaurant search preferences so the
+    // form remembers the driver's last choices (max detour, price
+    // bands, cuisines, diet toggles) instead of resetting every
+    // launch. AppPrefs falls back to `enabledDefault` on first run.
+    final prefs = ref.read(appPrefsProvider);
+    _hotelPrefs = prefs.hotelPrefs;
+    _restaurantPrefs = prefs.restaurantPrefs;
     // Default the departure clock to the profile's preferred driving
     // start hour so a driver who set 10:00 doesn't see 08:00 pre-
     // filled every plan.
@@ -1436,11 +1445,17 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   _OnRoutePicker(
                     key: _preferencesKey,
                     hotelPrefs: _hotelPrefs,
-                    onHotelChanged: (v) =>
-                        setState(() => _hotelPrefs = v),
+                    onHotelChanged: (v) {
+                      setState(() => _hotelPrefs = v);
+                      // Persist so the next launch reopens the form
+                      // with the driver's last choice.
+                      ref.read(appPrefsProvider).setHotelPrefs(v);
+                    },
                     restaurantPrefs: _restaurantPrefs,
-                    onRestaurantChanged: (v) =>
-                        setState(() => _restaurantPrefs = v),
+                    onRestaurantChanged: (v) {
+                      setState(() => _restaurantPrefs = v);
+                      ref.read(appPrefsProvider).setRestaurantPrefs(v);
+                    },
                     parkingEnabled: _parkingEnabled,
                     onParkingChanged: (v) =>
                         setState(() => _parkingEnabled = v),
