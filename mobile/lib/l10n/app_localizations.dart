@@ -4856,6 +4856,60 @@ abstract class AppLocalizations {
   /// **'{amount} / day'**
   String tripCostPerDay(String amount);
 
+  /// No description provided for @poiSpotlightRating.
+  ///
+  /// In en, this message translates to:
+  /// **'rating'**
+  String get poiSpotlightRating;
+
+  /// No description provided for @poiSpotlightStars.
+  ///
+  /// In en, this message translates to:
+  /// **'stars'**
+  String get poiSpotlightStars;
+
+  /// No description provided for @poiSpotlightReviews.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} reviews'**
+  String poiSpotlightReviews(String count);
+
+  /// No description provided for @poiSpotlightPricePerNight.
+  ///
+  /// In en, this message translates to:
+  /// **'per night'**
+  String get poiSpotlightPricePerNight;
+
+  /// No description provided for @poiSpotlightPricePerMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'per meal'**
+  String get poiSpotlightPricePerMeal;
+
+  /// No description provided for @poiSpotlightPricePerL.
+  ///
+  /// In en, this message translates to:
+  /// **'per litre'**
+  String get poiSpotlightPricePerL;
+
+  /// No description provided for @poiFeaturesHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Amenities'**
+  String get poiFeaturesHeading;
+
+  /// No description provided for @poiMoreInfoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'More info'**
+  String get poiMoreInfoLabel;
+
+  /// No description provided for @poiMoreInfoHide.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide'**
+  String get poiMoreInfoHide;
+
   /// No description provided for @addToRouteLabel.
   ///
   /// In en, this message translates to:

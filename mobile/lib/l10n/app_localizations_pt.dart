@@ -2694,6 +2694,35 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
+  String get poiSpotlightRating => 'rating';
+
+  @override
+  String get poiSpotlightStars => 'stars';
+
+  @override
+  String poiSpotlightReviews(String count) {
+    return '$count reviews';
+  }
+
+  @override
+  String get poiSpotlightPricePerNight => 'per night';
+
+  @override
+  String get poiSpotlightPricePerMeal => 'per meal';
+
+  @override
+  String get poiSpotlightPricePerL => 'per litre';
+
+  @override
+  String get poiFeaturesHeading => 'Amenities';
+
+  @override
+  String get poiMoreInfoLabel => 'More info';
+
+  @override
+  String get poiMoreInfoHide => 'Hide';
+
+  @override
   String get addToRouteLabel => 'Add to route';
 
   @override

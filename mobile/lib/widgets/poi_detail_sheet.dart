@@ -204,17 +204,37 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              if (attributes.isNotEmpty) ...[
-                _AttributeGrid(attributes: attributes),
-                const SizedBox(height: 16),
-              ] else ...[
+              // Spotlight strip: big-ticket numbers (price / stars /
+              // rating). Rendered only when at least one signal is
+              // present — an empty attributes map falls through to a
+              // subtle "no extra info" line as before.
+              _PoiSpotlight(
+                kind: kind,
+                subtitle: subtitle,
+                attributes: attributes,
+                accent: accent,
+              ),
+              // Feature tiles: iconic 3-column grid of amenities
+              // (breakfast / wifi / parking / etc.). Empty grid is
+              // hidden — nothing rendered when nothing to show.
+              const SizedBox(height: 12),
+              _FeatureTiles(attributes: attributes, accent: accent),
+              // Fallback for POIs with zero attributes at all — the
+              // sheet still shows the map + external CTAs.
+              if (attributes.isEmpty) ...[
+                const SizedBox(height: 8),
                 Text(
                   'No extra info from OSM for this place.',
                   style: t.bodySmall
                       ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
-                const SizedBox(height: 12),
               ],
+              const SizedBox(height: 8),
+              // Everything not promoted into spotlight or tiles is
+              // available in a collapsible "más info" section — kept
+              // out of the primary view but not lost.
+              _MoreInfoSection(attributes: attributes),
+              const SizedBox(height: 16),
               if (widget.onAddToRoute != null) ...[
                 const SizedBox(height: 12),
                 SizedBox(
@@ -281,9 +301,462 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
   }
 }
 
+/// Attributes that get lifted into the feature-tile grid (icon-first
+/// visual pills instead of plain text chips). Each entry: OSM tag key
+/// → (icon, short-label-key-lookup). We show a max of 6 tiles; the
+/// rest are pushed into the "más info" section.
+///
+/// Keys are OSM-normalized: `yes` / `true` renders the tile "on",
+/// `no` / `false` hides it (we never advertise a missing amenity).
+/// Non-boolean tags (e.g. `cuisine: italian`) render the value.
+const Map<String, ({IconData icon, String label})> _featureCatalogue = {
+  'breakfast': (icon: Icons.free_breakfast_outlined, label: 'Breakfast'),
+  'wifi': (icon: Icons.wifi, label: 'Wi-Fi'),
+  'internet_access': (icon: Icons.wifi, label: 'Wi-Fi'),
+  'parking': (icon: Icons.local_parking_outlined, label: 'Parking'),
+  'air_conditioning': (icon: Icons.ac_unit, label: 'AC'),
+  'pool': (icon: Icons.pool, label: 'Pool'),
+  'swimming_pool': (icon: Icons.pool, label: 'Pool'),
+  'pets': (icon: Icons.pets, label: 'Pets OK'),
+  'dog': (icon: Icons.pets, label: 'Pets OK'),
+  'wheelchair': (icon: Icons.accessible_forward, label: 'Accessible'),
+  'outdoor_seating': (icon: Icons.deck, label: 'Outdoor'),
+  'takeaway': (icon: Icons.takeout_dining_outlined, label: 'Takeaway'),
+  'delivery': (icon: Icons.delivery_dining_outlined, label: 'Delivery'),
+  'reservation': (icon: Icons.event_seat_outlined, label: 'Reservation'),
+  'toilets': (icon: Icons.wc, label: 'Toilets'),
+  'car_wash': (icon: Icons.local_car_wash_outlined, label: 'Car wash'),
+  'shop': (icon: Icons.storefront_outlined, label: 'Shop'),
+  'self_service': (icon: Icons.self_improvement, label: 'Self-service'),
+  'contactless': (icon: Icons.contactless_outlined, label: 'Contactless'),
+  'payment:contactless':
+      (icon: Icons.contactless_outlined, label: 'Contactless'),
+  'credit_cards': (icon: Icons.credit_card, label: 'Card'),
+  'payment:credit_cards': (icon: Icons.credit_card, label: 'Card'),
+  'fuel:diesel': (icon: Icons.local_gas_station_outlined, label: 'Diesel'),
+  'fuel:octane_95':
+      (icon: Icons.local_gas_station_outlined, label: 'Petrol 95'),
+  'fuel:octane_98':
+      (icon: Icons.local_gas_station_outlined, label: 'Petrol 98'),
+  'fuel:lpg': (icon: Icons.propane_tank_outlined, label: 'LPG'),
+  'fuel:e10': (icon: Icons.eco_outlined, label: 'E10'),
+  'fuel:e85': (icon: Icons.eco_outlined, label: 'E85'),
+  'fuel:HGV_diesel':
+      (icon: Icons.local_shipping_outlined, label: 'HGV diesel'),
+};
+
+bool _tagIsOn(String v) {
+  final s = v.toLowerCase();
+  return s == 'yes' || s == 'true' || s == '1' || s == 'designated';
+}
+
+bool _tagIsOff(String v) {
+  final s = v.toLowerCase();
+  return s == 'no' || s == 'false' || s == '0';
+}
+
+/// Compact hero strip at the top of the sheet body: 1-2 large stats
+/// (price, stars, rating) rendered as tinted "spotlight" chips so
+/// the driver reads the important numbers at a glance instead of
+/// digging through label:value pills.
+class _PoiSpotlight extends StatelessWidget {
+  const _PoiSpotlight({
+    required this.kind,
+    required this.subtitle,
+    required this.attributes,
+    required this.accent,
+  });
+
+  final PoiKind kind;
+  final String subtitle;
+  final Map<String, String> attributes;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+
+    // Star rating (1-5) — hotels usually carry `stars`.
+    final rawStars = attributes['stars'];
+    final stars = rawStars == null ? null : int.tryParse(rawStars.trim());
+    // Google Places rating (0.0-5.0) — currently populated for
+    // restaurants; hotels once enrichment ships.
+    final ratingStr = attributes['rating'];
+    final rating = ratingStr == null ? null : double.tryParse(ratingStr);
+    final ratingCountStr = attributes['rating_count'];
+    // Extract the "€ per meal / per night" figure from the caller's
+    // subtitle — the subtitle already carries the price string, so
+    // rather than duplicating it in attributes we lift it out for
+    // the spotlight card. Rough regex: first "NN €" cluster.
+    final priceMatch =
+        RegExp(r'(\d+[\d,\.]*)\s*€').firstMatch(subtitle);
+    final priceStr = priceMatch?.group(1);
+
+    final tiles = <Widget>[];
+    if (priceStr != null) {
+      tiles.add(_SpotlightTile(
+        icon: Icons.payments_outlined,
+        value: '$priceStr €',
+        caption: kind == PoiKind.hotel
+            ? l.poiSpotlightPricePerNight
+            : kind == PoiKind.restaurant
+                ? l.poiSpotlightPricePerMeal
+                : l.poiSpotlightPricePerL,
+        accent: accent,
+      ));
+    }
+    if (stars != null && stars > 0 && stars <= 5) {
+      tiles.add(_SpotlightTile(
+        icon: Icons.star_rounded,
+        value: '★' * stars + '☆' * (5 - stars),
+        caption: l.poiSpotlightStars,
+        accent: Colors.amber.shade700,
+        monospaceValue: true,
+      ));
+    }
+    if (rating != null && rating > 0) {
+      final subtitle2 = ratingCountStr == null
+          ? l.poiSpotlightRating
+          : l.poiSpotlightReviews(ratingCountStr);
+      tiles.add(_SpotlightTile(
+        icon: Icons.reviews_outlined,
+        value: rating.toStringAsFixed(1),
+        caption: subtitle2,
+        accent: scheme.tertiary,
+      ));
+    }
+    if (tiles.isEmpty) return const SizedBox.shrink();
+    return Wrap(spacing: 10, runSpacing: 10, children: tiles);
+  }
+}
+
+class _SpotlightTile extends StatelessWidget {
+  const _SpotlightTile({
+    required this.icon,
+    required this.value,
+    required this.caption,
+    required this.accent,
+    this.monospaceValue = false,
+  });
+  final IconData icon;
+  final String value;
+  final String caption;
+  final Color accent;
+  final bool monospaceValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accent.withValues(alpha: 0.16),
+            accent.withValues(alpha: 0.06),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 20, color: accent),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: t.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface,
+                  letterSpacing: monospaceValue ? 0.5 : 0,
+                ),
+              ),
+              Text(
+                caption,
+                style: t.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Icon-first grid of amenities. Each tile is bigger and more
+/// scannable than the previous `label: value` pills — the driver
+/// glances at icons instead of parsing prose. Boolean-off keys
+/// (`no`, `false`) are dropped; non-boolean keys render the value
+/// as a short second line.
+class _FeatureTiles extends StatelessWidget {
+  const _FeatureTiles({required this.attributes, required this.accent});
+  final Map<String, String> attributes;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    final entries = <(IconData, String, String?)>[];
+    for (final entry in attributes.entries) {
+      final def = _featureCatalogue[entry.key];
+      if (def == null) continue;
+      if (_tagIsOff(entry.value)) continue;
+      final valueLine = _tagIsOn(entry.value) ? null : entry.value;
+      entries.add((def.icon, def.label, valueLine));
+    }
+    // Cuisine gets special treatment for restaurants — always show
+    // the cuisine type as a feature tile.
+    final cuisine = attributes['cuisine'];
+    if (cuisine != null && cuisine.isNotEmpty) {
+      entries.insert(0, (
+        Icons.restaurant_menu,
+        cuisine.split(';').first.trim(),
+        null,
+      ));
+    }
+    if (entries.isEmpty) return const SizedBox.shrink();
+
+    // Cap at 8 tiles — the rest live in the "más info" collapsible.
+    final shown = entries.take(8).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          l.poiFeaturesHeading,
+          style: t.labelLarge?.copyWith(
+            color: scheme.onSurfaceVariant,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final (icon, label, valueLine) in shown)
+              _FeatureTile(
+                icon: icon,
+                label: label,
+                valueLine: valueLine,
+                accent: accent,
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FeatureTile extends StatelessWidget {
+  const _FeatureTile({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    this.valueLine,
+  });
+  final IconData icon;
+  final String label;
+  final String? valueLine;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 18, color: accent),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: t.labelMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (valueLine != null)
+                Text(
+                  valueLine!.length > 24
+                      ? '${valueLine!.substring(0, 22)}…'
+                      : valueLine!,
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Collapsible "más info" section that carries every attribute not
+/// promoted into the spotlight or the feature grid. Keeps power-user
+/// info reachable without leaking OSM tag names into the primary view.
+class _MoreInfoSection extends StatefulWidget {
+  const _MoreInfoSection({required this.attributes});
+  final Map<String, String> attributes;
+
+  @override
+  State<_MoreInfoSection> createState() => _MoreInfoSectionState();
+}
+
+class _MoreInfoSectionState extends State<_MoreInfoSection> {
+  bool _open = false;
+
+  // Keys already visible in the spotlight or feature tiles — no
+  // need to duplicate them under "más info".
+  static const Set<String> _promoted = {
+    'stars',
+    'rating',
+    'rating_count',
+    'google_price_level',
+    'google_maps_url',
+    'cuisine',
+    'phone',
+    'contact:phone',
+    'website',
+    'contact:website',
+    ..._featureCatalogueKeys,
+  };
+
+  // Set-of-keys view of the catalogue. Kept as a static const so
+  // the diff filter above stays cheap.
+  static const Set<String> _featureCatalogueKeys = {
+    'breakfast',
+    'wifi',
+    'internet_access',
+    'parking',
+    'air_conditioning',
+    'pool',
+    'swimming_pool',
+    'pets',
+    'dog',
+    'wheelchair',
+    'outdoor_seating',
+    'takeaway',
+    'delivery',
+    'reservation',
+    'toilets',
+    'car_wash',
+    'shop',
+    'self_service',
+    'contactless',
+    'payment:contactless',
+    'credit_cards',
+    'payment:credit_cards',
+    'fuel:diesel',
+    'fuel:octane_95',
+    'fuel:octane_98',
+    'fuel:lpg',
+    'fuel:e10',
+    'fuel:e85',
+    'fuel:HGV_diesel',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
+
+    // The "rest": attributes not already surfaced above.
+    final rest = <MapEntry<String, String>>[];
+    for (final entry in widget.attributes.entries) {
+      if (_promoted.contains(entry.key)) continue;
+      // Booleans that are OFF are noise — skip.
+      if (_tagIsOff(entry.value)) continue;
+      rest.add(entry);
+    }
+    if (rest.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () => setState(() => _open = !_open),
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Icon(
+                  _open ? Icons.expand_less : Icons.expand_more,
+                  size: 18,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  _open ? l.poiMoreInfoHide : l.poiMoreInfoLabel,
+                  style: t.labelMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (_open) ...[
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final entry in rest)
+                _AttrChip(
+                  icon: Icons.info_outline,
+                  label: entry.key.replaceAll('_', ' '),
+                  value: entry.value.length > 30
+                      ? '${entry.value.substring(0, 27)}…'
+                      : entry.value,
+                  scheme: scheme,
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 /// Renders each attribute as a chip with a matching icon where we know
 /// one (stars → star, wifi → wifi, phone → phone, …). Unknown keys get
 /// a bullet chip so nothing is dropped silently.
+///
+/// Deprecated: kept only as the fallback renderer inside
+/// [_MoreInfoSection]. The primary layout uses [_PoiSpotlight] +
+/// [_FeatureTiles] which are far more scannable.
 class _AttributeGrid extends StatelessWidget {
   const _AttributeGrid({required this.attributes});
   final Map<String, String> attributes;

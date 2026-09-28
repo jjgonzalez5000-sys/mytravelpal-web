@@ -902,8 +902,16 @@ class DayPlanSection extends StatelessWidget {
                   //      reliable stops instead of a blank card and
                   //      flag it with a hint (better a stop 30 min
                   //      later that lacks the tag than no stop at all).
+                  // While enrich is still in flight, hide unnamed
+                  // rest stops. Pre-enrich rows fall back to a bare
+                  // "km X" label which is worse than showing nothing
+                  // for a beat and popping the real place name in
+                  // when Overpass answers.
+                  final rawStops = enrichPending
+                      ? d.restStops.where((r) => r.name != null)
+                      : d.restStops;
                   final reliable = _dedupRestStops(
-                    d.restStops.where(_restStopIsReliable),
+                    rawStops.where(_restStopIsReliable),
                   );
                   final matched = reliable
                       .where((r) => _restStopMatchesFilter(r, filter))
@@ -1984,7 +1992,12 @@ class _SleepHotelsBlock extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  l.daySleepHotelsSearching,
+                  // Reuse the tailored enrichment pulse copy here so
+                  // the day-card empty state matches the rotating
+                  // status line above ("Buscando hoteles con mejor
+                  // precio/estrellas") — same tone, no generic
+                  // "buscando hoteles cerca de tu parada".
+                  l.enrichPulseHotels,
                   style: t.bodySmall?.copyWith(
                     color: scheme.onSurfaceVariant,
                     fontStyle: FontStyle.italic,
