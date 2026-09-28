@@ -1490,6 +1490,19 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String consistencyFuelNoStations(String km) {
+    return 'Le trajet fait $km km, mais nous ne voyons pas de stations le long de l\'itinéraire pour le moment. Les prix et suggestions de plein ne sont pas disponibles pour cette étape.';
+  }
+
+  @override
+  String get consistencyFuelNoStationsHint =>
+      'Les données sont peut-être en cours de chargement. Réessaie dans quelques minutes ou ajoute ton propre arrêt en touchant la carte.';
+
+  @override
+  String get consistencyFuelRangeExceeded =>
+      'Ton véhicule ne peut pas parcourir l\'itinéraire avec un seul plein ou une seule charge — tu devras faire le plein ou recharger pendant le voyage.';
+
+  @override
   String get consistencyHeadsUp => 'Info sur votre plan';
 
   @override

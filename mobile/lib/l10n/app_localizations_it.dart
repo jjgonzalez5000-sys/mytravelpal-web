@@ -1490,6 +1490,19 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
+  String consistencyFuelNoStations(String km) {
+    return 'Il viaggio è di $km km, ma al momento non vediamo distributori lungo il percorso. Prezzi e suggerimenti di rifornimento non sono disponibili per questa tratta.';
+  }
+
+  @override
+  String get consistencyFuelNoStationsHint =>
+      'I dati potrebbero essere ancora in caricamento. Riprova tra qualche minuto o aggiungi la tua sosta toccando la mappa.';
+
+  @override
+  String get consistencyFuelRangeExceeded =>
+      'Il tuo veicolo non copre l\'intero percorso con un solo pieno o una sola carica — dovrai rifornirti o ricaricare durante il viaggio.';
+
+  @override
   String get consistencyHeadsUp => 'Nota sul tuo piano';
 
   @override

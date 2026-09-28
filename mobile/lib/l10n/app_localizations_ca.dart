@@ -1484,6 +1484,19 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String consistencyFuelNoStations(String km) {
+    return 'Trip is $km km, but we can\'t see any gas stations along the route right now. Pricing and refuel picks are unavailable for this leg.';
+  }
+
+  @override
+  String get consistencyFuelNoStationsHint =>
+      'Data may still be loading — try refreshing in a couple of minutes, or add your own stop by tapping the map.';
+
+  @override
+  String get consistencyFuelRangeExceeded =>
+      'Your vehicle can\'t cover the route on a single tank/charge — you\'ll need to refuel or recharge during the trip.';
+
+  @override
   String get consistencyHeadsUp => 'Heads-up on your trip plan';
 
   @override

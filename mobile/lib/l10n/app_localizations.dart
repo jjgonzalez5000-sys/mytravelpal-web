@@ -2755,6 +2755,24 @@ abstract class AppLocalizations {
   /// **'Trip plan needs review · {errors} error(s), {warnings} warning(s)'**
   String consistencyNeedsReviewMixed(int errors, int warnings);
 
+  /// No description provided for @consistencyFuelNoStations.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip is {km} km, but we can\'t see any gas stations along the route right now. Pricing and refuel picks are unavailable for this leg.'**
+  String consistencyFuelNoStations(String km);
+
+  /// No description provided for @consistencyFuelNoStationsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Data may still be loading — try refreshing in a couple of minutes, or add your own stop by tapping the map.'**
+  String get consistencyFuelNoStationsHint;
+
+  /// No description provided for @consistencyFuelRangeExceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Your vehicle can\'t cover the route on a single tank/charge — you\'ll need to refuel or recharge during the trip.'**
+  String get consistencyFuelRangeExceeded;
+
   /// No description provided for @consistencyHeadsUp.
   ///
   /// In en, this message translates to:

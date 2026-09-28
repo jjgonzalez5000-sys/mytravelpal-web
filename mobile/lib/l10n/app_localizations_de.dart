@@ -1486,6 +1486,19 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String consistencyFuelNoStations(String km) {
+    return 'Die Reise ist $km km lang, aber wir sehen momentan keine Tankstellen entlang der Route. Preise und Tank-Vorschläge sind für diesen Abschnitt nicht verfügbar.';
+  }
+
+  @override
+  String get consistencyFuelNoStationsHint =>
+      'Die Daten werden möglicherweise noch geladen. Versuche es in ein paar Minuten erneut oder füge deinen eigenen Stopp per Karten-Tipp hinzu.';
+
+  @override
+  String get consistencyFuelRangeExceeded =>
+      'Dein Fahrzeug schafft die Strecke nicht mit einer Tankfüllung / Ladung — du musst unterwegs tanken oder laden.';
+
+  @override
   String get consistencyHeadsUp => 'Hinweis zu deinem Plan';
 
   @override

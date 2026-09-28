@@ -97,7 +97,10 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
   Widget _issueLine(BuildContext context, ConsistencyIssue issue) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final color = _severityColor(issue.severity, scheme);
+    final localized = _localizedMessage(l, issue);
+    final hint = _hintFor(l, issue.code);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
@@ -111,14 +114,67 @@ class _ConsistencyBannerState extends State<ConsistencyBanner> {
             ),
           ),
           Expanded(
-            child: Text(
-              issue.message,
-              style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  localized,
+                  style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+                if (hint != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    hint,
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant
+                          .withValues(alpha: 0.75),
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Prefer a locale-aware message keyed on the backend `code` when
+  /// we have one; fall back to the raw server text otherwise. The
+  /// server ships English-only text — this keeps the polished
+  /// consistency banner intelligible in every locale for the codes
+  /// users actually hit.
+  String _localizedMessage(AppLocalizations l, ConsistencyIssue issue) {
+    switch (issue.code) {
+      case 'fuel.no_stations_visible':
+        final km = _extractKm(issue.message);
+        return l.consistencyFuelNoStations(km);
+      case 'fuel.range_exceeded':
+        return l.consistencyFuelRangeExceeded;
+      default:
+        return issue.message;
+    }
+  }
+
+  /// Optional actionable hint line rendered under the main message
+  /// for codes where "here's what to do next" is more useful than
+  /// silence. Returns null for codes without a hint.
+  String? _hintFor(AppLocalizations l, String code) {
+    switch (code) {
+      case 'fuel.no_stations_visible':
+        return l.consistencyFuelNoStationsHint;
+      default:
+        return null;
+    }
+  }
+
+  /// Best-effort km extraction from the backend's English "Trip is
+  /// N km but ..." string. Falls back to "?" so the localized copy
+  /// still renders even if the shape changes upstream.
+  String _extractKm(String message) {
+    final match = RegExp(r'(\d{2,5})\s*km').firstMatch(message);
+    return match?.group(1) ?? '?';
   }
 
   String _headerLabelStatic(

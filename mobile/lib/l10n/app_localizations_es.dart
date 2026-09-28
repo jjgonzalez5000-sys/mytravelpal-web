@@ -1494,6 +1494,19 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String consistencyFuelNoStations(String km) {
+    return 'El viaje son $km km, pero de momento no vemos gasolineras a lo largo de la ruta. Los precios y las paradas sugeridas no están disponibles para este tramo.';
+  }
+
+  @override
+  String get consistencyFuelNoStationsHint =>
+      'Puede que los datos aún estén cargando. Prueba a refrescar en unos minutos, o añade tu propia parada tocando el mapa.';
+
+  @override
+  String get consistencyFuelRangeExceeded =>
+      'Tu vehículo no cubre la ruta con un solo depósito o carga. Vas a necesitar repostar o cargar durante el viaje.';
+
+  @override
   String get consistencyHeadsUp => 'Aviso sobre tu plan de viaje';
 
   @override
