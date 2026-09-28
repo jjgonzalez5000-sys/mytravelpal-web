@@ -1942,22 +1942,63 @@ async def _plan_enrich_impl(
             day_overrides=_day_overrides_map(payload),
         )
         # ---- Densification (meal restaurants + per-day hotels) ------
+        # Fanned out in parallel after 2026-09-28 dogfood report:
+        # long trips (Toledo → Turda, ~2800 km / 6 days = 18 meal
+        # stops) would serialize `restaurants_near` calls at ~2 s
+        # each, blowing the enrich budget and leaving middle days
+        # empty on the wire. Gathering brings the total for the
+        # meal-densification phase back to ~2-3 s regardless of trip
+        # length. Widened radius fallback (25 → 60 km) so a sparse
+        # region (rural Balkans, Alpine transits) still yields a
+        # pick instead of silently dropping the meal.
         near_restaurants = getattr(
             providers.restaurants, "restaurants_near", None,
         )
         densified_restaurants: list = []
         if near_restaurants is not None:
+            missing_meals = [
+                (idx, m) for idx, m in enumerate(opt.meal_stops)
+                if m.restaurant is None
+            ]
+
+            async def _hits_for(coord: Coordinate) -> tuple:
+                """25 km first; widen to 60 km if the tight ring is empty."""
+                try:
+                    tight = await near_restaurants(coord, 25.0)
+                except Exception as exc:  # noqa: BLE001
+                    _log.warning(
+                        "restaurants_near tight ring failed: %r", exc,
+                    )
+                    tight = ()
+                if tight:
+                    return tight
+                try:
+                    wide = await near_restaurants(coord, 60.0)
+                except Exception as exc:  # noqa: BLE001
+                    _log.warning(
+                        "restaurants_near wide ring failed: %r", exc,
+                    )
+                    wide = ()
+                return wide
+
+            fan = await asyncio.gather(
+                *[_hits_for(m.rest_stop.coordinate) for _, m in missing_meals],
+                return_exceptions=True,
+            )
+            per_meal_hits: dict[int, tuple] = {}
+            for (idx, _m), hits in zip(missing_meals, fan):
+                per_meal_hits[idx] = () if isinstance(hits, Exception) else hits
+                if not isinstance(hits, Exception):
+                    densified_restaurants.extend(hits)
+
             patched_meals: list = []
             used_meal_names: set[str] = {
                 m.restaurant.name
                 for m in opt.meal_stops if m.restaurant is not None
             }
-            for m in opt.meal_stops:
+            for idx, m in enumerate(opt.meal_stops):
                 if m.restaurant is None:
-                    hits = await near_restaurants(
-                        m.rest_stop.coordinate, 25.0,
-                    )
-                    densified_restaurants.extend(hits)
+                    hits = per_meal_hits.get(idx, ())
                     pick = next(
                         (h for h in hits if h.name not in used_meal_names),
                         None,
@@ -1972,13 +2013,47 @@ async def _plan_enrich_impl(
         densified_hotels: list = []
         _middle_day_hits: dict[tuple[float, float], list] = {}
         if near_hotels is not None and hotels_requested:
+            # Same rationale as the meal densification above:
+            # serialized per-sleep-stop calls made long trips'
+            # middle-day hotels vanish because the enrich budget
+            # ran out. Fan out with a widened-radius fallback so
+            # rural sleep coords still yield a hit.
+            async def _hotels_hits_for(
+                coord: Coordinate, tight: float = 40.0, wide: float = 80.0,
+            ) -> tuple:
+                try:
+                    t = await near_hotels(coord, tight)
+                except Exception as exc:  # noqa: BLE001
+                    _log.warning("hotels_near tight failed: %r", exc)
+                    t = ()
+                if t:
+                    return t
+                try:
+                    return await near_hotels(coord, wide)
+                except Exception as exc:  # noqa: BLE001
+                    _log.warning("hotels_near wide failed: %r", exc)
+                    return ()
+
+            missing_sleeps = [
+                (i, s) for i, s in enumerate(opt.sleep_stops)
+                if s.hotel is None
+            ]
+            fan_sleep = await asyncio.gather(
+                *[_hotels_hits_for(s.rest_stop.coordinate) for _, s in missing_sleeps],
+                return_exceptions=True,
+            )
+            per_sleep_hits: dict[int, tuple] = {}
+            for (i, _s), hits in zip(missing_sleeps, fan_sleep):
+                per_sleep_hits[i] = () if isinstance(hits, Exception) else hits
+                if not isinstance(hits, Exception):
+                    densified_hotels.extend(hits)
+
             for i, s in enumerate(opt.sleep_stops):
                 if s.hotel is not None:
                     continue
-                hits = await near_hotels(s.rest_stop.coordinate, 40.0)
+                hits = per_sleep_hits.get(i, ())
                 if not hits:
                     continue
-                densified_hotels.extend(hits)
                 new_sleeps = list(opt.sleep_stops)
                 new_sleeps[i] = replace(s, hotel=hits[0])
                 opt = replace(opt, sleep_stops=tuple(new_sleeps))
@@ -2004,8 +2079,10 @@ async def _plan_enrich_impl(
                 if payload.hotel_destination_radius_km is not None
                 else 40.0
             )
-            dest_hits = await near_hotels(dest_coord, dest_radius)
-            densified_hotels.extend(dest_hits)
+            # Also parallelize the "extra hotels per sleep coord for
+            # the picker" pass so a 6-day trip doesn't serialize 6
+            # more `hotels_near` calls back-to-back.
+            extra_sleep_coords: list[Coordinate] = []
             for s in opt.sleep_stops:
                 key = (
                     round(s.rest_stop.coordinate.lat, 3),
@@ -2014,8 +2091,16 @@ async def _plan_enrich_impl(
                 if key in seen_coords:
                     continue
                 seen_coords.add(key)
-                hits = await near_hotels(s.rest_stop.coordinate, 40.0)
-                densified_hotels.extend(hits)
+                extra_sleep_coords.append(s.rest_stop.coordinate)
+
+            extra_fan = await asyncio.gather(
+                _hotels_hits_for(dest_coord, tight=dest_radius, wide=dest_radius * 2),
+                *[_hotels_hits_for(c) for c in extra_sleep_coords],
+                return_exceptions=True,
+            )
+            for hits in extra_fan:
+                if not isinstance(hits, Exception):
+                    densified_hotels.extend(hits)
             _preview_multiday = compute_day_plan(
                 departure_at=effective_departure_at,
                 trip_duration_hours=(
