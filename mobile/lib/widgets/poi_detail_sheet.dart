@@ -95,7 +95,12 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
     final name = widget.name;
     final subtitle = widget.subtitle;
     final poi = widget.poi;
-    final attributes = widget.attributes;
+    // Strip OSM metadata / lat-lon / wiki links / duplicate name
+    // variants BEFORE any sub-widget sees the map, so the feature
+    // grid + "más info" both work off the same user-relevant slice.
+    // Spotlight still reads the raw map — it needs the numeric
+    // rating / stars / price values that would otherwise be blocked.
+    final attributes = _userVisibleAttrs(widget.attributes);
     final icon = widget.icon;
     final accent = widget.accent;
     final scheme = Theme.of(context).colorScheme;
@@ -211,7 +216,11 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
               _PoiSpotlight(
                 kind: kind,
                 subtitle: subtitle,
-                attributes: attributes,
+                // Spotlight needs the RAW attribute map because it
+                // reads `stars`, `rating`, `rating_count` etc. — some
+                // of which our own filter could over-eagerly drop
+                // in a future revision.
+                attributes: widget.attributes,
                 accent: accent,
               ),
               // Feature tiles: iconic 3-column grid of amenities
@@ -395,6 +404,69 @@ String _prettyKey(String key) {
   final cleaned = key.replaceAll(':', ' ').replaceAll('_', ' ').trim();
   if (cleaned.isEmpty) return key;
   return cleaned[0].toUpperCase() + cleaned.substring(1);
+}
+
+/// OSM tag keys the driver never cares about — internal identifiers,
+/// data-source metadata, geographic ids, cross-references, wiki
+/// links. Filtered out at the sheet body level so they never reach
+/// the feature grid OR the "más info" fallback (they were producing
+/// a "sea of ticks" in the collapsible when a POI came back with
+/// 8-10 metadata tags).
+///
+/// Also filters via prefix / substring in [_isVisibleAttrKey] for
+/// families where enumerating every variant is impractical (any
+/// `*:wikidata`, any `ref:*`, any `check_date:*`, etc.).
+const Set<String> _ATTR_BLOCKLIST = {
+  // Geographic identifiers — the sheet already renders the POI on
+  // the map; the raw coord numbers add nothing.
+  'lat', 'lon', 'latitude', 'longitude',
+  // OSM internals.
+  'osm_id', 'osm_type', 'osm_key', 'osm_value',
+  'id', 'type', 'timestamp', 'version', 'changeset',
+  // Data provenance / cross-references — power-user metadata.
+  'source', 'source:name', 'source:date', 'source:website',
+  'import', 'imported', 'note', 'fixme', 'attribution',
+  'ref', 'ref:vatin', 'ref:sirene',
+  'wikidata', 'wikipedia',
+  'brand:wikidata', 'brand:wikipedia',
+  'operator:wikidata', 'operator:wikipedia',
+  'name:wikidata', 'name:wikipedia',
+  // Naming variants that duplicate `name` — one is enough.
+  'alt_name', 'old_name', 'loc_name', 'short_name', 'name:en',
+  'name:es', 'name:fr', 'name:it', 'name:de',
+  // Rendered by our own spotlight / structured chips already.
+  'rating_source', 'rating_scale',
+  // POI-kind tag itself — inferred from `PoiKind` in the header.
+  'amenity', 'tourism',
+};
+
+/// Same-purpose filter with prefix / substring rules for tag
+/// families that would explode a static set (`check_date:opening_hours`,
+/// `ref:eu:vat`, `name:zh-Hant`, etc.).
+bool _isVisibleAttrKey(String k) {
+  if (_ATTR_BLOCKLIST.contains(k)) return false;
+  final lower = k.toLowerCase();
+  if (lower.startsWith('check_date')) return false;
+  if (lower.startsWith('survey:')) return false;
+  if (lower.startsWith('addr:full')) return false;
+  if (lower.contains(':wikidata')) return false;
+  if (lower.contains(':wikipedia')) return false;
+  if (lower.startsWith('name:')) return false; // localized names.
+  if (lower.startsWith('ref:')) return false;
+  return true;
+}
+
+/// Filter an attributes map down to the entries the driver actually
+/// cares about. Applied uniformly by the feature grid + the "más
+/// info" fallback so no widget has to redo the blocklist.
+Map<String, String> _userVisibleAttrs(Map<String, String> src) {
+  final out = <String, String>{};
+  for (final entry in src.entries) {
+    if (!_isVisibleAttrKey(entry.key)) continue;
+    if (_tagIsOff(entry.value)) continue;
+    out[entry.key] = entry.value;
+  }
+  return out;
 }
 
 bool _tagIsOn(String v) {
@@ -662,10 +734,11 @@ Color _tintForFeature(String key, ColorScheme scheme) {
 }
 
 /// Guess an icon for an unknown OSM tag based on the tag name.
-/// Prevents the fallback "más info" list from degenerating into a
-/// sea of identical check marks — most OSM tags fall into a small
-/// number of semantic buckets we can pattern-match on.
-IconData _guessIconForKey(String key) {
+/// Returns null when no semantic pattern matches — the caller is
+/// expected to DROP the entry rather than render a generic
+/// placeholder icon that produced the "sea of ticks" tester
+/// feedback. Better a shorter list than a noisy one.
+IconData? _guessIconForKey(String key) {
   final k = key.toLowerCase();
   if (k.contains('phone') || k.contains('call')) return Icons.phone_outlined;
   if (k.contains('email') || k.contains('mail')) return Icons.email_outlined;
@@ -696,12 +769,9 @@ IconData _guessIconForKey(String key) {
     return Icons.local_bar_outlined;
   }
   if (k.contains('coffee') || k.contains('cafe')) return Icons.local_cafe;
-  if (k.contains('note') || k.contains('description')) {
-    return Icons.notes_outlined;
-  }
-  // Semantic-neutral fallback that still reads as "extra info" without
-  // looking like a checkbox tick.
-  return Icons.local_offer_outlined;
+  if (k.contains('description')) return Icons.notes_outlined;
+  // No semantic match → tell the caller to skip this entry.
+  return null;
 }
 
 /// One "icon in tinted circle + label" amenity item. Booking-style
@@ -835,12 +905,17 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
 
-    // The "rest": attributes not already surfaced above.
+    // The "rest": attributes not already surfaced above, further
+    // constrained to keys we can render with a semantic icon. Tags
+    // without a matched icon are dropped rather than shown with a
+    // generic pictogram — tester feedback rejected the "sea of
+    // ticks" look the previous generic-fallback pattern produced.
     final rest = <MapEntry<String, String>>[];
     for (final entry in widget.attributes.entries) {
       if (_promoted.contains(entry.key)) continue;
-      // Booleans that are OFF are noise — skip.
+      if (!_isVisibleAttrKey(entry.key)) continue;
       if (_tagIsOff(entry.value)) continue;
+      if (_guessIconForKey(entry.key) == null) continue;
       rest.add(entry);
     }
     if (rest.isEmpty) return const SizedBox.shrink();
@@ -884,12 +959,13 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
             runSpacing: 10,
             children: [
               for (final entry in rest)
-                _FeatureItem(
-                  icon: _guessIconForKey(entry.key),
-                  label: _prettyKey(entry.key),
-                  valueLine: _tagIsOn(entry.value) ? null : entry.value,
-                  tint: _tintForFeature(entry.key, scheme),
-                ),
+                if (_guessIconForKey(entry.key) != null)
+                  _FeatureItem(
+                    icon: _guessIconForKey(entry.key)!,
+                    label: _prettyKey(entry.key),
+                    valueLine: _tagIsOn(entry.value) ? null : entry.value,
+                    tint: _tintForFeature(entry.key, scheme),
+                  ),
             ],
           ),
         ],
