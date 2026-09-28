@@ -2340,6 +2340,10 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get restStopsWidenedHint =>
+      'Aucun arrêt ne correspond au filtre ; on affiche les meilleurs du tronçon.';
+
+  @override
   String get windowsSheetTitle => 'Fenêtres de départ';
 
   @override

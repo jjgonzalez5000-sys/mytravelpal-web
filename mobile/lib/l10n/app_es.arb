@@ -830,6 +830,7 @@
     "enrichPulseCamper": "Buscando áreas para camper con vaciado y sanitarios",
     "enrichPulseVehicle": "Ajustando repostaje a tu {vehicle} ({tank} L)",
     "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
+    "restStopsWidenedHint": "Sin paradas con el filtro; mostramos las mejores del tramo.",
     "windowsSheetTitle": "Ventanas de salida",
     "windowsSheetHint": "Toca una tarjeta para replanificar con esa salida.",
     "windowsSheetOpen": "Ver detalle por hora",

@@ -111,6 +111,45 @@ bool _restStopMatchesFilter(RestStop r, Set<_RestStopFilter> active) {
   return false;
 }
 
+/// Extra safety net on top of the backend enrichment: drop stops
+/// whose stop_type is a poor bet even when they came back named.
+///
+/// - `unknown` stops slipped through the backend's Overpass filter
+///   somehow (usually a cache miss on a coord that used to have a
+///   typed match) — the driver can't tell what kind of place it is.
+/// - `parking` without any amenity flag is often a random industrial
+///   / roadside lay-by; drop unless SOMETHING (kid/pet/rv flag) says
+///   it's a real rest facility.
+bool _restStopIsReliable(RestStop r) {
+  if (r.stopType == RestStopType.unknown) return false;
+  if (r.stopType == RestStopType.parking &&
+      !r.kidFriendly && !r.petFriendly && !r.rvFriendly) {
+    return false;
+  }
+  return true;
+}
+
+/// Dedup rest stops that Overpass returned as separate elements but
+/// clearly refer to the same physical facility (same lowercase name
+/// AND within ~300 m). Keeps the first occurrence.
+List<RestStop> _dedupRestStops(Iterable<RestStop> stops) {
+  final out = <RestStop>[];
+  for (final s in stops) {
+    final key = (s.name ?? '').toLowerCase().trim();
+    final duplicate = out.any((existing) {
+      if (key.isEmpty) return false;
+      if ((existing.name ?? '').toLowerCase().trim() != key) return false;
+      final dLat = (existing.coordinate.lat - s.coordinate.lat).abs();
+      final dLon = (existing.coordinate.lon - s.coordinate.lon).abs();
+      // ~300 m at European latitudes: 0.003° lat ≈ 333 m, and the
+      // longitude budget of 0.004° ≈ 300 m at 45° N.
+      return dLat < 0.003 && dLon < 0.004;
+    });
+    if (!duplicate) out.add(s);
+  }
+  return out;
+}
+
 /// Renders the per-day breakdown for multi-day trips. One card per
 /// day showing distance range, meal stops on that day, and the
 /// overnight-sleep marker at the end (all days except the last).
@@ -146,10 +185,24 @@ class DayPlanSection extends StatelessWidget {
     this.fuelPrices = const [],
     this.addedFuelKeys = const {},
     this.onToggleFuelPick,
+    this.addedRestaurantKeys = const {},
+    this.onToggleRestaurantPick,
     this.profileHasKids = false,
     this.profileHasPets = false,
     this.profileIsCamper = false,
   });
+
+  /// Keys of the meal-row restaurants currently added to the route.
+  /// Shared with the standalone restaurants list so a restaurant
+  /// added from either surface stays consistent. Key format:
+  /// `restaurant:{name}:{lat.4},{lon.4}` — mirrors what
+  /// `_restaurantTileFor` computes in result_screen.
+  final Set<String> addedRestaurantKeys;
+
+  /// Fires when the driver hits "+" (or "-") on a meal row's POI
+  /// sheet. Parent stores the pick + tallies its cost into the trip
+  /// cost card (same accounting as the standalone list).
+  final void Function(MealStopOpt m)? onToggleRestaurantPick;
 
   /// Trip profile flags — gate which amenity filter chips render.
   /// Only chips that match the driver's context show up (no point
@@ -432,11 +485,20 @@ class DayPlanSection extends StatelessWidget {
       if (profileIsCamper) _RestStopFilter.rvFriendly,
     };
 
+    // Filters that match the profile default to ON — a family with
+    // kids expects "kid friendly" pre-checked on the first render.
+    // The static _userTouchedFilter flip lets manual toggles (incl.
+    // unchecking a default-ON) win over the auto-init.
+    if (!_userTouchedFilter && available.isNotEmpty) {
+      _restStopFilter = {...available};
+    }
+
     return StatefulBuilder(
       builder: (context, setState) {
         final Set<_RestStopFilter> filter = _restStopFilter;
         void toggleFilter(_RestStopFilter f) {
           setState(() {
+            _userTouchedFilter = true;
             if (_restStopFilter.contains(f)) {
               _restStopFilter = {..._restStopFilter}..remove(f);
             } else {
@@ -468,7 +530,15 @@ class DayPlanSection extends StatelessWidget {
   // Filter state persists across rebuilds of DayPlanSection within
   // the same ResultScreen frame. Set-based (multi-select) since
   // 2026-09-28. Empty set = no filter, matches everything.
+  //
+  // Default init: filters that match the trip profile pre-check
+  // themselves on first render (a family with kids sees
+  // "kid friendly" already active). Once the user toggles ANY chip
+  // (including unchecking a default-ON one), `_userTouchedFilter`
+  // flips true and manual state wins — the auto-init doesn't
+  // second-guess them on subsequent rebuilds.
   static Set<_RestStopFilter> _restStopFilter = <_RestStopFilter>{};
+  static bool _userTouchedFilter = false;
 
   /// Split day-card composition out of `build` so `StatefulBuilder`
   /// can call it repeatedly on filter change without duplicating
@@ -721,20 +791,31 @@ class DayPlanSection extends StatelessWidget {
                       // that visible.
                       onTap: (m.restaurantName != null
                               && m.restaurantCoordinate != null)
-                          ? () => showPoiDetailSheet(
+                          ? () {
+                              final coord = m.restaurantCoordinate!;
+                              final key = 'restaurant:${m.restaurantName!}:'
+                                  '${coord.lat.toStringAsFixed(4)},'
+                                  '${coord.lon.toStringAsFixed(4)}';
+                              final isAdded =
+                                  addedRestaurantKeys.contains(key);
+                              showPoiDetailSheet(
                                 context,
                                 kind: PoiKind.restaurant,
                                 name: m.restaurantName!,
                                 subtitle: _mealSubtitle(l, m),
-                                poi: m.restaurantCoordinate!,
-                                origin: origin ?? m.restaurantCoordinate!,
-                                destination:
-                                    destination ?? m.restaurantCoordinate!,
+                                poi: coord,
+                                origin: origin ?? coord,
+                                destination: destination ?? coord,
                                 routeGeometry: routeGeometry,
                                 attributes: _mealAttributes(l, m),
                                 icon: Icons.restaurant,
                                 accent: scheme.tertiary,
-                              )
+                                isAdded: isAdded,
+                                onAddToRoute: onToggleRestaurantPick == null
+                                    ? null
+                                    : () => onToggleRestaurantPick!(m),
+                              );
+                            }
                           : null,
                       child: Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -811,9 +892,24 @@ class DayPlanSection extends StatelessWidget {
                 // `pet_friendly=true` are hidden — the header
                 // filter is applied here, per-day.
                 Builder(builder: (context) {
-                  final visibleRests = d.restStops
+                  // Triple-verification pipeline for the day's rest
+                  // stops before they hit the UI:
+                  //   1) reliability screen (drops unknown/parking-
+                  //      without-amenities);
+                  //   2) proximity+name dedup;
+                  //   3) profile filter — with a SOFT fallback: if
+                  //      the filter empties this day, we show all
+                  //      reliable stops instead of a blank card and
+                  //      flag it with a hint (better a stop 30 min
+                  //      later that lacks the tag than no stop at all).
+                  final reliable = _dedupRestStops(
+                    d.restStops.where(_restStopIsReliable),
+                  );
+                  final matched = reliable
                       .where((r) => _restStopMatchesFilter(r, filter))
                       .toList();
+                  final bool widened = filter.isNotEmpty && matched.isEmpty;
+                  final visibleRests = widened ? reliable : matched;
                   if (visibleRests.isEmpty) {
                     // While enrich is still fetching, show a subtle
                     // 2-row skeleton so the driver sees the section
@@ -867,6 +963,37 @@ class DayPlanSection extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: Tokens.space8),
+                      if (widened) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: scheme.tertiaryContainer
+                                .withValues(alpha: 0.55),
+                            borderRadius:
+                                BorderRadius.circular(Tokens.radiusSm),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.zoom_out_map,
+                                  size: 14,
+                                  color: scheme.onTertiaryContainer),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  l.restStopsWidenedHint,
+                                  style: t.labelSmall?.copyWith(
+                                    color: scheme.onTertiaryContainer,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       for (final r in visibleRests)
                         // Row is wholly tappable → opens the shared
                         // POI detail sheet with the mini-map + POI
@@ -932,15 +1059,35 @@ class DayPlanSection extends StatelessWidget {
                                             fontWeight: FontWeight.w500,
                                           ),
                                         ),
-                                        if (r.kidFriendly)
+                                        // Amenity icons: when a filter
+                                        // is active, only render the
+                                        // icons the driver actively
+                                        // asked for. A stop that
+                                        // happens to be pet-friendly
+                                        // AND kid-friendly won't show
+                                        // the pet icon to a
+                                        // kid-filter user (they don't
+                                        // care about pet). Empty
+                                        // filter = show every flag
+                                        // the stop carries.
+                                        if (r.kidFriendly &&
+                                            (filter.isEmpty ||
+                                                filter.contains(_RestStopFilter
+                                                    .kidFriendly)))
                                           Icon(Icons.child_care,
                                               size: 14,
                                               color: scheme.secondary),
-                                        if (r.petFriendly)
+                                        if (r.petFriendly &&
+                                            (filter.isEmpty ||
+                                                filter.contains(_RestStopFilter
+                                                    .petFriendly)))
                                           Icon(Icons.pets,
                                               size: 14,
                                               color: scheme.secondary),
-                                        if (r.rvFriendly)
+                                        if (r.rvFriendly &&
+                                            (filter.isEmpty ||
+                                                filter.contains(_RestStopFilter
+                                                    .rvFriendly)))
                                           Icon(Icons.rv_hookup,
                                               size: 14,
                                               color: scheme.secondary),

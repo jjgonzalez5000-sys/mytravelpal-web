@@ -459,6 +459,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     });
   }
 
+  /// Toggle a meal-row restaurant into/out of the added-stops map so
+  /// its detour cost + meal price roll into the trip cost card, and
+  /// so a saved-trip re-open remembers the pick. Same key format the
+  /// standalone `_RestaurantTile` uses, so the two surfaces stay in
+  /// sync — toggling the same restaurant from either flips both.
+  void _toggleMealRestaurant(MealStopOpt m) {
+    final coord = m.restaurantCoordinate;
+    final name = m.restaurantName;
+    if (coord == null || name == null) return;
+    final key = 'restaurant:$name:'
+        '${coord.lat.toStringAsFixed(4)},'
+        '${coord.lon.toStringAsFixed(4)}';
+    _toggleStop(key, 0, coord: coord, label: name);
+  }
+
   double get _addedMinutesTotal =>
       _addedStops.values.fold(0.0, (sum, v) => sum + v);
 
@@ -1887,6 +1902,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 .where(_addedStops.containsKey)
                 .toSet(),
             onToggleFuelPick: _toggleDayFuel,
+            addedRestaurantKeys: _addedStops.keys
+                .where((k) => k.startsWith('restaurant:'))
+                .toSet(),
+            onToggleRestaurantPick: _toggleMealRestaurant,
             profileHasKids: widget.request.tripProfile?.hasKids ?? false,
             profileHasPets: widget.request.tripProfile?.hasPets ?? false,
             profileIsCamper: widget.request.tripProfile?.vehicle.type

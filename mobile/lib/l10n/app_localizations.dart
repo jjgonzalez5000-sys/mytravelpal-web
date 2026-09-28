@@ -4214,6 +4214,12 @@ abstract class AppLocalizations {
   /// **'Tuning refuel plan for your {vehicle} ({tank} L)'**
   String enrichPulseVehicle(String vehicle, String tank);
 
+  /// No description provided for @restStopsWidenedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'No stops match the filter; showing the best on this leg.'**
+  String get restStopsWidenedHint;
+
   /// No description provided for @windowsSheetTitle.
   ///
   /// In en, this message translates to:

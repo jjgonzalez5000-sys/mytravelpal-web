@@ -2338,6 +2338,10 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get restStopsWidenedHint =>
+      'Keine Stopps passen zum Filter; wir zeigen die besten dieses Abschnitts.';
+
+  @override
   String get windowsSheetTitle => 'Abfahrtsfenster';
 
   @override

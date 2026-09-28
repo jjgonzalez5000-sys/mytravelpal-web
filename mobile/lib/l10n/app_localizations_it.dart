@@ -2335,6 +2335,10 @@ class AppLocalizationsIt extends AppLocalizations {
   }
 
   @override
+  String get restStopsWidenedHint =>
+      'Nessuna sosta corrisponde al filtro; mostriamo le migliori sul tratto.';
+
+  @override
   String get windowsSheetTitle => 'Finestre di partenza';
 
   @override

@@ -2342,6 +2342,10 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get restStopsWidenedHint =>
+      'Sin paradas con el filtro; mostramos las mejores del tramo.';
+
+  @override
   String get windowsSheetTitle => 'Ventanas de salida';
 
   @override

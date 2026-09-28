@@ -2327,6 +2327,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get restStopsWidenedHint =>
+      'No stops match the filter; showing the best on this leg.';
+
+  @override
   String get windowsSheetTitle => 'Departure windows';
 
   @override

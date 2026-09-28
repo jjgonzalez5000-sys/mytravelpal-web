@@ -843,6 +843,7 @@
     "enrichPulseCamper": "Wohnmobilstellplätze mit Entsorgung und Sanitär",
     "enrichPulseVehicle": "Tank-Plan angepasst an deinen {vehicle} ({tank} L)",
     "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
+    "restStopsWidenedHint": "Keine Stopps passen zum Filter; wir zeigen die besten dieses Abschnitts.",
     "windowsSheetTitle": "Abfahrtsfenster",
     "windowsSheetHint": "Tippe eine Karte, um mit dieser Abfahrt neu zu planen.",
     "windowsSheetOpen": "Stunde für Stunde ansehen",

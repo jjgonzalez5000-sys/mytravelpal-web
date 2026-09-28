@@ -838,6 +838,7 @@
     "enrichPulseCamper": "Aree camper con scarico e servizi igienici",
     "enrichPulseVehicle": "Calcolo rifornimento per il tuo {vehicle} ({tank} L)",
     "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
+    "restStopsWidenedHint": "Nessuna sosta corrisponde al filtro; mostriamo le migliori sul tratto.",
     "windowsSheetTitle": "Finestre di partenza",
     "windowsSheetHint": "Tocca una scheda per ripianificare con quella partenza.",
     "windowsSheetOpen": "Dettaglio orario",

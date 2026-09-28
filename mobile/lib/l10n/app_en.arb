@@ -821,6 +821,7 @@
     "enrichPulseCamper": "Camper areas with dump and sanitary facilities",
     "enrichPulseVehicle": "Tuning refuel plan for your {vehicle} ({tank} L)",
     "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
+    "restStopsWidenedHint": "No stops match the filter; showing the best on this leg.",
     "windowsSheetTitle": "Departure windows",
     "windowsSheetHint": "Tap a card to replan with that departure.",
     "windowsSheetOpen": "See hour-by-hour detail",

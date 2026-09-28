@@ -843,6 +843,7 @@
     "enrichPulseCamper": "Aires camping-car avec vidange et sanitaires",
     "enrichPulseVehicle": "Ajustement du plein pour ton {vehicle} ({tank} L)",
     "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
+    "restStopsWidenedHint": "Aucun arrêt ne correspond au filtre ; on affiche les meilleurs du tronçon.",
     "windowsSheetTitle": "Fenêtres de départ",
     "windowsSheetHint": "Touche une carte pour replanifier avec ce départ.",
     "windowsSheetOpen": "Voir le détail par heure",

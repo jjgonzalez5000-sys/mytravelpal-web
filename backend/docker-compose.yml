@@ -63,6 +63,11 @@ services:
       # no-op locally (see backend/app/api/api_key.py). Set it in your
       # shell env before `make dev` if you want to test the gate.
       MYTRAVELPAL_GEOAPIFY_KEY: ${MYTRAVELPAL_GEOAPIFY_KEY:-}
+      # HERE Routing v8 tolls — real section-level toll pricing on
+      # the free tier (250 k txn / mo). Export the key in your shell
+      # before `make dev`; unset → falls back to OSM booth detection
+      # + country-per-km heuristic.
+      MYTRAVELPAL_HERE_API_KEY: ${MYTRAVELPAL_HERE_API_KEY:-}
       MYTRAVELPAL_JWT_SECRET: ${MYTRAVELPAL_JWT_SECRET:-dev-secret-not-for-prod}
     depends_on:
       db:
