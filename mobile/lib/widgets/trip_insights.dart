@@ -1043,6 +1043,19 @@ class DayPlanSection extends StatelessWidget {
                                     style: t.bodySmall,
                                   ),
                                   const SizedBox(height: 3),
+                                  // Localised searching copy sits ABOVE
+                                  // the skeleton bar so the driver knows
+                                  // exactly what we're looking for (not
+                                  // a generic "loading..." blob). Same
+                                  // pattern as the hotel + fuel rows.
+                                  Text(
+                                    l.enrichPulseRestaurants,
+                                    style: t.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontStyle: FontStyle.italic,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
                                   Skeleton(
                                     width: 160,
                                     height: 10,
@@ -1359,7 +1372,38 @@ class DayPlanSection extends StatelessWidget {
                     ..sort((a, b) => (b.savingsVsCountryMedianEurPerL ?? 0)
                         .compareTo(a.savingsVsCountryMedianEurPerL ?? 0));
                   final top = candidates.take(2).toList();
-                  if (top.isEmpty) return const SizedBox.shrink();
+                  if (top.isEmpty) {
+                    // Same skeleton-row pattern the hotels + meals
+                    // rows use: while enrich is in flight surface a
+                    // localised "searching cheapest fuel" line so
+                    // the driver knows we haven't finished yet and
+                    // an empty section isn't the final state.
+                    if (enrichPending) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: Tokens.space8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.local_gas_station_outlined,
+                              size: 14,
+                              color: scheme.primary.withValues(alpha: 0.4),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                l.enrichPulseFuel,
+                                style: t.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  }
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
