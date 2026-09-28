@@ -301,38 +301,80 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
   }
 }
 
-/// Attributes that get lifted into the feature-tile grid (icon-first
-/// visual pills instead of plain text chips). Each entry: OSM tag key
-/// → (icon, short-label-key-lookup). We show a max of 6 tiles; the
-/// rest are pushed into the "más info" section.
+/// Attributes that get an icon + friendly label. Every OSM tag we
+/// know about gets a visual entry so the sheet reads like Booking's
+/// "Most popular facilities" strip (icon in accent colour, plain
+/// text label next to it) instead of a wall of `key: value` pills.
 ///
-/// Keys are OSM-normalized: `yes` / `true` renders the tile "on",
-/// `no` / `false` hides it (we never advertise a missing amenity).
-/// Non-boolean tags (e.g. `cuisine: italian`) render the value.
+/// Keys are OSM-normalized: `yes` / `true` renders the entry
+/// "on", `no` / `false` hides it (we never advertise a missing
+/// amenity). Non-boolean tags (e.g. `cuisine: italian`) render the
+/// value as a short second line.
 const Map<String, ({IconData icon, String label})> _featureCatalogue = {
+  // Hotel amenities
   'breakfast': (icon: Icons.free_breakfast_outlined, label: 'Breakfast'),
-  'wifi': (icon: Icons.wifi, label: 'Wi-Fi'),
-  'internet_access': (icon: Icons.wifi, label: 'Wi-Fi'),
+  'restaurant': (icon: Icons.restaurant_outlined, label: 'Restaurant'),
+  'bar': (icon: Icons.local_bar_outlined, label: 'Bar'),
+  'wifi': (icon: Icons.wifi, label: 'Free Wi-Fi'),
+  'internet_access': (icon: Icons.wifi, label: 'Free Wi-Fi'),
   'parking': (icon: Icons.local_parking_outlined, label: 'Parking'),
-  'air_conditioning': (icon: Icons.ac_unit, label: 'AC'),
-  'pool': (icon: Icons.pool, label: 'Pool'),
-  'swimming_pool': (icon: Icons.pool, label: 'Pool'),
-  'pets': (icon: Icons.pets, label: 'Pets OK'),
-  'dog': (icon: Icons.pets, label: 'Pets OK'),
-  'wheelchair': (icon: Icons.accessible_forward, label: 'Accessible'),
-  'outdoor_seating': (icon: Icons.deck, label: 'Outdoor'),
+  'air_conditioning': (icon: Icons.ac_unit, label: 'Air conditioning'),
+  'pool': (icon: Icons.pool, label: 'Swimming pool'),
+  'swimming_pool': (icon: Icons.pool, label: 'Swimming pool'),
+  'sauna': (icon: Icons.hot_tub_outlined, label: 'Sauna'),
+  'spa': (icon: Icons.spa_outlined, label: 'Spa'),
+  'gym': (icon: Icons.fitness_center_outlined, label: 'Gym'),
+  'room_service': (icon: Icons.room_service_outlined, label: 'Room service'),
+  'laundry_service':
+      (icon: Icons.local_laundry_service_outlined, label: 'Laundry service'),
+  'terrace': (icon: Icons.deck_outlined, label: 'Terrace'),
+  'garden': (icon: Icons.grass_outlined, label: 'Garden'),
+  'safe': (icon: Icons.lock_outline, label: 'Safe'),
+  'baggage_storage':
+      (icon: Icons.luggage_outlined, label: 'Baggage storage'),
+  'reception_24_7':
+      (icon: Icons.access_time_filled_outlined, label: '24h reception'),
+  'business_center':
+      (icon: Icons.business_center_outlined, label: 'Business center'),
+  'family_rooms': (icon: Icons.family_restroom, label: 'Family rooms'),
+  'child_friendly': (icon: Icons.child_care, label: 'Child friendly'),
+  'kid_friendly': (icon: Icons.child_care, label: 'Child friendly'),
+  'bicycle_rental':
+      (icon: Icons.pedal_bike_outlined, label: 'Bicycle rental'),
+  'smoking': (icon: Icons.smoking_rooms, label: 'Smoking area'),
+  'non_smoking':
+      (icon: Icons.smoke_free_outlined, label: 'Non-smoking'),
+  'pets': (icon: Icons.pets, label: 'Pets allowed'),
+  'dog': (icon: Icons.pets, label: 'Pets allowed'),
+  'pet_friendly': (icon: Icons.pets, label: 'Pets allowed'),
+  'wheelchair':
+      (icon: Icons.accessible_forward, label: 'Wheelchair accessible'),
+  'elevator': (icon: Icons.elevator_outlined, label: 'Elevator'),
+  'lift': (icon: Icons.elevator_outlined, label: 'Elevator'),
+  // Restaurant / cafe extras
+  'outdoor_seating':
+      (icon: Icons.deck_outlined, label: 'Outdoor seating'),
   'takeaway': (icon: Icons.takeout_dining_outlined, label: 'Takeaway'),
   'delivery': (icon: Icons.delivery_dining_outlined, label: 'Delivery'),
-  'reservation': (icon: Icons.event_seat_outlined, label: 'Reservation'),
+  'reservation':
+      (icon: Icons.event_seat_outlined, label: 'Reservation'),
+  'drive_through':
+      (icon: Icons.drive_eta_outlined, label: 'Drive-through'),
+  // Universal
   'toilets': (icon: Icons.wc, label: 'Toilets'),
-  'car_wash': (icon: Icons.local_car_wash_outlined, label: 'Car wash'),
   'shop': (icon: Icons.storefront_outlined, label: 'Shop'),
-  'self_service': (icon: Icons.self_improvement, label: 'Self-service'),
-  'contactless': (icon: Icons.contactless_outlined, label: 'Contactless'),
+  'atm': (icon: Icons.atm_outlined, label: 'ATM'),
+  'self_service':
+      (icon: Icons.self_improvement, label: 'Self-service'),
+  'contactless':
+      (icon: Icons.contactless_outlined, label: 'Contactless payment'),
   'payment:contactless':
-      (icon: Icons.contactless_outlined, label: 'Contactless'),
-  'credit_cards': (icon: Icons.credit_card, label: 'Card'),
-  'payment:credit_cards': (icon: Icons.credit_card, label: 'Card'),
+      (icon: Icons.contactless_outlined, label: 'Contactless payment'),
+  'credit_cards': (icon: Icons.credit_card, label: 'Cards accepted'),
+  'payment:credit_cards':
+      (icon: Icons.credit_card, label: 'Cards accepted'),
+  // Fuel station specifics
+  'car_wash': (icon: Icons.local_car_wash_outlined, label: 'Car wash'),
   'fuel:diesel': (icon: Icons.local_gas_station_outlined, label: 'Diesel'),
   'fuel:octane_95':
       (icon: Icons.local_gas_station_outlined, label: 'Petrol 95'),
@@ -344,6 +386,16 @@ const Map<String, ({IconData icon, String label})> _featureCatalogue = {
   'fuel:HGV_diesel':
       (icon: Icons.local_shipping_outlined, label: 'HGV diesel'),
 };
+
+/// Turn an OSM tag key like `outdoor_seating` or `payment:contactless`
+/// into a title-cased human label ("Outdoor seating", "Payment
+/// contactless"). Used by the fallback "más info" section for tags
+/// we haven't curated a pictogram for.
+String _prettyKey(String key) {
+  final cleaned = key.replaceAll(':', ' ').replaceAll('_', ' ').trim();
+  if (cleaned.isEmpty) return key;
+  return cleaned[0].toUpperCase() + cleaned.substring(1);
+}
 
 bool _tagIsOn(String v) {
   final s = v.toLowerCase();
@@ -531,27 +583,30 @@ class _FeatureTiles extends StatelessWidget {
     }
     if (entries.isEmpty) return const SizedBox.shrink();
 
-    // Cap at 8 tiles — the rest live in the "más info" collapsible.
-    final shown = entries.take(8).toList();
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           l.poiFeaturesHeading,
           style: t.labelLarge?.copyWith(
-            color: scheme.onSurfaceVariant,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.3,
+            color: scheme.onSurface,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.2,
           ),
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
+        // Booking-style flow: icon (in accent) + label right next to
+        // it, no boxes, no borders, no filled backgrounds. Wraps
+        // freely so 10+ amenities read as an airy grid instead of a
+        // wall of pills. `runSpacing` gives vertical breathing room
+        // between rows; `spacing: 20` matches Booking's horizontal
+        // gap between adjacent items.
         Wrap(
-          spacing: 8,
-          runSpacing: 8,
+          spacing: 20,
+          runSpacing: 12,
           children: [
-            for (final (icon, label, valueLine) in shown)
-              _FeatureTile(
+            for (final (icon, label, valueLine) in entries)
+              _FeatureItem(
                 icon: icon,
                 label: label,
                 valueLine: valueLine,
@@ -564,8 +619,12 @@ class _FeatureTiles extends StatelessWidget {
   }
 }
 
-class _FeatureTile extends StatelessWidget {
-  const _FeatureTile({
+/// One "icon + label" amenity item. Matches Booking.com's "Most
+/// popular facilities" strip: accent-colored icon on the left,
+/// plain-text label on the right, no chrome. Optional second line
+/// for non-boolean values (cuisine names, operator brands, etc.).
+class _FeatureItem extends StatelessWidget {
+  const _FeatureItem({
     required this.icon,
     required this.label,
     required this.accent,
@@ -580,39 +639,40 @@ class _FeatureTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
-      ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 220),
       child: Row(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 18, color: accent),
+          Icon(icon, size: 20, color: accent),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label,
-                style: t.labelMedium?.copyWith(
-                  color: scheme.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              if (valueLine != null)
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  valueLine!.length > 24
-                      ? '${valueLine!.substring(0, 22)}…'
-                      : valueLine!,
-                  style: t.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                  label,
+                  style: t.bodyMedium?.copyWith(
+                    color: scheme.onSurface,
+                    fontWeight: FontWeight.w500,
+                    height: 1.2,
                   ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-            ],
+                if (valueLine != null && valueLine!.isNotEmpty)
+                  Text(
+                    valueLine!,
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+              ],
+            ),
           ),
         ],
       ),
@@ -651,37 +711,29 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
   };
 
   // Set-of-keys view of the catalogue. Kept as a static const so
-  // the diff filter above stays cheap.
+  // the diff filter above stays cheap. Must stay in sync with
+  // `_featureCatalogue` at the top of the file.
   static const Set<String> _featureCatalogueKeys = {
-    'breakfast',
-    'wifi',
-    'internet_access',
-    'parking',
-    'air_conditioning',
-    'pool',
-    'swimming_pool',
-    'pets',
-    'dog',
-    'wheelchair',
-    'outdoor_seating',
-    'takeaway',
-    'delivery',
-    'reservation',
-    'toilets',
+    'breakfast', 'restaurant', 'bar',
+    'wifi', 'internet_access',
+    'parking', 'air_conditioning',
+    'pool', 'swimming_pool',
+    'sauna', 'spa', 'gym',
+    'room_service', 'laundry_service',
+    'terrace', 'garden',
+    'safe', 'baggage_storage', 'reception_24_7',
+    'business_center', 'family_rooms', 'child_friendly', 'kid_friendly',
+    'bicycle_rental', 'smoking', 'non_smoking',
+    'pets', 'dog', 'pet_friendly',
+    'wheelchair', 'elevator', 'lift',
+    'outdoor_seating', 'takeaway', 'delivery', 'reservation',
+    'drive_through',
+    'toilets', 'shop', 'atm', 'self_service',
+    'contactless', 'payment:contactless',
+    'credit_cards', 'payment:credit_cards',
     'car_wash',
-    'shop',
-    'self_service',
-    'contactless',
-    'payment:contactless',
-    'credit_cards',
-    'payment:credit_cards',
-    'fuel:diesel',
-    'fuel:octane_95',
-    'fuel:octane_98',
-    'fuel:lpg',
-    'fuel:e10',
-    'fuel:e85',
-    'fuel:HGV_diesel',
+    'fuel:diesel', 'fuel:octane_95', 'fuel:octane_98',
+    'fuel:lpg', 'fuel:e10', 'fuel:e85', 'fuel:HGV_diesel',
   };
 
   @override
@@ -728,19 +780,22 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
           ),
         ),
         if (_open) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 10),
+          // Same icon+label pattern as the primary feature grid,
+          // just with a neutral bullet icon since these are OSM tags
+          // we don't have a curated pictogram for. Value line reads
+          // the tag value (usually short — "yes", a brand, an hour
+          // range); truncated to stay on a single line.
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 20,
+            runSpacing: 10,
             children: [
               for (final entry in rest)
-                _AttrChip(
-                  icon: Icons.info_outline,
-                  label: entry.key.replaceAll('_', ' '),
-                  value: entry.value.length > 30
-                      ? '${entry.value.substring(0, 27)}…'
-                      : entry.value,
-                  scheme: scheme,
+                _FeatureItem(
+                  icon: Icons.check_circle_outline,
+                  label: _prettyKey(entry.key),
+                  valueLine: _tagIsOn(entry.value) ? null : entry.value,
+                  accent: scheme.onSurfaceVariant,
                 ),
             ],
           ),
