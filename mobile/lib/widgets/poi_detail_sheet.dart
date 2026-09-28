@@ -563,13 +563,15 @@ class _FeatureTiles extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
 
-    final entries = <(IconData, String, String?)>[];
+    final entries = <(IconData, String, String?, Color)>[];
     for (final entry in attributes.entries) {
       final def = _featureCatalogue[entry.key];
       if (def == null) continue;
       if (_tagIsOff(entry.value)) continue;
       final valueLine = _tagIsOn(entry.value) ? null : entry.value;
-      entries.add((def.icon, def.label, valueLine));
+      entries.add(
+        (def.icon, def.label, valueLine, _tintForFeature(entry.key, scheme)),
+      );
     }
     // Cuisine gets special treatment for restaurants — always show
     // the cuisine type as a feature tile.
@@ -579,6 +581,7 @@ class _FeatureTiles extends StatelessWidget {
         Icons.restaurant_menu,
         cuisine.split(';').first.trim(),
         null,
+        _tintForFeature('cuisine', scheme),
       ));
     }
     if (entries.isEmpty) return const SizedBox.shrink();
@@ -605,12 +608,12 @@ class _FeatureTiles extends StatelessWidget {
           spacing: 20,
           runSpacing: 12,
           children: [
-            for (final (icon, label, valueLine) in entries)
+            for (final (icon, label, valueLine, tint) in entries)
               _FeatureItem(
                 icon: icon,
                 label: label,
                 valueLine: valueLine,
-                accent: accent,
+                tint: tint,
               ),
           ],
         ),
@@ -619,21 +622,102 @@ class _FeatureTiles extends StatelessWidget {
   }
 }
 
-/// One "icon + label" amenity item. Matches Booking.com's "Most
-/// popular facilities" strip: accent-colored icon on the left,
-/// plain-text label on the right, no chrome. Optional second line
-/// for non-boolean values (cuisine names, operator brands, etc.).
+/// Palette of per-category tint colors so amenities aren't all the
+/// same visual color. Each icon lands in a tinted circle that
+/// matches its "family" (wellness → teal, food → orange, transport
+/// → blue, comfort → violet, etc.). Gives the sheet a splash of
+/// personality without depending on brand colors that would clash
+/// with the app's dark theme.
+Color _tintForFeature(String key, ColorScheme scheme) {
+  const wellness = {'pool', 'swimming_pool', 'sauna', 'spa', 'gym'};
+  const food = {'breakfast', 'restaurant', 'bar', 'cuisine', 'outdoor_seating',
+    'takeaway', 'delivery', 'drive_through'};
+  const connectivity = {'wifi', 'internet_access'};
+  const transport = {'parking', 'car_wash', 'bicycle_rental', 'elevator',
+    'lift'};
+  const family = {'family_rooms', 'child_friendly', 'kid_friendly',
+    'pets', 'dog', 'pet_friendly'};
+  const service = {'room_service', 'laundry_service', 'reception_24_7',
+    'business_center', 'safe', 'baggage_storage'};
+  const outdoors = {'terrace', 'garden'};
+  const accessibility = {'wheelchair', 'non_smoking'};
+  const payment = {'contactless', 'payment:contactless',
+    'credit_cards', 'payment:credit_cards', 'atm'};
+  const fuel = {'fuel:diesel', 'fuel:octane_95', 'fuel:octane_98',
+    'fuel:lpg', 'fuel:e10', 'fuel:e85', 'fuel:HGV_diesel'};
+
+  if (wellness.contains(key)) return Colors.teal.shade600;
+  if (food.contains(key)) return Colors.orange.shade700;
+  if (connectivity.contains(key)) return Colors.blue.shade600;
+  if (transport.contains(key)) return Colors.indigo.shade500;
+  if (family.contains(key)) return Colors.pink.shade400;
+  if (service.contains(key)) return Colors.deepPurple.shade400;
+  if (outdoors.contains(key)) return Colors.green.shade700;
+  if (accessibility.contains(key)) return Colors.cyan.shade700;
+  if (payment.contains(key)) return Colors.brown.shade500;
+  if (fuel.contains(key)) return Colors.deepOrange.shade600;
+  // Fallback: keep it aligned with the sheet's accent color so the
+  // "más info" items still read as coherent.
+  return scheme.primary;
+}
+
+/// Guess an icon for an unknown OSM tag based on the tag name.
+/// Prevents the fallback "más info" list from degenerating into a
+/// sea of identical check marks — most OSM tags fall into a small
+/// number of semantic buckets we can pattern-match on.
+IconData _guessIconForKey(String key) {
+  final k = key.toLowerCase();
+  if (k.contains('phone') || k.contains('call')) return Icons.phone_outlined;
+  if (k.contains('email') || k.contains('mail')) return Icons.email_outlined;
+  if (k.contains('web') || k.contains('url')) return Icons.language;
+  if (k.contains('hour') || k.contains('open') || k.contains('time')) {
+    return Icons.schedule;
+  }
+  if (k.contains('star') || k.contains('rating')) return Icons.star_border;
+  if (k.contains('price') || k.contains('cost') || k.contains('euro')) {
+    return Icons.euro_outlined;
+  }
+  if (k.contains('addr') || k.contains('street') || k.contains('city')) {
+    return Icons.place_outlined;
+  }
+  if (k.contains('brand') || k.contains('operator')) {
+    return Icons.storefront_outlined;
+  }
+  if (k.contains('smoke') || k.contains('smoking')) return Icons.smoking_rooms;
+  if (k.contains('capacity') || k.contains('seat')) {
+    return Icons.people_outline;
+  }
+  if (k.contains('level') || k.contains('floor')) {
+    return Icons.stairs_outlined;
+  }
+  if (k.contains('bed') || k.contains('room')) return Icons.bed_outlined;
+  if (k.contains('shower') || k.contains('bath')) return Icons.shower;
+  if (k.contains('drink') || k.contains('beer') || k.contains('wine')) {
+    return Icons.local_bar_outlined;
+  }
+  if (k.contains('coffee') || k.contains('cafe')) return Icons.local_cafe;
+  if (k.contains('note') || k.contains('description')) {
+    return Icons.notes_outlined;
+  }
+  // Semantic-neutral fallback that still reads as "extra info" without
+  // looking like a checkbox tick.
+  return Icons.local_offer_outlined;
+}
+
+/// One "icon in tinted circle + label" amenity item. Booking-style
+/// but with per-category color tints so the strip has visual variety
+/// instead of the "sea of identical ticks" the flat version produced.
 class _FeatureItem extends StatelessWidget {
   const _FeatureItem({
     required this.icon,
     required this.label,
-    required this.accent,
+    required this.tint,
     this.valueLine,
   });
   final IconData icon;
   final String label;
   final String? valueLine;
-  final Color accent;
+  final Color tint;
 
   @override
   Widget build(BuildContext context) {
@@ -645,8 +729,17 @@ class _FeatureItem extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(icon, size: 20, color: accent),
-          const SizedBox(width: 8),
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              color: tint.withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, size: 18, color: tint),
+          ),
+          const SizedBox(width: 10),
           Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -792,10 +885,10 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
             children: [
               for (final entry in rest)
                 _FeatureItem(
-                  icon: Icons.check_circle_outline,
+                  icon: _guessIconForKey(entry.key),
                   label: _prettyKey(entry.key),
                   valueLine: _tagIsOn(entry.value) ? null : entry.value,
-                  accent: scheme.onSurfaceVariant,
+                  tint: _tintForFeature(entry.key, scheme),
                 ),
             ],
           ),
