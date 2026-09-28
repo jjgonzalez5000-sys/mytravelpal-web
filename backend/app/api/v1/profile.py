@@ -58,6 +58,21 @@ async def save_profile(
     payload: ProfilePayload,
     user: AuthUser = Depends(current_user_required),
 ) -> ProfileResponse:
+    """Persist the profile blob.
+
+    The client's PUT payload carries their traveller preferences +
+    settings, but NOT the sibling data that lives in the same JSON
+    column and is owned by other endpoints (`garage`, and any future
+    endpoint that stores under a top-level key). Naively writing the
+    payload used to wipe those keys on every mobile settings tap —
+    tester report 2026-09-28: "the garage vehicles disappear".
+    The fix: read the existing blob first, then apply the payload as
+    a shallow overlay so keys the payload doesn't mention are
+    preserved. Endpoints that OWN a specific key still overwrite it
+    freely via their own dedicated PUT/POST/DELETE routes.
+    """
+    existing = await _read_profile(user.id)
+    merged = {**existing, **payload.profile}
     if db_available():
         async with get_session() as session:
             from sqlalchemy import text
@@ -68,12 +83,12 @@ async def save_profile(
                     ON CONFLICT (user_id)
                     DO UPDATE SET profile = :profile, updated_at = NOW()
                 """),
-                {"uid": user.id, "profile": json.dumps(payload.profile)},
+                {"uid": user.id, "profile": json.dumps(merged)},
             )
             await session.commit()
     else:
-        _PROFILES[user.id] = payload.profile
-    return ProfileResponse(profile=payload.profile)
+        _PROFILES[user.id] = merged
+    return ProfileResponse(profile=merged)
 
 
 @router.delete("", status_code=status.HTTP_200_OK)
