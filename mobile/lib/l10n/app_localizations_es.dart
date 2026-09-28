@@ -2376,7 +2376,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get enrichPulseRestaurants =>
-      'Filtrando restaurantes en tu banda de precio';
+      'Filtrando restaurantes según tus preferencias';
 
   @override
   String get enrichPulseFuel =>

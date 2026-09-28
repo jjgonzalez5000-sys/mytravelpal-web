@@ -2371,7 +2371,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get enrichPulseRestaurants =>
-      'Filtro ristoranti nella tua fascia di prezzo';
+      'Filtro dei ristoranti in base alle tue preferenze';
 
   @override
   String get enrichPulseFuel => 'Localizzazione dei distributori più economici';

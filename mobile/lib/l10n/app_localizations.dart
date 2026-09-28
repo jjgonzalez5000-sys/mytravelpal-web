@@ -4253,7 +4253,7 @@ abstract class AppLocalizations {
   /// No description provided for @enrichPulseRestaurants.
   ///
   /// In en, this message translates to:
-  /// **'Filtering restaurants in your price band'**
+  /// **'Filtering restaurants to your preferences'**
   String get enrichPulseRestaurants;
 
   /// No description provided for @enrichPulseFuel.

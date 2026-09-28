@@ -2360,7 +2360,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get enrichPulseRestaurants =>
-      'Filtering restaurants in your price band';
+      'Filtering restaurants to your preferences';
 
   @override
   String get enrichPulseFuel =>
