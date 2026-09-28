@@ -141,7 +141,15 @@ def _compute_from_real_tolls(
     Position-on-route is approximated by the closest point in the
     route geometry (or waypoints as fallback) — good enough for the
     driver to visualise which stretch they'd skip.
+
+    Vignette / e-toll sticker entries (AT, CH, RO, HU, SK, CZ, SI,
+    BG) are FILTERED OUT — you can't skip a country-wide highway
+    permit by taking a parallel road, every motorway in the country
+    requires the sticker. Their cost still shows up in the total
+    toll figure via `route.toll_cost_eur` (upstream), but they must
+    never appear as a "worth it to skip" recommendation.
     """
+    tolls = tuple(t for t in tolls if not t.is_vignette)
     if not tolls:
         return ()
     reference = list(route.geometry) if route.geometry else [

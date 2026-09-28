@@ -177,6 +177,7 @@ class HereTollsProvider:
                     exit_lat=booth_exit_lat,
                     exit_lon=booth_exit_lon,
                     operator=operator,
+                    is_vignette=_is_vignette_toll(toll, operator),
                 ))
         return TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
 
@@ -246,6 +247,36 @@ class HereTollsProvider:
         fare = round(total, 2)
         _SEGMENT_CACHE[key] = (fare, time.time())
         return fare
+
+
+def _is_vignette_toll(toll: dict[str, Any], operator: str) -> bool:
+    """Detect country-wide vignette / e-vignette / distance-based
+    e-toll entries in a HERE toll section. These CANNOT be skipped
+    by taking a parallel road — every motorway in the country
+    requires the sticker / registration — so the partial-toll-skips
+    service must exclude them.
+
+    Detection is best-effort by string match against `tollSystem` /
+    `operator` names since HERE's schema has no explicit `is_vignette`
+    field. Kept in a small allowlist rather than a broad regex so we
+    don't misclassify a real booth (e.g. FR/IT/ES gated motorways).
+    """
+    # HERE may expose an explicit type on some fares — check first.
+    for fare in (toll.get("fares") or []):
+        if str(fare.get("type") or "").lower() == "vignette":
+            return True
+    # Fallback: match well-known vignette-based systems by name.
+    haystack = f"{operator} {toll.get('name') or ''}".lower()
+    _KNOWN_VIGNETTE_KEYWORDS = (
+        "vignette",           # AT, CH, HU (e-Vignette), CZ, SK, SI
+        "rovinieta",          # RO
+        "elektronická znám",  # CZ / SK (elektronická známka)
+        "matrica",            # HU
+        "toll sticker",       # generic EN label some HERE responses use
+        "e-vinieta",          # BG
+        "vinjeta",            # SI
+    )
+    return any(k in haystack for k in _KNOWN_VIGNETTE_KEYWORDS)
 
 
 def _downsample_vias(route: Route) -> list:

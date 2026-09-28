@@ -804,6 +804,8 @@ class RouteInfo {
     required this.tollCostEur,
     required this.countriesCrossed,
     this.geometry = const [],
+    this.vignetteCostEur = 0,
+    this.vignetteCountries = const [],
   });
 
   final double distanceKm;
@@ -815,6 +817,18 @@ class RouteInfo {
   /// Ordered points that follow real roads. Empty when the backend fell
   /// back to the mock — clients should draw a straight A→B line then.
   final List<LatLon> geometry;
+
+  /// Country-permit stickers (AT/CH/RO/HU/SK/CZ/SI/BG) — mandatory
+  /// whenever the route uses ANY motorway in that country. Bundled
+  /// into [tollCostEur] for the trip cost summary but exposed
+  /// separately so the mobile cost breakdown can render a dedicated
+  /// "Viñetas obligatorias" line and never offer these as skippable.
+  final double vignetteCostEur;
+
+  /// 2-letter ISO codes of the countries whose vignettes contribute
+  /// to [vignetteCostEur]. Empty when the route crosses no
+  /// vignette-based country OR when HERE didn't classify one.
+  final List<String> vignetteCountries;
 
   factory RouteInfo.fromJson(Map<String, dynamic> json) => RouteInfo(
         distanceKm: (json['distance_km'] as num).toDouble(),
@@ -832,6 +846,12 @@ class RouteInfo {
             lon: (pair[0] as num).toDouble(),
           );
         }).toList(growable: false),
+        vignetteCostEur:
+            (json['vignette_cost_eur'] as num?)?.toDouble() ?? 0.0,
+        vignetteCountries:
+            (json['vignette_countries'] as List<dynamic>? ?? const [])
+                .whereType<String>()
+                .toList(growable: false),
       );
 }
 

@@ -976,6 +976,36 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return (bestIndex / (geom.length - 1)) * totalKm;
   }
 
+  /// Days list rendered as the "origin → destination · hh:mm" strip
+  /// below the hero cost card. For multi-day trips backend already
+  /// ships one entry per day and we forward it. For SINGLE-day
+  /// trips backend omits the field entirely — we synthesize a
+  /// one-entry list from the request + route so the strip still
+  /// renders. Tester 2026-09-28: "on trips of one day or less,
+  /// the info below cost doesn't show".
+  List<DayPlan> get _daysForHeaderStrip {
+    if (_response.days.isNotEmpty) return _response.days;
+    final route = _response.route;
+    if (route.distanceKm <= 0) return const [];
+    final departure = widget.desiredDepartureAt;
+    final arrival = departure.add(
+      Duration(seconds: (route.freeFlowMinutes * 60).round()),
+    );
+    return [
+      DayPlan(
+        dayIndex: 1,
+        startAt: departure,
+        endAt: arrival,
+        fromKm: 0.0,
+        toKm: route.distanceKm,
+        mealStops: const [],
+        restStops: const [],
+        fromName: widget.origin.displayName,
+        toName: widget.destination.displayName,
+      ),
+    ];
+  }
+
   /// Best-effort human label for the trip vehicle — used by the
   /// enrichment progress card's rotating "tuning refuel plan for
   /// your <car>" pulse line. Prefers the catalogue entry when the
@@ -1915,11 +1945,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ),
               ],
             ],
-            if (_response.days.isNotEmpty) ...[
+            // Origin → destination · hh:mm strip. Backend only emits
+            // `days` for multi-day trips; on a single-day trip we
+            // synthesize one from origin + destination + departure so
+            // the driver still sees the same hero row instead of a
+            // gap under the cost card.
+            if (_daysForHeaderStrip.isNotEmpty) ...[
               const SizedBox(height: Tokens.space12),
               Divider(color: scheme.outlineVariant),
               const SizedBox(height: Tokens.space4),
-              for (final d in _response.days)
+              for (final d in _daysForHeaderStrip)
                 _DayStripRow(day: d),
             ],
             // Trip-cost breakdown moved into the hero card 2026-09-27

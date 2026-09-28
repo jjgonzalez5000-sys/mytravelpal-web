@@ -516,6 +516,15 @@ class RouteOut(BaseModel):
             "destination."
         ),
     )
+    # Country-permit stickers (AT, CH, RO, HU, SK, CZ, SI, BG) —
+    # mandatory whenever the route uses ANY motorway in that
+    # country. Bundled into `toll_cost_eur` for backwards compat
+    # but ALSO exposed here so the mobile can render "Peajes X €
+    # + Viñetas Y € obligatorias" and never offer them as
+    # skippable in the partial-toll UI. Empty → no vignette
+    # country crossed OR HERE didn't classify one.
+    vignette_cost_eur: float = 0.0
+    vignette_countries: list[str] = Field(default_factory=list)
 
 
 class TollAlternativeOut(BaseModel):
@@ -1203,6 +1212,31 @@ def _enforce_premium_gates(
         )
 
 
+_VIGNETTE_OP_COUNTRY_HINTS: dict[str, str] = {
+    "austria": "AT", "österreich": "AT",
+    "switzerland": "CH", "swiss": "CH", "schweiz": "CH",
+    "romania": "RO", "rovinieta": "RO",
+    "hungary": "HU", "matrica": "HU",
+    "slovakia": "SK", "slovak": "SK",
+    "czech": "CZ", "czechia": "CZ",
+    "slovenia": "SI",
+    "bulgaria": "BG",
+}
+
+
+def _guess_country_from_operator(operator: str) -> str:
+    """Extract a 2-letter country code from HERE's `tollSystem`
+    operator string when it matches a known vignette-country name
+    fragment. Returns "" when nothing matches — caller filters."""
+    if not operator:
+        return ""
+    op = operator.lower()
+    for needle, code in _VIGNETTE_OP_COUNTRY_HINTS.items():
+        if needle in op:
+            return code
+    return ""
+
+
 def _empty_route() -> RouteOut:
     """Canonical empty RouteOut for the enrich-slice wire payload."""
 
@@ -1447,6 +1481,21 @@ async def _plan_core_impl(
     ]
 
     simplified = simplify_polyline(route.geometry, epsilon_km=0.2)
+    # Split the toll figure into skippable-booth toll cost vs
+    # country vignettes so the mobile can render them as separate
+    # lines and never offer a "skip this" affordance for a vignette.
+    _vignette_cost = round(
+        sum(t.cost_eur for t in preamble.real_tolls if t.is_vignette),
+        2,
+    )
+    # Country hint: extract the last capitalised token of each
+    # vignette booth's `operator` field. HERE stamps it as e.g.
+    # "Autobahn Vignette (Austria)" or "Rovinieta". Best-effort —
+    # falls back to empty list when nothing parseable.
+    _vignette_countries = sorted({
+        _guess_country_from_operator(t.operator)
+        for t in preamble.real_tolls if t.is_vignette
+    } - {""})
     return TripPlanResponse(
         route=RouteOut(
             distance_km=route.distance_km,
@@ -1455,6 +1504,8 @@ async def _plan_core_impl(
             toll_cost_eur=route.toll_cost_eur,
             countries_crossed=list(route.countries_crossed),
             geometry=[[c.lon, c.lat] for c in simplified],
+            vignette_cost_eur=_vignette_cost,
+            vignette_countries=_vignette_countries,
         ),
         time_windows=[
             TimeWindowOut(

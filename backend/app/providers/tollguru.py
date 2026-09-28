@@ -50,6 +50,13 @@ class TollBooth:
     exit_lat: float = 0.0   # exit gate position (section-level providers)
     exit_lon: float = 0.0
     operator: str = ""      # toll operator name (e.g. "ASF", "APRR") for gate filtering
+    # True when this "toll" is actually a country-wide vignette /
+    # e-toll sticker (AT, CH, RO, HU, SK, CZ, SI, BG). These are
+    # NOT skippable via a parallel road — every motorway in the
+    # country requires the sticker. The partial-toll-skips service
+    # filters them out; the total cost still applies, tagged as
+    # mandatory in the trip cost breakdown.
+    is_vignette: bool = False
 
 
 class TollProvider(Protocol):
