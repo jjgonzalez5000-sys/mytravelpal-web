@@ -238,6 +238,8 @@
 
     "resultBestTimeToLeave": "BESTE ABFAHRTSZEIT",
     "resultTripSavings": "DEINE ERSPARNIS AUF DIESER REISE",
+    "resultSavingsSuggestionsTitle": "Mehr sparen mit diesen Tipps",
+    "resultSavingsClaimedHint": "Ersparnis erscheint, sobald du das empfohlene Zeitfenster anwendest.",
     "resultTimeSavedLabel": "Zeit gespart",
     "resultExtraTimeLabel": "zusätzliche Zeit",
     "resultMoneySavedLabel": "Geld gespart",

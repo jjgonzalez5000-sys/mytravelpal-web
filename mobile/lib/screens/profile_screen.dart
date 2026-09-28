@@ -12,6 +12,7 @@ import '../domain/vehicle_labels.dart';
 import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../widgets/hour_wheel_picker.dart';
 import 'vehicle_picker_screen.dart';
 
 /// Single-form profile editor. Users set this once; the plan screen
@@ -538,32 +539,6 @@ class _LabeledSlider extends StatelessWidget {
   }
 }
 
-class _HourPicker extends StatelessWidget {
-  const _HourPicker({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.onChanged,
-  });
-  final String label;
-  final int value;
-  final int min;
-  final int max;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      title: Text(label),
-      trailing: _Stepper(
-        value: value, min: min, max: max, onChanged: onChanged,
-      ),
-    );
-  }
-}
-
 /// Travel-style section: preset chips + collapsible Advanced.
 ///
 /// The 3 presets rewrite the 4 style axes; anything else the user has
@@ -757,23 +732,25 @@ class _AdvancedStyleControls extends StatelessWidget {
             ],
           );
         }),
-        const SizedBox(height: Tokens.space8),
-        _HourPicker(
+        const SizedBox(height: Tokens.space16),
+        HourWheelPicker(
           label: l.styleBedtimeLabel,
           value: profile.bedtimeHour,
           min: 18, max: 23,
           onChanged: (h) => onChanged(profile.copyWith(bedtimeHour: h)),
         ),
-        _HourPicker(
+        const SizedBox(height: Tokens.space12),
+        HourWheelPicker(
           label: l.styleWakeLabel,
           value: profile.wakeHour,
           min: 5, max: 11,
           onChanged: (h) => onChanged(profile.copyWith(wakeHour: h)),
         ),
+        const SizedBox(height: Tokens.space12),
         // Preferred driving start hour — independent of wake_hour so
         // a driver who prefers "wake at 07:00, drive at 07:30" gets
         // that instead of being forced to eat breakfast first.
-        _HourPicker(
+        HourWheelPicker(
           label: l.styleDrivingStartLabel,
           value: profile.preferredDrivingStartHour ?? profile.wakeHour,
           min: 4, max: 14,

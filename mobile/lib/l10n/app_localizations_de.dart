@@ -659,6 +659,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get resultTripSavings => 'DEINE ERSPARNIS AUF DIESER REISE';
 
   @override
+  String get resultSavingsSuggestionsTitle => 'Mehr sparen mit diesen Tipps';
+
+  @override
+  String get resultSavingsClaimedHint =>
+      'Ersparnis erscheint, sobald du das empfohlene Zeitfenster anwendest.';
+
+  @override
   String get resultTimeSavedLabel => 'Zeit gespart';
 
   @override

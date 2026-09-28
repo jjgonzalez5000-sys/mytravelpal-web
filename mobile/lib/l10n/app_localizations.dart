@@ -1290,6 +1290,18 @@ abstract class AppLocalizations {
   /// **'YOUR SAVINGS ON THIS TRIP'**
   String get resultTripSavings;
 
+  /// No description provided for @resultSavingsSuggestionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ways to save more'**
+  String get resultSavingsSuggestionsTitle;
+
+  /// No description provided for @resultSavingsClaimedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings will show once you apply the recommended window.'**
+  String get resultSavingsClaimedHint;
+
   /// No description provided for @resultTimeSavedLabel.
   ///
   /// In en, this message translates to:

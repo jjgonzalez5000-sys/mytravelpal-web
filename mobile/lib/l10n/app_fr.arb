@@ -238,6 +238,8 @@
 
     "resultBestTimeToLeave": "MEILLEURE HEURE POUR PARTIR",
     "resultTripSavings": "VOS ÉCONOMIES SUR CE VOYAGE",
+    "resultSavingsSuggestionsTitle": "Suggestions pour économiser plus",
+    "resultSavingsClaimedHint": "Les économies s'afficheront après avoir appliqué la fenêtre recommandée.",
     "resultTimeSavedLabel": "temps économisé",
     "resultExtraTimeLabel": "temps supplémentaire",
     "resultMoneySavedLabel": "argent économisé",

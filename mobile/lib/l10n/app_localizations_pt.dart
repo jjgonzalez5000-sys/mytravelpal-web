@@ -660,6 +660,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get resultTripSavings => 'YOUR SAVINGS ON THIS TRIP';
 
   @override
+  String get resultSavingsSuggestionsTitle => 'Ways to save more';
+
+  @override
+  String get resultSavingsClaimedHint =>
+      'Savings will show once you apply the recommended window.';
+
+  @override
   String get resultTimeSavedLabel => 'time saved';
 
   @override

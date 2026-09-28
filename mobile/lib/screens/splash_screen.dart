@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/tokens.dart';
+import '../domain/trip_profile.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/biometric_auth.dart';
@@ -13,6 +14,14 @@ import 'login_screen.dart';
 import 'onboarding_screen.dart';
 import 'app_shell.dart';
 import 'result_screen.dart';
+
+/// Compile-time flag: `--dart-define=AUTO_DEMO=1` skips the login +
+/// profile-config screens on first launch of a dev build. Wired into
+/// `make mobile-local` for fast dogfood cycles; `make mobile-local-clean`
+/// omits the flag so the login flow can still be smoke-tested. Empty on
+/// production builds → no code path in this file fires.
+const String _kAutoDemoFlag = String.fromEnvironment('AUTO_DEMO');
+bool get _autoDemoEnabled => _kAutoDemoFlag == '1';
 
 /// Splash — animated brand mark, then routes to onboarding (first launch)
 /// or straight to the planner.
@@ -40,6 +49,32 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     final l = AppLocalizations.of(context);
     final prefs = ref.read(appPrefsProvider);
     final auth = ref.read(authProvider);
+    // AUTO_DEMO shortcut: dev builds only. Fires when a compile-time
+    // `--dart-define=AUTO_DEMO=1` is set AND we don't already have a
+    // stored auth session. The gate on `auth.token == null` means real
+    // users on production builds are never touched (no compile-time
+    // flag → early return) and testers who log in normally on a
+    // clean install aren't re-hijacked on the next launch.
+    if (_autoDemoEnabled && auth.token == null) {
+      final ok = await _runAutoDemo();
+      if (!mounted) return;
+      if (ok) {
+        await Navigator.of(context).pushReplacement(
+          PageRouteBuilder<void>(
+            pageBuilder: (_, __, ___) => const AppShell(),
+            transitionsBuilder: (_, animation, __, child) =>
+                FadeTransition(opacity: animation, child: child),
+            transitionDuration: Tokens.motionBase,
+          ),
+        );
+        if (!mounted) return;
+        await _maybeOfferResume();
+        return;
+      }
+      // Auto-demo failed (backend down, network glitch) — fall
+      // through to the normal login flow so the tester isn't
+      // stranded on the splash screen.
+    }
     final Widget next;
     if (!prefs.onboardingShown) {
       next = const OnboardingScreen();
@@ -94,6 +129,51 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     // resume dialog then floats on top instead of hijacking startup.
     if (!mounted) return;
     await _maybeOfferResume();
+  }
+
+  /// Headless equivalent of `LoginScreen._signInDemo` + the profile
+  /// setup a tester would otherwise walk through. Only invoked when
+  /// `--dart-define=AUTO_DEMO=1` is compiled in AND no auth session
+  /// is stored. Returns true on success so the caller can route to
+  /// `AppShell`; false on error so it can fall back to `LoginScreen`.
+  Future<bool> _runAutoDemo() async {
+    try {
+      final api = ref.read(apiClientWithPremiumProvider);
+      final session = await api.createSession(
+        provider: 'demo',
+        idToken: 'demo-id-token',
+        demoEmail: 'demo@mytravelpal.local',
+        demoName: 'Demo user',
+      );
+      await ref
+          .read(authProvider.notifier)
+          .set(session.user, session.token);
+      // Rewire the api client so profile + storage pushes carry the
+      // new JWT. Mirrors the wiring done at the end of `_route` for
+      // returning users.
+      final authedApi = ref.read(apiClientWithPremiumProvider);
+      final profileNotifier = ref.read(tripProfileProvider.notifier);
+      profileNotifier.api = authedApi;
+      final storage = ref.read(tripStorageProvider);
+      storage.api = authedApi;
+      // Hardcoded dogfood profile: family-of-3 with kids, mid-morning
+      // start, 6h daily cap. Everything else stays at the sensible
+      // defaults from `const TripProfile()` (car / petrol / steady
+      // pace / if-needed overnight / scenic breaks).
+      const demoProfile = TripProfile(
+        travellers: 3,
+        hasKids: true,
+        dailyDrivingCapHours: 6,
+        preferredDrivingStartHour: 10,
+      );
+      // `set` persists to AppPrefs AND fires _pushToServer (fire-and-
+      // forget) so the backend sees the profile too.
+      await profileNotifier.set(demoProfile);
+      return true;
+    } catch (e, stack) {
+      debugPrint('AUTO_DEMO auto-login failed: $e\n$stack');
+      return false;
+    }
   }
 
   Future<void> _maybeOfferResume() async {

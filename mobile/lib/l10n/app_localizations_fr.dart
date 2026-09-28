@@ -660,6 +660,14 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultTripSavings => 'VOS ÉCONOMIES SUR CE VOYAGE';
 
   @override
+  String get resultSavingsSuggestionsTitle =>
+      'Suggestions pour économiser plus';
+
+  @override
+  String get resultSavingsClaimedHint =>
+      'Les économies s\'afficheront après avoir appliqué la fenêtre recommandée.';
+
+  @override
   String get resultTimeSavedLabel => 'temps économisé';
 
   @override

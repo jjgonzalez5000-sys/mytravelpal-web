@@ -233,6 +233,8 @@
 
     "resultBestTimeToLeave": "MIGLIOR ORA PER PARTIRE",
     "resultTripSavings": "I TUOI RISPARMI SU QUESTO VIAGGIO",
+    "resultSavingsSuggestionsTitle": "Modi per risparmiare di più",
+    "resultSavingsClaimedHint": "Il risparmio comparirà dopo aver applicato la finestra consigliata.",
     "resultTimeSavedLabel": "tempo risparmiato",
     "resultExtraTimeLabel": "tempo extra",
     "resultMoneySavedLabel": "soldi risparmiati",

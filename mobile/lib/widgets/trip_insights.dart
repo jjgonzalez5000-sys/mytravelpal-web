@@ -269,29 +269,22 @@ class DayPlanSection extends StatelessWidget {
   // options. The backend densifies with the same widened radius.
   static const double _maxHotelKmFromSleep = 90.0;
 
-  String _dayHeaderLabel(AppLocalizations l, DayPlan d, int totalDays) {
+  /// Returns `(fromLabel, toLabel)` for the day-header summary strip.
+  /// Falls back through reverse-geocoded city → trip endpoint (day 1 /
+  /// last day) → meal-stop city hint → `km NN` marker, so every day
+  /// always renders a two-endpoint strip even before enrich finishes.
+  (String, String) _dayEndpointLabels(DayPlan d, int totalDays) {
     final isFirst = d.dayIndex == 1;
     final isLast = d.dayIndex == totalDays;
     final from = d.fromName
         ?? (isFirst ? originName : null)
-        ?? _cityFromDay(d, useTo: false);
+        ?? _cityFromDay(d, useTo: false)
+        ?? 'km ${d.fromKm.toStringAsFixed(0)}';
     final to = d.toName
         ?? (isLast ? destinationName : null)
-        ?? _cityFromDay(d, useTo: true);
-    if (from != null && to != null) {
-      return l.dayHeaderCity(d.dayIndex, from, to);
-    }
-    if (from != null) {
-      return l.dayHeaderCity(d.dayIndex, from, 'km ${d.toKm.toStringAsFixed(0)}');
-    }
-    if (to != null) {
-      return l.dayHeaderCity(d.dayIndex, 'km ${d.fromKm.toStringAsFixed(0)}', to);
-    }
-    return l.dayHeaderRange(
-      d.dayIndex,
-      d.fromKm.toStringAsFixed(0),
-      d.toKm.toStringAsFixed(0),
-    );
+        ?? _cityFromDay(d, useTo: true)
+        ?? 'km ${d.toKm.toStringAsFixed(0)}';
+    return (from, to);
   }
 
   /// Returns a rough city label for the start or end of a day, derived
@@ -304,7 +297,9 @@ class DayPlanSection extends StatelessWidget {
   }
 
   void _showDayMap(BuildContext context, DayPlan d) {
-    final slice = _DayRouteThumb._sliceGeometry(routeGeometry, d.fromKm, d.toKm, days.last.toKm);
+    final slice = _daySliceGeometry(
+      routeGeometry, d.fromKm, d.toKm, days.last.toKm,
+    );
     if (slice.isEmpty) return;
     final scheme = Theme.of(context).colorScheme;
     final boundsPoints = <ll.LatLng>[...slice];
@@ -464,59 +459,49 @@ class DayPlanSection extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Line 1: Day pill + date/km subtitle + right-side
+                // actions (in-flight pill, pencil edit, map opener).
+                // The mini-map thumb previously anchored here was
+                // demoted to a Map icon button so the primary summary
+                // strip (line 2) can span the full width — driver
+                // scans hours + city names first, opens the map on tap.
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: scheme.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(
+                        d.isDwellDay
+                            ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
+                            : l.dayTabLabel(d.dayIndex),
+                        style: t.labelSmall?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: Tokens.space8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            d.isDwellDay
-                                ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
-                                : _dayHeaderLabel(l, d, days.length),
-                            style: t.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            () {
-                              final date = DateFormat('EEE, d MMM',
-                                      Localizations.localeOf(context)
-                                          .toString())
-                                  .format(d.startAt.toLocal());
-                              if (d.isDwellDay) return date;
-                              final km = (d.toKm - d.fromKm).round();
-                              return '$date  ·  $km km';
-                            }(),
-                            style: t.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                          // Show start + end times on EVERY driving day.
-                          // Previously only day 1 showed the departure
-                          // ("wake_hour is a constant, not news") — but
-                          // testers reported they still had to scroll
-                          // back up to remember when each day starts /
-                          // ends. Showing it inline per day makes each
-                          // card self-contained.
-                          if (!d.isDwellDay) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              l.dayDriveWindow(
-                                timeFormat.format(d.startAt.toLocal()),
-                                timeFormat.format(
-                                  (d.sleepAt ?? d.endAt).toLocal(),
-                                ),
-                              ),
-                              style: t.bodySmall?.copyWith(
-                                color: scheme.primary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ],
+                      child: Text(
+                        () {
+                          final date = DateFormat('EEE, d MMM',
+                                  Localizations.localeOf(context)
+                                      .toString())
+                              .format(d.startAt.toLocal());
+                          if (d.isDwellDay) return date;
+                          final km = (d.toKm - d.fromKm).round();
+                          return '$date  ·  $km km';
+                        }(),
+                        style: t.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     // Anchored "Recalculando..." pill for the day
@@ -561,21 +546,95 @@ class DayPlanSection extends StatelessWidget {
                       ),
                     ],
                     if (!d.isDwellDay && routeGeometry.isNotEmpty) ...[
-                      const SizedBox(width: Tokens.space8),
-                      GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () => _showDayMap(context, d),
-                        child: _DayRouteThumb(
-                          routeGeometry: routeGeometry,
-                          fromKm: d.fromKm,
-                          toKm: d.toKm,
-                          totalKm: days.last.toKm,
-                          pinCoord: d.sleepCoord,
+                      const SizedBox(width: Tokens.space4),
+                      IconButton(
+                        icon: Icon(
+                          Icons.map_outlined,
+                          size: 18,
+                          color: scheme.onSurfaceVariant,
                         ),
+                        tooltip: 'Ver mapa del día',
+                        onPressed: () => _showDayMap(context, d),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 32, minHeight: 32,
+                        ),
+                        visualDensity: VisualDensity.compact,
                       ),
                     ],
                   ],
                 ),
+                // Line 2: primary summary strip.
+                // "07:00  Toledo  →  15:32  Bordeaux" — hh:mm in
+                // primary color (labelMedium bold) so the driver
+                // scans clock-first, city name secondary (bodyMedium),
+                // full-width tap area opens the day map sheet.
+                if (!d.isDwellDay) ...[
+                  const SizedBox(height: Tokens.space8),
+                  Builder(builder: (context) {
+                    final endpoints =
+                        _dayEndpointLabels(d, days.length);
+                    final startHhmm =
+                        timeFormat.format(d.startAt.toLocal());
+                    final endHhmm = timeFormat.format(
+                      (d.sleepAt ?? d.endAt).toLocal(),
+                    );
+                    final onTap = routeGeometry.isNotEmpty
+                        ? () => _showDayMap(context, d)
+                        : null;
+                    return InkWell(
+                      onTap: onTap,
+                      borderRadius:
+                          BorderRadius.circular(Tokens.radiusMd),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 4,
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              startHhmm,
+                              style: t.labelMedium?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                endpoints.$1,
+                                style: t.bodyMedium,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.arrow_forward,
+                              size: 14,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              endHhmm,
+                              style: t.labelMedium?.copyWith(
+                                color: scheme.primary,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                endpoints.$2,
+                                style: t.bodyMedium,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
                 // Weather segments overlapping this day's km range.
                 Builder(builder: (context) {
                   final dayWeather = weatherSegments.where((w) =>
@@ -1994,91 +2053,24 @@ class NextStopHero extends StatelessWidget {
   }
 }
 
-/// 80×56 px non-interactive route thumbnail for a single day's segment.
-/// Extracts the polyline slice between [fromKm] and [toKm] proportionally,
-/// fits the camera to those points, and optionally drops a pin at [pinCoord].
-class _DayRouteThumb extends StatelessWidget {
-  const _DayRouteThumb({
-    required this.routeGeometry,
-    required this.fromKm,
-    required this.toKm,
-    required this.totalKm,
-    this.pinCoord,
-  });
-
-  final List<LatLon> routeGeometry;
-  final double fromKm;
-  final double toKm;
-  final double totalKm;
-  final LatLon? pinCoord;
-
-  static List<ll.LatLng> _sliceGeometry(
-    List<LatLon> geom, double fromKm, double toKm, double totalKm,
-  ) {
-    if (geom.isEmpty || totalKm <= 0) return [];
-    final fromFrac = (fromKm / totalKm).clamp(0.0, 1.0);
-    final toFrac = (toKm / totalKm).clamp(0.0, 1.0);
-    final start = (fromFrac * (geom.length - 1)).round();
-    final end = (toFrac * (geom.length - 1)).round();
-    return geom
-        .sublist(start.clamp(0, geom.length - 1),
-            (end + 1).clamp(0, geom.length))
-        .map((p) => ll.LatLng(p.lat, p.lon))
-        .toList();
-  }
-
-  List<ll.LatLng> _slice() =>
-      _sliceGeometry(routeGeometry, fromKm, toKm, totalKm);
-
-  @override
-  Widget build(BuildContext context) {
-    final slice = _slice();
-    if (slice.isEmpty) return const SizedBox.shrink();
-    final scheme = Theme.of(context).colorScheme;
-    final center = slice[slice.length ~/ 2];
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: IgnorePointer(
-      child: SizedBox(
-        width: 80, height: 56,
-        child: fmap.FlutterMap(
-          options: fmap.MapOptions(
-            initialCenter: center,
-            initialZoom: 8,
-            interactionOptions: const fmap.InteractionOptions(
-              flags: fmap.InteractiveFlag.none,
-            ),
-          ),
-          children: [
-            fmap.TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.mytravelpal.mytravelpal',
-            ),
-            fmap.PolylineLayer(
-              polylines: [
-                fmap.Polyline(
-                  points: slice,
-                  color: scheme.primary,
-                  strokeWidth: 2.5,
-                ),
-              ],
-            ),
-            if (pinCoord != null)
-              fmap.MarkerLayer(
-                markers: [
-                  fmap.Marker(
-                    point: ll.LatLng(pinCoord!.lat, pinCoord!.lon),
-                    width: 18, height: 18,
-                    child: Icon(Icons.bedtime, color: scheme.primary, size: 18),
-                  ),
-                ],
-              ),
-          ],
-        ),
-      ),
-      ),
-    );
-  }
+/// Extracts the polyline slice between [fromKm] and [toKm] proportionally.
+/// Used by `_showDayMap` to render the day's segment in the map sheet.
+/// Was previously a static method on a `_DayRouteThumb` mini-map widget
+/// that anchored the day header — the widget was removed when the header
+/// swapped to a full-width hh:mm strip, so the slicer is now free-standing.
+List<ll.LatLng> _daySliceGeometry(
+  List<LatLon> geom, double fromKm, double toKm, double totalKm,
+) {
+  if (geom.isEmpty || totalKm <= 0) return [];
+  final fromFrac = (fromKm / totalKm).clamp(0.0, 1.0);
+  final toFrac = (toKm / totalKm).clamp(0.0, 1.0);
+  final start = (fromFrac * (geom.length - 1)).round();
+  final end = (toFrac * (geom.length - 1)).round();
+  return geom
+      .sublist(start.clamp(0, geom.length - 1),
+          (end + 1).clamp(0, geom.length))
+      .map((p) => ll.LatLng(p.lat, p.lon))
+      .toList();
 }
 
 class _WaypointTimeline extends StatelessWidget {

@@ -216,6 +216,8 @@
 
     "resultBestTimeToLeave": "BEST TIME TO LEAVE",
     "resultTripSavings": "YOUR SAVINGS ON THIS TRIP",
+    "resultSavingsSuggestionsTitle": "Ways to save more",
+    "resultSavingsClaimedHint": "Savings will show once you apply the recommended window.",
     "resultTimeSavedLabel": "time saved",
     "resultExtraTimeLabel": "extra time",
     "resultMoneySavedLabel": "money saved",

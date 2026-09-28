@@ -36,8 +36,9 @@ help:
 	@echo "    make osrm-check     smoke test local OSRM (Madrid -> Paris route)"
 	@echo ""
 	@echo "  Mobile:"
-	@echo "    make mobile-local   flutter run against local backend ($(LOCAL_IP):8000)"
-	@echo "    make mobile-prod    flutter build APK against Fly + install + rclone upload"
+	@echo "    make mobile-local       build+install against local backend with AUTO_DEMO=1 (skips login)"
+	@echo "    make mobile-local-clean same as mobile-local but WITHOUT AUTO_DEMO (real login flow)"
+	@echo "    make mobile-prod        flutter build APK against Fly + install + rclone upload"
 	@echo ""
 	@echo "  Deploy (Fly):"
 	@echo "    make deploy         fly deploy (production)"
@@ -114,6 +115,23 @@ mobile-local:
 	cd $(MOBILE_DIR) && flutter build apk --debug --no-tree-shake-icons \
 	  --dart-define=API_BASE_URL=http://$(LOCAL_IP):8000 \
 	  --dart-define=API_KEY=devkey \
+	  --dart-define=SENTRY_DSN= \
+	  --dart-define=AUTO_DEMO=1
+	@echo ">>> uninstalling previous build (clean state)"
+	@adb uninstall $(APP_PACKAGE) 2>&1 | tail -1
+	cd $(MOBILE_DIR) && flutter install --debug
+	@echo ">>> launching app"
+	@adb shell monkey -p $(APP_PACKAGE) -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+	@echo ""
+	@echo "  App launched.  Backend: http://$(LOCAL_IP):8000  (AUTO_DEMO=1)"
+	@echo "  Tail app logs: adb logcat | grep -iE 'mytravelpal|flutter'"
+	@echo "  Tail backend:  make logs-api"
+
+.PHONY: mobile-local-clean
+mobile-local-clean:
+	cd $(MOBILE_DIR) && flutter build apk --debug --no-tree-shake-icons \
+	  --dart-define=API_BASE_URL=http://$(LOCAL_IP):8000 \
+	  --dart-define=API_KEY=devkey \
 	  --dart-define=SENTRY_DSN=
 	@echo ">>> uninstalling previous build (clean state)"
 	@adb uninstall $(APP_PACKAGE) 2>&1 | tail -1
@@ -121,7 +139,7 @@ mobile-local:
 	@echo ">>> launching app"
 	@adb shell monkey -p $(APP_PACKAGE) -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
 	@echo ""
-	@echo "  App launched.  Backend: http://$(LOCAL_IP):8000"
+	@echo "  App launched (no AUTO_DEMO).  Backend: http://$(LOCAL_IP):8000"
 	@echo "  Tail app logs: adb logcat | grep -iE 'mytravelpal|flutter'"
 	@echo "  Tail backend:  make logs-api"
 

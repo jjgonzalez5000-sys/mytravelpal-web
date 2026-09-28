@@ -37,6 +37,7 @@ import '../widgets/consistency_banner.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/enrichment_progress.dart';
 import '../widgets/hotel_preferences.dart' show HotelPreferences;
+import '../widgets/hour_wheel_picker.dart';
 import '../widgets/restaurant_preferences.dart' show RestaurantPreferences;
 import '../widgets/trip_insights.dart';
 import '../widgets/favorite_star_button.dart';
@@ -114,6 +115,7 @@ class ResultScreen extends ConsumerStatefulWidget {
     this.otherLeg,
     this.hotelPrefs,
     this.enrichFuture,
+    this.departureClaimed = false,
   });
 
   final TripPlanRequest request;
@@ -121,6 +123,14 @@ class ResultScreen extends ConsumerStatefulWidget {
   final GeocodeResult destination;
   final TripPlanResponse response;
   final DateTime desiredDepartureAt;
+
+  /// True when the driver landed here by picking a departure window
+  /// from the "ways to save more" dropdown (`_replanWithDeparture`
+  /// sets it on the pushed screen). The trip-cost card uses it to
+  /// gate the time-savings chip: without a real opt-in, the backend's
+  /// `timeSavedMinutesVsDesired` is not something the driver has
+  /// actually claimed and shouldn't be shown as a savings.
+  final bool departureClaimed;
 
   /// Two-phase progressive loading: when non-null, the widget mounts
   /// immediately with `response` (the fast `/plan/core` result) and
@@ -585,29 +595,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 Text(l.dayEditStartHour,
                     style: Theme.of(ctx).textTheme.labelMedium),
                 const SizedBox(height: 4),
-                DropdownButton<int>(
+                HourWheelPicker(
                   value: startHour,
-                  isExpanded: true,
-                  items: [
-                    for (var h = 4; h <= 14; h++)
-                      DropdownMenuItem(
-                        value: h,
-                        child: Text('${h.toString().padLeft(2, '0')}:00'),
-                      ),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) setSheetState(() => startHour = v);
-                  },
+                  min: 4, max: 14,
+                  onChanged: (v) => setSheetState(() => startHour = v),
                 ),
                 const SizedBox(height: Tokens.space16),
                 Text(l.dayEditMaxDriving(capHours),
                     style: Theme.of(ctx).textTheme.labelMedium),
-                Slider(
-                  value: capHours.toDouble(),
-                  min: 4, max: 14, divisions: 10,
-                  label: '$capHours h',
-                  onChanged: (v) =>
-                      setSheetState(() => capHours = v.round()),
+                const SizedBox(height: 4),
+                DurationWheelPicker(
+                  value: capHours,
+                  min: 4, max: 14,
+                  onChanged: (v) => setSheetState(() => capHours = v),
                 ),
                 const SizedBox(height: Tokens.space16),
                 Row(
@@ -1010,6 +1010,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// the fresh windows; the rest of the response we already have
   /// keeps working. Number of candidates scales roughly with span so
   /// the chart gets denser as the driver widens it.
+  //
+  // The `_DepartureTimingSection` that owned the slider was folded
+  // into the trip-cost card 2026-09-28; the dropdown there uses the
+  // response's already-fetched `timeWindows` and does not need a live
+  // ±span refetch. Kept for the eventual return of a span-slider UX.
+  // ignore: unused_element
   Future<List<TimeWindow>> _refetchWindows(int spanHours) async {
     final api = ref.read(apiClientWithPremiumProvider);
     // 5 slots at ±3h, up to ~16 at ±12h (one every ~1.5h).
@@ -1107,6 +1113,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       newDeparture: window.departureAt,
       avoidMotorways: widget.request.avoidMotorways,
       loadingTitle: AppLocalizations.of(context).replanNewDepartureTitle,
+      // The user just opted into a recommended window — mark savings
+      // as CLAIMED on the pushed screen so the trip-cost card renders
+      // the time-saved chip. Without this flag, savings stay hidden
+      // (see `TripSavings.timeSavedIsClaimed` doc).
+      claimTimeSavings: true,
     );
   }
 
@@ -1115,6 +1126,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     required bool avoidMotorways,
     TripPlanRequest? overrideRequest,
     String? loadingTitle,
+    bool claimTimeSavings = false,
   }) async {
     // Root navigator so a mid-flight MaterialApp rebuild
     // (DynamicColorBuilder returning wallpaper colours) cannot
@@ -1189,6 +1201,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             currentLegLabel: widget.currentLegLabel,
             otherLeg: widget.otherLeg,
             hotelPrefs: widget.hotelPrefs,
+            // Preserve the claim across follow-up re-plans (e.g. toll
+            // toggle after the user has already picked a window) so the
+            // savings chip doesn't disappear on unrelated actions.
+            departureClaimed: claimTimeSavings || widget.departureClaimed,
           ),
         ),
       );
@@ -1488,7 +1504,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   Widget build(BuildContext context) {
     final route = _response.route;
-    final recommended = _recommended;
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
@@ -1664,9 +1679,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   fuelSavingsEur: _addedFuelSavingsEur > 0
                       ? _addedFuelSavingsEur
                       : null,
+                  // Override the claim flag with the widget-level
+                  // state so a fresh /plan response (which always
+                  // deserialises with `timeSavedIsClaimed=false`)
+                  // still counts as claimed after a departure replan.
+                  timeSavedIsClaimed: widget.departureClaimed,
                 ),
                 tollSkipPenaltyMinutes: _tollSkipPenaltyMinutes,
                 intraSectionSkips: _response.intraSectionSkips,
+                timeWindows: _response.timeWindows,
+                desiredDepartureAt: widget.desiredDepartureAt,
+                onWindowSelect: _replanWithDeparture,
+                windowsKey: _timeWindowKey,
               ),
             ],
           ],
@@ -1896,22 +1920,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ),
         const SizedBox(height: Tokens.space16),
       ],
-      const SizedBox(height: Tokens.space16),
-      _DepartureTimingSection(
-        key: _timeWindowKey,
-        recommended: recommended,
-        desiredDepartureAt: widget.desiredDepartureAt,
-        freeFlowMinutes: route.freeFlowMinutes,
-        savedMinutesVsDesired:
-            _response.savings.timeSavedMinutesVsDesired,
-        initialWindows: _response.timeWindows,
-        initialSpanHours: widget.request.timeWindowSpanHours,
-        onFetch: _refetchWindows,
-        onWindowSelect: _replanWithDeparture,
-        onSelectRecommended: recommended != null
-            ? () => _replanWithDeparture(recommended)
-            : null,
-      ),
+      // Departure-window picker moved into the trip-cost card (2026-09-28)
+      // as the "Ways to save more" dropdown, so all time+money savings
+      // info lives in a single glanceable card. The `_timeWindowKey`
+      // now anchors that dropdown for the coach-mark tutorial.
       if (_response.routeVariants.length >= 2) ...[
         const SizedBox(height: Tokens.space24),
         _RouteVariantsSection(variants: _response.routeVariants),
@@ -2882,6 +2894,10 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.savings,
     this.tollSkipPenaltyMinutes = 0,
     this.intraSectionSkips = const [],
+    this.timeWindows = const [],
+    this.desiredDepartureAt,
+    this.onWindowSelect,
+    this.windowsKey,
   });
   final double fuelCostEur;
   final double tollCostEur;
@@ -2893,6 +2909,26 @@ class _TotalTripCostCard extends ConsumerWidget {
   final TripSavings? savings;
   final double tollSkipPenaltyMinutes;
   final List<IntraSectionSkip> intraSectionSkips;
+
+  /// Departure-window samples the backend returned. When at least two
+  /// are present the card renders the "ways to save more" dropdown so
+  /// the driver can claim a better slot without leaving the cost card.
+  final List<TimeWindow> timeWindows;
+
+  /// The user's currently-active departure. Used to compute per-window
+  /// savings deltas against the sample closest to it (matches the
+  /// semantics of `TripSavings.timeSavedMinutesVsDesired`).
+  final DateTime? desiredDepartureAt;
+
+  /// Fired when the driver taps a window chip inside the dropdown.
+  /// Parent (`_replanWithDeparture`) replans the whole trip with the
+  /// picked departure and marks savings as CLAIMED on the new screen.
+  final ValueChanged<TimeWindow>? onWindowSelect;
+
+  /// Key attached to the dropdown so the coach-mark tutorial can
+  /// still target the time-windows affordance after it moved from
+  /// its old standalone card into the cost card.
+  final Key? windowsKey;
 
   /// When non-null, overrides the algorithmic sleep_stop hotel
   /// cost with the user-picked hotels sum. Set when the user has
@@ -3018,8 +3054,15 @@ class _TotalTripCostCard extends ConsumerWidget {
           ),
           if (savings != null) ...[
             () {
-              final savedTime = savings!.timeSavedMinutesVsDesired -
+              // Time-savings only count once the driver has actively
+              // picked a departure window (`timeSavedIsClaimed`).
+              // Before that, the backend's positive delta is a
+              // "what you COULD save", not "what you saved" — showing
+              // it as a green chip on first render was misleading
+              // (user report 2026-09-28).
+              final rawSavedTime = savings!.timeSavedMinutesVsDesired -
                   tollSkipPenaltyMinutes;
+              final savedTime = savings!.timeSavedIsClaimed ? rawSavedTime : 0.0;
               final savedEur = tollSkipSavingsEur;
               final fuelSavedEur = savings!.fuelSavingsEur ?? 0.0;
               if (savedTime <= 0 && savedEur <= 0 && fuelSavedEur <= 0) {
@@ -3088,10 +3131,10 @@ class _TotalTripCostCard extends ConsumerWidget {
                         ),
                         const SizedBox(width: 12),
                       ],
-                      // When toll detour adds net time (savedTime < 0),
+                      // When toll detour adds net time (rawSavedTime < 0),
                       // show the time cost as a trade-off note so the
                       // user understands why time isn't shown as a saving.
-                      if (tollSkipPenaltyMinutes > 0 && savedTime < 0) ...[
+                      if (tollSkipPenaltyMinutes > 0 && rawSavedTime < 0) ...[
                         Icon(Icons.timelapse, size: 13,
                             color: scheme.onSurfaceVariant),
                         const SizedBox(width: 4),
@@ -3107,6 +3150,20 @@ class _TotalTripCostCard extends ConsumerWidget {
                 ],
               );
             }(),
+          ],
+          // "Ways to save more" — the departure-window picker lives
+          // here so the driver has all money+time-savings info AND the
+          // trigger to CLAIM more savings in one glanceable card. Was
+          // its own SoftCard below the map before 2026-09-28.
+          if (timeWindows.length >= 2 && desiredDepartureAt != null) ...[
+            const SizedBox(height: Tokens.space8),
+            _TripCostWindowsDropdown(
+              key: windowsKey,
+              windows: timeWindows,
+              desiredDepartureAt: desiredDepartureAt!,
+              onWindowSelect: onWindowSelect,
+              alreadyClaimed: savings?.timeSavedIsClaimed ?? false,
+            ),
           ],
           // Per-person / per-day breakdown — only when the numbers
           // actually add information (multi-traveller or multi-day
@@ -3128,6 +3185,167 @@ class _TotalTripCostCard extends ConsumerWidget {
           ],
         ],
       );
+  }
+}
+
+/// "Ways to save more" dropdown that lives at the bottom of the trip
+/// cost card. Lists the departure-window samples backend returned, so
+/// the driver can pick a better slot without leaving the receipt.
+/// Tapping a chip fires `_replanWithDeparture` on the parent — the
+/// resulting screen marks time savings as CLAIMED and the receipt's
+/// savings row lights up with the delta.
+///
+/// The top pick (backend-flagged `recommended`) is highlighted with a
+/// primary-container background and a star icon so the "best" option
+/// reads at a glance.
+class _TripCostWindowsDropdown extends StatelessWidget {
+  const _TripCostWindowsDropdown({
+    super.key,
+    required this.windows,
+    required this.desiredDepartureAt,
+    required this.alreadyClaimed,
+    this.onWindowSelect,
+  });
+
+  final List<TimeWindow> windows;
+  final DateTime desiredDepartureAt;
+  final bool alreadyClaimed;
+  final ValueChanged<TimeWindow>? onWindowSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    // Baseline for per-window savings: the sample closest to the
+    // user's current desired departure. Matches the semantics of
+    // `TripSavings.timeSavedMinutesVsDesired` so the chip figures
+    // line up with the top-line "-Xh Ym" once the user claims.
+    final desiredLocal = desiredDepartureAt.toLocal();
+    TimeWindow baseline = windows.first;
+    var bestDelta = double.infinity;
+    for (final w in windows) {
+      final delta = w.departureAt
+          .toLocal()
+          .difference(desiredLocal)
+          .inMinutes
+          .abs()
+          .toDouble();
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        baseline = w;
+      }
+    }
+    final baselineMinutes = baseline.estimatedMinutes;
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(top: Tokens.space8),
+        initiallyExpanded: false,
+        leading: Icon(Icons.tune, color: scheme.tertiary, size: 20),
+        title: Text(
+          l.resultSavingsSuggestionsTitle,
+          style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        children: [
+          if (!alreadyClaimed) ...[
+            Padding(
+              padding: const EdgeInsets.only(bottom: Tokens.space8),
+              child: Text(
+                l.resultSavingsClaimedHint,
+                style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+          ],
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final w in windows)
+                _WindowChip(
+                  window: w,
+                  savedMinutes: baselineMinutes - w.estimatedMinutes,
+                  onTap: onWindowSelect == null
+                      ? null
+                      : () => onWindowSelect!(w),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Single row inside the "ways to save more" dropdown. Recommended
+/// windows get the primary-container fill + star badge; the rest use
+/// a neutral surfaceVariant tone. Windows that don't actually save
+/// time render the time label without a saving suffix — tapping still
+/// re-plans (useful when the driver just wants to shift departure).
+class _WindowChip extends StatelessWidget {
+  const _WindowChip({
+    required this.window,
+    required this.savedMinutes,
+    this.onTap,
+  });
+
+  final TimeWindow window;
+  final double savedMinutes;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final recommended = window.recommended;
+    final bg = recommended
+        ? scheme.primaryContainer
+        : scheme.surfaceContainerHighest;
+    final fg = recommended ? scheme.onPrimaryContainer : scheme.onSurface;
+    final hasSaving = savedMinutes >= 1;
+    final timeLabel = DateFormat.Hm().format(window.departureAt.toLocal());
+    return Material(
+      color: bg,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                recommended ? Icons.star_rounded : Icons.schedule_outlined,
+                size: 14,
+                color: recommended ? scheme.primary : fg.withValues(alpha: 0.7),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                timeLabel,
+                style: t.labelMedium?.copyWith(
+                  color: fg,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              if (hasSaving) ...[
+                const SizedBox(width: 6),
+                Text(
+                  '· -${durationCompact(savedMinutes)}',
+                  style: t.labelSmall?.copyWith(
+                    color: Colors.green.shade700,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -5106,8 +5324,14 @@ class _FuelTile extends StatelessWidget {
 
 /// Departure-window card with an inline slider that lets the driver
 /// widen the sampled range beyond the default ±3h up to ±12h. On
+///
+/// Dead code as of 2026-09-28 — the section was folded into the trip
+/// cost card as a compact "Ways to save more" dropdown. Kept in the
+/// file until we decide whether the ±span slider comes back.
+// ignore: unused_element
 class _DepartureTimingSection extends StatelessWidget {
   const _DepartureTimingSection({
+    // ignore: unused_element_parameter
     super.key,
     required this.recommended,
     required this.desiredDepartureAt,
@@ -5116,7 +5340,9 @@ class _DepartureTimingSection extends StatelessWidget {
     required this.initialWindows,
     required this.initialSpanHours,
     required this.onFetch,
+    // ignore: unused_element_parameter
     this.onWindowSelect,
+    // ignore: unused_element_parameter
     this.onSelectRecommended,
   });
 

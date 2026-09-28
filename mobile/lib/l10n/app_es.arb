@@ -225,6 +225,8 @@
 
     "resultBestTimeToLeave": "MEJOR HORA PARA SALIR",
     "resultTripSavings": "TUS AHORROS EN ESTE VIAJE",
+    "resultSavingsSuggestionsTitle": "Sugerencias para ahorrar más",
+    "resultSavingsClaimedHint": "Ahorro reflejado tras aplicar la ventana óptima.",
     "resultTimeSavedLabel": "tiempo ahorrado",
     "resultExtraTimeLabel": "tiempo extra",
     "resultMoneySavedLabel": "dinero ahorrado",

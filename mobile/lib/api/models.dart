@@ -1553,6 +1553,7 @@ class TripSavings {
     required this.timeSavedMinutesVsDesired,
     required this.moneySavedEurVsTolls,
     this.fuelSavingsEur,
+    this.timeSavedIsClaimed = false,
   });
 
   /// Minutes the recommendation saves vs the sample closest to the
@@ -1570,13 +1571,28 @@ class TripSavings {
   /// mutates a local copy of TripSavings when the driver picks a stop.
   final double? fuelSavingsEur;
 
+  /// True when the driver has actively picked a departure window from
+  /// the "ways to save more" dropdown — the time savings are then real
+  /// (the trip was re-planned around the picked slot). False on the
+  /// first render: backend always ships a positive
+  /// `timeSavedMinutesVsDesired` for the recommended-vs-current
+  /// comparison, but claiming it requires the driver to opt in. Set
+  /// client-side inside `_replanWithDeparture`; never serialised from
+  /// JSON.
+  final bool timeSavedIsClaimed;
+
   /// Returns a new [TripSavings] with the given fields overridden.
   /// Used by the ResultScreen to inject the running fuel savings
   /// figure without mutating the response envelope.
-  TripSavings copyWith({double? fuelSavingsEur}) => TripSavings(
+  TripSavings copyWith({
+    double? fuelSavingsEur,
+    bool? timeSavedIsClaimed,
+  }) =>
+      TripSavings(
         timeSavedMinutesVsDesired: timeSavedMinutesVsDesired,
         moneySavedEurVsTolls: moneySavedEurVsTolls,
         fuelSavingsEur: fuelSavingsEur ?? this.fuelSavingsEur,
+        timeSavedIsClaimed: timeSavedIsClaimed ?? this.timeSavedIsClaimed,
       );
 
   factory TripSavings.fromJson(Map<String, dynamic> j) => TripSavings(
