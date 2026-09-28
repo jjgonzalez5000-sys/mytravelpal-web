@@ -190,20 +190,25 @@ async def enrich_rest_stops(
                 _remember(stop.coordinate, payload)
 
     out: list[RestStop] = []
-    # A stop is DROPPED (not returned) when Overpass definitively
-    # responded for its coord and returned no typed amenity within
-    # `_REST_STOP_RADIUS_M`. Users prefer "no stop shown" over
-    # "stop in the middle of the road" (2026-09-27 tester feedback):
-    # a random highway coord isn't a place they can actually pull
-    # over. We can only tell "responded with nothing" apart from
-    # "provider was down" by checking whether the miss got an entry
-    # in `fresh_flags` — if it did, Overpass answered; if not, the
-    # provider silently timed out and we fall through to the raw
-    # coord so the day plan still has SOMETHING to render.
+    # Previous behaviour DROPPED a stop when Overpass responded but
+    # matched no typed amenity nearby ("prefer no stop over stop-in-
+    # the-middle-of-the-road", 2026-09-27 tester feedback).
     #
-    # We also always keep stops that were already named upstream
-    # (e.g. cache-hit with a name from a previous run).
-    responded_indices = set(fresh_flags.keys())
+    # That caused a cascading bug on long trips (2026-09-28 tester:
+    # Toledo → Turda RO): Overpass frequently returns empty for
+    # rural corridor coords, so those rest_stops disappeared from
+    # the enriched list — and `_extend_meals_for_day` in
+    # `trip_optimizations.py` needs a rest_stop near each meal
+    # target to schedule the meal. Result: days 4-6 shipped with
+    # zero meals, zero rest stops, zero everything.
+    #
+    # Fix: NEVER drop rest_stops in the backend. Keep the raw
+    # coord + name=None + stop_type=UNKNOWN when Overpass didn't
+    # match, so meal scheduling can still anchor on the km-along-
+    # route mark. The frontend's `_restStopIsReliable` helper is
+    # already filtering unknown / unnamed rest_stops from the
+    # DISPLAY layer — that gives the same "no bad stops shown to
+    # driver" outcome without starving the multi-day scheduler.
     for idx, s in enumerate(stops):
         payload = cache_hits.get(idx) or fresh_flags.get(idx) or _empty_payload()
         shifted_coord = payload.get("coordinate") or s.coordinate
@@ -216,12 +221,6 @@ async def enrich_rest_stops(
             name=payload.get("name") or s.name,
             stop_type=payload.get("stop_type") or s.stop_type,
         )
-        was_probed = idx in responded_indices or idx in cache_hits
-        has_named_amenity = candidate.name is not None
-        if was_probed and not has_named_amenity:
-            # Overpass answered, no typed amenity within radius —
-            # drop rather than surface a mid-road coord.
-            continue
         out.append(candidate)
     return tuple(out)
 
