@@ -172,6 +172,82 @@ screenshots:
 screenshots-auto:
 	cd $(MOBILE_DIR) && ./tool/take_screenshots_auto.sh $(LOCALE)
 
+# --- Google Play Console upload (fastlane) ------------------------
+# Prereqs (one-time):
+#   1. Ruby + bundler installed (`sudo apt install ruby-full`).
+#   2. `cd mobile && bundle install` — pulls fastlane.
+#   3. Google Cloud service account with Play Developer API access +
+#      JSON key saved to `mobile/play-key.json` (gitignored).
+#   4. That SA invited to Play Console → Users → Release manager.
+#
+# Typical flow:
+#   make play-internal    # build AAB + upload to Internal track
+#   make play-beta        # promote latest Internal → Closed testing
+#   make play-prod        # promote latest Closed → Production
+#
+.PHONY: play-internal play-beta play-prod play-metadata play-pull
+play-internal:
+	cd $(MOBILE_DIR)/android && bundle exec fastlane internal
+
+play-beta:
+	cd $(MOBILE_DIR)/android && bundle exec fastlane promote_to_closed
+
+play-prod:
+	cd $(MOBILE_DIR)/android && bundle exec fastlane promote_to_prod
+
+# Push the versioned store listing (icons, screenshots, descriptions).
+# Edit files under mobile/android/fastlane/metadata/android/<locale>/
+# then run this to sync to Play.
+play-metadata:
+	cd $(MOBILE_DIR)/android && bundle exec fastlane metadata
+
+# One-off: snapshot whatever metadata is currently in Play Console
+# into the repo. Run this after uploading any assets/text manually
+# via the web UI so the repo becomes the source of truth.
+play-pull:
+	cd $(MOBILE_DIR)/android && bundle exec fastlane pull_metadata
+
+# --- E2E smoke tests (Maestro) -------------------------------------------
+# Prereqs: Maestro installed (~/.maestro/bin/maestro), emulator or device
+# running, app NOT installed (script does fresh install each run).
+# Usage: make e2e [DEVICE=emulator-5554]
+.PHONY: e2e
+e2e:
+	cd $(MOBILE_DIR) && bash scripts/e2e.sh
+
+# Run a single flow: make e2e-flow FLOW=plan_basic
+.PHONY: e2e-flow
+e2e-flow:
+	maestro test $(MOBILE_DIR)/maestro/flows/$(FLOW).yaml
+
+# --- Admin dashboard (Grafana + Fly proxy) ------------------------
+#
+# Prereqs: `dashboard/.env` filled from `.env.example` with the
+# Postgres user + password (fetch via `flyctl postgres users list
+# -a mytravelpal-db`). See `dashboard/README.md` for the full flow.
+#
+# `dashboard-up` refuses to start unless a flyctl proxy on port 5432
+# is already running against mytravelpal-db — the container has
+# nowhere to connect otherwise. Start the proxy first:
+#
+#   flyctl proxy 5432 -a mytravelpal-db
+#
+.PHONY: dashboard-up dashboard-down dashboard-logs
+dashboard-up:
+	@if ! ss -tln 2>/dev/null | grep -q ':5432 '; then \
+	  echo "No listener on localhost:5432 — start the proxy first:"; \
+	  echo "  flyctl proxy 5432 -a mytravelpal-db"; \
+	  exit 1; \
+	fi
+	cd dashboard && docker compose up -d
+	@echo "Grafana up at http://localhost:3007 (admin / admin)"
+
+dashboard-down:
+	cd dashboard && docker compose down
+
+dashboard-logs:
+	cd dashboard && docker compose logs -f --tail=100 grafana
+
 .PHONY: clean
 clean:
 	$(COMPOSE) down -v

@@ -1,0 +1,28 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- waitForAnimationToEnd
+# Tap the profile chip — it shows vehicle summary or "Configura tu perfil de viaje".
+# Either way it opens the action sheet.
+- tapOn:
+    text: "Gasolina"
+    optional: true
+- tapOn:
+    text: "Configura tu perfil de viaje"
+    optional: true
+- waitForAnimationToEnd
+# Action sheet: choose "Edit trip profile" (avoids garage picker)
+- tapOn:
+    text: "Editar perfil del viaje"
+    optional: true
+- waitForAnimationToEnd
+# In profile screen: tap the "Eléctrico" chip in the fuel type row
+- tapOn:
+    text: "Eléctrico"
+- waitForAnimationToEnd
+# Navigate back — profile auto-saves on pop
+- pressKey: Back
+- waitForAnimationToEnd
+# Profile chip on PlanScreen must now show the EV label
+- assertVisible:
+    text: "Eléctrico"

@@ -1,0 +1,24 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- tapOn: "Desde"
+- inputText: "Unterageri"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Unterägeri"
+    optional: true
+- tapOn: "Hasta"
+- inputText: "Madrid"
+- waitForAnimationToEnd
+- tapOn:
+    text: "Madrid"
+    optional: true
+- tapOn: "Planificar viaje"
+- waitForAnimationToEnd:
+    timeout: 90000
+- assertVisible:
+    text: "Día 1"
+- assertVisible:
+    text: "Día 2"
+- assertVisible:
+    text: "Día 3"

@@ -1,0 +1,12 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- scrollUntilVisible:
+    element:
+      text: "Buscar hoteles"
+    direction: DOWN
+- tapOn: "Buscar hoteles"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Parking"
+    optional: true

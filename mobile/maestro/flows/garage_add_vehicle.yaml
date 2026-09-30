@@ -1,0 +1,20 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element:
+      text: "Garage"
+    direction: DOWN
+    optional: true
+- tapOn:
+    text: "Garage"
+    optional: true
+- waitForAnimationToEnd
+- tapOn:
+    text: "Añadir vehículo"
+    optional: true
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Garaje"
+    optional: true

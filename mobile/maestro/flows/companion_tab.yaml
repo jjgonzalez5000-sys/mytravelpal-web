@@ -1,0 +1,8 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- waitForAnimationToEnd
+- tapOn: "Acompañar"
+- waitForAnimationToEnd
+- assertVisible:
+    text: "Acompañar"

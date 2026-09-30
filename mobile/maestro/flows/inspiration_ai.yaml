@@ -1,0 +1,9 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- tapOn: "Inspiración de viaje"
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertVisible:
+    text: "Describe tu viaje soñado"
+    optional: true

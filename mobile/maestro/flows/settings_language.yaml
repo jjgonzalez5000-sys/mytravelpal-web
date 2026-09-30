@@ -1,0 +1,35 @@
+appId: com.mytravelpal.travel
+---
+- launchApp
+- waitForAnimationToEnd
+# Open Settings from the Plan screen AppBar icon
+- tapOn:
+    description: "Settings icon"
+    optional: true
+- tapOn:
+    id: "settings_outlined"
+    optional: true
+# Fallback: tap by tooltip text if id doesn't match
+- tapOn:
+    text: "Ajustes"
+    optional: true
+- waitForAnimationToEnd
+# Scroll to the Language row and tap it
+- scrollUntilVisible:
+    element:
+      text: "Idioma"
+    direction: DOWN
+- tapOn: "Idioma"
+- waitForAnimationToEnd
+# Select English in the bottom sheet
+- tapOn: "English"
+- waitForAnimationToEnd
+# Go back to the Plan screen
+- tapOn:
+    text: "Back"
+    optional: true
+- pressBack
+- waitForAnimationToEnd
+# Assert UI has switched to English
+- assertVisible:
+    text: "Plan"
