@@ -3115,14 +3115,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // sleep already surfaced per day, a separate "recommended
       // stops" list read as redundant noise. The domain data is
       // still emitted so day_plan / consistency checks work.
-      // Weather along route — always shown (loading placeholder when
-      // enrichment hasn't returned data yet, "all clear" when segments
-      // arrive with only clear/cloudy codes).
-      const SizedBox(height: Tokens.space24),
-      _WeatherStripCard(
-        segments: _response.weatherSegments,
-        enrichPending: _enrichPending,
-      ),
+      // Weather strip removed — weather icon + temperature now shown
+      // inline on each meal stop and rest stop row via _weatherForKm.
       // Parkings near destination — populated only when the user
       // ticked the "Parking" preference on the plan form.
       if (_response.parkings.isNotEmpty) ...[
@@ -5782,6 +5776,7 @@ class _TripCostWindowsDropdown extends StatelessWidget {
                 _WindowChip(
                   window: w,
                   savedMinutes: baselineMinutes - w.estimatedMinutes,
+                  isYourTime: identical(w, baseline),
                   onTap: onWindowSelect == null
                       ? null
                       : () => onWindowSelect!(w),
@@ -6146,27 +6141,45 @@ class _WindowChip extends StatelessWidget {
   const _WindowChip({
     required this.window,
     required this.savedMinutes,
+    this.isYourTime = false,
     this.onTap,
   });
 
   final TimeWindow window;
   final double savedMinutes;
+  /// True when this window is the user's requested departure time.
+  final bool isYourTime;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final recommended = window.recommended;
-    final bg = recommended
-        ? scheme.primaryContainer
-        : scheme.surfaceContainerHighest;
-    final fg = recommended ? scheme.onPrimaryContainer : scheme.onSurface;
+    // "Your time" gets a distinct neutral style so it doesn't compete
+    // visually with "Recommended" (primaryContainer) but is still easy
+    // to spot as the user's own choice.
+    final bg = isYourTime
+        ? scheme.surfaceContainerHigh
+        : recommended
+            ? scheme.primaryContainer
+            : scheme.surfaceContainerHighest;
+    final fg = recommended && !isYourTime
+        ? scheme.onPrimaryContainer
+        : scheme.onSurface;
     final hasSaving = savedMinutes >= 1;
+    final isLate = savedMinutes <= -1;
     final timeLabel = DateFormat.Hm().format(window.departureAt.toLocal());
     return Material(
       color: bg,
       borderRadius: BorderRadius.circular(999),
+      shape: isYourTime
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(999),
+              side: BorderSide(color: scheme.outline, width: 1.5),
+            )
+          : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
@@ -6176,11 +6189,17 @@ class _WindowChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                // star_rounded = "recommended best option" (not "selected")
-                // bolt = faster option; schedule = neutral window
-                recommended ? Icons.bolt_rounded : Icons.schedule_outlined,
+                isYourTime
+                    ? Icons.person_outlined
+                    : recommended
+                        ? Icons.bolt_rounded
+                        : Icons.schedule_outlined,
                 size: 14,
-                color: recommended ? scheme.primary : fg.withValues(alpha: 0.7),
+                color: isYourTime
+                    ? scheme.onSurfaceVariant
+                    : recommended
+                        ? scheme.primary
+                        : fg.withValues(alpha: 0.7),
               ),
               const SizedBox(width: 6),
               Text(
@@ -6190,16 +6209,31 @@ class _WindowChip extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              if (hasSaving) ...[
-                const SizedBox(width: 6),
+              const SizedBox(width: 6),
+              if (isYourTime)
                 Text(
-                  '· -${durationCompact(savedMinutes)}',
+                  l.windowsBadgeCurrent,
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                )
+              else if (hasSaving)
+                Text(
+                  '-${durationCompact(savedMinutes)}',
                   style: t.labelSmall?.copyWith(
                     color: Colors.green.shade700,
                     fontWeight: FontWeight.w700,
                   ),
+                )
+              else if (isLate)
+                Text(
+                  '+${durationCompact(-savedMinutes)}',
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.error,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ],
             ],
           ),
         ),
