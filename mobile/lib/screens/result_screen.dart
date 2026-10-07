@@ -2872,35 +2872,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           onTap: () => _showAdverseEventsSheet(context),
         )
       else if (widget.request.includeAdverseEvents && _enrichPending)
-        // Pre-enrich: show a discreet "loading alerts" chip so the
-        // driver knows we haven't confirmed the corridor is clear
-        // yet. Prevents a jarring flip from "all clear" checkmark to
-        // "wildfire near km 240" a couple of seconds later.
-        Padding(
-          padding: const EdgeInsets.only(bottom: Tokens.space8),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  l.planLoadingStepAlerts,
-                  style: t.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        )
+        const SizedBox.shrink()
       else if (widget.request.includeAdverseEvents)
         Padding(
           padding: const EdgeInsets.only(bottom: Tokens.space8),
@@ -2989,6 +2961,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _ReplanningBanner(),
         const SizedBox(height: Tokens.space4),
       ],
+      _EnrichmentProgressBanner(visible: _enrichPending && !_replanning),
       if (_daysForRender.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -5489,6 +5462,144 @@ class _ReplanningBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+
+/// Sticky banner shown at the top of the result screen while enrichment
+/// (hotels, restaurants, fuel, rest stops, adverse events) is running.
+/// Replaces the scattered CircularProgressIndicator widgets that used to
+/// appear inside each day card section.
+class _EnrichmentProgressBanner extends StatefulWidget {
+  const _EnrichmentProgressBanner({required this.visible});
+
+  final bool visible;
+
+  @override
+  State<_EnrichmentProgressBanner> createState() =>
+      _EnrichmentProgressBannerState();
+}
+
+class _EnrichmentProgressBannerState
+    extends State<_EnrichmentProgressBanner> {
+  static const _icons = [
+    Icons.hotel_outlined,
+    Icons.restaurant_outlined,
+    Icons.local_gas_station_outlined,
+    Icons.warning_amber_rounded,
+    Icons.nature_outlined,
+  ];
+
+  int _iconIndex = 0;
+  int _messageIndex = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+      if (!mounted) return;
+      setState(() {
+        _iconIndex = (_iconIndex + 1) % _icons.length;
+        _messageIndex = (_messageIndex + 1) % 5;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _currentMessage(AppLocalizations l) {
+    switch (_messageIndex) {
+      case 0:
+        return l.enrichPulseHotels;
+      case 1:
+        return l.enrichPulseRestaurants;
+      case 2:
+        return l.enrichPulseFuel;
+      case 3:
+        return l.enrichPulseRestStops;
+      case 4:
+        return l.planLoadingStepAlerts;
+      default:
+        return l.enrichPulseHotels;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeInOut,
+      child: widget.visible
+          ? Padding(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: Tokens.space16, vertical: Tokens.space8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      scheme.secondaryContainer,
+                      Color.lerp(scheme.secondaryContainer,
+                          scheme.surface, 0.25) ??
+                          scheme.secondaryContainer,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(Tokens.radiusLg),
+                  border: Border.all(
+                    color: scheme.secondary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _icons[_iconIndex],
+                          size: 18,
+                          color: scheme.onSecondaryContainer,
+                        )
+                            .animate(key: ValueKey(_iconIndex))
+                            .fadeIn(duration: 300.ms)
+                            .fadeOut(delay: 1200.ms, duration: 300.ms),
+                        const SizedBox(width: Tokens.space8),
+                        Expanded(
+                          child: Text(
+                            _currentMessage(l),
+                            style: t.bodySmall?.copyWith(
+                              color: scheme.onSecondaryContainer,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        minHeight: 3,
+                        backgroundColor:
+                            scheme.secondary.withValues(alpha: 0.2),
+                        color: scheme.secondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

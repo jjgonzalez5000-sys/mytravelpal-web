@@ -1315,31 +1315,7 @@ class DayPlanSection extends StatelessWidget {
                   // italic pending lines felt noisy).
                   if (enrichPending &&
                       d.mealStops.any((m) => m.restaurantName == null))
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4, bottom: 4),
-                      child: Row(
-                        children: [
-                          SizedBox(
-                            width: 12,
-                            height: 12,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 1.6,
-                              color: scheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              l.enrichPulseRestaurants,
-                              style: t.bodySmall?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    const SizedBox.shrink(),
                   for (final m in d.mealStops)
                     Builder(builder: (context) {
                       // Restaurants near this meal-stop coordinate —
@@ -1570,41 +1546,19 @@ class DayPlanSection extends StatelessWidget {
                   final bool widened = filter.isNotEmpty && matched.isEmpty;
                   final visibleRests = widened ? reliable : matched;
                   if (visibleRests.isEmpty) {
-                    // While enrich is still fetching, show a subtle
-                    // 2-row skeleton so the driver sees the section
-                    // exists AND is loading — instead of the day
-                    // card silently omitting rest stops until data
-                    // arrives.
                     if (enrichPending) {
-                      // Uniform "enrich-pending" styling: small spinner
-                      // + italic status copy (same as hotels + meals).
-                      // Replaces the earlier 2-row skeleton "coffee cup"
-                      // stub which felt static + inconsistent with the
-                      // other pending rows on the same card.
                       return Padding(
-                        padding: const EdgeInsets.only(top: Tokens.space8),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.6,
-                                color: scheme.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                l.enrichPulseRestStops,
-                                style: t.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        padding: const EdgeInsets.only(top: 4, bottom: 4),
+                        child: Row(children: [
+                          SizedBox(width: 12, height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.6, color: scheme.primary)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(l.enrichPulseRestStops,
+                            style: t.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic))),
+                        ]),
                       );
                     }
                     return const SizedBox.shrink();
@@ -1817,40 +1771,20 @@ class DayPlanSection extends StatelessWidget {
                         .compareTo(a.savingsVsCountryMedianEurPerL ?? 0));
                   final top = candidates.take(2).toList();
                   if (top.isEmpty) {
-                    // Same skeleton-row pattern the hotels + meals
-                    // rows use: while enrich is in flight surface a
-                    // localised "searching cheapest fuel" line so
-                    // the driver knows we haven't finished yet and
-                    // an empty section isn't the final state.
                     if (enrichPending) {
-                      // Uniform spinner + italic pattern (matches
-                      // hotels/restaurants/rest-stops on this card).
                       return Padding(
-                        padding: const EdgeInsets.only(top: Tokens.space8),
-                        child: Row(
-                          children: [
-                            SizedBox(
-                              width: 12,
-                              height: 12,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.6,
-                                color: scheme.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                isEv
-                                    ? l.enrichPulseChargers
-                                    : l.enrichPulseFuel,
-                                style: t.bodySmall?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        padding: const EdgeInsets.only(top: 4, bottom: 4),
+                        child: Row(children: [
+                          SizedBox(width: 12, height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.6, color: scheme.primary)),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(
+                            isEv ? l.enrichPulseChargers : l.enrichPulseFuel,
+                            style: t.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                              fontStyle: FontStyle.italic))),
+                        ]),
                       );
                     }
                     return const SizedBox.shrink();
@@ -2787,34 +2721,17 @@ class _SleepHotelsBlock extends StatelessWidget {
       // showHotelSections, so in practice we only fall into 1 or 2.
       if (enrichPending) {
         return Padding(
-          padding: const EdgeInsets.only(top: 4),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 12,
-                height: 12,
-                child: CircularProgressIndicator(
-                  strokeWidth: 1.6,
-                  color: scheme.primary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  // Reuse the tailored enrichment pulse copy here so
-                  // the day-card empty state matches the rotating
-                  // status line above ("Buscando hoteles con mejor
-                  // precio/estrellas") — same tone, no generic
-                  // "buscando hoteles cerca de tu parada".
-                  l.enrichPulseHotels,
-                  style: t.bodySmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          padding: const EdgeInsets.only(top: 4, bottom: 4),
+          child: Row(children: [
+            SizedBox(width: 12, height: 12,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.6, color: scheme.primary)),
+            const SizedBox(width: 8),
+            Expanded(child: Text(l.enrichPulseHotels,
+              style: t.bodySmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic))),
+          ]),
         );
       }
       if (!hotelsRequested) {
