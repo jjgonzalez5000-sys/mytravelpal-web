@@ -1795,6 +1795,10 @@
   "biometricSetupEnable": "Activer",
   "biometricSetupSkip": "Pas maintenant",
   "weatherAlongRouteTitle": "MÉTÉO SUR VOTRE ITINÉRAIRE",
+  "weatherNoData": "Pas de données météo disponibles pour cet itinéraire",
+  "@weatherNoData": {},
+  "weatherAllClear": "Aucune alerte",
+  "@weatherAllClear": {},
   "fuelNotificationTitle": "Faites le plein avant la frontière !",
   "fuelNotificationBody": "Carburant en {cheap} (~{price}€/L) avant de passer en {pricey} — économisez ~{savings}€/réservoir",
   "@fuelNotificationBody": {

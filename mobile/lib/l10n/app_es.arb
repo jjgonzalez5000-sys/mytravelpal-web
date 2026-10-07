@@ -1796,6 +1796,10 @@
   "biometricSetupEnable": "Activar",
   "biometricSetupSkip": "Ahora no",
   "weatherAlongRouteTitle": "CLIMA EN TU RUTA",
+  "weatherNoData": "Sin datos de clima disponibles para esta ruta",
+  "@weatherNoData": {},
+  "weatherAllClear": "Sin alertas",
+  "@weatherAllClear": {},
   "fuelNotificationTitle": "¡Reposta antes de la frontera!",
   "fuelNotificationBody": "Combustible en {cheap} (~{price}€/L) antes de cruzar a {pricey} — ahorra ~{savings}€ por depósito",
   "@fuelNotificationBody": {

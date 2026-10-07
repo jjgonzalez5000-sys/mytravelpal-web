@@ -2926,29 +2926,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       heroCompanionButton,
       const SizedBox(height: Tokens.space12),
       heroStatsCard,
-      // Progress card for the enrich phase — visible while /plan/enrich
-      // is in flight, auto-fades when it lands. Renders as SizedBox
-      // once done so it doesn't take vertical space.
-      const SizedBox(height: Tokens.space12),
-      EnrichmentProgress(
-        pending: _enrichPending,
-        hotelsRequested: (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
-        restaurantsRequested:
-            (widget.request.restaurantMaxDetourMinutes ?? 0) > 0,
-        adverseRequested: widget.request.includeAdverseEvents,
-        hasHotels: _response.hotels.isNotEmpty,
-        hasRestaurants: _response.restaurants.isNotEmpty,
-        hasFuel: _response.fuelPrices.isNotEmpty,
-        hasWeather: _response.weatherSegments.isNotEmpty,
-        hasAdverse: _response.adverseEvents.isNotEmpty,
-        profileHasKids: widget.request.tripProfile?.hasKids ?? false,
-        profileHasPets: widget.request.tripProfile?.hasPets ?? false,
-        profileIsCamper: widget.request.tripProfile?.vehicle.type ==
-            VehicleType.camper,
-        vehicleLabel: _enrichmentVehicleLabel(),
-        vehicleTankL: _enrichmentTankL(),
-        vehicleIsEv: _enrichmentIsEv(),
-      ),
+      // EnrichmentProgress removed from scroll — replaced by the sticky
+      // _EnrichmentProgressBanner at the top of the Scaffold body.
       // Thin indeterminate progress bar shown ONLY while a per-day
       // override re-plan is in flight. Anchored right above the day
       // plan section so the driver's eyes (already on the day being
@@ -3140,11 +3119,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // sleep already surfaced per day, a separate "recommended
       // stops" list read as redundant noise. The domain data is
       // still emitted so day_plan / consistency checks work.
-      // Weather along route — forecast conditions at 5 points.
-      if (_response.weatherSegments.isNotEmpty) ...[
-        const SizedBox(height: Tokens.space24),
-        _WeatherStripCard(segments: _response.weatherSegments),
-      ],
+      // Weather along route — always shown (loading placeholder when
+      // enrichment hasn't returned data yet, "all clear" when segments
+      // arrive with only clear/cloudy codes).
+      const SizedBox(height: Tokens.space24),
+      _WeatherStripCard(
+        segments: _response.weatherSegments,
+        enrichPending: _enrichPending,
+      ),
       // Parkings near destination — populated only when the user
       // ticked the "Parking" preference on the plan form.
       if (_response.parkings.isNotEmpty) ...[
@@ -3312,7 +3294,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         children: [
           // Sticky enrichment banner — outside the scroll so it stays
           // pinned at the top of the screen while the user scrolls.
-          _EnrichmentProgressBanner(visible: _enrichPending && !_replanning),
+          _EnrichmentProgressBanner(
+            visible: _enrichPending && !_replanning,
+            hotelsRequested: (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
+            restaurantsRequested:
+                (widget.request.restaurantMaxDetourMinutes ?? 0) > 0,
+            adverseRequested: widget.request.includeAdverseEvents,
+            hasHotels: _response.hotels.isNotEmpty,
+            hasRestaurants: _response.restaurants.isNotEmpty,
+            hasFuel: _response.fuelPrices.isNotEmpty,
+            hasWeather: _response.weatherSegments.isNotEmpty,
+            hasAdverse: _response.adverseEvents.isNotEmpty,
+            profileHasKids: widget.request.tripProfile?.hasKids ?? false,
+            profileHasPets: widget.request.tripProfile?.hasPets ?? false,
+            profileIsCamper:
+                widget.request.tripProfile?.vehicle.type == VehicleType.camper,
+            vehicleLabel: _enrichmentVehicleLabel(),
+            vehicleTankL: _enrichmentTankL(),
+            vehicleIsEv: _enrichmentIsEv(),
+          ),
           Expanded(child: Stack(
         children: [
           Positioned.fill(
@@ -5477,10 +5477,46 @@ class _ReplanningBanner extends StatelessWidget {
 /// (hotels, restaurants, fuel, rest stops, adverse events) is running.
 /// Replaces the scattered CircularProgressIndicator widgets that used to
 /// appear inside each day card section.
+/// Sticky enrichment progress banner — shown at the top of the Scaffold
+/// body (outside the scrollable ListView) while /plan/enrich is in flight.
+///
+/// Absorbs all the functionality that used to live in the scrollable
+/// EnrichmentProgress widget: rotating pulse messages, per-category
+/// spinner→checkmark chips, and an indeterminate progress bar.
 class _EnrichmentProgressBanner extends StatefulWidget {
-  const _EnrichmentProgressBanner({required this.visible});
+  const _EnrichmentProgressBanner({
+    required this.visible,
+    this.hotelsRequested = false,
+    this.restaurantsRequested = false,
+    this.adverseRequested = false,
+    this.hasHotels = false,
+    this.hasRestaurants = false,
+    this.hasFuel = false,
+    this.hasWeather = false,
+    this.hasAdverse = false,
+    this.profileHasKids = false,
+    this.profileHasPets = false,
+    this.profileIsCamper = false,
+    this.vehicleLabel,
+    this.vehicleTankL,
+    this.vehicleIsEv = false,
+  });
 
   final bool visible;
+  final bool hotelsRequested;
+  final bool restaurantsRequested;
+  final bool adverseRequested;
+  final bool hasHotels;
+  final bool hasRestaurants;
+  final bool hasFuel;
+  final bool hasWeather;
+  final bool hasAdverse;
+  final bool profileHasKids;
+  final bool profileHasPets;
+  final bool profileIsCamper;
+  final String? vehicleLabel;
+  final double? vehicleTankL;
+  final bool vehicleIsEv;
 
   @override
   State<_EnrichmentProgressBanner> createState() =>
@@ -5489,27 +5525,15 @@ class _EnrichmentProgressBanner extends StatefulWidget {
 
 class _EnrichmentProgressBannerState
     extends State<_EnrichmentProgressBanner> {
-  static const _icons = [
-    Icons.hotel_outlined,
-    Icons.restaurant_outlined,
-    Icons.local_gas_station_outlined,
-    Icons.warning_amber_rounded,
-    Icons.nature_outlined,
-  ];
-
-  int _iconIndex = 0;
-  int _messageIndex = 0;
+  int _pulseIndex = 0;
   Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
+    _timer = Timer.periodic(const Duration(milliseconds: 2200), (_) {
       if (!mounted) return;
-      setState(() {
-        _iconIndex = (_iconIndex + 1) % _icons.length;
-        _messageIndex = (_messageIndex + 1) % 5;
-      });
+      setState(() => _pulseIndex++);
     });
   }
 
@@ -5519,93 +5543,174 @@ class _EnrichmentProgressBannerState
     super.dispose();
   }
 
-  String _currentMessage(AppLocalizations l) {
-    switch (_messageIndex) {
-      case 0:
-        return l.enrichPulseHotels;
-      case 1:
-        return l.enrichPulseRestaurants;
-      case 2:
-        return l.enrichPulseFuel;
-      case 3:
-        return l.enrichPulseRestStops;
-      case 4:
-        return l.planLoadingStepAlerts;
-      default:
-        return l.enrichPulseHotels;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
+
+    // Pulse messages — same pool as EnrichmentProgress
+    final pulses = <(IconData, String)>[
+      if (widget.hotelsRequested)
+        (Icons.hotel_outlined, l.enrichPulseHotels),
+      if (widget.restaurantsRequested)
+        (Icons.restaurant_outlined, l.enrichPulseRestaurants),
+      (Icons.local_gas_station_outlined, l.enrichPulseFuel),
+      (Icons.wb_cloudy_outlined, l.enrichPulseWeather),
+      if (widget.adverseRequested)
+        (Icons.warning_amber_outlined, l.enrichPulseAdverse),
+      if (widget.profileHasKids)
+        (Icons.child_care_outlined, l.enrichPulseKids),
+      if (widget.profileHasPets)
+        (Icons.pets_outlined, l.enrichPulsePets),
+      if (widget.profileIsCamper)
+        (Icons.rv_hookup, l.enrichPulseCamper),
+    ];
+    if (pulses.isEmpty) pulses.add(
+      (Icons.search, l.enrichPulseHotels));
+
+    final (currentIcon, currentMsg) =
+        pulses[_pulseIndex % pulses.length];
+
+    // Category chips
+    final chips = <(IconData, String, bool)>[
+      if (widget.hotelsRequested)
+        (Icons.hotel_outlined, l.enrichmentChipHotels, widget.hasHotels),
+      if (widget.restaurantsRequested)
+        (Icons.restaurant_outlined,
+            l.enrichmentChipRestaurants, widget.hasRestaurants),
+      (Icons.local_gas_station_outlined,
+          l.enrichmentChipFuel, widget.hasFuel),
+      (Icons.wb_cloudy_outlined,
+          l.enrichmentChipWeather, widget.hasWeather),
+      if (widget.adverseRequested)
+        (Icons.warning_amber_outlined,
+            l.enrichmentChipAdverse, widget.hasAdverse),
+    ];
+
     return AnimatedSize(
       duration: const Duration(milliseconds: 350),
       curve: Curves.easeInOut,
       child: widget.visible
-          ? Padding(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: Tokens.space16, vertical: Tokens.space8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.secondaryContainer,
-                      Color.lerp(scheme.secondaryContainer,
-                          scheme.surface, 0.25) ??
-                          scheme.secondaryContainer,
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(Tokens.radiusLg),
-                  border: Border.all(
-                    color: scheme.secondary.withValues(alpha: 0.3),
-                  ),
-                ),
+          ? Material(
+              elevation: 2,
+              shadowColor: scheme.shadow.withValues(alpha: 0.15),
+              color: scheme.surfaceContainerHigh,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                    Tokens.space16, 10,
+                    Tokens.space16, Tokens.space12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          _icons[_iconIndex],
-                          size: 18,
-                          color: scheme.onSecondaryContainer,
-                        )
-                            .animate(key: ValueKey(_iconIndex))
-                            .fadeIn(duration: 300.ms)
-                            .fadeOut(delay: 1200.ms, duration: 300.ms),
-                        const SizedBox(width: Tokens.space8),
-                        Expanded(
-                          child: Text(
-                            _currentMessage(l),
-                            style: t.bodySmall?.copyWith(
-                              color: scheme.onSecondaryContainer,
-                              fontWeight: FontWeight.w500,
-                            ),
+                    // Rotating pulse message
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      transitionBuilder: (child, anim) =>
+                          FadeTransition(opacity: anim, child: child),
+                      child: Row(
+                        key: ValueKey(_pulseIndex % pulses.length),
+                        children: [
+                          Icon(currentIcon, size: 15,
+                              color: scheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(currentMsg,
+                              style: t.bodySmall?.copyWith(
+                                color: scheme.onSurface,
+                                fontWeight: FontWeight.w500,
+                              )),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
+                    // Indeterminate progress bar
                     ClipRRect(
                       borderRadius: BorderRadius.circular(2),
                       child: LinearProgressIndicator(
-                        minHeight: 3,
+                        minHeight: 2.5,
                         backgroundColor:
-                            scheme.secondary.withValues(alpha: 0.2),
-                        color: scheme.secondary,
+                            scheme.primary.withValues(alpha: 0.12),
+                        color: scheme.primary,
                       ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Category chips: spinner while pending, check when done
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final (icon, label, done) in chips)
+                          _BannerChip(
+                            icon: icon,
+                            label: label,
+                            done: done,
+                            scheme: scheme,
+                            t: t,
+                          ),
+                      ],
                     ),
                   ],
                 ),
               ),
             )
           : const SizedBox.shrink(),
+    );
+  }
+}
+
+class _BannerChip extends StatelessWidget {
+  const _BannerChip({
+    required this.icon,
+    required this.label,
+    required this.done,
+    required this.scheme,
+    required this.t,
+  });
+  final IconData icon;
+  final String label;
+  final bool done;
+  final ColorScheme scheme;
+  final TextTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: done
+            ? scheme.primaryContainer.withValues(alpha: 0.5)
+            : scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: done
+              ? scheme.primary.withValues(alpha: 0.4)
+              : scheme.outlineVariant,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (done)
+            Icon(Icons.check_rounded, size: 11, color: scheme.primary)
+          else
+            SizedBox(
+              width: 11, height: 11,
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5, color: scheme.onSurfaceVariant),
+            ),
+          const SizedBox(width: 5),
+          Text(label,
+            style: t.labelSmall?.copyWith(
+              fontSize: 10,
+              color: done ? scheme.primary : scheme.onSurfaceVariant,
+              fontWeight: done ? FontWeight.w600 : FontWeight.w400,
+            )),
+        ],
+      ),
     );
   }
 }
@@ -7938,14 +8043,22 @@ class _WeatherInlineRow extends StatelessWidget {
 }
 
 class _WeatherStripCard extends StatelessWidget {
-  const _WeatherStripCard({required this.segments});
+  const _WeatherStripCard({
+    required this.segments,
+    this.enrichPending = false,
+  });
   final List<WeatherSegment> segments;
+  final bool enrichPending;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
+
+    final allClear = segments.isNotEmpty &&
+        segments.every((s) => s.icon == 'sunny' || s.icon == 'partly_cloudy');
+
     return SoftCard(
       padding: const EdgeInsets.all(Tokens.space20),
       child: Column(
@@ -7953,37 +8066,88 @@ class _WeatherStripCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.wb_cloudy_outlined, size: 18,
-                  color: scheme.primary),
+              Icon(
+                segments.isEmpty
+                    ? Icons.wb_cloudy_outlined
+                    : segments.first.iconData,
+                size: 18,
+                color: scheme.primary,
+              ),
               const SizedBox(width: Tokens.space8),
-              Text(
-                l.weatherAlongRouteTitle,
-                style: t.labelSmall?.copyWith(
-                  color: scheme.primary,
-                  letterSpacing: 1.4,
-                  fontWeight: FontWeight.w700,
+              Expanded(
+                child: Text(
+                  l.weatherAlongRouteTitle,
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.primary,
+                    letterSpacing: 1.4,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
+              if (allClear)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade900.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_outline,
+                          size: 12, color: Colors.green.shade400),
+                      const SizedBox(width: 4),
+                      Text(l.weatherAllClear,
+                          style: t.labelSmall?.copyWith(
+                              color: Colors.green.shade400,
+                              fontSize: 10)),
+                    ],
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: Tokens.space12),
-          for (final s in segments)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                children: [
-                  Icon(s.iconData, size: 18, color: scheme.onSurface),
-                  const SizedBox(width: Tokens.space8),
-                  Expanded(
-                    child: Text(
-                      'km ${s.fromKm.toStringAsFixed(0)}-${s.toKm.toStringAsFixed(0)}  ·  ${s.localizedLabel(AppLocalizations.of(context))}'
-                      '${s.temperatureC != null ? '  ·  ${s.temperatureC!.toStringAsFixed(0)}°C' : ''}',
-                      style: t.bodySmall,
+          if (enrichPending && segments.isEmpty) ...[
+            Row(children: [
+              SizedBox(width: 14, height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 1.8, color: scheme.primary)),
+              const SizedBox(width: Tokens.space8),
+              Text(l.enrichPulseWeather,
+                style: t.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic)),
+            ]),
+          ] else if (segments.isEmpty) ...[
+            Row(children: [
+              Icon(Icons.wb_sunny_outlined, size: 16,
+                  color: scheme.onSurfaceVariant),
+              const SizedBox(width: Tokens.space8),
+              Text(l.weatherNoData,
+                style: t.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant)),
+            ]),
+          ] else ...[
+            for (final s in segments)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 3),
+                child: Row(
+                  children: [
+                    Icon(s.iconData, size: 18, color: scheme.onSurface),
+                    const SizedBox(width: Tokens.space8),
+                    Expanded(
+                      child: Text(
+                        'km ${s.fromKm.toStringAsFixed(0)}–${s.toKm.toStringAsFixed(0)}'
+                        '  ·  ${s.localizedLabel(AppLocalizations.of(context))}'
+                        '${s.temperatureC != null ? '  ·  ${s.temperatureC!.toStringAsFixed(0)}°C' : ''}',
+                        style: t.bodySmall,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+          ],
         ],
       ),
     );

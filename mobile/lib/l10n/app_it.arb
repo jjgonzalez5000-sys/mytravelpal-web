@@ -1795,6 +1795,10 @@
   "biometricSetupEnable": "Attiva",
   "biometricSetupSkip": "Non ora",
   "weatherAlongRouteTitle": "METEO SUL TUO PERCORSO",
+  "weatherNoData": "Nessun dato meteo disponibile per questo percorso",
+  "@weatherNoData": {},
+  "weatherAllClear": "Nessun avviso",
+  "@weatherAllClear": {},
   "fuelNotificationTitle": "Fai il pieno prima del confine!",
   "fuelNotificationBody": "Carburante in {cheap} (~{price}€/L) prima di {pricey} — risparmi ~{savings}€/serbatoio",
   "@fuelNotificationBody": {

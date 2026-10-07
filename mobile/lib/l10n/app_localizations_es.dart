@@ -3142,6 +3142,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String get weatherAlongRouteTitle => 'CLIMA EN TU RUTA';
 
   @override
+  String get weatherNoData => 'Sin datos de clima disponibles para esta ruta';
+
+  @override
+  String get weatherAllClear => 'Sin alertas';
+
+  @override
   String get fuelNotificationTitle => '¡Reposta antes de la frontera!';
 
   @override

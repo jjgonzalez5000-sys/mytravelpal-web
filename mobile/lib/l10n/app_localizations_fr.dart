@@ -3138,6 +3138,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get weatherAlongRouteTitle => 'MÉTÉO SUR VOTRE ITINÉRAIRE';
 
   @override
+  String get weatherNoData =>
+      'Pas de données météo disponibles pour cet itinéraire';
+
+  @override
+  String get weatherAllClear => 'Aucune alerte';
+
+  @override
   String get fuelNotificationTitle => 'Faites le plein avant la frontière !';
 
   @override

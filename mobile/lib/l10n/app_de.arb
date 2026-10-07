@@ -1795,6 +1795,10 @@
   "biometricSetupEnable": "Aktivieren",
   "biometricSetupSkip": "Nicht jetzt",
   "weatherAlongRouteTitle": "WETTER AUF IHRER ROUTE",
+  "weatherNoData": "Keine Wetterdaten für diese Route verfügbar",
+  "@weatherNoData": {},
+  "weatherAllClear": "Keine Warnungen",
+  "@weatherAllClear": {},
   "fuelNotificationTitle": "Vor der Grenze tanken!",
   "fuelNotificationBody": "Kraftstoff in {cheap} (~{price}€/L) vor {pricey} — sparen Sie ~{savings}€/Tank",
   "@fuelNotificationBody": {

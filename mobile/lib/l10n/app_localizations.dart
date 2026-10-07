@@ -5630,6 +5630,18 @@ abstract class AppLocalizations {
   /// **'WEATHER ALONG YOUR ROUTE'**
   String get weatherAlongRouteTitle;
 
+  /// No description provided for @weatherNoData.
+  ///
+  /// In en, this message translates to:
+  /// **'No weather data available for this route'**
+  String get weatherNoData;
+
+  /// No description provided for @weatherAllClear.
+  ///
+  /// In en, this message translates to:
+  /// **'No alerts'**
+  String get weatherAllClear;
+
   /// No description provided for @fuelNotificationTitle.
   ///
   /// In en, this message translates to:

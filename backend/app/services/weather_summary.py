@@ -87,18 +87,33 @@ async def weather_along_route(
     if not samples:
         return ()
 
-    http = client or httpx.AsyncClient(timeout=6.0)
-    total_s = route.free_flow_duration.total_seconds()
-    segments: list[WeatherSegment] = []
+    import asyncio
 
+    http = client or httpx.AsyncClient(timeout=8.0)
+    total_s = route.free_flow_duration.total_seconds()
+
+    # Build per-sample metadata and fetch all points concurrently — avoids
+    # sequential 6 s * 5 = 30 s ceiling that can blow the enrich budget.
+    sample_meta = []
     for i, coord in enumerate(samples):
         fraction = (i + 1) / (len(samples) + 1)
         target = departure_at + timedelta(seconds=total_s * fraction)
         from_km = round((i / len(samples)) * route.distance_km, 0)
         to_km = round(((i + 1) / len(samples)) * route.distance_km, 0)
+        sample_meta.append((coord, target, from_km, to_km))
 
-        wmo, temp = await _fetch(http, coord, target)
-        label, icon = _WMO_LABELS.get(wmo or 0, ("Unknown", "unknown"))
+    results = await asyncio.gather(
+        *[_fetch(http, coord, target) for coord, target, _, _ in sample_meta],
+        return_exceptions=True,
+    )
+
+    segments: list[WeatherSegment] = []
+    for (coord, _target, from_km, to_km), result in zip(sample_meta, results):
+        if isinstance(result, BaseException):
+            wmo, temp = None, None
+        else:
+            wmo, temp = result
+        label, icon = _WMO_LABELS.get(wmo or 0, ("Clear sky", "sunny"))
         segments.append(
             WeatherSegment(
                 from_km=from_km,
@@ -134,7 +149,9 @@ async def _fetch(
 
     hourly = body.get("hourly") or {}
     times = hourly.get("time") or []
-    codes = hourly.get("weathercode") or []
+    # Open-Meteo renamed "weathercode" → "weather_code" in newer versions;
+    # fall back to the legacy key so both API versions work.
+    codes = hourly.get("weather_code") or hourly.get("weathercode") or []
     temps = hourly.get("temperature_2m") or []
     if not times:
         return None, None

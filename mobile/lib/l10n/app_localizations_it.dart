@@ -3129,6 +3129,13 @@ class AppLocalizationsIt extends AppLocalizations {
   String get weatherAlongRouteTitle => 'METEO SUL TUO PERCORSO';
 
   @override
+  String get weatherNoData =>
+      'Nessun dato meteo disponibile per questo percorso';
+
+  @override
+  String get weatherAllClear => 'Nessun avviso';
+
+  @override
   String get fuelNotificationTitle => 'Fai il pieno prima del confine!';
 
   @override

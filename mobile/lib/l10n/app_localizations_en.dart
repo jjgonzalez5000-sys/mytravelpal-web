@@ -3123,6 +3123,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weatherAlongRouteTitle => 'WEATHER ALONG YOUR ROUTE';
 
   @override
+  String get weatherNoData => 'No weather data available for this route';
+
+  @override
+  String get weatherAllClear => 'No alerts';
+
+  @override
   String get fuelNotificationTitle => 'Fill up before the border!';
 
   @override
