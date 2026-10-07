@@ -2961,7 +2961,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _ReplanningBanner(),
         const SizedBox(height: Tokens.space4),
       ],
-      _EnrichmentProgressBanner(visible: _enrichPending && !_replanning),
       if (_daysForRender.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
@@ -3309,7 +3308,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           const SizedBox(width: Tokens.space8),
         ],
       ),
-      body: Stack(
+      body: Column(
+        children: [
+          // Sticky enrichment banner — outside the scroll so it stays
+          // pinned at the top of the screen while the user scrolls.
+          _EnrichmentProgressBanner(visible: _enrichPending && !_replanning),
+          Expanded(child: Stack(
         children: [
           Positioned.fill(
             child: ListView(
@@ -3362,7 +3366,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             ),
           ),
         ],
-      ),
+      )),  // closes Expanded(child: Stack(
+        ],
+      ),  // closes outer Column body
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       // Premium gate lives inside _startCompanion — tapping always shows
       // the FAB so non-premium users see the upsell entry point.
