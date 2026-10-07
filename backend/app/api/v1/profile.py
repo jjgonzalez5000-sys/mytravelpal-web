@@ -33,6 +33,37 @@ class ProfilePayload(BaseModel):
 
 class ProfileResponse(BaseModel):
     profile: dict[str, Any] | None = None
+    subscription_tier: str | None = None  # "free" | "essential" | "premium"
+    subscription_expires_at: str | None = None
+
+
+def _extract_subscription(
+    profile: dict[str, Any] | None,
+) -> tuple[str, str | None]:
+    """Return (tier, expires_at) from a profile blob.
+
+    Always returns a string tier ("free" when missing or expired).
+    """
+    from datetime import UTC, datetime
+    if not isinstance(profile, dict):
+        return "free", None
+    sub = profile.get("subscription")
+    if not isinstance(sub, dict):
+        return "free", None
+    tier = sub.get("tier")
+    expires_raw = sub.get("expires_at")
+    if expires_raw:
+        try:
+            expires_dt = datetime.fromisoformat(expires_raw)
+            if expires_dt.tzinfo is None:
+                expires_dt = expires_dt.replace(tzinfo=UTC)
+            if datetime.now(UTC) > expires_dt:
+                return "free", None
+        except ValueError:
+            pass
+    if tier in {"essential", "premium"}:
+        return tier, expires_raw
+    return "free", None
 
 
 @router.get("", response_model=ProfileResponse)
@@ -47,10 +78,20 @@ async def get_profile(
                 {"uid": user.id},
             )
             result = row.mappings().first()
+            profile_blob = result["profile"] if result else None
+            tier, expires_at = _extract_subscription(profile_blob)
             return ProfileResponse(
-                profile=result["profile"] if result else None,
+                profile=profile_blob,
+                subscription_tier=tier,
+                subscription_expires_at=expires_at,
             )
-    return ProfileResponse(profile=_PROFILES.get(user.id))
+    profile_blob = _PROFILES.get(user.id)
+    tier, expires_at = _extract_subscription(profile_blob)
+    return ProfileResponse(
+        profile=profile_blob,
+        subscription_tier=tier,
+        subscription_expires_at=expires_at,
+    )
 
 
 @router.put("", response_model=ProfileResponse)
@@ -142,6 +183,46 @@ async def delete_profile(
         _PROFILES.pop(user.id, None)
         _TRIPS.pop(user.id, None)
     return {"status": "deleted"}
+
+
+class NickCheckResponse(BaseModel):
+    available: bool
+
+
+@router.get("/check-nick", response_model=NickCheckResponse)
+async def check_nick(
+    nick: str,
+    user: AuthUser = Depends(current_user_required),
+) -> NickCheckResponse:
+    """Check whether a Hall of Fame nick is taken by another user.
+
+    Case-sensitive exact match against the ``_hall_nick`` field stored
+    in the profile JSONB. The current user's own nick always counts as
+    available so they can re-save without a false conflict.
+    """
+    normalized = nick.strip()
+    if not normalized:
+        return NickCheckResponse(available=False)
+    if db_available():
+        async with get_session() as session:
+            from sqlalchemy import text
+            row = await session.execute(
+                text(
+                    "SELECT 1 FROM user_profiles "
+                    "WHERE profile->>'_hall_nick' = :nick "
+                    "AND user_id != :uid LIMIT 1"
+                ),
+                {"nick": normalized, "uid": user.id},
+            )
+            taken = row.mappings().first() is not None
+            return NickCheckResponse(available=not taken)
+    # In-memory fallback (dev / tests)
+    for uid, blob in _PROFILES.items():
+        if uid == user.id:
+            continue
+        if isinstance(blob, dict) and blob.get("_hall_nick") == normalized:
+            return NickCheckResponse(available=False)
+    return NickCheckResponse(available=True)
 
 
 class ExportResponse(BaseModel):
@@ -364,6 +445,8 @@ def _garage_from_blob(blob: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _validate_model_id(model_id: str) -> None:
+    if model_id == "__custom__":
+        return  # Custom vehicles pass; actual specs live in notes.
     from app.data.vehicle_models import find
     if find(model_id) is None:
         raise HTTPException(
@@ -462,6 +545,150 @@ async def delete_garage_vehicle(
     blob["garage"] = trimmed
     await _write_profile(user.id, blob)
     return {"status": "deleted", "id": vehicle_id}
+
+
+# --- User learning profile ---
+#
+# Stored under user_profiles.profile["learning"]. Explicit fields
+# (questionnaire answers) and implicit fields (incrementing counters)
+# live here. The ai-context endpoint distils these into a short string
+# that LLM calls (Companion, Inspire) inject as user context.
+
+
+class UserLearningIn(BaseModel):
+    # Explicit preferences (set by questionnaire)
+    preferred_countries: list[str] = Field(default_factory=list)
+    typical_trip_duration_days: int | None = None
+    prefers_scenic_routes: bool | None = None
+    prefers_budget_accommodation: bool | None = None  # True=budget, False=comfort
+    dietary_restrictions: list[str] = Field(default_factory=list)  # vegetarian, vegan, halal, gluten_free
+    prefers_local_food: bool | None = None
+    typical_departure_hour: int | None = None  # 0-23
+    eco_conscious: bool | None = None  # prefers EVs, avoids motorways
+    trip_purpose: str | None = None  # leisure, family, business, adventure
+    interests: list[str] = Field(default_factory=list)  # culture, nature, food, shopping
+    # Implicit (incremented by app, not user-set)
+    total_plans_made: int = 0
+    total_multi_day_plans: int = 0
+    countries_visited: list[str] = Field(default_factory=list)
+    features_used: dict[str, int] = Field(default_factory=dict)  # {feature: count}
+
+
+class UserLearningResponse(BaseModel):
+    learning: dict[str, Any]
+
+
+@router.get("/learning", response_model=UserLearningResponse)
+async def get_learning(
+    user: AuthUser = Depends(current_user_required),
+) -> UserLearningResponse:
+    blob = await _read_profile(user.id)
+    raw = blob.get("learning") or {}
+    # Populate defaults for any missing explicit fields.
+    defaults = UserLearningIn().model_dump()
+    merged = {**defaults, **raw}
+    return UserLearningResponse(learning=merged)
+
+
+@router.put("/learning", response_model=UserLearningResponse)
+async def save_learning(
+    payload: UserLearningIn,
+    user: AuthUser = Depends(current_user_required),
+) -> UserLearningResponse:
+    """Shallow-merge the learning payload into the existing learning sub-key.
+    Implicit counters sent as 0 by a client that didn't fetch first are
+    NOT written when the stored value is already higher — prevents
+    accidental resets when the questionnaire re-submits."""
+    blob = await _read_profile(user.id)
+    existing = blob.get("learning") or {}
+    update = payload.model_dump(exclude_unset=True)
+    # Protect implicit counter fields from being decremented.
+    _COUNTER_FIELDS = {"total_plans_made", "total_multi_day_plans"}
+    for field in _COUNTER_FIELDS:
+        if field in update:
+            current_val = existing.get(field, 0)
+            if isinstance(current_val, int) and update[field] < current_val:
+                update[field] = current_val
+    new_learning = {**existing, **update}
+    blob["learning"] = new_learning
+    await _write_profile(user.id, blob)
+    return UserLearningResponse(learning=new_learning)
+
+
+class AiContextResponse(BaseModel):
+    context: str
+
+
+@router.get("/ai-context", response_model=AiContextResponse)
+async def get_ai_context(
+    user: AuthUser = Depends(current_user_required),
+) -> AiContextResponse:
+    """Return a short, LLM-ready summary of what the AI knows about the user.
+
+    Called by Companion and Inspire to inject user context into prompts.
+    Kept under 300 characters and factual.
+    """
+    blob = await _read_profile(user.id)
+    learning: dict[str, Any] = blob.get("learning") or {}
+
+    parts: list[str] = []
+
+    # Scenic / budget / eco
+    prefs: list[str] = []
+    if learning.get("prefers_scenic_routes"):
+        prefs.append("scenic routes")
+    if learning.get("eco_conscious"):
+        prefs.append("eco-conscious")
+    if learning.get("prefers_local_food"):
+        prefs.append("local food")
+    if prefs:
+        parts.append("Prefers " + ", ".join(prefs))
+
+    # Dietary
+    diet = learning.get("dietary_restrictions") or []
+    if diet:
+        parts.append(", ".join(diet))
+
+    # Accommodation
+    budget_pref = learning.get("prefers_budget_accommodation")
+    if budget_pref is True:
+        parts.append("budget hotels")
+    elif budget_pref is False:
+        parts.append("comfort hotels")
+
+    # Departure
+    dep_hour = learning.get("typical_departure_hour")
+    if isinstance(dep_hour, int):
+        parts.append(f"departs ~{dep_hour:02d}h")
+
+    # Trip purpose / interests
+    purpose = learning.get("trip_purpose")
+    if purpose:
+        parts.append(f"{purpose} travel")
+    interests = learning.get("interests") or []
+    if interests:
+        parts.append("interests: " + ", ".join(interests))
+
+    # Duration
+    duration = learning.get("typical_trip_duration_days")
+    if isinstance(duration, int) and duration > 0:
+        parts.append(f"typical {duration}-day trips")
+
+    # History
+    total_plans = learning.get("total_plans_made", 0)
+    if isinstance(total_plans, int) and total_plans > 0:
+        parts.append(f"{total_plans} trips planned")
+    countries = learning.get("preferred_countries") or learning.get("countries_visited") or []
+    if countries:
+        parts.append("often in " + "/".join(countries[:3]))
+
+    context = ". ".join(parts)
+    # Hard cap at 300 chars.
+    if len(context) > 300:
+        context = context[:297] + "..."
+    if not context:
+        context = "New user, no preferences recorded yet."
+    return AiContextResponse(context=context)
 
 
 async def resolve_garage_vehicle(

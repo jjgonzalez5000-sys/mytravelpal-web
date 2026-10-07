@@ -24,6 +24,7 @@ import time
 from dataclasses import replace
 
 from app.domain import Coordinate, RestStop, RestStopType, TripProfile, VehicleType
+from app.providers.here_rest_stops import find_rest_stop_near as _here_find
 from app.providers.overpass import (
     _CORRIDOR_METERS,
     _new_overpass_client,
@@ -32,16 +33,13 @@ from app.providers.overpass import (
 
 _log = logging.getLogger(__name__)
 
-# ~8 km radius around each rest-stop coord. The anchor from
-# `compute_rest_stops` is a pure km-along-route mark that lands
-# wherever the driver has been 2 h — usually near but not exactly
-# on a service area. 8 km gives the enrichment room to shift the
-# stop onto an actual amenity even when the closest service area
-# is one exit away. Max detour cost at 100 km/h: ~5 min each way
-# ~= 10 min round trip. A driver who was going to pause 45 min at
-# a random highway coord will happily add 10 min to end up at a
-# real place with toilets + coffee.
-_REST_STOP_RADIUS_M = 8000
+# ~10 km radius around each rest-stop coord. Trade-off:
+#  - Was 8 km (well-mapped autoroutes: fine; sparse corridors like
+#    Toledo → Murcia A-31: only gas stations found).
+#  - Tried 15 km + way inclusion: hit Overpass timeouts on all 4
+#    mirrors (query too heavy).
+#  - Compromise 10 km + node-only + broader amenity set below.
+_REST_STOP_RADIUS_M = 10000
 
 # 24 h cache — OSM amenity tags change over days/weeks, not
 # minutes. Key is (round(lat, 3), round(lon, 3)) so nearby coords
@@ -76,8 +74,21 @@ _TYPE_FROM_TAGS: tuple[tuple[str, str, RestStopType], ...] = (
     # (tag_key, tag_value, resulting stop_type) — first match wins.
     ("highway", "services", RestStopType.SERVICE_AREA),
     ("highway", "rest_area", RestStopType.REST_AREA),
+    # picnic_site is semantically a rest area — a place explicitly
+    # designed for a break with tables + often toilets. Priorities
+    # it above gas station so a driver stopping to eat picks the
+    # picnic tables when both are available.
+    ("tourism", "picnic_site", RestStopType.REST_AREA),
     ("amenity", "fuel", RestStopType.GAS_STATION),
     ("tourism", "caravan_site", RestStopType.CARAVAN_SITE),
+    # These tag amenities are common at service exits and give a
+    # real name for the sheet when no highway=services is tagged
+    # (sparse corridors like A-31 Toledo → Murcia). Mapped as
+    # REST_AREA so they outrank plain gas stations for named-POI
+    # selection.
+    ("amenity", "restaurant", RestStopType.REST_AREA),
+    ("amenity", "cafe", RestStopType.REST_AREA),
+    ("amenity", "toilets", RestStopType.REST_AREA),
     ("amenity", "parking", RestStopType.PARKING),
 )
 
@@ -290,15 +301,25 @@ async def _fetch_single_stop_amenities(
     # scan cost vs including `way` — service_area polygons are almost
     # always also mapped as a labelled node these days, so we lose
     # very little. amenity=fuel is by definition a node.
+    # Node-only scan (way inclusion timed out on all Overpass mirrors,
+    # tester report 2026-09-30). To compensate for the resulting gap
+    # on sparsely-mapped corridors, we include additional amenity
+    # types that catch service-area equivalents mapped as nodes:
+    # picnic_site (autoroute rest areas often tagged as tourism), plus
+    # cafe/restaurant/toilets which are common at service exits and
+    # give a real name for the sheet even when highway=services isn't
+    # tagged directly.
     query = f"""
 [out:json][timeout:15];
 (
   node["highway"~"rest_area|services"]({around});
   node["amenity"="fuel"]({around});
   node["tourism"="caravan_site"]({around});
+  node["tourism"="picnic_site"]({around});
   node["amenity"~"playground|dog_park|dog_toilet"]({around});
+  node["amenity"~"cafe|restaurant|toilets"]({around});
 );
-out center 200;
+out center 300;
 """
     client = _new_overpass_client()
     try:
@@ -396,6 +417,21 @@ out center 200;
     # when nothing named matched — keep the original anchor.
     if winner_coord is not None:
         payload["coordinate"] = winner_coord
+
+    # HERE Places fallback: Overpass returned no named POI (sparse OSM
+    # corridors like A-31 Toledo→Murcia). `_here_find` returns None
+    # immediately when the API key env var is unset, so this is a
+    # zero-cost no-op for local dev without a HERE key.
+    if payload.get("name") is None:
+        try:
+            here = await _here_find(stop.coordinate, radius_m=15000)
+            if here and here.get("name"):
+                payload["name"] = here["name"]
+                payload["stop_type"] = here.get("stop_type", RestStopType.UNKNOWN)
+                if here.get("coordinate"):
+                    payload["coordinate"] = here["coordinate"]
+        except Exception:  # noqa: BLE001
+            pass
 
     return payload
 

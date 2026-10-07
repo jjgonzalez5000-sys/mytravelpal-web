@@ -123,7 +123,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       final response = await runInForeground(
         context,
         reopenLabel,
-        () => api.planTrip(request),
+        () => api.planTrip(request, locale: Localizations.localeOf(context).languageCode),
       );
       if (!mounted) return;
       if (dialogOpen) {
@@ -153,11 +153,33 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           AppLocalizations.of(context).historyReplanFailed(e.statusCode),
         )),
       );
-    } catch (_) {
-      if (mounted && dialogOpen) {
+    } catch (e) {
+      if (!mounted) return;
+      if (dialogOpen) {
         navigator.pop();
+        dialogOpen = false;
       }
-      rethrow;
+      // ClientException ("Connection closed before full header was
+      // received") fires when the Fly.io proxy cuts an idle connection
+      // mid-request — usually on long /plan calls.  Show a friendly
+      // retry prompt instead of a crash or silent failure.
+      final msg = e.toString();
+      final isNetworkCut = msg.contains('Connection closed') ||
+          msg.contains('ClientException') ||
+          msg.contains('TimeoutException');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isNetworkCut
+              ? AppLocalizations.of(context).historyReplanNetworkError
+              : msg),
+          action: isNetworkCut
+              ? SnackBarAction(
+                  label: AppLocalizations.of(context).retryLabel,
+                  onPressed: () => _reopen(trip),
+                )
+              : null,
+        ),
+      );
     }
   }
 
@@ -194,7 +216,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => PlanScreen(initialShared: shared),
+        builder: (_) => PlanScreen(
+          initialShared: shared,
+          initialProfile: trip.tripProfile,
+        ),
       ),
     );
   }
@@ -264,7 +289,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                   return Padding(
                     padding: const EdgeInsets.only(bottom: Tokens.space4),
                     child: Text(
-                      '${trips.length} saved',
+                      l.historySavedCount(trips.length),
                       style: t.labelSmall?.copyWith(letterSpacing: 1.2),
                     ),
                   );
@@ -279,6 +304,9 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                     context,
                     origin: trip.origin.coordinate,
                     destination: trip.destination.coordinate,
+                    originName: trip.origin.displayName,
+                    destinationName: trip.destination.displayName,
+                    departureAt: trip.recommendedDepartureAt,
                   ),
                 )
                     .animate()

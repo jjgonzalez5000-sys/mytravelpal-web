@@ -2,16 +2,72 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart' as ll;
 
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
+import '../providers.dart' show appPrefsProvider, currencyCodeProvider;
+import '../services/currency_service.dart' show formatMoney;
 import 'added_stops_map_sheet.dart';
 import 'consistency_banner.dart' show DayConsistencyChip;
+import 'hotel_preferences.dart';
 import 'poi_detail_sheet.dart';
+import 'poi_picker_sheet.dart';
+import 'restaurant_preferences.dart';
 import 'skeleton.dart';
+
+void _showHotelPrefsSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => Consumer(
+      builder: (ctx, ref, _) {
+        final prefs = ref.watch(appPrefsProvider);
+        return SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              16, 8, 16, MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: HotelPreferencesSection(
+              value: prefs.hotelPrefs,
+              onChanged: (v) => prefs.setHotelPrefs(v),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
+
+void _showRestaurantPrefsSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => Consumer(
+      builder: (ctx, ref, _) {
+        final prefs = ref.watch(appPrefsProvider);
+        return SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              16, 8, 16, MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: RestaurantPreferencesSection(
+              value: prefs.restaurantPrefs,
+              onChanged: (v) => prefs.setRestaurantPrefs(v),
+            ),
+          ),
+        );
+      },
+    ),
+  );
+}
 
 const double _earthRadiusKm = 6371.0088;
 
@@ -80,6 +136,105 @@ class FuelArbitrageBanner extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Amber-tinted advisory shown INSIDE the day card of every night that
+/// lands in the pricier country. Explicit total savings ("shift N nights
+/// south → save €Y") so the driver sees the win at a glance.
+class HotelArbitrageBanner extends StatelessWidget {
+  const HotelArbitrageBanner({
+    super.key,
+    required this.hint,
+    this.onTap,
+  });
+  final HotelArbitrage hint;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      child: Container(
+      padding: const EdgeInsets.all(Tokens.space12),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.hotel, color: scheme.tertiary, size: 20),
+          const SizedBox(width: Tokens.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l.hotelArbitrageTitle,
+                  style: t.titleSmall?.copyWith(
+                    color: scheme.onTertiaryContainer,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  l.hotelArbitrageBody(
+                    hint.cheaperCountry.displayName,
+                    hint.cheaperMedianEurPerNight.toStringAsFixed(0),
+                    hint.pricierCountry.displayName,
+                    hint.pricierMedianEurPerNight.toStringAsFixed(0),
+                    hint.deltaPercent.toStringAsFixed(0),
+                    hint.affectedDayIndices.length,
+                    hint.estimatedTotalSavingEur.toStringAsFixed(0),
+                  ),
+                  style: t.bodySmall?.copyWith(
+                    color: scheme.onTertiaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),  // InkWell
+    );
+  }
+}
+
+/// One-line reminder for follow-up nights in the pricier country.
+/// Full context lives in the first-night `HotelArbitrageBanner`;
+/// this just keeps the framing visible without banner fatigue.
+class _HotelArbitrageMiniHint extends StatelessWidget {
+  const _HotelArbitrageMiniHint({required this.hint});
+  final HotelArbitrage hint;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Icon(Icons.hotel_outlined,
+            size: 14, color: scheme.tertiary.withValues(alpha: 0.75)),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            l.hotelArbitrageMiniHint,
+            style: t.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -181,6 +336,7 @@ class DayPlanSection extends StatelessWidget {
     this.replanning = false,
     this.hotelsRequested = true,
     this.onEditDay,
+    this.onEditDayEndTime,
     this.overriddenDayIndices = const {},
     this.activeReplanDayIndex,
     this.fuelPrices = const [],
@@ -188,10 +344,18 @@ class DayPlanSection extends StatelessWidget {
     this.onToggleFuelPick,
     this.addedRestaurantKeys = const {},
     this.onToggleRestaurantPick,
+    this.addedRestStopKeys = const {},
+    this.onToggleRestStop,
+    this.vehicleTankL = 50.0,
+    this.vehicleConsumptionL100km = 7.0,
+    this.initialTankPct = 100,
+    this.restaurants = const [],
     this.profileHasKids = false,
     this.profileHasPets = false,
     this.profileIsCamper = false,
     this.consistencyIssues = const [],
+    this.hotelArbitrage,
+    this.isEv = false,
   });
 
   /// Backend consistency issues (meal / sleep sanity failures)
@@ -200,6 +364,16 @@ class DayPlanSection extends StatelessWidget {
   /// to the day it applies to. Trip-wide issues (no `dayIndex`)
   /// stay in the global banner above the section.
   final List<ConsistencyIssue> consistencyIssues;
+
+  /// Cross-country hotel-price gap the backend detected. Rendered as a
+  /// banner INSIDE each day card whose 1-based `dayIndex` is in
+  /// `hotelArbitrage.affectedDayIndices` — the driver sees the hint
+  /// exactly on the days that could be moved south to save money.
+  final HotelArbitrage? hotelArbitrage;
+
+  /// True when the trip vehicle is electric — swaps the fuel-search
+  /// pending copy from "gasolineras" to "electrolineras".
+  final bool isEv;
 
   /// Keys of the meal-row restaurants currently added to the route.
   /// Shared with the standalone restaurants list so a restaurant
@@ -212,6 +386,11 @@ class DayPlanSection extends StatelessWidget {
   /// sheet. Parent stores the pick + tallies its cost into the trip
   /// cost card (same accounting as the standalone list).
   final void Function(MealStopOpt m)? onToggleRestaurantPick;
+
+  /// Full trip-level restaurant list from the backend response.
+  /// Used to populate the "Ver restaurantes cercanos" picker sheet
+  /// on each meal-stop row.
+  final List<Restaurant> restaurants;
 
   /// Trip profile flags — gate which amenity filter chips render.
   /// Only chips that match the driver's context show up (no point
@@ -236,6 +415,14 @@ class DayPlanSection extends StatelessWidget {
   /// POI sheet. Parent stores the pick + rolls its €-savings into
   /// the trip cost card.
   final void Function(FuelPrice p)? onToggleFuelPick;
+  final Set<String> addedRestStopKeys;
+  final void Function(RestStop r)? onToggleRestStop;
+  /// Tank capacity in litres — used to estimate fill volume at each stop.
+  final double vehicleTankL;
+  /// Fuel consumption in L/100 km — used to estimate level depletion.
+  final double vehicleConsumptionL100km;
+  /// Initial tank level (0-100 %) at departure.
+  final int initialTankPct;
   final List<DayPlan> days;
   final DateFormat timeFormat;
 
@@ -243,6 +430,11 @@ class DayPlanSection extends StatelessWidget {
   /// parent opens the per-day override sheet + re-plans. `null` hides
   /// the icon entirely.
   final void Function(int dayIndex)? onEditDay;
+
+  /// Fired when the driver taps the end-time label on a day's summary
+  /// strip — parent shows a time picker and re-plans with a new cap.
+  /// `null` = not tappable.
+  final void Function(int dayIndex)? onEditDayEndTime;
 
   /// 1-based day indices that currently carry an active override.
   /// Used to highlight the pencil icon on those days so the driver
@@ -339,6 +531,54 @@ class DayPlanSection extends StatelessWidget {
   ///
   /// Returned pairs carry the km distance so the UI can render it
   /// next to each row.
+  /// Build a stable string key for a FuelPrice, matching the format used by
+  /// _toggleDayFuel in result_screen so the picked-state check is consistent.
+  static String _fuelKey(FuelPrice p) {
+    if (p.coordinate == null) return 'fuel:${p.stationName}:nocoord';
+    return 'fuel:${p.stationName}'
+        ':${p.coordinate!.lat.toStringAsFixed(4)},'
+        '${p.coordinate!.lon.toStringAsFixed(4)}';
+  }
+
+  /// Estimate (litersInTank, volumeToFill, savingsEur) at [station].
+  ///
+  /// Accounts for fuel consumed from origin and for any stations the
+  /// driver has already marked as picked (those are assumed filled to
+  /// the tank top at their km position).
+  ({double liters, double toFill, double savings}) _fuelStateAt(
+    FuelPrice station,
+  ) {
+    final tankL = vehicleTankL;
+    final consL100 = vehicleConsumptionL100km;
+    final startL = tankL * initialTankPct / 100.0;
+
+    // Collect picked stations that come BEFORE this one on the route.
+    final before = fuelPrices
+        .where((p) =>
+            addedFuelKeys.contains(_fuelKey(p)) &&
+            p.distanceFromOriginKm < station.distanceFromOriginKm)
+        .toList()
+      ..sort((a, b) => a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+
+    // Simulate tank level from start to each picked station, then to here.
+    double liters = startL;
+    double prevKm = 0.0;
+    for (final s in before) {
+      liters -= (s.distanceFromOriginKm - prevKm) * consL100 / 100.0;
+      liters = liters.clamp(0, tankL);
+      // Refuel to full at picked station.
+      liters = tankL;
+      prevKm = s.distanceFromOriginKm;
+    }
+    // Consume from last picked station (or origin) to this station.
+    liters -= (station.distanceFromOriginKm - prevKm) * consL100 / 100.0;
+    liters = liters.clamp(0, tankL);
+
+    final toFill = (tankL - liters).clamp(0.0, tankL);
+    final savL = (station.savingsVsCountryMedianEurPerL ?? 0.0).clamp(0.0, 10.0);
+    return (liters: liters, toFill: toFill, savings: toFill * savL);
+  }
+
   List<(Hotel, double)> _hotelsNear(LatLon coord) {
     final scored = <(Hotel, double)>[];
     for (final h in hotels) {
@@ -350,25 +590,30 @@ class DayPlanSection extends StatelessWidget {
     return scored.take(_maxSleepHotels).toList();
   }
 
-  // Widened from 60 → 90 km (2026-08-31) so multi-day trips
-  // through sparse regions (interior Iberia, Massif Central,
-  // Ardèche) still surface at least a handful of overnight
-  // options. The backend densifies with the same widened radius.
-  static const double _maxHotelKmFromSleep = 90.0;
+  // Widened 60→90 (2026-08-31), then 90→150 (2026-09-30 Unterägeri→
+  // Madrid tester report: day-1 sleep near Nîmes had 0 hotels because
+  // nearest Provence hotels were ~100 km away — just past the 90 km
+  // cap). Backend pools hotels from a 40 km corridor around the route;
+  // for a long diagonal trip like CH→ES, the pool concentrates at
+  // endpoints and the mid-corridor sleep stop falls outside 90 km.
+  // 150 km keeps "cerca del punto de pernocta" meaningful while
+  // catching one-exit-away options on long driving days.
+  static const double _maxHotelKmFromSleep = 150.0;
 
   /// Returns `(fromLabel, toLabel)` for the day-header summary strip.
   /// Falls back through reverse-geocoded city → trip endpoint (day 1 /
-  /// last day) → meal-stop city hint → `km NN` marker, so every day
-  /// always renders a two-endpoint strip even before enrich finishes.
+  /// last day) → meal-stop city hint → rest-stop city hint → `km NN`
+  /// marker, so every day always renders a two-endpoint strip even
+  /// before enrich finishes.
   (String, String) _dayEndpointLabels(DayPlan d, int totalDays) {
     final isFirst = d.dayIndex == 1;
     final isLast = d.dayIndex == totalDays;
-    final from = d.fromName
-        ?? (isFirst ? originName : null)
+    final from = _extractCity(d.fromName)
+        ?? (isFirst ? _extractCity(originName) : null)
         ?? _cityFromDay(d, useTo: false)
         ?? 'km ${d.fromKm.toStringAsFixed(0)}';
-    final to = d.toName
-        ?? (isLast ? destinationName : null)
+    final to = _extractCity(d.toName)
+        ?? (isLast ? _extractCity(destinationName) : null)
         ?? _cityFromDay(d, useTo: true)
         ?? 'km ${d.toKm.toStringAsFixed(0)}';
     return (from, to);
@@ -376,11 +621,33 @@ class DayPlanSection extends StatelessWidget {
 
   /// Returns a rough city label for the start or end of a day, derived
   /// from meal-stop city hints when the backend didn't provide named
-  /// endpoints. [useTo] = true picks from the last stop (day's end).
+  /// endpoints. [useTo] = true picks from the last stop.
   String? _cityFromDay(DayPlan d, {required bool useTo}) {
-    if (d.mealStops.isEmpty) return null;
-    final stop = useTo ? d.mealStops.last : d.mealStops.first;
-    return stop.cityHint;
+    final mealStop = useTo ? d.mealStops.lastOrNull : d.mealStops.firstOrNull;
+    return mealStop?.cityHint;
+  }
+
+  /// Extracts a short city/town name from a potentially verbose address
+  /// string like "Avenue du Docteur Albert Schweitzer, Mulhouse, France".
+  /// Returns null when the input is null or empty.
+  String? _extractCity(String? fullName) {
+    if (fullName == null || fullName.trim().isEmpty) return null;
+    final parts = fullName.split(',').map((p) => p.trim()).where((p) => p.isNotEmpty).toList();
+    if (parts.isEmpty) return null;
+    if (parts.length == 1) return parts[0];
+    // If the first part looks like a street (starts with a digit or contains
+    // a common road-type keyword), skip it and use the second part.
+    final streetPattern = RegExp(
+      r'(^|\s)(rue|avenue|calle|street|road|boulevard|via|stra(ss|ße)e|'
+      r'carretera|avenida|plaza|paseo|gasse|all[eé]e|lane|drive|place|'
+      r'camino|rambla|corso|viale|straat|weg|laan)\b',
+      caseSensitive: false,
+    );
+    final startsWithDigit = RegExp(r'^\d');
+    if (streetPattern.hasMatch(parts[0]) || startsWithDigit.hasMatch(parts[0])) {
+      return parts[1];
+    }
+    return parts[0];
   }
 
   void _showDayMap(BuildContext context, DayPlan d) {
@@ -614,6 +881,7 @@ class DayPlanSection extends StatelessWidget {
                       attributes: h.attributes,
                       icon: Icons.hotel_outlined,
                       accent: scheme.primary,
+                      photoUrl: h.photoUrl,
                     ),
                   ),
                 // Sleep waypoint marker on top so it's not hidden by
@@ -633,6 +901,7 @@ class DayPlanSection extends StatelessWidget {
         'breakfast' => l.profileBreakfast,
         'lunch' => l.profileLunch,
         'dinner' => l.profileDinner,
+        'break' => l.mealSlotBreak,
         _ => slot,
       };
 
@@ -752,14 +1021,27 @@ class DayPlanSection extends StatelessWidget {
   ) {
     // Original body inlined below unchanged. The `filter` parameter
     // is applied at the rest-stops loop only.
+    const dayAccents = [
+      Color(0xFFF59E0B), // amber  – day 1
+      Color(0xFF10B981), // mint   – day 2
+      Color(0xFFA78BFA), // lilac  – day 3
+      Color(0xFF38BDF8), // sky    – day 4
+    ];
+    final dayAccent = dayAccents[(d.dayIndex - 1) % dayAccents.length];
     return [
           Container(
             padding: const EdgeInsets.all(Tokens.space16),
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHigh.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(Tokens.radiusLg),
-              border: Border.all(
-                color: scheme.outlineVariant.withValues(alpha: 0.5),
+              border: Border(
+                left: BorderSide(color: dayAccent, width: 2),
+                top: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                right: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5)),
+                bottom: BorderSide(
+                    color: scheme.outlineVariant.withValues(alpha: 0.5)),
               ),
             ),
             child: Column(
@@ -779,7 +1061,9 @@ class DayPlanSection extends StatelessWidget {
                         horizontal: 10, vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.12),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
+                        ),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -787,7 +1071,7 @@ class DayPlanSection extends StatelessWidget {
                             ? l.dayHeaderDwell(d.dayIndex, d.dwellLabel!)
                             : l.dayTabLabel(d.dayIndex),
                         style: t.labelSmall?.copyWith(
-                          color: scheme.primary,
+                          color: Colors.white,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
@@ -834,7 +1118,7 @@ class DayPlanSection extends StatelessWidget {
                       const SizedBox(width: Tokens.space4),
                       IconButton(
                         icon: Icon(
-                          Icons.edit_outlined,
+                          Icons.tune,
                           size: 18,
                           color: overriddenDayIndices.contains(d.dayIndex)
                               ? scheme.primary
@@ -892,58 +1176,96 @@ class DayPlanSection extends StatelessWidget {
                     final endHhmm = timeFormat.format(
                       (d.sleepAt ?? d.endAt).toLocal(),
                     );
-                    final onTap = routeGeometry.isNotEmpty
+                    final mapTap = routeGeometry.isNotEmpty
                         ? () => _showDayMap(context, d)
                         : null;
-                    return InkWell(
-                      onTap: onTap,
-                      borderRadius:
-                          BorderRadius.circular(Tokens.radiusMd),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              startHhmm,
-                              style: t.labelMedium?.copyWith(
-                                color: scheme.primary,
-                                fontWeight: FontWeight.w800,
+                    final endTimeTap = onEditDayEndTime != null &&
+                            !replanning
+                        ? () => onEditDayEndTime!(d.dayIndex)
+                        : null;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          // Left half: start time + origin city → arrow
+                          Expanded(
+                            child: InkWell(
+                              onTap: mapTap,
+                              borderRadius:
+                                  BorderRadius.circular(Tokens.radiusMd),
+                              child: Row(
+                                children: [
+                                  Text(
+                                    startHhmm,
+                                    style: t.labelMedium?.copyWith(
+                                      color: scheme.primary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      endpoints.$1,
+                                      style: t.bodyMedium,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    Icons.arrow_forward,
+                                    size: 14,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 8),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 6),
-                            Flexible(
-                              child: Text(
-                                endpoints.$1,
-                                style: t.bodyMedium,
-                                overflow: TextOverflow.ellipsis,
+                          ),
+                          // Right half: end time (tappable to edit) + destination city
+                          InkWell(
+                            onTap: endTimeTap,
+                            borderRadius:
+                                BorderRadius.circular(Tokens.radiusMd),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 2, vertical: 2),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    endHhmm,
+                                    style: t.labelMedium?.copyWith(
+                                      color: scheme.primary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  if (endTimeTap != null) ...[
+                                    const SizedBox(width: 3),
+                                    Icon(
+                                      Icons.expand_circle_down_outlined,
+                                      size: 13,
+                                      color: scheme.primary
+                                          .withValues(alpha: 0.6),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            Icon(
-                              Icons.arrow_forward,
-                              size: 14,
-                              color: scheme.onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              endHhmm,
-                              style: t.labelMedium?.copyWith(
-                                color: scheme.primary,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Flexible(
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: InkWell(
+                              onTap: mapTap,
+                              borderRadius:
+                                  BorderRadius.circular(Tokens.radiusMd),
                               child: Text(
                                 endpoints.$2,
                                 style: t.bodyMedium,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     );
                   }),
@@ -986,120 +1308,230 @@ class DayPlanSection extends StatelessWidget {
                 ],
                 if (d.mealStops.isNotEmpty) ...[
                   const SizedBox(height: Tokens.space8),
-                  for (final m in d.mealStops)
-                    InkWell(
-                      // Tapping the meal row opens the shared POI
-                      // detail sheet (mini-map + POI marker +
-                      // amenity chips) when the meal has an actual
-                      // restaurant pick. Pre-enrich rows (name
-                      // still null) stay unclickable — there's
-                      // nothing to show yet, and the skeleton makes
-                      // that visible.
-                      onTap: (m.restaurantName != null
-                              && m.restaurantCoordinate != null)
-                          ? () {
-                              final coord = m.restaurantCoordinate!;
-                              final key = 'restaurant:${m.restaurantName!}:'
-                                  '${coord.lat.toStringAsFixed(4)},'
-                                  '${coord.lon.toStringAsFixed(4)}';
-                              final isAdded =
-                                  addedRestaurantKeys.contains(key);
-                              showPoiDetailSheet(
-                                context,
-                                kind: PoiKind.restaurant,
-                                name: m.restaurantName!,
-                                subtitle: _mealSubtitle(l, m),
-                                poi: coord,
-                                origin: origin ?? coord,
-                                destination: destination ?? coord,
-                                routeGeometry: routeGeometry,
-                                attributes: _mealAttributes(l, m),
-                                icon: Icons.restaurant,
-                                accent: scheme.tertiary,
-                                isAdded: isAdded,
-                                onAddToRoute: onToggleRestaurantPick == null
-                                    ? null
-                                    : () => onToggleRestaurantPick!(m),
-                              );
-                            }
-                          : null,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                  // Single unified "filtrando restaurantes" line when
+                  // ANY meal is still pending, instead of repeating
+                  // it below every breakfast/lunch/dinner row
+                  // (tester report 2026-09-30: three identical
+                  // italic pending lines felt noisy).
+                  if (enrichPending &&
+                      d.mealStops.any((m) => m.restaurantName == null))
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4, bottom: 4),
+                      child: Row(
                         children: [
-                          Icon(Icons.restaurant, size: 14,
-                              color: m.restaurantName == null && enrichPending
-                                  ? scheme.tertiary.withValues(alpha: 0.4)
-                                  : scheme.tertiary),
-                          const SizedBox(width: 6),
-                          if (m.restaurantName == null && enrichPending)
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${timeFormat.format(m.at.toLocal())}  ·  ${_slotLabel(l, m.slot)}',
-                                    style: t.bodySmall,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  // Localised searching copy sits ABOVE
-                                  // the skeleton bar so the driver knows
-                                  // exactly what we're looking for (not
-                                  // a generic "loading..." blob). Same
-                                  // pattern as the hotel + fuel rows.
-                                  Text(
-                                    l.enrichPulseRestaurants,
-                                    style: t.labelSmall?.copyWith(
-                                      color: scheme.onSurfaceVariant,
-                                      fontStyle: FontStyle.italic,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Skeleton(
-                                    width: 160,
-                                    height: 10,
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else Expanded(
+                          SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 1.6,
+                              color: scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
                             child: Text(
-                              // Time is now the row's anchor (driver
-                              // scans clock-first). Fall back to the
-                              // meal slot name when no restaurant was
-                              // picked; append the km / city and slot
-                              // label as secondary context.
-                              () {
-                                final time =
-                                    timeFormat.format(m.at.toLocal());
-                                final primaryName = m.restaurantName
-                                    ?? _slotLabel(l, m.slot);
-                                final where = m.cityHint != null
-                                    ? l.resultCityHint(m.cityHint!)
-                                    : 'km ${m.distanceFromOriginKm.toStringAsFixed(0)}';
-                                final base = l.dayMealStopAt(
-                                  time, primaryName,
-                                );
-                                // Add the "cerca de X" / km hint and
-                                // the slot label only when they add
-                                // signal (i.e. we already showed a
-                                // restaurant name; otherwise the slot
-                                // label is already the primary).
-                                if (m.restaurantName != null) {
-                                  return '$base  ·  $where  ·  '
-                                      '${_slotLabel(l, m.slot)}';
-                                }
-                                return '$base  ·  $where';
-                              }(),
-                              style: t.bodySmall,
+                              l.enrichPulseRestaurants,
+                              style: t.bodySmall?.copyWith(
+                                color: scheme.onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      ),
                     ),
+                  for (final m in d.mealStops)
+                    Builder(builder: (context) {
+                      // Restaurants near this meal-stop coordinate —
+                      // used to populate the "Ver restaurantes" picker.
+                      // Use restaurantCoordinate first (actual pick),
+                      // fall back to generic stop coordinate.
+                      final mCoord =
+                          m.restaurantCoordinate ?? m.coordinate;
+                      final nearbyRestaurants = (mCoord != null &&
+                              restaurants.isNotEmpty)
+                          ? restaurantsNear(restaurants, mCoord)
+                          : <(Restaurant, double)>[];
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          InkWell(
+                            // Tapping the meal row opens the shared POI
+                            // detail sheet (mini-map + POI marker +
+                            // amenity chips) when the meal has an actual
+                            // restaurant pick. Pre-enrich rows (name
+                            // still null) stay unclickable — there's
+                            // nothing to show yet, and the skeleton makes
+                            // that visible.
+                            onTap: (m.restaurantName != null
+                                    && m.restaurantCoordinate != null)
+                                ? () {
+                                    final coord = m.restaurantCoordinate!;
+                                    final key =
+                                        'restaurant:${m.restaurantName!}:'
+                                        '${coord.lat.toStringAsFixed(4)},'
+                                        '${coord.lon.toStringAsFixed(4)}';
+                                    final isAdded =
+                                        addedRestaurantKeys.contains(key);
+                                    showPoiDetailSheet(
+                                      context,
+                                      kind: PoiKind.restaurant,
+                                      name: m.restaurantName!,
+                                      subtitle: _mealSubtitle(l, m),
+                                      poi: coord,
+                                      origin: origin ?? coord,
+                                      destination: destination ?? coord,
+                                      routeGeometry: routeGeometry,
+                                      attributes: _mealAttributes(l, m),
+                                      icon: Icons.restaurant,
+                                      accent: scheme.tertiary,
+                                      isAdded: isAdded,
+                                      onAddToRoute:
+                                          onToggleRestaurantPick == null
+                                          ? null
+                                          : () =>
+                                              onToggleRestaurantPick!(m),
+                                    );
+                                  }
+                                : null,
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Container(
+                                  width: 22,
+                                  height: 22,
+                                  decoration: BoxDecoration(
+                                    color: (m.restaurantName == null &&
+                                                enrichPending
+                                            ? scheme.tertiary
+                                                .withValues(alpha: 0.4)
+                                            : scheme.tertiary)
+                                        .withValues(alpha: 0.15),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(Icons.restaurant, size: 14,
+                                      color: m.restaurantName == null &&
+                                              enrichPending
+                                          ? scheme.tertiary
+                                              .withValues(alpha: 0.4)
+                                          : scheme.tertiary),
+                                ),
+                                const SizedBox(width: 6),
+                                if (m.restaurantName == null &&
+                                    enrichPending)
+                                  // Minimal placeholder: time + slot
+                                  // only. The single "filtrando
+                                  // restaurantes" spinner sits above
+                                  // the meal loop and covers ALL
+                                  // pending meals at once.
+                                  Expanded(
+                                    child: Text(
+                                      '${timeFormat.format(m.at.toLocal())}  ·  '
+                                      '${_slotLabel(l, m.slot)}',
+                                      style: t.bodySmall?.copyWith(
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  )
+                                else Expanded(
+                                  child: Text(
+                                    () {
+                                      final time = timeFormat
+                                          .format(m.at.toLocal());
+                                      final primaryName =
+                                          m.restaurantName ??
+                                          _slotLabel(l, m.slot);
+                                      final where = m.cityHint != null
+                                          ? l.resultCityHint(
+                                              m.cityHint!)
+                                          : 'km ${m.distanceFromOriginKm.toStringAsFixed(0)}';
+                                      final base = l.dayMealStopAt(
+                                        time, primaryName,
+                                      );
+                                      if (m.restaurantName != null) {
+                                        return '$base  ·  $where  ·  '
+                                            '${_slotLabel(l, m.slot)}';
+                                      }
+                                      return '$base  ·  $where';
+                                    }(),
+                                    style: t.bodySmall,
+                                  ),
+                                ),
+                                // Inline add-to-route toggle.
+                                if (m.restaurantCoordinate != null &&
+                                    onToggleRestaurantPick != null) ...[
+                                  const SizedBox(width: 4),
+                                  _AddRouteIconButton(
+                                    isAdded: addedRestaurantKeys.contains(
+                                      'restaurant:${m.restaurantName}:'
+                                      '${m.restaurantCoordinate!.lat.toStringAsFixed(4)},'
+                                      '${m.restaurantCoordinate!.lon.toStringAsFixed(4)}',
+                                    ),
+                                    onTap: () => onToggleRestaurantPick!(m),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            ),
+                          ),
+                          // "Ver restaurantes cercanos" button — only
+                          // shown when enrich has finished and we have
+                          // restaurant alternatives near this stop.
+                          if (!enrichPending &&
+                              nearbyRestaurants.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 20),
+                              child: TextButton(
+                                onPressed: () =>
+                                    showRestaurantPickerSheet(
+                                  context,
+                                  title: l.poiPickerRestaurants,
+                                  entries: nearbyRestaurants,
+                                  onPicked: (_) {},
+                                ),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  l.poiPickerRestaurants,
+                                  style: t.labelSmall?.copyWith(
+                                      color: scheme.primary),
+                                ),
+                              ),
+                            ),
+                          // No restaurant found + enrich done + no
+                          // alternatives → offer prefs adjustment.
+                          if (!enrichPending &&
+                              nearbyRestaurants.isEmpty &&
+                              m.restaurantName == null)
+                            Padding(
+                              padding: const EdgeInsets.only(left: 20),
+                              child: TextButton(
+                                onPressed: () =>
+                                    _showRestaurantPrefsSheet(context),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 2),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  l.noRestaurantsAdjustPrefs,
+                                  style: t.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    }),
                 ],
                 // Rest stops: same clock-first pattern. Rendered when
                 // the backend flagged any along this day's km range —
@@ -1144,42 +1576,33 @@ class DayPlanSection extends StatelessWidget {
                     // card silently omitting rest stops until data
                     // arrives.
                     if (enrichPending) {
+                      // Uniform "enrich-pending" styling: small spinner
+                      // + italic status copy (same as hotels + meals).
+                      // Replaces the earlier 2-row skeleton "coffee cup"
+                      // stub which felt static + inconsistent with the
+                      // other pending rows on the same card.
                       return Padding(
                         padding: const EdgeInsets.only(top: Tokens.space8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            for (var i = 0; i < 2; i++) ...[
-                              Row(
-                                children: [
-                                  Icon(Icons.local_cafe_outlined,
-                                      size: 14,
-                                      color: scheme.secondary
-                                          .withValues(alpha: 0.35)),
-                                  const SizedBox(width: 6),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Skeleton(
-                                          width: double.infinity, height: 12,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Skeleton(
-                                          width: 180, height: 10,
-                                          borderRadius:
-                                              BorderRadius.circular(4),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                            SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.6,
+                                color: scheme.primary,
                               ),
-                              if (i == 0) const SizedBox(height: 8),
-                            ],
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                l.enrichPulseRestStops,
+                                style: t.bodySmall?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       );
@@ -1240,10 +1663,18 @@ class DayPlanSection extends StatelessWidget {
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(
-                                _iconForRestStopType(r.stopType),
-                                size: 16,
-                                color: scheme.secondary,
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: scheme.secondary.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  _iconForRestStopType(r.stopType),
+                                  size: 16,
+                                  color: scheme.secondary,
+                                ),
                               ),
                               const SizedBox(width: 6),
                               Expanded(
@@ -1350,6 +1781,18 @@ class DayPlanSection extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              // Inline add-to-route toggle for rest stops.
+                              if (onToggleRestStop != null) ...[
+                                const SizedBox(width: 2),
+                                _AddRouteIconButton(
+                                  isAdded: addedRestStopKeys.contains(
+                                    'reststop:${r.name ?? "noname"}:'
+                                    '${r.coordinate.lat.toStringAsFixed(4)},'
+                                    '${r.coordinate.lon.toStringAsFixed(4)}',
+                                  ),
+                                  onTap: () => onToggleRestStop!(r),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -1362,7 +1805,8 @@ class DayPlanSection extends StatelessWidget {
                 // day tramo, (b) cheaper than their country median.
                 // Cap at 2 rows per day so the card doesn't
                 // sprawl; tap opens the shared POI sheet.
-                Builder(builder: (context) {
+                Consumer(builder: (context, ref, _) {
+                  final ccy = ref.watch(currencyCodeProvider);
                   final candidates = fuelPrices.where((p) =>
                     p.distanceFromOriginKm >= d.fromKm &&
                     p.distanceFromOriginKm <= d.toKm &&
@@ -1379,19 +1823,26 @@ class DayPlanSection extends StatelessWidget {
                     // the driver knows we haven't finished yet and
                     // an empty section isn't the final state.
                     if (enrichPending) {
+                      // Uniform spinner + italic pattern (matches
+                      // hotels/restaurants/rest-stops on this card).
                       return Padding(
                         padding: const EdgeInsets.only(top: Tokens.space8),
                         child: Row(
                           children: [
-                            Icon(
-                              Icons.local_gas_station_outlined,
-                              size: 14,
-                              color: scheme.primary.withValues(alpha: 0.4),
+                            SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.6,
+                                color: scheme.primary,
+                              ),
                             ),
-                            const SizedBox(width: 6),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                l.enrichPulseFuel,
+                                isEv
+                                    ? l.enrichPulseChargers
+                                    : l.enrichPulseFuel,
                                 style: t.bodySmall?.copyWith(
                                   color: scheme.onSurfaceVariant,
                                   fontStyle: FontStyle.italic,
@@ -1423,9 +1874,9 @@ class DayPlanSection extends StatelessWidget {
                                 kind: PoiKind.fuel,
                                 name: p.stationName,
                                 subtitle:
-                                    '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel}'
+                                    '${formatMoney(p.priceEurPerL, ccy, decimals: 3)}/L'
                                     '  ·  '
-                                    '−${p.savingsVsCountryMedianEurPerL!.toStringAsFixed(2)} ${p.unitLabel}',
+                                    '−${formatMoney(p.savingsVsCountryMedianEurPerL!, ccy, decimals: 3)}/L',
                                 poi: p.coordinate!,
                                 origin: origin ?? p.coordinate!,
                                 destination: destination ?? p.coordinate!,
@@ -1456,7 +1907,7 @@ class DayPlanSection extends StatelessWidget {
                                   child: Text(
                                     '${p.stationName}  ·  '
                                     'km ${p.distanceFromOriginKm.toStringAsFixed(0)}  ·  '
-                                    '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel}',
+                                    '${formatMoney(p.priceEurPerL, ccy, decimals: 3)}/L',
                                     style: t.bodySmall?.copyWith(
                                       fontWeight: FontWeight.w500,
                                     ),
@@ -1473,13 +1924,57 @@ class DayPlanSection extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    '−${p.savingsVsCountryMedianEurPerL!.toStringAsFixed(2)} ${p.unitLabel}',
+                                    '−${formatMoney(p.savingsVsCountryMedianEurPerL!, ccy, decimals: 3)}/L',
                                     style: t.labelSmall?.copyWith(
                                       color: Colors.green.shade700,
                                       fontWeight: FontWeight.w700,
                                     ),
                                   ),
                                 ),
+                                // Tank state chip: estimated fill + savings.
+                                if (vehicleConsumptionL100km > 0 &&
+                                    vehicleTankL > 0 &&
+                                    (p.savingsVsCountryMedianEurPerL ?? 0) > 0) ...[
+                                  const SizedBox(width: 4),
+                                  Builder(builder: (ctx) {
+                                    final state = _fuelStateAt(p);
+                                    if (state.toFill < 1) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: scheme.primaryContainer
+                                            .withValues(alpha: 0.3),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Consumer(
+                                        builder: (ctx, ref, _) {
+                                          final ccy = ref.watch(currencyCodeProvider);
+                                          return Text(
+                                            '~${state.toFill.toStringAsFixed(0)} L'
+                                            ' · ~${formatMoney(state.savings, ccy)}',
+                                            style: t.labelSmall?.copyWith(
+                                              color: scheme.primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    );
+                                  }),
+                                ],
+                                // Inline add-to-route toggle.
+                                if (onToggleFuelPick != null &&
+                                    p.coordinate != null) ...[
+                                  const SizedBox(width: 4),
+                                  _AddRouteIconButton(
+                                    isAdded: isAdded,
+                                    onTap: () => onToggleFuelPick!(p),
+                                  ),
+                                ],
                               ],
                             ),
                           ),
@@ -1504,19 +1999,77 @@ class DayPlanSection extends StatelessWidget {
                                 timeFormat.format(d.sleepAt!.toLocal()))
                             : l.daySleepMarker(
                                 timeFormat.format(d.sleepAt!.toLocal()));
-                    return Row(
+                    final isSleepRow = !d.isDwellDay && !isLastDay;
+                    final sleepEditTap =
+                        isSleepRow && onEditDayEndTime != null && !replanning
+                            ? () => onEditDayEndTime!(d.dayIndex)
+                            : null;
+                    final row = Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(icon, size: 14, color: scheme.primary),
+                        Icon(icon, size: 14,
+                            color: isSleepRow
+                                ? const Color(0xFFF59E0B)
+                                : scheme.primary),
                         const SizedBox(width: 6),
                         Text(
                           text,
                           style: t.labelMedium?.copyWith(
-                            color: scheme.primary,
+                            color: isSleepRow
+                                ? const Color(0xFF10B981)
+                                : scheme.primary,
                           ),
                         ),
+                        if (sleepEditTap != null) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.edit_outlined,
+                            size: 13,
+                            color: scheme.onSurfaceVariant
+                                .withValues(alpha: 0.6),
+                          ),
+                        ],
                       ],
                     );
+                    return sleepEditTap != null
+                        ? InkWell(
+                            onTap: sleepEditTap,
+                            borderRadius:
+                                BorderRadius.circular(Tokens.radiusSm),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 2, horizontal: 2),
+                              child: row,
+                            ),
+                          )
+                        : row;
                   }(),
+                  // Cross-country hotel-price hint. Full banner on
+                  // the FIRST affected day so the driver sees the
+                  // savings framing; subsequent affected days get a
+                  // one-line reminder to avoid banner fatigue on
+                  // trips with 3+ nights in the pricier country.
+                  if (hotelArbitrage != null &&
+                      hotelArbitrage!.affectedDayIndices.contains(d.dayIndex)) ...[
+                    const SizedBox(height: Tokens.space8),
+                    if (hotelArbitrage!.affectedDayIndices.first == d.dayIndex)
+                      HotelArbitrageBanner(
+                        hint: hotelArbitrage!,
+                        onTap: d.sleepCoord != null
+                            ? () => showHotelPickerSheet(
+                                  context,
+                                  title: l.hotelsNearYourRoute,
+                                  entries: _hotelsNear(d.sleepCoord!),
+                                  currentHotel:
+                                      selectedNightHotels[d.dayIndex],
+                                  onPicked: (h) =>
+                                      onToggleNightHotel!(d.dayIndex, h),
+                                )
+                            : null,
+                      )
+                    else
+                      _HotelArbitrageMiniHint(hint: hotelArbitrage!),
+                  ],
                   if (d.sleepCoord != null && showHotelSections) ...[
                     const SizedBox(height: Tokens.space8),
                     _SleepHotelsBlock(
@@ -1589,7 +2142,13 @@ class DayPlanSection extends StatelessWidget {
                 }),
                 // Short last-day warning: when the final leg is very
                 // short the planner may want to skip the extra hotel.
-                if (!d.isDwellDay && d.dayIndex == days.length) ...[
+                // Suppressed on single-day trips — the copy talks
+                // about "advancing more the day before", which is
+                // nonsense when there IS no day before (tester
+                // report 2026-09-30).
+                if (!d.isDwellDay &&
+                    d.dayIndex == days.length &&
+                    days.length > 1) ...[
                   Builder(builder: (ctx) {
                     final km = (d.toKm - d.fromKm).round();
                     if (km >= 150) return const SizedBox.shrink();
@@ -2258,16 +2817,50 @@ class _SleepHotelsBlock extends StatelessWidget {
           ),
         );
       }
+      if (!hotelsRequested) {
+        return Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Text(
+            l.daySleepHotelsEmpty,
+            style: t.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontStyle: FontStyle.italic,
+            ),
+          ),
+        );
+      }
+      // Hotels requested but none found — offer actionable path out.
       return Padding(
         padding: const EdgeInsets.only(top: 4),
-        child: Text(
-          hotelsRequested
-              ? l.daySleepHotelsNotFound
-              : l.daySleepHotelsEmpty,
-          style: t.bodySmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-            fontStyle: FontStyle.italic,
-          ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                l.daySleepHotelsNotFound,
+                style: t.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: () => _showHotelPrefsSheet(context),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 2),
+                child: Text(
+                  l.noHotelsAdjustPrefs,
+                  style: t.labelSmall?.copyWith(
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
     }
@@ -2277,103 +2870,154 @@ class _SleepHotelsBlock extends StatelessWidget {
     final label = isDestination
         ? l.daySleepHotelsLabelDestination
         : l.daySleepHotelsLabel;
-    final hotelRows = [
-      for (final (h, km) in entries)
-        Builder(builder: (context) {
-          final picked = _isPicked(h);
-          final canPick = dayIndex != null && onToggleHotel != null;
-          return InkWell(
-            onTap: () => showPoiDetailSheet(
-              context,
-              kind: PoiKind.hotel,
-              name: h.name,
-              subtitle:
-                  '${h.priceEurPerNight.toStringAsFixed(0)} €/night · '
-                  '${km.toStringAsFixed(1)} km',
-              poi: h.coordinate,
-              origin: origin ?? h.coordinate,
-              destination: destination ?? h.coordinate,
-              routeGeometry: routeGeometry,
-              attributes: h.attributes,
-              icon: Icons.hotel_outlined,
-              accent: scheme.tertiary,
+    // Show the currently selected hotel (or the top-ranked one as a
+    // default suggestion). The full ranked list is accessible via the
+    // "Ver alternativas" button which opens the picker sheet.
+    final displayHotel = selectedHotel != null
+        ? entries.firstWhere(
+            (e) => _isPicked(e.$1),
+            orElse: () => entries.first,
+          )
+        : entries.first;
+    final (topHotel, topKm) = displayHotel;
+    final topPicked = _isPicked(topHotel);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Shimmer-like forest-green header stripe
+        Container(
+          height: 3,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF1B4332), Colors.transparent],
             ),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.hotel_outlined, size: 14,
-                      color: picked ? scheme.primary : scheme.tertiary),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      '${h.name}  ·  '
-                      '${h.priceEurPerNight.toStringAsFixed(0)} €/night  ·  '
-                      '${isDestination ? l.hotelDistFromDestination(km.toStringAsFixed(1)) : l.hotelDistFromStop(km.toStringAsFixed(1))}',
-                      style: t.bodySmall?.copyWith(
-                        fontWeight:
-                            picked ? FontWeight.w700 : FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                  if (canPick) ...[
-                    const SizedBox(width: 4),
-                    InkResponse(
-                      onTap: () => onToggleHotel!(dayIndex!, h),
-                      radius: 18,
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          picked
-                              ? Icons.check_circle
-                              : Icons.add_circle_outline,
-                          size: 20,
-                          color: picked
-                              ? scheme.primary
-                              : scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-                  ] else
-                    Icon(Icons.chevron_right, size: 16,
-                        color: scheme.onSurfaceVariant),
-                ],
-              ),
-            ),
-          );
-        }),
-    ];
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        tilePadding: EdgeInsets.zero,
-        childrenPadding: EdgeInsets.zero,
-        initiallyExpanded: false,
-        leading: Icon(Icons.hotel_outlined, size: 16, color: scheme.tertiary),
-        title: Text(
-          label,
-          style: t.labelSmall?.copyWith(
-            color: scheme.onSurfaceVariant,
-            letterSpacing: 1.1,
           ),
         ),
-        subtitle: selectedHotel != null
-            ? Text(
-                selectedHotel!.name,
-                style: t.bodySmall?.copyWith(
-                  color: scheme.primary,
-                  fontWeight: FontWeight.w600,
+        const SizedBox(height: 4),
+        // Section header row: label + "Ver alternativas" button
+        Row(
+          children: [
+            Icon(Icons.hotel_outlined, size: 14, color: scheme.tertiary),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                label,
+                style: t.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                  letterSpacing: 1.1,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              )
-            : Text(
-                '${entries.length} opciones',
-                style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
-        children: hotelRows,
-      ),
+            ),
+            if (dayIndex != null && onToggleHotel != null)
+              TextButton(
+                onPressed: () => showHotelPickerSheet(
+                  context,
+                  title: label,
+                  entries: entries,
+                  currentHotel: selectedHotel,
+                  onPicked: (h) => onToggleHotel!(dayIndex!, h),
+                ),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6, vertical: 2),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  l.poiPickerHotels,
+                  style: t.labelSmall?.copyWith(color: scheme.primary),
+                ),
+              ),
+          ],
+        ),
+        // Top (or selected) hotel inline row — tappable for the detail sheet
+        const SizedBox(height: 2),
+        InkWell(
+          onTap: () => showPoiDetailSheet(
+            context,
+            kind: PoiKind.hotel,
+            name: topHotel.name,
+            subtitle:
+                '${topHotel.priceEurPerNight.toStringAsFixed(0)} €/night · '
+                '${topKm.toStringAsFixed(1)} km',
+            poi: topHotel.coordinate,
+            origin: origin ?? topHotel.coordinate,
+            destination: destination ?? topHotel.coordinate,
+            routeGeometry: routeGeometry,
+            attributes: topHotel.attributes,
+            icon: Icons.hotel_outlined,
+            accent: scheme.tertiary,
+            photoUrl: topHotel.photoUrl,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 3),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (topHotel.photoUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: Image.network(
+                        topHotel.photoUrl!,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                          Icons.hotel_outlined,
+                          size: 14,
+                          color: topPicked ? scheme.primary : scheme.tertiary,
+                        ),
+                        loadingBuilder: (_, child, progress) =>
+                            progress == null
+                                ? child
+                                : const Skeleton(width: 40, height: 40),
+                      ),
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6, top: 1),
+                    child: Icon(Icons.hotel_outlined, size: 14,
+                        color: topPicked ? scheme.primary : scheme.tertiary),
+                  ),
+                Expanded(
+                  child: Text(
+                    '${topHotel.name}  ·  '
+                    '${isDestination ? l.hotelDistFromDestination(topKm.toStringAsFixed(1)) : l.hotelDistFromStop(topKm.toStringAsFixed(1))}',
+                    style: t.bodySmall?.copyWith(
+                      fontWeight:
+                          topPicked ? FontWeight.w700 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+                if (dayIndex != null && onToggleHotel != null)
+                  InkResponse(
+                    onTap: () => onToggleHotel!(dayIndex!, topHotel),
+                    radius: 18,
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        topPicked
+                            ? Icons.check_circle
+                            : Icons.add_circle_outline,
+                        size: 20,
+                        color: topPicked
+                            ? scheme.primary
+                            : scheme.onSurfaceVariant,
+                      ),
+                    ),
+                  )
+                else
+                  Icon(Icons.chevron_right, size: 16,
+                      color: scheme.onSurfaceVariant),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -2479,7 +3123,7 @@ class NextStopHero extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: scheme.onPrimaryContainer,
                   side: BorderSide(
-                    color: scheme.onPrimaryContainer.withOpacity(0.5),
+                    color: scheme.onPrimaryContainer.withValues(alpha: 0.5),
                   ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: Tokens.space12,
@@ -2771,6 +3415,36 @@ class _ReplanningPill extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact "+" / "✓" icon button used inline on day plan rows
+/// (restaurants, fuel stations, rest stops) to add/remove a POI
+/// from the planned route without opening the detail sheet.
+class _AddRouteIconButton extends StatelessWidget {
+  const _AddRouteIconButton({
+    required this.isAdded,
+    required this.onTap,
+  });
+
+  final bool isAdded;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+        child: Icon(
+          isAdded ? Icons.check_circle : Icons.add_circle_outline,
+          size: 18,
+          color: isAdded ? scheme.primary : scheme.onSurfaceVariant,
+        ),
       ),
     );
   }

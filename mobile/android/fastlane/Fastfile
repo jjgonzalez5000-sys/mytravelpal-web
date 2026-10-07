@@ -1,0 +1,112 @@
+# fastlane configuration for MyTravelPal Android.
+#
+# Prereqs (one-time):
+#   1. gem install fastlane   (or `bundle install` from mobile/)
+#   2. Google Cloud service account created with Play Developer API
+#      access; JSON key saved to `mobile/play-key.json` (gitignored).
+#   3. That SA's email invited to Play Console → Users → Release manager.
+#
+# Everyday usage:
+#   From repo root:
+#     make play-internal        # bump versionCode + build AAB + upload to internal test
+#   Or directly:
+#     cd mobile/android && bundle exec fastlane internal
+#
+# Change notes come from `mobile/store_assets/play_console/copy/`
+# per-locale files if present; else fastlane's default `default.txt`.
+
+default_platform(:android)
+
+APP_ROOT = File.expand_path("../..", __dir__)                        # mobile/
+REPO_ROOT = File.expand_path("../../..", __dir__)                    # repo root
+AAB_PATH = File.join(APP_ROOT, "build/app/outputs/bundle/release/app-release.aab")
+DART_DEFINES = [
+  "API_BASE_URL=https://mytravelpal-api.fly.dev",
+  "API_KEY=7637fb236013308ebf998843d924e15e56dce87457187e22a1a03c9c1e164d7a",
+  "SENTRY_DSN=https://3c46e071b627ae7c6c5cb4592cadbf60@o4511977727590400.ingest.de.sentry.io/4511977749086288",
+]
+
+# Read `version:` line from pubspec.yaml so `--dart-define=APP_VERSION=...`
+# lines up with what pubspec advertises. Format is `0.2.5+7`.
+def pubspec_version
+  pubspec = File.join(APP_ROOT, "pubspec.yaml")
+  line = File.readlines(pubspec).find { |l| l.start_with?("version:") }
+  raise "no version: line in pubspec.yaml" unless line
+  line.sub("version:", "").strip
+end
+
+platform :android do
+  desc "Build a release AAB. Reads dart-defines from Fastfile."
+  lane :build_aab do
+    dart_flags = ([
+      "--release", "--no-tree-shake-icons",
+      "--dart-define=APP_VERSION=#{pubspec_version}",
+    ] + DART_DEFINES.map { |kv| "--dart-define=#{kv}" }).join(" ")
+    sh "cd #{APP_ROOT} && flutter build appbundle #{dart_flags}"
+  end
+
+  desc "Upload the current AAB to the Internal Testing track."
+  lane :internal do
+    build_aab
+    upload_to_play_store(
+      track: "internal",
+      aab: AAB_PATH,
+      release_status: "completed",
+      skip_upload_apk: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      changes_not_sent_for_review: false,
+    )
+  end
+
+  desc "Push only the store listing (icon, screenshots, texts) — no AAB."
+  lane :metadata do
+    upload_to_play_store(
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_images: false,
+      skip_upload_screenshots: false,
+      skip_upload_changelogs: true,   # release notes ship with the AAB lane
+    )
+  end
+
+  desc "Pull the current store listing from Play Console into the repo."
+  # Run this ONCE to snapshot whatever metadata / screenshots you
+  # already uploaded through the Play Console web UI. Fills the
+  # `fastlane/metadata/android/<locale>/…` tree. Subsequent
+  # push-and-pull cycles happen via `metadata` / manual edits.
+  lane :pull_metadata do
+    sh(
+      "cd #{File.expand_path('..', __dir__)} && " \
+      "bundle exec fastlane supply init --track internal",
+    )
+  end
+
+  desc "Promote the latest Internal build to Closed testing (beta)."
+  lane :promote_to_closed do
+    upload_to_play_store(
+      track: "internal",
+      track_promote_to: "beta",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+
+  desc "Promote latest Closed build to Production."
+  lane :promote_to_prod do
+    upload_to_play_store(
+      track: "beta",
+      track_promote_to: "production",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+    )
+  end
+end

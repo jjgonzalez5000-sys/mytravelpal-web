@@ -1,0 +1,194 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "liveNow": false,
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Usuarios totales",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COUNT(*) FROM users", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}}, "overrides": []}
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Activos últimos 7 días",
+      "description": "Login o guardado de viaje en los últimos 7 días.",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COUNT(DISTINCT user_id) FROM (SELECT user_id FROM users WHERE last_login_at > NOW() - INTERVAL '7 days' UNION SELECT user_id FROM saved_trips WHERE saved_at > NOW() - INTERVAL '7 days') AS active", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}}, "overrides": []}
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Viajes guardados",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COUNT(*) FROM saved_trips", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}}, "overrides": []}
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Sugerencias recibidas",
+      "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COUNT(*) FROM feedback", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"color": {"mode": "thresholds"}}, "overrides": []}
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Nuevos usuarios / día",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT date_trunc('day', created_at) AS time, COUNT(*) AS \"nuevos\" FROM users WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1", "format": "time_series"}],
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "lineWidth": 1, "fillOpacity": 40}}, "overrides": []}
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Viajes guardados / día",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT date_trunc('day', saved_at) AS time, COUNT(*) AS \"viajes\" FROM saved_trips WHERE $__timeFilter(saved_at) GROUP BY 1 ORDER BY 1", "format": "time_series"}],
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "lineWidth": 1, "fillOpacity": 40}}, "overrides": []}
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "Sugerencias / día",
+      "gridPos": {"h": 6, "w": 12, "x": 0, "y": 12},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT date_trunc('day', created_at) AS time, COUNT(*) AS \"sugerencias\" FROM feedback WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1", "format": "time_series"}],
+      "fieldConfig": {"defaults": {"custom": {"drawStyle": "bars", "lineWidth": 1, "fillOpacity": 40}}, "overrides": []}
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "Coste €/día (todos los proveedores)",
+      "gridPos": {"h": 6, "w": 12, "x": 12, "y": 12},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT date_trunc('day', created_at) AS time, provider, SUM(cost_eur) AS \"€\" FROM usage_events WHERE $__timeFilter(created_at) GROUP BY 1, provider ORDER BY 1", "format": "time_series"}],
+      "fieldConfig": {"defaults": {"unit": "currencyEUR", "custom": {"drawStyle": "line", "lineWidth": 2, "fillOpacity": 20, "stacking": {"mode": "normal"}}}, "overrides": []}
+    },
+    {
+      "id": 20,
+      "type": "piechart",
+      "title": "Fuel type (garaje)",
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 18},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COALESCE(v->>'fuel_type', 'unknown') AS metric, COUNT(*) AS value FROM user_profiles, jsonb_array_elements(COALESCE(profile->'garage', '[]'::jsonb)) AS g LEFT JOIN LATERAL (SELECT profile->'vehicle' AS v) sub ON true GROUP BY 1 ORDER BY 2 DESC", "format": "table"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "legend": {"displayMode": "list", "placement": "right"}}
+    },
+    {
+      "id": 21,
+      "type": "piechart",
+      "title": "Vehicle type",
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 18},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COALESCE(profile->'vehicle'->>'type', 'unknown') AS metric, COUNT(*) AS value FROM user_profiles GROUP BY 1 ORDER BY 2 DESC", "format": "table"}],
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "legend": {"displayMode": "list", "placement": "right"}}
+    },
+    {
+      "id": 22,
+      "type": "bargauge",
+      "title": "Perfiles con niños / mascotas",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 18},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT 'Niños' AS metric, SUM(CASE WHEN (profile->>'has_kids')::boolean THEN 1 ELSE 0 END) AS value FROM user_profiles UNION ALL SELECT 'Mascotas', SUM(CASE WHEN (profile->>'has_pets')::boolean THEN 1 ELSE 0 END) FROM user_profiles UNION ALL SELECT 'Neither', SUM(CASE WHEN NOT COALESCE((profile->>'has_kids')::boolean, false) AND NOT COALESCE((profile->>'has_pets')::boolean, false) THEN 1 ELSE 0 END) FROM user_profiles", "format": "table"}],
+      "options": {"orientation": "horizontal", "displayMode": "gradient", "reduceOptions": {"calcs": ["lastNotNull"]}}
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "Coste total (todos los proveedores)",
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 26},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COALESCE(SUM(cost_eur), 0) FROM usage_events WHERE $__timeFilter(created_at)", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"unit": "currencyEUR"}, "overrides": []}
+    },
+    {
+      "id": 31,
+      "type": "table",
+      "title": "Coste por proveedor y por usuario",
+      "gridPos": {"h": 8, "w": 16, "x": 8, "y": 26},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COALESCE(u.email, 'anon') AS email, e.provider, COUNT(*) AS calls, SUM(e.cost_eur) AS eur, SUM(e.tokens_in) AS in_tok, SUM(e.tokens_out) AS out_tok FROM usage_events e LEFT JOIN users u ON u.user_id = e.user_id WHERE $__timeFilter(e.created_at) GROUP BY 1, 2 ORDER BY eur DESC LIMIT 100", "format": "table"}],
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "eur"}, "properties": [{"id": "unit", "value": "currencyEUR"}]}]}
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "Coste fijo mensual actual",
+      "description": "Suma de hosting + servicios activos hoy (tabla fixed_costs).",
+      "gridPos": {"h": 4, "w": 8, "x": 0, "y": 30},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COALESCE(SUM(monthly_eur), 0) FROM fixed_costs WHERE ended_at IS NULL", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"unit": "currencyEUR"}, "overrides": []}
+    },
+    {
+      "id": 33,
+      "type": "stat",
+      "title": "Coste acumulado total (fijo + variable)",
+      "description": "Fijo integrado desde start hasta hoy + variable ALL-TIME.",
+      "gridPos": {"h": 4, "w": 8, "x": 8, "y": 30},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT (SELECT COALESCE(SUM(monthly_eur * (EXTRACT(EPOCH FROM LEAST(NOW(), COALESCE(ended_at::timestamptz, NOW())) - started_at::timestamptz) / 2629746)), 0) FROM fixed_costs) + (SELECT COALESCE(SUM(cost_eur), 0) FROM usage_events)", "format": "table"}],
+      "options": {"colorMode": "value", "graphMode": "area", "reduceOptions": {"calcs": ["lastNotNull"]}},
+      "fieldConfig": {"defaults": {"unit": "currencyEUR"}, "overrides": []}
+    },
+    {
+      "id": 34,
+      "type": "table",
+      "title": "Costes fijos activos",
+      "description": "Editable via psql: INSERT INTO fixed_costs (label, monthly_eur, started_at) VALUES ('...', N, '2026-09-01');",
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 30},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT label, monthly_eur AS \"€/mes\", started_at AS \"desde\", COALESCE(notes, '') AS notas FROM fixed_costs WHERE ended_at IS NULL ORDER BY monthly_eur DESC", "format": "table"}],
+      "fieldConfig": {"defaults": {}, "overrides": [{"matcher": {"id": "byName", "options": "€/mes"}, "properties": [{"id": "unit", "value": "currencyEUR"}]}]}
+    },
+    {
+      "id": 40,
+      "type": "table",
+      "title": "Planes por usuario",
+      "gridPos": {"h": 10, "w": 12, "x": 0, "y": 38},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT COALESCE(u.email, 'anon') AS email, COALESCE(u.display_name, '') AS name, COUNT(t.id) AS trips_saved, MAX(t.saved_at) AS last_trip_at FROM saved_trips t LEFT JOIN users u ON u.user_id = t.user_id GROUP BY u.email, u.display_name ORDER BY trips_saved DESC LIMIT 100", "format": "table"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    },
+    {
+      "id": 41,
+      "type": "table",
+      "title": "Sugerencias (más recientes primero)",
+      "gridPos": {"h": 10, "w": 12, "x": 12, "y": 38},
+      "datasource": {"type": "postgres", "uid": "mytravelpal-db"},
+      "targets": [{"refId": "A", "rawSql": "SELECT f.created_at, COALESCE(u.email, 'anon') AS email, f.app_version AS ver, f.locale, f.body_text, f.reply_email FROM feedback f LEFT JOIN users u ON u.user_id = f.user_id ORDER BY f.created_at DESC LIMIT 50", "format": "table"}],
+      "fieldConfig": {"defaults": {}, "overrides": []}
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["mytravelpal", "admin"],
+  "templating": {"list": []},
+  "time": {"from": "now-7d", "to": "now"},
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "MyTravelPal Admin",
+  "uid": "mtp-admin",
+  "version": 2,
+  "weekStart": ""
+}

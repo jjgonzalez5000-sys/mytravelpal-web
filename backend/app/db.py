@@ -117,4 +117,132 @@ _CREATE_STATEMENTS = [
     CREATE INDEX IF NOT EXISTS idx_saved_trips_user
         ON saved_trips (user_id)
     """,
+    # Free-form user feedback / suggestions. `user_id` nullable to
+    # accept anonymous submissions (e.g. when someone hasn't signed
+    # in yet). `reply_email` optional — set when the user opts in
+    # to "I want a reply" so we can respond outside Play messaging.
+    """
+    CREATE TABLE IF NOT EXISTS feedback (
+        id SERIAL PRIMARY KEY,
+        user_id TEXT,
+        app_version TEXT NOT NULL,
+        locale TEXT NOT NULL,
+        platform TEXT NOT NULL,
+        category TEXT NOT NULL DEFAULT 'suggestion',
+        body_text TEXT NOT NULL,
+        reply_email TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_feedback_created_at
+        ON feedback (created_at DESC)
+    """,
+    # Identity table — one row per authenticated user. Stores the
+    # OAuth email + display_name so the admin dashboard can show
+    # "who is who". `email` will be encrypted/anonymised per
+    # `project-data-privacy-tiers` Tier 2 before public launch;
+    # for now stored plain because closed-beta needs it to correlate
+    # dogfood feedback with real testers.
+    """
+    CREATE TABLE IF NOT EXISTS users (
+        user_id TEXT PRIMARY KEY,
+        email TEXT NOT NULL,
+        display_name TEXT,
+        provider TEXT NOT NULL DEFAULT 'google',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        last_login_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_users_last_login
+        ON users (last_login_at DESC)
+    """,
+    # Usage-event log — one row per costly external call (LLM inspire,
+    # HERE Places / Routing, Geoapify Places, TollGuru, etc.). Feeds
+    # the admin dashboard's cost panels. `cost_eur` in EUR so the
+    # panel sums are directly interpretable; caller passes a
+    # per-provider estimate (~$1.5 per 1M input tokens for the LLM,
+    # etc.). Nullable user_id = anonymous / not-yet-auth'd calls.
+    """
+    CREATE TABLE IF NOT EXISTS usage_events (
+        id BIGSERIAL PRIMARY KEY,
+        user_id TEXT,
+        provider TEXT NOT NULL,
+        endpoint TEXT NOT NULL,
+        tokens_in INTEGER,
+        tokens_out INTEGER,
+        cost_eur NUMERIC(10, 6) NOT NULL DEFAULT 0,
+        meta JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_usage_events_created_at
+        ON usage_events (created_at DESC)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_usage_events_provider
+        ON usage_events (provider, created_at DESC)
+    """,
+    # Fixed monthly costs (Fly hosting, Postgres, domain, API
+    # subscriptions, etc.). Populated by hand via psql when a new
+    # cost line kicks in / stops. The admin dashboard sums the
+    # ACTIVE ones for "coste fijo mensual" and integrates them
+    # over time for "coste acumulado".
+    """
+    CREATE TABLE IF NOT EXISTS fixed_costs (
+        id SERIAL PRIMARY KEY,
+        label TEXT NOT NULL,
+        monthly_eur NUMERIC(10, 2) NOT NULL,
+        started_at DATE NOT NULL,
+        ended_at DATE,
+        notes TEXT
+    )
+    """,
+    # Trip sharing — a driver posts their plan snapshot and gets a
+    # short slug they can share via WhatsApp / link. Passengers open
+    # the link to view the same plan (read-only). Expires after 30
+    # days to keep the table small. `user_id` nullable so future
+    # anonymous sharing is possible without a schema change.
+    """
+    CREATE TABLE IF NOT EXISTS trip_shares (
+        slug TEXT PRIMARY KEY,
+        user_id TEXT,
+        plan_json JSONB NOT NULL,
+        request_json JSONB NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '30 days'
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_trip_shares_expires_at
+        ON trip_shares (expires_at)
+    """,
+    # Companion sessions — driver creates a session and shares a
+    # 6-char join code. Passengers poll every 5s to get the
+    # driver's live position + ETA. Driver pushes every 10s.
+    # Max latency ~15s — acceptable for road-trip context. Polling
+    # is simpler than WebSockets and works fine with Fly HA
+    # (the driver always PUTs to the same machine because the
+    # mobile app sends the full session_id on every push).
+    """
+    CREATE TABLE IF NOT EXISTS companion_sessions (
+        session_id TEXT PRIMARY KEY,
+        join_code TEXT NOT NULL UNIQUE,
+        driver_user_id TEXT NOT NULL,
+        state_json JSONB DEFAULT '{}',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '12 hours',
+        last_ping TIMESTAMPTZ DEFAULT NOW()
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_companion_sessions_join_code
+        ON companion_sessions (join_code)
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_companion_sessions_expires_at
+        ON companion_sessions (expires_at)
+    """,
 ]

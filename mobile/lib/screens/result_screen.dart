@@ -1,7 +1,12 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:geolocator/geolocator.dart' show Geolocator, LocationAccuracy, LocationPermission, AndroidSettings;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,20 +16,27 @@ import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
 
 import '../api/models.dart';
-import '../domain/trip_profile.dart' show FuelType, VehicleType;
+import '../domain/trip_profile.dart' show FuelType, TripProfile, VehicleType;
+import 'vehicle_picker_screen.dart' show kCustomVehicleId;
 import '../design/components.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../utils/duration_format.dart';
+import '../services/billing_service.dart';
 import '../services/currency_service.dart';
 import '../services/notifications.dart';
 import '../services/plan_foreground_task.dart';
+import '../services/trip_foreground.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
 import '../services/toll_detour_waypoints.dart';
+import '../widgets/toll_summary_sheet.dart';
+import '../widgets/trip_day_bars.dart';
+import '../widgets/trip_quality_score.dart';
 import '../services/trip_export.dart';
 import '../services/trip_share_image.dart';
+import '../services/trip_share_service.dart';
 import '../services/trip_sharing.dart';
 import '../storage/saved_trip.dart';
 import '../widgets/added_stops_map_sheet.dart';
@@ -46,6 +58,8 @@ import '../widgets/route_map.dart';
 import '../widgets/skeleton.dart';
 import '../widgets/time_window_chart.dart';
 import 'narrative_screen.dart';
+import 'profile_screen.dart';
+import 'settings_screen.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'companion_drive_screen.dart';
@@ -181,7 +195,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// the AppBar bookmark so a re-save persists the modified state.
   /// Reset to false inside [_save] once the write lands.
   bool _dirty = false;
+  // null = checking, true = within 15 km of origin, false = far/unknown
+  bool? _nearOrigin;
 
+  /// True when the user opened Profile or Settings from the AppBar and
+  /// returned with a profile that differs from the one used for this plan.
+  /// Drives the "Recalcular con tus nuevos ajustes" banner.
+  bool _profileChangedSincePlan = false;
 
   /// Response actually rendered by the tree. Seeded from `widget.response`
   /// (the core, fast phase). When `widget.enrichFuture` resolves, the
@@ -274,6 +294,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return total;
   }
 
+  /// Best estimate of effective toll cost for the hero tile.
+  /// When we have per-booth skip data, sum the enabled (paying) booths
+  /// plus vignette. Falls back to route.tollCostEur - saved when no data.
+  double _heroTollTotal(RouteInfo route, String _) {
+    final skips = _response.partialTollSkips;
+    if (skips.isEmpty) {
+      return (route.tollCostEur - _tollSkipSavingsEur)
+          .clamp(0.0, route.tollCostEur);
+    }
+    var paid = 0.0;
+    for (var i = 0; i < skips.length; i++) {
+      if (_tollSkipEnabled.contains(i)) paid += skips[i].savingsEur;
+    }
+    return paid + route.vignetteCostEur;
+  }
+
   double get _tollSkipPenaltyMinutes {
     final skips = _response.partialTollSkips;
     var total = 0.0;
@@ -310,6 +346,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   @override
   void initState() {
     super.initState();
+    _checkNearOrigin();
     // Seed the rendered response with the core payload. Enrich
     // hydration below swaps in the merged view when it lands.
     _response = widget.response;
@@ -471,10 +508,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// card's "€ saved" chip via [_addedFuelSavingsEur].
   final Map<String, double> _pickedFuelSavings = <String, double>{};
 
-  /// Toggle a day-card fuel station's pick. Also rolls the €/L
-  /// savings-vs-median into a €-total for the trip cost card by
-  /// multiplying by an assumed 50 L fill (falls back to the
-  /// profile's tank capacity when set).
+  /// Toggle a day-card fuel station's pick. Records the key in
+  /// [_pickedFuelSavings] so [addedFuelKeys] / [_removeByKey] keep
+  /// working. Savings in euros are NOT pre-computed here — they are
+  /// re-derived on every read via [_addedFuelSavingsEur], which runs
+  /// a cascade simulation over all currently-picked stations to
+  /// account for the fuel actually consumed between stops.
   void _toggleDayFuel(FuelPrice p) {
     if (p.coordinate == null) return;
     final coordSuffix =
@@ -490,18 +529,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       } else {
         _addedStops[key] = _fuelStopMinutes;
         _addedRouteWaypoints[key] = (p.coordinate!, p.stationName);
-        final perL = p.savingsVsCountryMedianEurPerL ?? 0.0;
-        if (perL > 0) {
-          final tank = widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0;
-          // Assume the driver tops up to the tank size at this
-          // station — realistic upper bound for a "cheap stop"
-          // detour. Prefer overshoot to undershoot; the €-savings
-          // chip is aspirational anyway.
-          _pickedFuelSavings[key] = perL * tank;
-        }
+        // Value is unused — cascade recomputes savings on every read.
+        _pickedFuelSavings[key] = 0.0;
       }
       _markDirty();
     });
+    // Notify driver that picking/unpicking a station cascades the tank
+    // estimates on all subsequent stations in the plan.
+    if (!removing) {
+      final l = AppLocalizations.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${p.stationName} añadida · estimación de depósito actualizada '
+            'en los días siguientes',
+          ),
+          duration: const Duration(seconds: 3),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   /// Toggle a meal-row restaurant into/out of the added-stops map so
@@ -517,6 +564,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         '${coord.lat.toStringAsFixed(4)},'
         '${coord.lon.toStringAsFixed(4)}';
     _toggleStop(key, 0, coord: coord, label: name);
+  }
+
+  void _toggleRestStop(RestStop r) {
+    final key = 'reststop:${r.name ?? "noname"}:'
+        '${r.coordinate.lat.toStringAsFixed(4)},'
+        '${r.coordinate.lon.toStringAsFixed(4)}';
+    _toggleStop(
+      key,
+      r.recommendedBreakMinutes.toDouble(),
+      coord: r.coordinate,
+      label: r.name ?? 'Parada de descanso',
+    );
   }
 
   double get _addedMinutesTotal =>
@@ -621,17 +680,156 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// rest stops) updates coherently. In-place setState instead of
   /// pushReplacement so the driver keeps their scroll position and
   /// the hero doesn't re-tease.
+  /// One-shot GPS check: are we within 15 km of the trip origin?
+  /// Sets [_nearOrigin] to drive the companion button state.
+  Future<void> _checkNearOrigin() async {
+    try {
+      final perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        if (mounted) setState(() => _nearOrigin = false);
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings:
+            AndroidSettings(accuracy: LocationAccuracy.low),
+      ).timeout(const Duration(seconds: 8));
+      final origin = widget.request.origin; // LatLon
+      final distM = Geolocator.distanceBetween(
+        pos.latitude, pos.longitude, origin.lat, origin.lon,
+      );
+      if (mounted) setState(() => _nearOrigin = distM < 15000);
+    } catch (_) {
+      if (mounted) setState(() => _nearOrigin = false);
+    }
+  }
+
+  /// Time picker for the day's end time — converts the picked time into a
+  /// `dailyDrivingCapHours` override and re-plans immediately.
+  Future<void> _openEndTimePicker(int dayIndex) async {
+    final day = _response.days.where((d) => d.dayIndex == dayIndex).firstOrNull;
+    if (day == null || !mounted) return;
+
+    final endLocal = (day.sleepAt ?? day.endAt).toLocal();
+    final startLocal = day.startAt.toLocal();
+    final existingOverride = _dayOverrides[dayIndex];
+
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: endLocal.hour, minute: endLocal.minute),
+      helpText: AppLocalizations.of(context).dayEditEndTimePicker,
+    );
+    if (picked == null || !mounted) return;
+
+    final startHour = existingOverride?.startHour ?? startLocal.hour;
+    final capMinutes =
+        (picked.hour * 60 + picked.minute) - (startHour * 60);
+    if (capMinutes < 60) return;
+    final capHours = (capMinutes / 60).round().clamp(1, 14);
+
+    // Actual driving hours for this day from the current plan.
+    final actualDrivingHours =
+        day.endAt.toLocal().difference(day.startAt.toLocal()).inMinutes / 60.0;
+    final currentDayKm = (day.toKm - day.fromKm).round();
+
+    // Offer to extend km only when the new cap meaningfully exceeds actual.
+    int? newKmCap = existingOverride?.dailyKmCap;
+    bool shouldReplan = true;
+    if (capHours > actualDrivingHours + 0.49 && mounted) {
+      final result = await _offerKmExtension(
+        day: day,
+        actualDrivingHours: actualDrivingHours,
+        newCapHours: capHours,
+        currentDayKm: currentDayKm,
+      );
+      if (result == null) {
+        // "Mantener" = user cancelled — keep everything as-is, no replan.
+        shouldReplan = false;
+      } else {
+        // "Ajustar" = apply new cap + extended km.
+        newKmCap = result;
+      }
+    }
+    if (!mounted || !shouldReplan) return;
+
+    setState(() {
+      _dayOverrides[dayIndex] = DayOverride(
+        dayIndex: dayIndex,
+        startHour: startHour,
+        dailyDrivingCapHours: capHours,
+        dailyKmCap: newKmCap,
+      );
+      _markDirty();
+      _activeReplanDayIndex = dayIndex;
+    });
+    await _replanWithOverrides();
+  }
+
+  /// Asks the user whether to extend the day's km when they add more
+  /// driving time. Returns:
+  ///   - the **extended** km target (int) if they confirm "Ajustar"
+  ///   - the **current** km (int) if they press "Mantener" (locks the day)
+  ///   - null if the dialog was not shown (extraKm < threshold)
+  Future<int?> _offerKmExtension({
+    required DayPlan day,
+    required double actualDrivingHours,
+    required int newCapHours,
+    required int currentDayKm,
+  }) async {
+    final extraHours = newCapHours - actualDrivingHours;
+    if (extraHours <= 0.5) return null;
+
+    // Average speed from the current day (km / actual drive time).
+    final avgKmH = actualDrivingHours > 0
+        ? currentDayKm / actualDrivingHours
+        : 90.0;
+    final extraKm = (extraHours * avgKmH).round();
+    if (extraKm < 30 || !mounted) return null;
+
+    // Round the proposed target to the nearest 10 km for clean display.
+    final proposedKm = ((currentDayKm + extraKm) / 10).round() * 10;
+
+    final l = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.dayExtendKmTitle),
+        content: Text(l.dayExtendKmBody(extraKm.toString())),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.dayExtendKmKeep),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.dayExtendKmAdjust(extraKm.toString())),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) return proposedKm; // "Ajustar" — extend km
+    return null; // "Mantener" or dismissed — cancel the whole change
+    return null; // dismissed — caller handles
+  }
+
   Future<void> _openDayEditSheet(int dayIndex) async {
     final l = AppLocalizations.of(context);
     final current = _dayOverrides[dayIndex];
-    final defaultStart =
+    // Use the actual planned start time for this specific day so the
+    // slider reflects reality (Day 1 may start at 15:00, not 10:00).
+    final dayPlan = _response.days.where((d) => d.dayIndex == dayIndex).firstOrNull;
+    final defaultStart = dayPlan?.startAt.toLocal().hour ??
         widget.request.tripProfile?.preferredDrivingStartHour ??
-            widget.request.tripProfile?.wakeHour ??
-            8;
+        widget.request.tripProfile?.wakeHour ??
+        8;
     final defaultCap =
         widget.request.tripProfile?.dailyDrivingCapHours ?? 8;
+    final defaultKmCap =
+        widget.request.tripProfile?.dailyKmCap;
     int startHour = current?.startHour ?? defaultStart;
     int capHours = current?.dailyDrivingCapHours ?? defaultCap;
+    final capHoursBefore = capHours; // snapshot before user edits
+    int? kmCap = current?.dailyKmCap ?? defaultKmCap;
     final saved = await showModalBottomSheet<DayOverride?>(
       context: context,
       showDragHandle: true,
@@ -662,13 +860,97 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   onChanged: (v) => setSheetState(() => startHour = v),
                 ),
                 const SizedBox(height: Tokens.space16),
-                Text(l.dayEditMaxDriving(capHours),
-                    style: Theme.of(ctx).textTheme.labelMedium),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Builder(builder: (ctx2) {
+                        final endHour = startHour + capHours;
+                        final hh = (endHour % 24)
+                            .toString()
+                            .padLeft(2, '0');
+                        return Text(
+                          l.dayEditEndHour('$hh:00'),
+                          style: Theme.of(ctx2).textTheme.labelMedium,
+                        );
+                      }),
+                    ),
+                    TextButton.icon(
+                      icon: const Icon(Icons.access_time, size: 16),
+                      label: Text(l.dayEditPickTime),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      onPressed: () async {
+                        final endHour = (startHour + capHours) % 24;
+                        final picked = await showTimePicker(
+                          context: ctx,
+                          initialTime:
+                              TimeOfDay(hour: endHour, minute: 0),
+                          helpText: l.dayEditEndTimePicker,
+                        );
+                        if (picked == null) return;
+                        final newCap =
+                            ((picked.hour * 60 + picked.minute) -
+                                    (startHour * 60)) ~/
+                                60;
+                        if (newCap >= 1 && newCap <= 14) {
+                          setSheetState(() => capHours = newCap);
+                        }
+                      },
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 4),
                 DurationWheelPicker(
                   value: capHours,
-                  min: 4, max: 14,
+                  min: 2, max: 14,
                   onChanged: (v) => setSheetState(() => capHours = v),
+                ),
+                const SizedBox(height: Tokens.space16),
+                // km cap for this specific day.
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        kmCap == null
+                            ? 'Máx. km: sin límite'
+                            : 'Máx. km: $kmCap km',
+                        style: Theme.of(ctx).textTheme.labelMedium,
+                      ),
+                    ),
+                    if (kmCap != null)
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 16),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () =>
+                            setSheetState(() => kmCap = null),
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: (kmCap ?? 0) >= 100
+                          ? () => setSheetState(
+                              () => kmCap = ((kmCap ?? 0) - 50)
+                                  .clamp(50, 800))
+                          : null,
+                    ),
+                    SizedBox(
+                      width: 50,
+                      child: Text(
+                        kmCap == null ? '∞' : '$kmCap',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(ctx).textTheme.titleMedium,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: (kmCap ?? 0) < 800
+                          ? () => setSheetState(() =>
+                              kmCap = ((kmCap ?? 0) + 50).clamp(50, 800))
+                          : null,
+                    ),
+                  ],
                 ),
                 const SizedBox(height: Tokens.space16),
                 Row(
@@ -694,6 +976,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           dayIndex: dayIndex,
                           startHour: startHour,
                           dailyDrivingCapHours: capHours,
+                          dailyKmCap: kmCap,
                         ),
                       ),
                       child: Text(l.dayEditSave),
@@ -707,21 +990,45 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
     );
     if (saved == null) return;
+    // Offer km extension when the cap increased and the reset flag is not set.
+    final isReset = saved.startHour == null &&
+        saved.dailyDrivingCapHours == null &&
+        saved.dailyKmCap == null;
+    DayOverride effective = saved;
+    if (!isReset && mounted) {
+      final newCap = saved.dailyDrivingCapHours ?? defaultCap;
+      final day = _response.days
+          .where((d) => d.dayIndex == dayIndex)
+          .firstOrNull;
+      if (day != null && newCap > capHoursBefore) {
+        final actualDrivingHours =
+            day.endAt.toLocal().difference(day.startAt.toLocal()).inMinutes /
+                60.0;
+        final currentDayKm = (day.toKm - day.fromKm).round();
+        final kmResult = await _offerKmExtension(
+          day: day,
+          actualDrivingHours: actualDrivingHours,
+          newCapHours: newCap,
+          currentDayKm: currentDayKm,
+        );
+        if (kmResult != null) {
+          effective = DayOverride(
+            dayIndex: saved.dayIndex,
+            startHour: saved.startHour,
+            dailyDrivingCapHours: saved.dailyDrivingCapHours,
+            dailyKmCap: kmResult,
+          );
+        }
+      }
+    }
+    if (!mounted) return;
     setState(() {
-      // Reset returns a DayOverride with both fields null — treat as
-      // "remove this day's override, go back to profile defaults".
-      final isReset =
-          saved.startHour == null && saved.dailyDrivingCapHours == null;
       if (isReset) {
         _dayOverrides.remove(dayIndex);
       } else {
-        _dayOverrides[dayIndex] = saved;
+        _dayOverrides[dayIndex] = effective;
       }
       _markDirty();
-      // Tag the day whose override just changed so DayPlanSection can
-      // anchor the "Recalculando..." pill to that specific card. The
-      // pill fades away when `_replanWithOverrides` flips
-      // `_replanning` back to false below.
       _activeReplanDayIndex = dayIndex;
     });
     await _replanWithOverrides();
@@ -736,10 +1043,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   Future<void> _replanWithOverrides() async {
     final api = ref.read(apiClientWithPremiumProvider);
     setState(() => _replanning = true);
+    final l = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).languageCode;
+    final tips = [
+      l.planLoadingRecalculating,
+      l.replanTipRoute,
+      l.replanTipFuel,
+      l.replanTipStops,
+    ];
+    int tipIdx = 0;
+    final tipTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
+      tipIdx = (tipIdx + 1) % tips.length;
+      await TripForegroundService.instance
+          .updateNotification(title: l.planLoadingTitle, body: tips[tipIdx]);
+    });
     try {
       final replan = widget.request
           .withDayOverrides(_dayOverrides.values.toList());
-      final response = await api.planTrip(replan);
+      final response = await runInForeground(
+        context,
+        tips[0],
+        () => api.planTrip(replan, locale: locale),
+      );
+      tipTimer.cancel();
       if (!mounted) return;
       setState(() {
         _response = response;
@@ -747,12 +1073,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _activeReplanDayIndex = null;
       });
     } catch (_) {
+      tipTimer.cancel();
       if (!mounted) return;
       setState(() {
         _replanning = false;
         _activeReplanDayIndex = null;
       });
-      // TODO(dev): surface a discreet snackbar on replan failure.
     }
   }
 
@@ -783,17 +1109,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     if (_saved && !_dirty) _dirty = true;
   }
 
-  /// Running € saved by the driver's chosen fuel stops. Currently
-  /// wired only for the backend-suggested "cheapest in the refuel
-  /// window" station: when the user taps "+ Add" on it, the
-  /// pre-computed `suggestedSavingsEur` gets rolled into the trip
-  /// savings receipt. Manual fuel-tile picks (non-suggested
-  /// stations) don't carry a per-station savings figure yet — the
-  /// backend only stamps `savings_vs_country_median_eur_per_l`,
-  /// which is €/L not € total. Returns 0 when nothing eligible is
-  /// added.
+  /// Running € saved by the driver's chosen fuel stops.
+  ///
+  /// For the backend-suggested station the pre-computed
+  /// `suggestedSavingsEur` is used directly. For day-card picks a
+  /// cascade simulation is run: stations are sorted by km-from-origin,
+  /// the tank is drained at [consumptionLPer100km] between each stop,
+  /// and only the litres actually needed at each station are multiplied
+  /// by the per-L rate. Two stations 1 km apart correctly contribute
+  /// ~0.07 L × savPerL for the second one, not another full-tank fill.
   double get _addedFuelSavingsEur {
     var total = 0.0;
+
     // Backend-suggested station: exact pre-computed savings.
     final rw = _response.refuelWindow;
     final s = rw?.suggestedStation;
@@ -807,16 +1134,116 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         total += rw!.suggestedSavingsEur!;
       }
     }
-    // Day-card fuel picks: sum the €-savings computed at pick
-    // time (savings_vs_country_median_eur_per_l × tank_liters).
-    // Guarded by _addedStops.containsKey so a stale entry
-    // doesn't leak in after a manual clear.
-    for (final entry in _pickedFuelSavings.entries) {
-      if (_addedStops.containsKey(entry.key)) {
-        total += entry.value;
+
+    // Day-card fuel picks: cascade simulation.
+    //
+    // For each station (sorted by km from origin) compute how many
+    // litres the driver actually buys — i.e. the fuel consumed since
+    // the previous refuel point (or trip start).  Two stations 1 km
+    // apart consume ~0.07 L between them, so the second station adds
+    // only ~0.07 × savPerL to the total, not a full-tank fill.
+    final tankL = widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0;
+    final consL100 =
+        widget.request.tripProfile?.vehicle.consumptionLPer100km ?? 7.0;
+    final initPct =
+        widget.request.tripProfile?.currentTankLevelPercent ?? 100;
+
+    final pickedKeys =
+        _pickedFuelSavings.keys.where(_addedStops.containsKey).toSet();
+    if (pickedKeys.isNotEmpty) {
+      final pickedStations = _response.fuelPrices.where((p) {
+        if (p.coordinate == null) return false;
+        final k = 'fuel:${p.stationName}:'
+            '${p.coordinate!.lat.toStringAsFixed(4)},'
+            '${p.coordinate!.lon.toStringAsFixed(4)}';
+        return pickedKeys.contains(k);
+      }).toList()
+        ..sort(
+          (a, b) => a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm),
+        );
+
+      double liters = tankL * initPct / 100.0;
+      double prevKm = 0.0;
+      for (final p in pickedStations) {
+        final consumed =
+            (p.distanceFromOriginKm - prevKm) * consL100 / 100.0;
+        liters = (liters - consumed).clamp(0.0, tankL);
+        final toFill = (tankL - liters).clamp(0.0, tankL);
+        final savPerL =
+            (p.savingsVsCountryMedianEurPerL ?? 0.0).clamp(0.0, 10.0);
+        if (savPerL > 0 && toFill >= 0.5) {
+          total += toFill * savPerL;
+        }
+        liters = tankL; // topped up to full at this station
+        prevKm = p.distanceFromOriginKm;
       }
     }
+
+    // Subtract the fuel cost of detours to added hotels and restaurants.
+    // detourKm is the round-trip off-corridor distance for each POI.
+    // We use the average price from known fuel stations, falling back to 1.65 €/L.
+    // consL100 already defined above from tripProfile.
+    final pricesWithData = _response.fuelPrices
+        .where((p) => p.priceAvailable)
+        .map((p) => p.priceEurPerL)
+        .toList();
+    final avgPricePerL = pricesWithData.isEmpty
+        ? 1.65
+        : pricesWithData.reduce((a, b) => a + b) / pricesWithData.length;
+
+    for (final h in _response.hotels) {
+      final key = 'hotel:${h.name}:'
+          '${h.coordinate.lat.toStringAsFixed(4)},'
+          '${h.coordinate.lon.toStringAsFixed(4)}';
+      if (_addedStops.containsKey(key) && h.detourKm > 0) {
+        total -= h.detourKm * consL100 / 100.0 * avgPricePerL;
+      }
+    }
+    for (final r in _response.restaurants) {
+      final key = 'restaurant:${r.name}:'
+          '${r.coordinate.lat.toStringAsFixed(4)},'
+          '${r.coordinate.lon.toStringAsFixed(4)}';
+      if (_addedStops.containsKey(key) && r.detourKm > 0) {
+        total -= r.detourKm * consL100 / 100.0 * avgPricePerL;
+      }
+    }
+
     return total;
+  }
+
+  /// Total litres actually filled across all picked fuel stations
+  /// (cascade simulation — same logic as [_addedFuelSavingsEur]).
+  /// Used to show "N L" in the savings breakdown instead of the full
+  /// tank size.
+  double get _addedFuelLitersFilled {
+    final tankL = widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0;
+    final consL100 =
+        widget.request.tripProfile?.vehicle.consumptionLPer100km ?? 7.0;
+    final initPct =
+        widget.request.tripProfile?.currentTankLevelPercent ?? 100;
+    final pickedKeys =
+        _pickedFuelSavings.keys.where(_addedStops.containsKey).toSet();
+    if (pickedKeys.isEmpty) return 0.0;
+    final pickedStations = _response.fuelPrices.where((p) {
+      if (p.coordinate == null) return false;
+      final k = 'fuel:${p.stationName}:'
+          '${p.coordinate!.lat.toStringAsFixed(4)},'
+          '${p.coordinate!.lon.toStringAsFixed(4)}';
+      return pickedKeys.contains(k);
+    }).toList()
+      ..sort((a, b) => a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+    double liters = tankL * initPct / 100.0;
+    double prevKm = 0.0;
+    double totalFilled = 0.0;
+    for (final p in pickedStations) {
+      final consumed = (p.distanceFromOriginKm - prevKm) * consL100 / 100.0;
+      liters = (liters - consumed).clamp(0.0, tankL);
+      final toFill = (tankL - liters).clamp(0.0, tankL);
+      totalFilled += toFill;
+      liters = tankL;
+      prevKm = p.distanceFromOriginKm;
+    }
+    return totalFilled;
   }
 
   /// Sum of picked-hotel prices across nights. Passed to the cost
@@ -836,11 +1263,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   static List<FuelPrice> _topCheapestFuel(
     List<FuelPrice> prices, int limit,
   ) {
+    // Show stations with real prices first (sorted cheapest), then
+    // location-only stations (no price feed for that country) after.
     final withPrice = prices
         .where((f) => f.priceAvailable && f.coordinate != null)
         .toList()
       ..sort((a, b) => a.priceEurPerL.compareTo(b.priceEurPerL));
-    return withPrice.take(limit).toList(growable: false);
+    if (withPrice.isNotEmpty) {
+      return withPrice.take(limit).toList(growable: false);
+    }
+    // No real-price stations — fall back to location-only entries so
+    // the driver can still see where stations are on the map.
+    final withCoord = prices
+        .where((f) => f.coordinate != null)
+        .toList()
+      ..sort((a, b) => a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+    return withCoord.take(limit).toList(growable: false);
   }
 
   void _clearAddedStops() {
@@ -848,6 +1286,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     setState(() {
       _addedStops.clear();
       _addedRouteWaypoints.clear();
+    });
+  }
+
+  void _removeByKey(String key) {
+    setState(() {
+      _addedStops.remove(key);
+      _addedRouteWaypoints.remove(key);
+      _pickedFuelSavings.remove(key);
+      _markDirty();
     });
   }
 
@@ -910,7 +1357,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         (entry.$1, kmOf(entry.$1)),
     ];
 
-    // Merge & cap at 9. Priority: detours > trip stops > added POIs.
+    // 4. Picked overnight hotels — so Maps routes the driver to the
+    //    hotel for each night, not just past it.
+    final List<(LatLon, double)> hotelPts = <(LatLon, double)>[
+      for (final hotel in _selectedNightHotels.values)
+        (hotel.coordinate, kmOf(hotel.coordinate)),
+    ];
+
+    // Merge & cap at 9. Priority: detours > trip stops > hotels > added POIs.
     const int maxWaypoints = 9;
     final List<(LatLon, double)> merged = <(LatLon, double)>[];
     void addBucket(List<(LatLon, double)> bucket) {
@@ -922,6 +1376,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 
     addBucket(detourPts);
     addBucket(tripPts);
+    addBucket(hotelPts);
     addBucket(addedPts);
 
     // Final sort — Google respects insertion order, so km ascending
@@ -941,7 +1396,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     debugPrint(
       '[TripExport] waypoints=${waypoints.length}/${maxWaypoints} '
       'detours=${detourPts.length} tripStops=${tripPts.length} '
-      'added=${addedPts.length} '
+      'hotels=${hotelPts.length} added=${addedPts.length} '
       'avoidTolls=$avoidTollsFlag noneSkipped=$noneSkipped '
       'allSkipped=$allSkipped',
     );
@@ -977,13 +1432,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   }
 
   /// Days list rendered as the "origin → destination · hh:mm" strip
-  /// below the hero cost card. For multi-day trips backend already
-  /// ships one entry per day and we forward it. For SINGLE-day
-  /// trips backend omits the field entirely — we synthesize a
-  /// one-entry list from the request + route so the strip still
-  /// renders. Tester 2026-09-28: "on trips of one day or less,
-  /// the info below cost doesn't show".
-  List<DayPlan> get _daysForHeaderStrip {
+  /// below the hero cost card AND source for the full `DayPlanSection`
+  /// (rest-stop / meal / hotel chips). For multi-day trips backend
+  /// already ships one entry per day and we forward it. For
+  /// SINGLE-day trips backend omits `days` entirely — we synthesize
+  /// one entry from the request + route + top-level stops so the
+  /// whole insights section still renders. Tester 2026-09-28: "on
+  /// trips of one day or less, the info below cost doesn't show".
+  /// Tester 2026-09-29 follow-up: chips also missing on Toledo→Murcia
+  /// (4h), because the synthesized day had empty meal/rest stops.
+  /// Fix: pull meal stops from `optimizations.mealStops` and rest
+  /// stops from top-level `restStops`, both of which backend does
+  /// populate for single-day trips.
+  List<DayPlan> get _daysForRender {
     if (_response.days.isNotEmpty) return _response.days;
     final route = _response.route;
     if (route.distanceKm <= 0) return const [];
@@ -998,8 +1459,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         endAt: arrival,
         fromKm: 0.0,
         toKm: route.distanceKm,
-        mealStops: const [],
-        restStops: const [],
+        mealStops: _response.optimizations?.mealStops ?? const [],
+        restStops: _response.restStops,
         fromName: widget.origin.displayName,
         toName: widget.destination.displayName,
       ),
@@ -1012,14 +1473,56 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// user has picked a specific model; falls back to null (which
   /// silences that particular pulse) if the catalogue hasn't loaded
   /// or the profile is on the default generic vehicle.
-  String? _enrichmentVehicleLabel() {
-    final modelId = widget.request.tripProfile?.vehicleModelId;
-    if (modelId == null) return null;
-    final cat = ref.read(vehicleCatalogueProvider).valueOrNull;
-    if (cat == null) return null;
-    for (final v in cat) {
-      if (v.id == modelId) return '${v.make} ${v.model}';
+  /// Tank/battery capacity for the loading pulse message.
+  /// For EVs the same tankLiters field stores battery kWh by convention.
+  double? _enrichmentTankL() {
+    final profile = widget.request.tripProfile;
+    final modelId = profile?.vehicleModelId;
+    if (modelId != null && modelId != kCustomVehicleId) {
+      final cat = ref.read(vehicleCatalogueProvider).valueOrNull;
+      if (cat != null) {
+        for (final v in cat) {
+          if (v.id == modelId) return v.tankLiters;
+        }
+      }
     }
+    return profile?.vehicle.fuelTankL;
+  }
+
+  bool _enrichmentIsEv() {
+    return widget.request.tripProfile?.vehicle.fuelType == FuelType.electric;
+  }
+
+  String? _enrichmentVehicleLabel() {
+    final profile = widget.request.tripProfile;
+    final modelId = profile?.vehicleModelId;
+
+    // Custom vehicle from garage: show the garage entry's name.
+    if (modelId == kCustomVehicleId) {
+      final garage = ref.read(garageProvider);
+      final selectedId = ref.read(selectedGarageVehicleIdProvider);
+      final gv = garage.where((v) => v.id == selectedId).firstOrNull;
+      if (gv != null) return gv.name;
+    }
+
+    // Catalogue model: show make + model from the catalogue.
+    if (modelId != null) {
+      final cat = ref.read(vehicleCatalogueProvider).valueOrNull;
+      if (cat != null) {
+        for (final v in cat) {
+          if (v.id == modelId) return '${v.make} ${v.model}';
+        }
+      }
+    }
+
+    // Fallback: garage vehicle name if one is selected.
+    final selectedId = ref.read(selectedGarageVehicleIdProvider);
+    if (selectedId != null) {
+      final garage = ref.read(garageProvider);
+      final gv = garage.where((v) => v.id == selectedId).firstOrNull;
+      if (gv != null) return gv.name;
+    }
+
     return null;
   }
 
@@ -1029,6 +1532,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// tiles stay adjacent in the legend list.
   List<AddedStop> _resolveAddedStops() {
     if (_addedStops.isEmpty) return const [];
+    final ccy = ref.read(currencyCodeProvider);
     final out = <AddedStop>[];
     for (final h in _response.hotels) {
       final key = 'hotel:${h.name}:'
@@ -1039,9 +1543,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           kind: AddedStopKind.hotel,
           label: h.name,
           subtitle: '+${h.detourMinutes.toStringAsFixed(0)} min · '
-              '${h.priceEurPerNight.toStringAsFixed(0)} €',
+              '${formatMoney(h.priceEurPerNight, ccy)}',
           coordinate: h.coordinate,
           distanceFromOriginKm: _kmFromOrigin(h.coordinate),
+          onRemove: () => _removeByKey(key),
         ));
       }
     }
@@ -1054,9 +1559,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           kind: AddedStopKind.restaurant,
           label: r.name,
           subtitle: '+${r.detourMinutes.toStringAsFixed(0)} min · '
-              '${r.priceEurPerMeal.toStringAsFixed(0)} €',
+              '${formatMoney(r.priceEurPerMeal, ccy)}',
           coordinate: r.coordinate,
           distanceFromOriginKm: _kmFromOrigin(r.coordinate),
+          onRemove: () => _removeByKey(key),
         ));
       }
     }
@@ -1071,11 +1577,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           kind: AddedStopKind.fuel,
           label: p.stationName,
           subtitle: p.priceAvailable
-              ? '${p.priceEurPerL.toStringAsFixed(3)} ${p.unitLabel} · '
+              ? '${formatMoney(p.priceEurPerL, ccy, decimals: 3)}/L · '
                   '${p.distanceFromOriginKm.toStringAsFixed(0)} km'
               : '${p.distanceFromOriginKm.toStringAsFixed(0)} km',
           coordinate: p.coordinate!,
           distanceFromOriginKm: p.distanceFromOriginKm,
+          onRemove: () => _removeByKey(key),
         ));
       }
     }
@@ -1090,6 +1597,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           subtitle: m.cityHint ?? '${m.distanceFromOriginKm.toStringAsFixed(0)} km',
           coordinate: m.coordinate!,
           distanceFromOriginKm: _kmFromOrigin(m.coordinate!),
+          onRemove: () => _removeByKey(key),
         ));
       }
     }
@@ -1103,6 +1611,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           subtitle: sleep.cityHint ?? '${sleep.distanceFromOriginKm.toStringAsFixed(0)} km',
           coordinate: sleep.coordinate!,
           distanceFromOriginKm: _kmFromOrigin(sleep.coordinate!),
+          onRemove: () => _removeByKey(key),
         ));
       }
     }
@@ -1158,7 +1667,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       timeWindowTopN: topN,
       tripProfile: widget.request.tripProfile,
     );
-    final response = await api.planTrip(tuned);
+    final response = await api.planTrip(tuned, locale: Localizations.localeOf(context).languageCode);
     return response.timeWindows;
   }
 
@@ -1277,11 +1786,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     ));
     try {
       final api = ref.read(apiClientWithPremiumProvider);
+      // Preserve any per-trip waypoints the user has ADDED to the
+      // route from this screen (restaurants / fuel picks / sleep
+      // stops). They live in `_addedStops` and would be lost on a
+      // pushReplacement to a fresh ResultScreen otherwise. Tester
+      // report 2026-09-30: "at replan-with-new-time, added stops
+      // vanish". Fix: fold them into the new request's waypoints
+      // whenever we build the request ourselves (overrideRequest
+      // path already handles this — see `_replanWithAddedStops`).
+      final mergedWaypoints = <TripWaypoint>[
+        ...widget.request.waypoints,
+        ..._buildAddedWaypoints(),
+      ];
       final replan = overrideRequest ?? TripPlanRequest(
         origin: widget.request.origin,
         destination: widget.request.destination,
         desiredDepartureAt: newDeparture,
-        waypoints: widget.request.waypoints,
+        waypoints: mergedWaypoints,
         countries: widget.request.countries,
         hotelMaxDetourMinutes: widget.request.hotelMaxDetourMinutes,
         hotelPriceBand: widget.request.hotelPriceBand,
@@ -1318,13 +1839,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       final fresh = await runInForeground(
         context,
         replanLabel,
-        () => api.planTrip(replan),
+        () => api.planTrip(replan, locale: Localizations.localeOf(context).languageCode),
       );
       if (!mounted) return;
       if (dialogOpen) {
         navigator.pop();
         dialogOpen = false;
       }
+      // Snapshot current picks (fuel, restaurants, hotels per night,
+      // per-day overrides) BEFORE the pushReplacement so the new
+      // screen rehydrates instead of starting empty. Waypoints are
+      // already merged into `replan.waypoints` above; this covers
+      // the per-day / per-picks state that ISN'T on the request.
+      final preserved = _currentSelections();
       navigator.pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
@@ -1336,6 +1863,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             currentLegLabel: widget.currentLegLabel,
             otherLeg: widget.otherLeg,
             hotelPrefs: widget.hotelPrefs,
+            initialSelections: preserved,
             // Preserve the claim across follow-up re-plans (e.g. toll
             // toggle after the user has already picked a window) so the
             // savings chip doesn't disappear on unrelated actions.
@@ -1522,12 +2050,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           if (key == k) {
             _addedStops[key] = _fuelStopMinutes;
             _addedRouteWaypoints[key] = (p.coordinate!, p.stationName);
-            final perL = p.savingsVsCountryMedianEurPerL ?? 0.0;
-            if (perL > 0) {
-              final tank =
-                  widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0;
-              _pickedFuelSavings[key] = perL * tank;
-            }
+            // Value unused — cascade recomputes savings on read.
+            _pickedFuelSavings[key] = 0.0;
             break;
           }
         }
@@ -1601,6 +2125,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         if (o.startHour != null) 'start_hour': o.startHour,
         if (o.dailyDrivingCapHours != null)
           'cap_hours': o.dailyDrivingCapHours,
+        if (o.dailyKmCap != null) 'daily_km_cap': o.dailyKmCap,
       };
     });
     final map = <String, dynamic>{
@@ -1615,6 +2140,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   Future<void> _save() async {
     final recommended = _recommended;
     if (recommended == null || _saving) return;
+
+    // Free tier: limit to 1 saved trip. Gate before the write so the
+    // user sees the paywall instead of a silent failure.
+    final isEssential = ref.read(isEssentialOrAboveProvider);
+    if (!isEssential) {
+      final storage = ref.read(tripStorageProvider);
+      final existing = await storage.list();
+      // Allow re-saving the same trip (already saved → just dirty).
+      final sameId =
+          '${widget.origin.displayName}|${widget.destination.displayName}|'
+          '${widget.desiredDepartureAt.toIso8601String()}';
+      final alreadySaved = existing.any((t) => t.id == sameId);
+      if (!alreadySaved && existing.isNotEmpty) {
+        if (!mounted) return;
+        await BillingService.showPurchaseSheet(context, ref);
+        return;
+      }
+    }
+
     setState(() => _saving = true);
     try {
       final storage = ref.read(tripStorageProvider);
@@ -1652,6 +2196,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         reminderMinutesBefore: reminderMinutes,
         notificationId: notificationId,
         userSelections: _currentSelections(),
+        tripProfile: widget.request.tripProfile,
       );
       await storage.save(trip);
       // Schedule fuel arbitrage notification if the trip crosses
@@ -1720,6 +2265,123 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   ///      it to the OS share dialog (Instagram / WhatsApp / X).
   ///   3. Compartir enlace → sends a text summary with the deep-
   ///      link (WhatsApp / SMS / email).
+  Future<void> _showSharePlanSheet(BuildContext ctx) async {
+    final l = AppLocalizations.of(ctx)!;
+    final api = ref.read(apiClientWithPremiumProvider);
+
+    String? shareUrl;
+    String? error;
+    bool loading = true;
+
+    await showModalBottomSheet<void>(
+      context: ctx,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (innerCtx, setState) {
+            if (loading) {
+              WidgetsBinding.instance.addPostFrameCallback((_) async {
+                try {
+                  final result = await api.shareTrip(
+                    plan: _response,
+                    request: widget.request,
+                  );
+                  if (innerCtx.mounted) {
+                    setState(() {
+                      shareUrl = result.url;
+                      loading = false;
+                    });
+                  }
+                } catch (e) {
+                  if (innerCtx.mounted) {
+                    setState(() {
+                      error = e.toString();
+                      loading = false;
+                    });
+                  }
+                }
+              });
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      l.sharePlanTitle,
+                      style: Theme.of(innerCtx).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 16),
+                    if (loading)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 60),
+                        child: CircularProgressIndicator(),
+                      )
+                    else if (error != null)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 40),
+                        child: Text(
+                          error!,
+                          style: TextStyle(color: Theme.of(innerCtx).colorScheme.error),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    else ...[
+                      QrImageView(
+                        data: shareUrl!,
+                        version: QrVersions.auto,
+                        size: 250.0,
+                        backgroundColor: Colors.white,
+                      ),
+                      const SizedBox(height: 12),
+                      SelectableText(
+                        shareUrl!,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(innerCtx).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(Icons.copy),
+                              label: Text(l.sharePlanCopy),
+                              onPressed: () async {
+                                await Clipboard.setData(
+                                    ClipboardData(text: shareUrl!));
+                                if (innerCtx.mounted) {
+                                  ScaffoldMessenger.of(innerCtx).showSnackBar(
+                                    SnackBar(content: Text(l.sharePlanCopied)),
+                                  );
+                                }
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              icon: const Icon(Icons.share),
+                              label: Text(l.shareToSocial),
+                              onPressed: () => Share.share(shareUrl!),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _openShareMenu(AppLocalizations l) async {
     final choice = await showModalBottomSheet<String>(
       context: context,
@@ -1746,11 +2408,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               subtitle: Text(l.shareLinkOptionSub),
               onTap: () => Navigator.of(context).pop('link'),
             ),
+            ListTile(
+              leading: const Icon(Icons.share),
+              title: Text(l.shareToSocial),
+              subtitle: const Text('Instagram, X, WhatsApp…'),
+              onTap: () => Navigator.of(context).pop('social'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code),
+              title: Text(l.sharePlanTitle),
+              subtitle: Text(l.sharePlanSubtitle),
+              onTap: () => Navigator.of(context).pop('plan_share'),
+            ),
           ],
         ),
       ),
     );
     if (!mounted || choice == null) return;
+    if (choice == 'plan_share') {
+      await _showSharePlanSheet(context);
+      return;
+    }
     if (choice == 'maps') {
       _openExportSheet();
     } else if (choice == 'image') {
@@ -1761,6 +2439,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         route: _response.route,
         savedEur: _response.savings.moneySavedEurVsTolls,
         savedMinutes: _response.savings.timeSavedMinutesVsDesired,
+      );
+    } else if (choice == 'social') {
+      await TripShareService.shareTrip(
+        context: context,
+        originName: _shortName(widget.origin),
+        destinationName: _shortName(widget.destination),
+        response: _response,
+        departureAt: widget.desiredDepartureAt,
       );
     } else {
       await shareTrip(
@@ -1799,6 +2485,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final t = Theme.of(context).textTheme;
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     // User-selected display currency. Backend prices are EUR;
     // `formatMoney` converts and appends the right symbol.
     final ccy = ref.watch(currencyCodeProvider);
@@ -1823,8 +2510,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       origin: widget.request.origin,
       destination: widget.request.destination,
       route: route,
-      alternativeGeometry:
-          _response.tollAlternative?.geometry ?? const [],
+      alternativeGeometry: () {
+            // When specific toll sections are being skipped, show the
+            // per-skip detour geometries on the map instead of (or in
+            // addition to) the whole-route toll-free alternative.
+            final activeDetours = <LatLon>[];
+            for (var i = 0; i < _response.partialTollSkips.length; i++) {
+              if (!_tollSkipEnabled.contains(i)) {
+                activeDetours.addAll(
+                    _response.partialTollSkips[i].detourGeometry);
+              }
+            }
+            if (activeDetours.isNotEmpty) return activeDetours;
+            return _response.tollAlternative?.geometry ?? const [];
+          }(),
       hotels: _filteredHotels,
       restaurants: _response.restaurants,
       tollSkips: _response.partialTollSkips,
@@ -1833,30 +2532,45 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       mode: _mapMode,
       onModeChange: (m) => setState(() => _mapMode = m),
     );
-    final Widget heroOriginDestRow = Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Tokens.space4),
+    final Widget heroOriginDestRow = Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0D111A) : scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        border: const Border(
+          left: BorderSide(color: Color(0xFFF59E0B), width: 2),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(
+        horizontal: Tokens.space12, vertical: Tokens.space8,
+      ),
       child: Row(
         children: [
-          Icon(Icons.trip_origin, size: 14, color: Colors.green.shade700),
+          Icon(Icons.trip_origin, size: 14, color: Colors.green.shade400),
           const SizedBox(width: 6),
           Expanded(
             child: Text(
               widget.origin.displayName,
-              style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              style: t.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : scheme.onSurface,
+              ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 8),
             child: Icon(Icons.arrow_forward, size: 14,
-                color: scheme.onSurfaceVariant),
+                color: Color(0xFFF59E0B)),
           ),
-          Icon(Icons.location_on, size: 14, color: Colors.red.shade700),
+          Icon(Icons.location_on, size: 14, color: Colors.red.shade400),
           const SizedBox(width: 4),
           Expanded(
             child: Text(
               widget.destination.displayName,
-              style: t.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+              style: t.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white : scheme.onSurface,
+              ),
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
             ),
@@ -1873,65 +2587,193 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             // image/link) which confused testers. Both surfaces
             // now open the same 3-option sheet.
             tooltip: l.resultShareTooltip,
-            icon: const Icon(Icons.ios_share, size: 18),
+            icon: const Icon(Icons.ios_share, size: 18,
+                color: Colors.white70),
             onPressed: () => _openShareMenu(l),
           ),
         ],
       ),
     );
-    final Widget heroCompanionButton = SizedBox(
-      width: double.infinity,
-      child: FilledButton.tonalIcon(
-        icon: const Icon(Icons.assistant_navigation, size: 20),
-        label: Text(l.resultStartCompanion),
-        onPressed: _startCompanion,
-      ),
-    );
-    final Widget heroStatsCard = InkWell(
-      onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
-      borderRadius: BorderRadius.circular(Tokens.radiusLg),
-      child: SoftCard(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Tokens.space20, vertical: Tokens.space20,
+    // Companion button: three states based on proximity to origin
+    final isNear = _nearOrigin == true;
+    final companionLabel = isNear
+        ? l.resultStartCompanionNow
+        : l.resultStartCompanion;
+    final companionIcon = isNear
+        ? Icons.directions_car_filled
+        : Icons.assistant_navigation;
+    final companionColor = isNear
+        ? const Color(0xFF34D399)  // green when near
+        : const Color(0xFFF59E0B); // amber otherwise
+    final companionGradient = isNear
+        ? const [Color(0xFF064E3B), Color(0xFF065F46)]
+        : const [Color(0xFF1E3A5F), Color(0xFF0F2744)];
+
+    final Widget heroCompanionButton = Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: companionGradient),
+              borderRadius: BorderRadius.circular(Tokens.radiusMd),
+              border: Border.all(
+                color: companionColor.withValues(alpha: 0.4),
+                width: isNear ? 1.5 : 1,
+              ),
+            ),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.transparent,
+                foregroundColor: Colors.white,
+                shadowColor: Colors.transparent,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Tokens.space20, vertical: Tokens.space12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Tokens.radiusMd),
+                ),
+              ),
+              icon: Icon(companionIcon, size: 20, color: companionColor),
+              label: Text(companionLabel),
+              onPressed: _startCompanion,
+            ),
+          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        if (!isNear && _nearOrigin == false)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              l.resultCompanionFarFromOrigin,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.onSurfaceVariant),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        if (_dirty) ...[
+          const SizedBox(height: Tokens.space8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              icon: Icon(Icons.refresh, size: 18,
+                  color: scheme.primary),
+              label: Text(l.resultReplanWithChanges),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: scheme.primary,
+                side: BorderSide(color: scheme.primary.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: Tokens.space16, vertical: Tokens.space8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Tokens.radiusMd)),
+              ),
+              onPressed: _replanning ? null : _replanWithOverrides,
+            ),
+          ),
+        ],
+      ],
+    );
+    final Widget heroStatsCard = ClipRRect(
+      borderRadius: BorderRadius.circular(Tokens.radiusLg),
+      child: InkWell(
+        onTap: _addedStops.isNotEmpty ? _openAddedStopsMap : null,
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: isDark
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0A1628), Color(0xFF131E2E)],
+                  )
+                : null,
+            color: isDark ? null : scheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(Tokens.radiusLg),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFFFFFFFF).withValues(alpha: 0.08)
+                  : scheme.outlineVariant,
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space20, vertical: Tokens.space20,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Builder(builder: (context) {
                   final fmt = ref.watch(unitFormatterProvider);
-                  return StatTile(
+                  return _HeroStatTile(
                     label: l.resultStatDistance,
                     value: fmt.distance(route.distanceKm),
                   );
                 }),
-                StatTile(
+                _HeroStatTile(
                   label: l.resultStatFreeFlow,
                   value: _hhmm(
                     route.freeFlowMinutes + _addedMinutesTotal,
                   ),
                 ),
-                StatTile(
+                _HeroStatTile(
                   label: l.resultStatTolls,
-                  value: formatMoney(
-                    (route.tollCostEur - _tollSkipSavingsEur)
-                        .clamp(0.0, route.tollCostEur),
-                    ccy,
-                  ),
+                  value: formatMoney(_heroTollTotal(route, ccy), ccy),
+                  onTap: _response.partialTollSkips.isNotEmpty
+                      ? () => showTollSummarySheet(
+                            context: context,
+                            partialTollSkips: _response.partialTollSkips,
+                            days: _response.days,
+                            tollSkipEnabled: _tollSkipEnabled,
+                            onToggle: (i, pay) => setState(() {
+                              if (pay) {
+                                _tollSkipEnabled.add(i);
+                              } else {
+                                _tollSkipEnabled.remove(i);
+                              }
+                            }),
+                            routeTollCostEur: route.tollCostEur,
+                            vignetteCostEur: route.vignetteCostEur,
+                            vignetteCountries: route.vignetteCountries,
+                            ccy: ccy,
+                            tripDepartureAt: _response.days.isNotEmpty
+                                ? _response.days.first.startAt
+                                : null,
+                            routeFreeFlowMinutes: route.freeFlowMinutes,
+                            routeTotalKm: route.distanceKm,
+                            hourlyReport: _response.hourlyTollReport,
+                          )
+                      : null,
                 ),
               ],
             ),
-            if (_addedStops.isNotEmpty) ...[
+            const SizedBox(height: Tokens.space12),
+            TripQualityScore(response: _response),
+            if (_response.days.isNotEmpty) ...[
+              const SizedBox(height: Tokens.space8),
+              TripDayBars(
+                days: _response.days,
+                dayOverrides: _dayOverrides,
+                profileCapHours:
+                    widget.request.tripProfile?.dailyDrivingCapHours ?? 8,
+              ),
+            ],
+            if (_addedStops.isNotEmpty ||
+                _selectedNightHotels.isNotEmpty ||
+                _response.partialTollSkips.length >
+                    _tollSkipEnabled.length) ...[
               const SizedBox(height: Tokens.space12),
               _AddedStopsChip(
                 count: _addedStops.length,
                 minutes: _addedMinutesTotal,
+                tollSkipsCount: _response.partialTollSkips.length -
+                    _tollSkipEnabled.length,
+                hotelCount: _selectedNightHotels.length,
                 onClear: _clearAddedStops,
                 onTap: _openAddedStopsMap,
               ),
-              if (_addedRouteWaypoints.isNotEmpty) ...[
+              if (_addedRouteWaypoints.isNotEmpty ||
+                  _selectedNightHotels.isNotEmpty) ...[
                 const SizedBox(height: Tokens.space8),
                 SizedBox(
                   width: double.infinity,
@@ -1945,25 +2787,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ),
               ],
             ],
-            // Origin → destination · hh:mm strip. Backend only emits
-            // `days` for multi-day trips; on a single-day trip we
-            // synthesize one from origin + destination + departure so
-            // the driver still sees the same hero row instead of a
-            // gap under the cost card.
-            if (_daysForHeaderStrip.isNotEmpty) ...[
-              const SizedBox(height: Tokens.space12),
-              Divider(color: scheme.outlineVariant),
-              const SizedBox(height: Tokens.space4),
-              for (final d in _daysForHeaderStrip)
-                _DayStripRow(day: d),
-            ],
+            // Day strip removed — days are shown in TripDayBars above.
             // Trip-cost breakdown moved into the hero card 2026-09-27
             // — was a standalone SoftCard below; consolidating keeps
             // distance / tolls / fuel / meals / hotels / savings all
             // in one glanceable place at the top.
             if (_response.optimizations != null) ...[
               const SizedBox(height: Tokens.space16),
-              Divider(color: scheme.outlineVariant),
+              Container(
+                height: 1,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [
+                    Colors.transparent,
+                    Color(0x0FFFFFFF),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
               const SizedBox(height: Tokens.space12),
               _TotalTripCostCard(
                 fuelCostEur: _response.optimizations!.fuelCost.totalCostEur,
@@ -1997,15 +2837,43 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     .length,
                 assumedTankLiters:
                     widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0,
+                addedFuelKeys: {
+                  for (final k in _pickedFuelSavings.keys)
+                    if (_addedStops.containsKey(k)) k,
+                },
+                onToggleFuel: _toggleDayFuel,
+                isDefaultVehicle:
+                    widget.request.tripProfile?.vehicleModelId == null,
+                onOpenProfile: _openProfileFromResult,
                 windowsKey: _timeWindowKey,
+                fuelPrices: _response.fuelPrices,
+                totalKm: _response.route.distanceKm,
+                consumptionL100:
+                    widget.request.tripProfile?.vehicle.consumptionLPer100km ?? 7.0,
+                initTankPct:
+                    widget.request.tripProfile?.currentTankLevelPercent ?? 100,
+                isEv: widget.request.tripProfile?.vehicle.fuelType ==
+                    FuelType.electric,
+                fuelSavingsEur: _addedFuelSavingsEur,
+                fuelLitersFilled: _addedFuelLitersFilled,
+
               ),
             ],
           ],
         ),
       ),
+    ),
     );
 
     final sections = <Widget>[
+      // Profile-change banner — shown when the user edited their profile
+      // or settings after this plan was generated, and at least one
+      // plan-relevant field changed.
+      if (_profileChangedSincePlan)
+        _ProfileChangedBanner(
+          onReplan: _replanWithUpdatedProfile,
+          onDismiss: () => setState(() => _profileChangedSincePlan = false),
+        ),
       if (_response.adverseEvents.isNotEmpty)
         _AdverseEventsBanner(
           events: _response.adverseEvents,
@@ -2114,7 +2982,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         profileIsCamper: widget.request.tripProfile?.vehicle.type ==
             VehicleType.camper,
         vehicleLabel: _enrichmentVehicleLabel(),
-        vehicleTankL: widget.request.tripProfile?.vehicle.fuelTankL,
+        vehicleTankL: _enrichmentTankL(),
+        vehicleIsEv: _enrichmentIsEv(),
       ),
       // Thin indeterminate progress bar shown ONLY while a per-day
       // override re-plan is in flight. Anchored right above the day
@@ -2125,14 +2994,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // `activeReplanDayIndex` prop) for double-affordance.
       if (_replanning) ...[
         const SizedBox(height: Tokens.space8),
-        const LinearProgressIndicator(minHeight: 2.0),
+        _ReplanningBanner(),
+        const SizedBox(height: Tokens.space4),
       ],
-      if (_response.days.isNotEmpty) ...[
+      if (_daysForRender.isNotEmpty) ...[
         const SizedBox(height: Tokens.space16),
         Container(
           key: _tollKey,
           child: DayPlanSection(
-            days: _response.days,
+            days: _daysForRender,
             timeFormat: DateFormat.Hm(),
             hotels: _filteredHotels,
             destination: widget.request.destination,
@@ -2165,6 +3035,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             hotelsRequested:
                 (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
             onEditDay: _replanning ? null : _openDayEditSheet,
+            onEditDayEndTime: _replanning ? null : _openEndTimePicker,
             overriddenDayIndices: _dayOverrides.keys.toSet(),
             activeReplanDayIndex: _activeReplanDayIndex,
             fuelPrices: _response.fuelPrices,
@@ -2176,14 +3047,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 .where((k) => k.startsWith('restaurant:'))
                 .toSet(),
             onToggleRestaurantPick: _toggleMealRestaurant,
+            addedRestStopKeys: _addedStops.keys
+                .where((k) => k.startsWith('reststop:'))
+                .toSet(),
+            onToggleRestStop: _toggleRestStop,
+            vehicleTankL:
+                widget.request.tripProfile?.vehicle.fuelTankL ?? 50.0,
+            vehicleConsumptionL100km:
+                widget.request.tripProfile?.vehicle.consumptionLPer100km ?? 7.0,
+            initialTankPct:
+                widget.request.tripProfile?.currentTankLevelPercent ?? 100,
+            restaurants: _response.restaurants,
             profileHasKids: widget.request.tripProfile?.hasKids ?? false,
             profileHasPets: widget.request.tripProfile?.hasPets ?? false,
             profileIsCamper: widget.request.tripProfile?.vehicle.type
                     == VehicleType.camper,
             consistencyIssues: _response.consistencyIssues,
+            // Hotel arbitrage is a Premium intelligence feature.
+            hotelArbitrage: ref.watch(isPremiumProvider)
+                ? _response.hotelArbitrage
+                : null,
+            isEv: widget.request.tripProfile?.vehicle.fuelType
+                == FuelType.electric,
           ),
         ),
       ],
+      // Per-day intermediate activities CTAs — compact row links for
+      // each overnight stop city when the user opted in.
+      if (!_enrichPending && widget.request.includeActivities)
+        for (final day in _daysForRender.where((d) => d.sleepCoord != null))
+          if (day.toName != null) ...[
+            const SizedBox(height: Tokens.space12),
+            _IntermediateActivitiesCta(cityName: day.toName!),
+          ],
       const SizedBox(height: Tokens.space24),
       if (_response.consistencyIssues.isNotEmpty)
         ConsistencyBanner(issues: _response.consistencyIssues),
@@ -2229,19 +3125,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // fallback can land far from the 22:00 target. Filtering
       // client-side avoids showing garbage until the backend
       // logic is tightened.
-      if (_response.optimizations?.sleepStop != null &&
-          _isPlausibleSleepTime(
-            _response.optimizations!.sleepStop!.at,
-          )) ...[
-        _MultiDaySleepPreview(
-          sleepStop: _response.optimizations!.sleepStop!,
-          hotels: _response.hotels,
-          origin: widget.request.origin,
-          destination: widget.request.destination,
-          routeGeometry: _response.route.geometry,
-        ),
-        const SizedBox(height: Tokens.space16),
-      ],
+      // _MultiDaySleepPreview ("DORMIRÁS EN ...") removed 2026-09-30 —
+      // was redundant with the per-day _SleepHotelsBlock in the day
+      // card AND the standalone _SleepStopRow inside _OptimizationsSection;
+      // three surfaces for the same sleep pick confused testers when the
+      // three suggestions weren't the same (backend suggestion vs. user
+      // pick vs. corridor list). Single source of truth now: the day
+      // card's hotel picker.
       // Departure-window picker moved into the trip-cost card (2026-09-28)
       // as the "Ways to save more" dropdown, so all time+money savings
       // info lives in a single glanceable card. The `_timeWindowKey`
@@ -2295,6 +3185,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         const SizedBox(height: Tokens.space24),
         _DestinationParkingSection(
           parkings: _response.parkings,
+        ),
+      ],
+      // GetYourGuide activities CTA — shown once enrichment is done and
+      // only when the user opted in via the plan form toggle.
+      if (!_enrichPending && widget.request.includeActivities) ...[
+        const SizedBox(height: Tokens.space24),
+        _ActivitiesCta.fromCity(
+          cityName: _ActivitiesCta.extractCityName(widget.destination.displayName),
         ),
       ],
       // Flat hotel list removed (2026-08-26 tester feedback):
@@ -2379,6 +3277,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 );
               },
             ),
+          IconButton(
+            tooltip: 'Perfil y vehículo',
+            icon: const Icon(Icons.person_outline),
+            onPressed: _openProfileFromResult,
+          ),
+          IconButton(
+            tooltip: 'Ajustes',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: _openSettingsFromResult,
+          ),
           IconButton(
             tooltip: l.resultShareTooltip,
             icon: const Icon(Icons.ios_share),
@@ -2489,9 +3397,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ],
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-      // Premium gate temporarily removed so we can dogfood Companion
-      // during closed testing. Re-add `ref.watch(premiumProvider) ? … : null`
-      // before public release / Play beta.
+      // Premium gate lives inside _startCompanion — tapping always shows
+      // the FAB so non-premium users see the upsell entry point.
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.assistant_navigation),
         label: Text(l.resultStartCompanion),
@@ -2549,10 +3456,69 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return base.moveY(begin: 4, end: 0, curve: Tokens.curveOut);
   }
 
+  /// True when any plan-relevant profile field differs from the profile
+  /// used when this trip was planned. Used to decide whether to surface
+  /// the "Recalcular con tus nuevos ajustes" banner.
+  bool _isPlanRelevantChange(TripProfile? planProfile, TripProfile? current) {
+    if (planProfile == null || current == null) return false;
+    return planProfile.dailyDrivingCapHours != current.dailyDrivingCapHours ||
+        planProfile.dailyKmCap != current.dailyKmCap ||
+        planProfile.vehicle.consumptionLPer100km !=
+            current.vehicle.consumptionLPer100km ||
+        planProfile.vehicle.fuelTankL != current.vehicle.fuelTankL ||
+        planProfile.vehicleModelId != current.vehicleModelId ||
+        planProfile.bedtimeHour != current.bedtimeHour ||
+        planProfile.wakeHour != current.wakeHour ||
+        planProfile.overnightPolicy != current.overnightPolicy;
+  }
+
+  Future<void> _openProfileFromResult() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => ProfileScreen(mode: ProfileScreenMode.persist),
+      ),
+    );
+    if (!mounted) return;
+    final current = ref.read(tripProfileProvider);
+    if (_isPlanRelevantChange(widget.request.tripProfile, current)) {
+      setState(() => _profileChangedSincePlan = true);
+    }
+  }
+
+  Future<void> _openSettingsFromResult() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const SettingsScreen(),
+      ),
+    );
+    if (!mounted) return;
+    final current = ref.read(tripProfileProvider);
+    if (_isPlanRelevantChange(widget.request.tripProfile, current)) {
+      setState(() => _profileChangedSincePlan = true);
+    }
+  }
+
+  Future<void> _replanWithUpdatedProfile() async {
+    final current = ref.read(tripProfileProvider);
+    if (current == null) return;
+    setState(() => _profileChangedSincePlan = false);
+    // Replan with the updated profile at the same departure time.
+    await _replan(
+      newDeparture: widget.desiredDepartureAt ?? widget.request.desiredDepartureAt,
+      avoidMotorways: widget.request.avoidMotorways,
+      overrideRequest: widget.request.copyWith(tripProfile: current),
+      loadingTitle: 'Recalculando con tus nuevos ajustes…',
+    );
+  }
+
   /// Extracted so the same behaviour can be triggered from both the
   /// bottom FAB and any inline CTA (e.g. the button next to the
   /// origin→destination row).
   Future<void> _startCompanion() async {
+    // Companion gate: open during closed beta (everyone is premium),
+    // restore before open beta with isPremiumProvider check.
+    // TODO(pre-open-beta): restore gate.
+
     // 1) Pre-flight sheet — driver reviews meal times, detour tolerance,
     // budget bands before we push the drive screen. Cancelling the sheet
     // aborts the flow.
@@ -2568,6 +3534,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         }..removeWhere((b) => false),
       ),
       initialProfile: widget.request.tripProfile,
+      vehicleLabel: _enrichmentVehicleLabel(),
     );
     if (!mounted || overrides == null) return;
 
@@ -2609,12 +3576,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   static String _hhmm(double minutes) => durationCompact(minutes);
 
   List<Widget> _separated(List<Widget> tiles) {
-    final scheme = Theme.of(context).colorScheme;
     final out = <Widget>[];
     for (var i = 0; i < tiles.length; i++) {
       out.add(tiles[i]);
       if (i < tiles.length - 1) {
-        out.add(Divider(height: 1, color: scheme.outlineVariant));
+        out.add(Container(
+          height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: Tokens.space16),
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(colors: [
+              Colors.transparent,
+              Color(0x10FFFFFF),
+              Colors.transparent,
+            ]),
+          ),
+        ));
       }
     }
     return [
@@ -2634,6 +3610,62 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
 // ---------------------------------------------------------------------------
 // Sub-widgets
 // ---------------------------------------------------------------------------
+
+/// Stat tile used exclusively inside the dark-gradient hero stats card.
+/// Renders the label as a white/70 eyebrow and the value with an
+/// amber → white ShaderMask so numbers pop on the dark background.
+class _HeroStatTile extends StatelessWidget {
+  const _HeroStatTile({required this.label, required this.value, this.onTap});
+  final String label;
+  final String value;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final tile = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: t.labelSmall?.copyWith(
+            color: Colors.white70,
+            letterSpacing: 1.4,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Color(0xFFF59E0B), Colors.white],
+              ).createShader(bounds),
+              child: Text(
+                value,
+                style: t.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ),
+            if (onTap != null) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right,
+                  color: Colors.white54, size: 16),
+            ],
+          ],
+        ),
+      ],
+    );
+    if (onTap == null) return tile;
+    return GestureDetector(
+      onTap: onTap,
+      child: tile,
+    );
+  }
+}
 
 /// Small one-shot "plan ready" pill shown at the top of the
 /// ResultScreen for ~2s after landing. Kept intentionally tiny —
@@ -3124,6 +4156,18 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.windowsKey,
     this.pickedFuelStationsCount = 0,
     this.assumedTankLiters = 50.0,
+    this.addedFuelKeys = const {},
+    this.onToggleFuel,
+    this.isDefaultVehicle = true,
+    this.onOpenProfile,
+    // Props for the fuel savings expandable section
+    this.fuelPrices = const [],
+    this.totalKm = 0.0,
+    this.consumptionL100 = 7.0,
+    this.initTankPct = 100,
+    this.isEv = false,
+    this.fuelSavingsEur = 0.0,
+    this.fuelLitersFilled = 0.0,
   });
 
   /// How many cheap fuel stations the driver added via the day
@@ -3166,6 +4210,32 @@ class _TotalTripCostCard extends ConsumerWidget {
   /// still target the time-windows affordance after it moved from
   /// its old standalone card into the cost card.
   final Key? windowsKey;
+
+  // Fuel savings expandable section props
+  final List<FuelPrice> fuelPrices;
+  final double totalKm;
+  final double consumptionL100;
+  final int initTankPct;
+  final bool isEv;
+  final double fuelSavingsEur;
+  /// Actual litres filled across all picked stations (cascade-computed).
+  /// Used in the savings breakdown instead of the full tank capacity.
+  final double fuelLitersFilled;
+
+  /// Keys of fuel stations already added by the driver (from
+  /// `_pickedFuelSavings`). Used to render each chip as selected.
+  final Set<String> addedFuelKeys;
+
+  /// Fired when the driver taps a chip — adds or removes the station
+  /// from the planned route and updates the savings figure.
+  final ValueChanged<FuelPrice>? onToggleFuel;
+
+  /// True when the user hasn't configured a specific vehicle model — the fuel
+  /// estimate uses generic defaults and a nudge should be shown.
+  final bool isDefaultVehicle;
+
+  /// Called when the user taps the "Configura tu vehículo" nudge.
+  final VoidCallback? onOpenProfile;
 
   /// When non-null, overrides the algorithmic sleep_stop hotel
   /// cost with the user-picked hotels sum. Set when the user has
@@ -3232,6 +4302,11 @@ class _TotalTripCostCard extends ConsumerWidget {
           const SizedBox(height: Tokens.space16),
           _CostRow(label: l.tripCostFuel,
               value: fuelCostEur, scheme: scheme, t: t),
+          if (isDefaultVehicle && fuelCostEur > 0)
+            _ProfileNudge(
+              message: 'Cálculo con consumo genérico. Configura tu vehículo para mayor precisión.',
+              onTap: onOpenProfile,
+            ),
           _CostRow(
             label: l.tripCostTolls,
             value: effectiveTolls,
@@ -3302,109 +4377,247 @@ class _TotalTripCostCard extends ConsumerWidget {
               final savedTime = savings!.timeSavedIsClaimed ? rawSavedTime : 0.0;
               final savedEur = tollSkipSavingsEur;
               final fuelSavedEur = savings!.fuelSavingsEur ?? 0.0;
-              if (savedTime <= 0 && savedEur <= 0 && fuelSavedEur <= 0) {
+              final totalMonetarySavings = savedEur + fuelSavedEur;
+              if (totalMonetarySavings <= 0 && savedTime <= 0) {
                 return const SizedBox.shrink();
               }
+              // Baseline = what the trip would have cost without any
+              // optimisation applied. Used to compute the % discount
+              // badge in the AHORRO TOTAL row.
+              final baselineCost = total + totalMonetarySavings;
+              final savingsPct = baselineCost > 0
+                  ? (totalMonetarySavings / baselineCost * 100).round()
+                  : 0;
+              const accentGreen = Color(0xFF4ADE80);
+              const deepGreen = Color(0xFF16A34A);
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: Tokens.space8),
-                  Divider(color: scheme.outlineVariant),
-                  const SizedBox(height: Tokens.space8),
-                  Row(
-                    children: [
-                      Icon(Icons.savings_outlined, size: 14,
-                          color: scheme.tertiary),
-                      const SizedBox(width: 6),
-                      Text(
-                        l.resultTripSavings.toUpperCase(),
-                        style: t.labelSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: scheme.tertiary,
-                          letterSpacing: 1.4,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: Tokens.space8),
-                  Row(
-                    children: [
-                      if (savedTime > 0) ...[
-                        Icon(Icons.access_time, size: 13,
-                            color: Colors.green.shade700),
-                        const SizedBox(width: 4),
-                        Text(
-                          durationCompact(savedTime),
-                          style: t.bodySmall?.copyWith(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      if (savedEur > 0) ...[
-                        Icon(Icons.savings_outlined, size: 13,
-                            color: Colors.green.shade700),
-                        const SizedBox(width: 4),
-                        Text(
-                          formatMoney(savedEur, ccy),
-                          style: t.bodySmall?.copyWith(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      if (fuelSavedEur > 0) ...[
-                        Icon(Icons.local_gas_station, size: 13,
-                            color: Colors.green.shade700),
-                        const SizedBox(width: 4),
-                        Text(
-                          formatMoney(fuelSavedEur, ccy),
-                          style: t.bodySmall?.copyWith(
-                            color: Colors.green.shade700,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                      ],
-                      // When toll detour adds net time (rawSavedTime < 0),
-                      // show the time cost as a trade-off note so the
-                      // user understands why time isn't shown as a saving.
-                      if (tollSkipPenaltyMinutes > 0 && rawSavedTime < 0) ...[
-                        Icon(Icons.timelapse, size: 13,
-                            color: scheme.onSurfaceVariant),
-                        const SizedBox(width: 4),
-                        Text(
-                          '+${durationCompact(tollSkipPenaltyMinutes)}',
-                          style: t.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  // Fuel savings breakdown — how the number was
-                  // computed. Only rendered when there IS a fuel
-                  // saving AND at least one station was picked
-                  // via a day card (not the backend-suggested
-                  // one, which has an exact pre-computed figure).
-                  if (fuelSavedEur > 0 && pickedFuelStationsCount > 0) ...[
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 17),
-                      child: Text(
-                        '⛽ Combustible: '
-                        '$pickedFuelStationsCount '
-                        '${pickedFuelStationsCount == 1 ? "gasolinera" : "gasolineras"} '
-                        '· depósito ${assumedTankLiters.toStringAsFixed(0)} L',
-                        style: t.labelSmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
+                  const SizedBox(height: Tokens.space12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: accentGreen.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: accentGreen.withOpacity(0.30), width: 1),
                     ),
-                  ],
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header: icon + "Ahorros detectados" + animated total
+                        Row(
+                          children: [
+                            const Icon(Icons.savings_outlined,
+                                size: 15, color: deepGreen),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                l.resultSavingsDetected,
+                                style: t.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: deepGreen,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ),
+                            if (totalMonetarySavings > 0)
+                              TweenAnimationBuilder<double>(
+                                tween: Tween(
+                                    begin: 0.0, end: totalMonetarySavings),
+                                duration:
+                                    const Duration(milliseconds: 1200),
+                                curve: Curves.easeOut,
+                                builder: (context, value, _) => Text(
+                                  '-${formatMoney(value, ccy)}',
+                                  style: t.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                    color: deepGreen,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Toll alternative row
+                        if (savedEur > 0) ...[
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(children: [
+                                const Icon(Icons.toll_outlined,
+                                    size: 13, color: deepGreen),
+                                const SizedBox(width: 4),
+                                Text(l.resultTollSaving,
+                                    style: t.bodySmall
+                                        ?.copyWith(color: deepGreen)),
+                              ]),
+                              Text(
+                                '-${formatMoney(savedEur, ccy)}',
+                                style: t.bodySmall?.copyWith(
+                                  color: deepGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Detour penalty note when toll skip adds net time
+                          if (tollSkipPenaltyMinutes > 0 &&
+                              rawSavedTime < 0) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(left: 17),
+                              child: Row(children: [
+                                Icon(Icons.timelapse,
+                                    size: 12,
+                                    color: scheme.onSurfaceVariant),
+                                const SizedBox(width: 3),
+                                Text(
+                                  '+${durationCompact(tollSkipPenaltyMinutes)}',
+                                  style: t.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant),
+                                ),
+                              ]),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                        ],
+                        // Fuel saving row
+                        if (fuelSavedEur > 0) ...[
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(children: [
+                                const Icon(Icons.local_gas_station,
+                                    size: 13, color: deepGreen),
+                                const SizedBox(width: 4),
+                                Text(l.resultFuelSaving,
+                                    style: t.bodySmall
+                                        ?.copyWith(color: deepGreen)),
+                              ]),
+                              Text(
+                                '-${formatMoney(fuelSavedEur, ccy)}',
+                                style: t.bodySmall?.copyWith(
+                                  color: deepGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          // Detail note: station count + litres + % of fuel cost
+                          if (pickedFuelStationsCount > 0) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(left: 17),
+                              child: Text(
+                                () {
+                                  final parts = <String>[
+                                    '$pickedFuelStationsCount '
+                                    '${pickedFuelStationsCount == 1 ? "gasolinera" : "gasolineras"}',
+                                    if (fuelLitersFilled > 0.5)
+                                      '${fuelLitersFilled.toStringAsFixed(0)} L',
+                                    if (fuelCostEur > 0)
+                                      '${(fuelSavedEur / fuelCostEur * 100).round()}% del coste',
+                                  ];
+                                  return parts.join(' · ');
+                                }(),
+                                style: t.labelSmall?.copyWith(
+                                  color: deepGreen.withValues(alpha: 0.65),
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                        ],
+                        // Optimal departure row (only when time savings claimed)
+                        if (savedTime > 0) ...[
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(children: [
+                                const Icon(Icons.access_time,
+                                    size: 13, color: deepGreen),
+                                const SizedBox(width: 4),
+                                Text(l.resultTimeSaving,
+                                    style: t.bodySmall
+                                        ?.copyWith(color: deepGreen)),
+                              ]),
+                              Text(
+                                '~${durationCompact(savedTime)}',
+                                style: t.bodySmall?.copyWith(
+                                  color: deepGreen,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                        ],
+                        // AHORRO TOTAL divider + row (monetary savings only)
+                        if (totalMonetarySavings > 0) ...[
+                          const SizedBox(height: 4),
+                          Divider(
+                              color: accentGreen.withOpacity(0.40),
+                              height: 1),
+                          const SizedBox(height: 8),
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                l.resultTotalSaving,
+                                style: t.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: deepGreen,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                              Row(children: [
+                                TweenAnimationBuilder<double>(
+                                  tween: Tween(
+                                      begin: 0.0,
+                                      end: totalMonetarySavings),
+                                  duration: const Duration(
+                                      milliseconds: 1200),
+                                  curve: Curves.easeOut,
+                                  builder: (context, value, _) => Text(
+                                    '-${formatMoney(value, ccy)}',
+                                    style: t.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: deepGreen,
+                                    ),
+                                  ),
+                                ),
+                                if (savingsPct > 0) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          deepGreen.withOpacity(0.12),
+                                      borderRadius:
+                                          BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      l.resultSavingPct(
+                                          savingsPct.toString()),
+                                      style: t.labelSmall?.copyWith(
+                                        color: deepGreen,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ]),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
                 ],
               );
             }(),
@@ -3423,6 +4636,21 @@ class _TotalTripCostCard extends ConsumerWidget {
               alreadyClaimed: savings?.timeSavedIsClaimed ?? false,
             ),
           ],
+          // Fuel savings expandable — shows cheapest stations, route
+          // price chart and toggleable optimal stops. Replaces the old
+          // flat chip row; hidden internally when no savings to show.
+          _FuelSavingsSection(
+            fuelPrices: fuelPrices,
+            totalKm: totalKm,
+            tankL: assumedTankLiters,
+            consumptionL100: consumptionL100,
+            initTankPct: initTankPct,
+            addedFuelKeys: addedFuelKeys,
+            onToggleFuel: onToggleFuel ?? (_) {},
+            totalSavingsEur: fuelSavingsEur,
+            fuelCostEur: fuelCostEur,
+            isEv: isEv,
+          ),
           // Per-person / per-day breakdown — only when the numbers
           // actually add information (multi-traveller or multi-day
           // trips). One line, subtle color, so it doesn't fight
@@ -3456,6 +4684,822 @@ class _TotalTripCostCard extends ConsumerWidget {
 /// The top pick (backend-flagged `recommended`) is highlighted with a
 /// primary-container background and a star icon so the "best" option
 /// reads at a glance.
+/// Row of fuel-savings chips rendered below the departure windows in
+/// the trip cost card. Each chip shows a below-median fuel station with
+/// the estimated savings vs the route's average price, so the driver
+/// knows where to fill up — not just what the trip will cost.
+class _FuelSavingsChips extends StatelessWidget {
+  const _FuelSavingsChips({
+    required this.stations,
+    required this.addedKeys,
+    required this.onToggle,
+  });
+
+  final List<FuelPrice> stations;
+  final Set<String> addedKeys;
+  final ValueChanged<FuelPrice> onToggle;
+
+  static String keyFor(FuelPrice p) {
+    if (p.coordinate == null) return '';
+    return 'fuel:${p.stationName}'
+        ':${p.coordinate!.lat.toStringAsFixed(4)},'
+        '${p.coordinate!.lon.toStringAsFixed(4)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    // Only show chips for stations with coordinates (needed for toggle).
+    final withCoords = stations.where((s) => s.coordinate != null).toList();
+    if (withCoords.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.local_gas_station_outlined,
+                size: 14, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Text(
+              l.resultFuelSavingsTitle,
+              style: t.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                letterSpacing: 0.8,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final s in withCoords)
+              _FuelSavingChip(
+                station: s,
+                isAdded: addedKeys.contains(keyFor(s)),
+                onToggle: () => onToggle(s),
+              ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _FuelSavingChip extends StatelessWidget {
+  const _FuelSavingChip({
+    required this.station,
+    required this.isAdded,
+    required this.onToggle,
+  });
+
+  final FuelPrice station;
+  final bool isAdded;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final savings = station.savingsVsCountryMedianEurPerL ?? 0.0;
+    final kmStr = station.distanceFromOriginKm.toStringAsFixed(0);
+    final savL = savings.toStringAsFixed(2);
+
+    return FilterChip(
+      avatar: Icon(
+        isAdded ? Icons.check_circle_outline : Icons.local_gas_station_outlined,
+        size: 16,
+        color: isAdded ? scheme.primary : scheme.tertiary,
+      ),
+      label: Text(
+        '${station.stationName}  ·  km $kmStr  ·  −$savL€/L',
+        // EUR total removed — accurate savings depend on how much
+        // fuel is bought here, which requires the full cascade
+        // (computed in _addedFuelSavingsEur on ResultScreen).
+        style: t.labelSmall?.copyWith(
+          color: isAdded ? scheme.primary : null,
+        ),
+      ),
+      selected: isAdded,
+      backgroundColor: scheme.tertiaryContainer.withValues(alpha: 0.3),
+      selectedColor: scheme.primaryContainer.withValues(alpha: 0.5),
+      side: BorderSide(
+        color: isAdded
+            ? scheme.primary.withValues(alpha: 0.6)
+            : scheme.tertiary.withValues(alpha: 0.35),
+      ),
+      showCheckmark: false,
+      onSelected: (_) => onToggle(),
+    );
+  }
+}
+
+/// Expandable fuel savings breakdown rendered in the main result scroll,
+/// immediately below the hero stats card. Shows all fuel stations on the
+/// route together with a minimap canvas and per-station toggle chips.
+///
+/// Tapping a station row highlights it and scrolls the list; tapping
+/// the corresponding dot on the minimap selects the same row.
+///
+/// Hidden entirely when no station has a positive savings figure so the
+/// section never clutters trips where the backend had no price data.
+class _FuelSavingsSection extends StatefulWidget {
+  const _FuelSavingsSection({
+    required this.fuelPrices,
+    required this.totalKm,
+    required this.tankL,
+    required this.consumptionL100,
+    required this.initTankPct,
+    required this.addedFuelKeys,
+    required this.onToggleFuel,
+    required this.totalSavingsEur,
+    this.fuelCostEur = 0.0,
+    this.isEv = false,
+  });
+
+  final List<FuelPrice> fuelPrices;
+  final double totalKm;
+  final double tankL;
+  final double consumptionL100;
+  final int initTankPct;
+  final Set<String> addedFuelKeys;
+  final ValueChanged<FuelPrice> onToggleFuel;
+  final double totalSavingsEur;
+  /// Gross fuel cost before savings — used to display the savings % badge.
+  final double fuelCostEur;
+  final bool isEv;
+
+  static String _keyFor(FuelPrice p) {
+    if (p.coordinate == null) return '';
+    return 'fuel:${p.stationName}'
+        ':${p.coordinate!.lat.toStringAsFixed(4)},'
+        '${p.coordinate!.lon.toStringAsFixed(4)}';
+  }
+
+  @override
+  State<_FuelSavingsSection> createState() => _FuelSavingsSectionState();
+}
+
+class _FuelSavingsSectionState extends State<_FuelSavingsSection> {
+  int _selectedStationIndex = -1;
+  final ScrollController _scrollController = ScrollController();
+
+  // Approximate row height used to scroll the list to the selected item.
+  static const double _rowH = 56.0;
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _selectStation(int index) {
+    setState(() => _selectedStationIndex = index);
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        index * _rowH,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Prefer stations with positive savings; fall back to ALL stations
+    // with a coordinate when there's no price data (e.g. Germany/Norway —
+    // HERE gives location but no real €/L). In that case the section acts
+    // as a "stations on route" list rather than a savings list.
+    var cheapStations = widget.fuelPrices
+        .where((p) => (p.savingsVsCountryMedianEurPerL ?? 0) > 0)
+        .toList()
+      ..sort((a, b) =>
+          a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+
+    final priceUnavailable = cheapStations.isEmpty;
+    if (priceUnavailable) {
+      cheapStations = widget.fuelPrices
+          .where((p) => p.coordinate != null)
+          .toList()
+        ..sort((a, b) =>
+            a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+    }
+
+    if (cheapStations.isEmpty) return const SizedBox.shrink();
+
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+
+    final pct = widget.fuelCostEur > 0
+        ? (widget.totalSavingsEur / widget.fuelCostEur * 100).round()
+        : 0;
+
+    return Theme(
+      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+      child: ExpansionTile(
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(top: Tokens.space8),
+        initiallyExpanded: false,
+        leading: Icon(
+          widget.isEv ? Icons.ev_station : Icons.local_gas_station,
+          color: scheme.tertiary,
+          size: 20,
+        ),
+        title: Text(
+          priceUnavailable
+              ? l.resultFuelStationsOnRoute
+              : l.resultFuelSavingsAccordionTitle,
+          style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        trailing: !priceUnavailable && widget.totalSavingsEur > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade700.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.green.shade600.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '-€${widget.totalSavingsEur.toStringAsFixed(0)}',
+                      style: t.labelSmall?.copyWith(
+                        color: Colors.green.shade700,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (pct > 0)
+                      Text(
+                        '$pct% del coste',
+                        style: t.labelSmall?.copyWith(
+                          color: Colors.green.shade600,
+                          fontSize: 9,
+                        ),
+                      ),
+                  ],
+                ),
+              )
+            : null,
+        children: [
+          _FuelRouteMinimap(
+            stations: widget.fuelPrices,
+            totalKm: widget.totalKm,
+            tankL: widget.tankL,
+            consumptionL100: widget.consumptionL100,
+            initTankPct: widget.initTankPct,
+            cheapStations: cheapStations,
+            addedKeys: widget.addedFuelKeys,
+            selectedIndex: _selectedStationIndex,
+            onTapStation: _selectStation,
+          ),
+          const SizedBox(height: Tokens.space12),
+          ListView.builder(
+            controller: _scrollController,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: cheapStations.length,
+            itemBuilder: (context, i) {
+              final s = cheapStations[i];
+              final isSelected = _selectedStationIndex == i;
+              return GestureDetector(
+                onTap: () => _selectStation(i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  color: isSelected
+                      ? Colors.amber.withValues(alpha: 0.15)
+                      : Colors.transparent,
+                  child: _FuelSavingsStationRow(
+                    station: s,
+                    tankL: widget.tankL,
+                    isAdded: widget.addedFuelKeys
+                        .contains(_FuelSavingsSection._keyFor(s)),
+                    onToggle: () => widget.onToggleFuel(s),
+                    isEv: widget.isEv,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Thin canvas widget showing station dots colour-coded by savings and a
+/// polyline tracing the tank level across the route distance.
+///
+/// [cheapStations] and [selectedIndex] enable bidirectional selection:
+/// tapping a dot near a station fires [onTapStation] with the index into
+/// [cheapStations], and the painter draws the selected dot larger in amber.
+class _FuelRouteMinimap extends StatelessWidget {
+  const _FuelRouteMinimap({
+    required this.stations,
+    required this.totalKm,
+    required this.tankL,
+    required this.consumptionL100,
+    required this.initTankPct,
+    this.cheapStations = const [],
+    this.addedKeys = const {},
+    this.selectedIndex = -1,
+    this.onTapStation,
+  });
+
+  final List<FuelPrice> stations;
+  final double totalKm;
+  final double tankL;
+  final double consumptionL100;
+  final int initTankPct;
+  final List<FuelPrice> cheapStations;
+  /// Keys of stations the user has added to the route (from addedFuelKeys).
+  final Set<String> addedKeys;
+  final int selectedIndex;
+  final ValueChanged<int>? onTapStation;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+      onTapDown: onTapStation == null || cheapStations.isEmpty || totalKm <= 0
+          ? null
+          : (details) {
+              final RenderBox box =
+                  context.findRenderObject()! as RenderBox;
+              final localX = details.localPosition.dx;
+              final width = box.size.width;
+              int best = 0;
+              double bestDist = double.infinity;
+              for (int i = 0; i < cheapStations.length; i++) {
+                final km =
+                    cheapStations[i].distanceFromOriginKm.clamp(0.0, totalKm);
+                final x = (km / totalKm) * width;
+                final d = (x - localX).abs();
+                if (d < bestDist) {
+                  bestDist = d;
+                  best = i;
+                }
+              }
+              // Only fire when the tap is within 24 logical pixels of a dot.
+              if (bestDist < 24) onTapStation!(best);
+            },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // On long routes (>600 km) the chart needs more horizontal space
+          // to spread dots without overlap. Scale at 0.5 px/km with a min
+          // of screen width and a max of 3× screen width.
+          final screenW = constraints.maxWidth;
+          final chartW = totalKm > 0
+              ? (totalKm * 0.5).clamp(screenW, screenW * 3.0)
+              : screenW;
+          final scrollable = chartW > screenW + 1;
+          Widget chart = SizedBox(
+            height: 88,
+            width: chartW,
+            child: CustomPaint(
+              painter: _FuelRouteMinimapPainter(
+                stations: stations,
+                totalKm: totalKm,
+                tankL: tankL,
+                consumptionL100: consumptionL100,
+                initTankPct: initTankPct,
+                scheme: scheme,
+                cheapStations: cheapStations,
+                addedKeys: addedKeys,
+                selectedIndex: selectedIndex,
+          ),
+            ),
+          );
+          if (scrollable) {
+            chart = SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: chart,
+            );
+          }
+          return SizedBox(height: 88, child: chart);
+        },
+      ),
+    );
+  }
+}
+
+class _FuelRouteMinimapPainter extends CustomPainter {
+  const _FuelRouteMinimapPainter({
+    required this.stations,
+    required this.totalKm,
+    required this.tankL,
+    required this.consumptionL100,
+    required this.initTankPct,
+    required this.scheme,
+    this.cheapStations = const [],
+    this.addedKeys = const {},
+    this.selectedIndex = -1,
+  });
+
+  final List<FuelPrice> stations;
+  final double totalKm;
+  final double tankL;
+  final double consumptionL100;
+  final int initTankPct;
+  final ColorScheme scheme;
+  final List<FuelPrice> cheapStations;
+  /// Keys of stations the user has currently added to the route.
+  final Set<String> addedKeys;
+  final int selectedIndex;
+
+  static const double _routeY = 68.0;
+  static const double _topPad = 8.0;
+  static const double _chartH = _routeY - _topPad; // 60 px arc height
+
+  /// Build a tank-level Path for a given set of refuel stops.
+  /// [refuelStops] = stops where we top up to 90 % (cheap stops).
+  Path _buildTankCurve(
+    Size size,
+    List<FuelPrice> allSorted,
+    Set<String> refuelKeys,
+  ) {
+    double pct = initTankPct.toDouble().clamp(0, 100);
+    final path = Path()..moveTo(0, _routeY - (pct / 100) * _chartH);
+    double prevKm = 0;
+    for (final s in allSorted) {
+      final km = s.distanceFromOriginKm.clamp(0.0, totalKm);
+      final x = (km / totalKm) * size.width;
+      final driven = km - prevKm;
+      pct = (pct - (driven / 100.0) * consumptionL100 / tankL * 100)
+          .clamp(0, 100);
+      path.lineTo(x, _routeY - (pct / 100) * _chartH);
+      final key = _stationKey(s);
+      if (refuelKeys.isEmpty
+          ? (s.savingsVsCountryMedianEurPerL ?? 0) > 0.05
+          : refuelKeys.contains(key)) {
+        pct = 90;
+        path.lineTo(x, _routeY - (pct / 100) * _chartH);
+      }
+      prevKm = km;
+    }
+    final remaining = totalKm - prevKm;
+    pct = (pct - (remaining / 100.0) * consumptionL100 / tankL * 100)
+        .clamp(0, 100);
+    path.lineTo(size.width, _routeY - (pct / 100) * _chartH);
+    return path;
+  }
+
+  static String _stationKey(FuelPrice s) {
+    if (s.coordinate == null) return s.stationName;
+    return 'fuel:${s.stationName}'
+        ':${s.coordinate!.lat.toStringAsFixed(4)},'
+        '${s.coordinate!.lon.toStringAsFixed(4)}';
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (totalKm <= 0 || size.width <= 0) return;
+
+    final sorted = List<FuelPrice>.from(stations)
+      ..sort((a, b) => a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+
+    // --- Layer 1: "optimal" curve (all cheap stops, green) ---
+    // This is always visible and shows what happens if you follow
+    // all the recommended stops.
+    final cheapKeys = {for (final s in cheapStations) _stationKey(s)};
+    final optimalPath = _buildTankCurve(size, sorted, cheapKeys);
+    canvas.drawPath(
+      optimalPath,
+      Paint()
+        ..color = Colors.green.shade500.withValues(alpha: 0.35)
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke,
+    );
+
+    // --- Layer 2: user-selection curve (only addedKeys, primary colour) ---
+    // Only drawn when the user has made at least one selection.
+    // This is the "live" curve that updates as stops are toggled.
+    if (addedKeys.isNotEmpty) {
+      final userPath = _buildTankCurve(size, sorted, addedKeys);
+      canvas.drawPath(
+        userPath,
+        Paint()
+          ..color = scheme.primary.withValues(alpha: 0.75)
+          ..strokeWidth = 2.0
+          ..style = PaintingStyle.stroke,
+      );
+    }
+
+    // --- Route baseline ---
+    canvas.drawLine(
+      const Offset(0, _routeY),
+      Offset(size.width, _routeY),
+      Paint()
+        ..color = scheme.outlineVariant
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke,
+    );
+
+    // Origin + destination endpoint dots
+    canvas.drawCircle(
+      const Offset(4, _routeY),
+      4,
+      Paint()..color = scheme.primary,
+    );
+    canvas.drawCircle(
+      Offset(size.width - 4, _routeY),
+      4,
+      Paint()..color = scheme.primary,
+    );
+
+    // --- Station dots: all stations, colour-coded by savings ---
+    for (final s in sorted) {
+      final km = s.distanceFromOriginKm.clamp(0.0, totalKm);
+      final x = (km / totalKm) * size.width;
+      final savings = s.savingsVsCountryMedianEurPerL ?? 0.0;
+      final key = _stationKey(s);
+      final isAdded = addedKeys.contains(key);
+      final isRecommended = cheapKeys.contains(key);
+
+      final Color dotColor;
+      double radius;
+      if (isAdded) {
+        // User has added this stop: bright orange fill
+        dotColor = Colors.orange.shade700;
+        radius = 6.5;
+      } else if (savings > 0.05) {
+        // Cheap, not yet added: green
+        dotColor = Colors.green.shade600;
+        radius = (5 + (savings * 10).clamp(0, 4)).toDouble();
+      } else if (savings > 0) {
+        dotColor = Colors.amber.shade700;
+        radius = 4;
+      } else {
+        dotColor = scheme.outlineVariant;
+        radius = 3;
+      }
+
+      canvas.drawCircle(
+        Offset(x, _routeY),
+        radius,
+        Paint()..color = dotColor,
+      );
+
+      // Recommended but not yet added: draw a green ring highlight
+      if (isRecommended && !isAdded) {
+        canvas.drawCircle(
+          Offset(x, _routeY),
+          radius + 2.5,
+          Paint()
+            ..color = Colors.green.shade600.withValues(alpha: 0.30)
+            ..strokeWidth = 1.5
+            ..style = PaintingStyle.stroke,
+        );
+      }
+    }
+
+    // --- Selected station highlight (chart-list sync) ---
+    if (selectedIndex >= 0 && selectedIndex < cheapStations.length) {
+      final sel = cheapStations[selectedIndex];
+      final km = sel.distanceFromOriginKm.clamp(0.0, totalKm);
+      final x = (km / totalKm) * size.width;
+      canvas.drawCircle(
+        Offset(x, _routeY),
+        12,
+        Paint()..color = Colors.amber.shade700.withValues(alpha: 0.25),
+      );
+      canvas.drawCircle(
+        Offset(x, _routeY),
+        7,
+        Paint()..color = Colors.amber.shade700,
+      );
+    }
+
+    // --- Legend ---
+    _drawLegend(canvas, size);
+  }
+
+  void _drawLegend(Canvas canvas, Size size) {
+    const textStyle = TextStyle(fontSize: 9, color: Color(0xFF9E9E9E));
+    const greenDot = Color(0xFF43A047);
+    const orangeDot = Color(0xFFE65100);
+
+    void _dot(Canvas c, double x, double y, Color col) {
+      c.drawCircle(Offset(x, y), 4, Paint()..color = col);
+    }
+    void _line(Canvas c, double x, double y, Color col) {
+      c.drawLine(
+        Offset(x, y),
+        Offset(x + 14, y),
+        Paint()..color = col..strokeWidth = 2..style = PaintingStyle.stroke,
+      );
+    }
+
+    final legendY = size.height - 6.0;
+    // Green line = optimal
+    _line(canvas, 0, legendY, greenDot.withValues(alpha: 0.6));
+    _textAt(canvas, '  optimal', 14, legendY - 5, textStyle);
+    // Orange dot = añadido
+    _dot(canvas, size.width * 0.48, legendY, orangeDot);
+    _textAt(canvas, '  añadido', size.width * 0.48 + 4, legendY - 5, textStyle);
+  }
+
+  void _textAt(
+    Canvas canvas, String text, double x, double y, TextStyle style,
+  ) {
+    final tp = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: ui.TextDirection.ltr,
+    )..layout();
+    tp.paint(canvas, Offset(x, y));
+  }
+
+  @override
+  bool shouldRepaint(_FuelRouteMinimapPainter old) =>
+      old.stations != stations ||
+      old.totalKm != totalKm ||
+      old.tankL != tankL ||
+      old.consumptionL100 != consumptionL100 ||
+      old.initTankPct != initTankPct ||
+      old.selectedIndex != selectedIndex ||
+      old.addedKeys != addedKeys;
+}
+
+/// Single row in the expanded fuel savings list: station name, km, price,
+/// savings badge, and a FilterChip to add or remove the stop.
+class _FuelSavingsStationRow extends ConsumerWidget {
+  const _FuelSavingsStationRow({
+    required this.station,
+    required this.tankL,
+    required this.isAdded,
+    required this.onToggle,
+    this.isEv = false,
+  });
+
+  final FuelPrice station;
+  final double tankL;
+  final bool isAdded;
+  final VoidCallback onToggle;
+  final bool isEv;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    final ccy = ref.watch(currencyCodeProvider);
+
+    final savings = station.savingsVsCountryMedianEurPerL ?? 0.0;
+    // Approximate euro saving for a full top-up of tankL litres.
+    final savingsEur = tankL * savings;
+
+    final rawName = station.stationName;
+    final name =
+        rawName.length > 20 ? '${rawName.substring(0, 20)}…' : rawName;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(
+            isEv ? Icons.ev_station : Icons.local_gas_station_outlined,
+            size: 16,
+            color: scheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: t.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  'km ${station.distanceFromOriginKm.toStringAsFixed(0)}'
+                  '  ·  '
+                  // Per-liter price shown in the pump currency (EUR for DE/FR/IT,
+                  // CHF for CH, etc.) — this is what you actually pay at the station.
+                  '${formatMoney(station.priceEurPerL, ccy, decimals: 3)}/L',
+                  style: t.labelSmall
+                      ?.copyWith(color: scheme.onSurfaceVariant),
+                ),
+              ],
+            ),
+          ),
+          if (savingsEur > 0.5) ...[
+            Container(
+              margin: const EdgeInsets.only(right: 8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.green.shade700.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '-${formatMoney(savingsEur, ccy, decimals: 0)}',
+                style: t.labelSmall?.copyWith(
+                  color: Colors.green.shade700,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+          FilterChip(
+            label: Text(
+              isAdded ? l.removeFromRouteTooltip : l.addToRouteLabel,
+              style: t.labelSmall,
+            ),
+            selected: isAdded,
+            onSelected: (_) => onToggle(),
+            showCheckmark: false,
+            backgroundColor:
+                scheme.surfaceContainerHighest,
+            selectedColor:
+                scheme.primaryContainer.withValues(alpha: 0.5),
+            side: BorderSide(
+              color: isAdded
+                  ? scheme.primary.withValues(alpha: 0.6)
+                  : scheme.outline.withValues(alpha: 0.35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Full-width animated banner shown while a re-plan is in flight.
+/// More prominent than the old 2 px LinearProgressIndicator — uses
+/// a gradient shimmer and a pulse message so the driver knows the
+/// app is actively working, not frozen.
+class _ReplanningBanner extends StatelessWidget {
+  const _ReplanningBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: Tokens.space16),
+      padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16, vertical: Tokens.space12),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(Tokens.radiusLg),
+        border: Border.all(
+          color: scheme.primary.withValues(alpha: 0.2),
+        ),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: scheme.primary,
+            ),
+          ),
+          const SizedBox(width: Tokens.space12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  l.planLoadingRecalculating,
+                  style: t.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    minHeight: 3,
+                    backgroundColor:
+                        scheme.primary.withValues(alpha: 0.15),
+                    color: scheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
 class _TripCostWindowsDropdown extends StatelessWidget {
   const _TripCostWindowsDropdown({
     super.key,
@@ -3920,7 +5964,9 @@ class _WindowChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                recommended ? Icons.star_rounded : Icons.schedule_outlined,
+                // star_rounded = "recommended best option" (not "selected")
+                // bolt = faster option; schedule = neutral window
+                recommended ? Icons.bolt_rounded : Icons.schedule_outlined,
                 size: 14,
                 color: recommended ? scheme.primary : fg.withValues(alpha: 0.7),
               ),
@@ -3956,7 +6002,7 @@ class _WindowChip extends StatelessWidget {
 /// route's median price. Tapping "+ Add" pipes into the same
 /// `_addedRouteWaypoints` map as manual fuel-tile picks — the trip
 /// receipt then reflects the fuel savings.
-class _RefuelSuggestionCard extends StatelessWidget {
+class _RefuelSuggestionCard extends ConsumerWidget {
   const _RefuelSuggestionCard({
     required this.station,
     required this.isAdded,
@@ -3975,10 +6021,11 @@ class _RefuelSuggestionCard extends StatelessWidget {
   final double? savingsEur;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
+    final ccy = ref.watch(currencyCodeProvider);
     final hasSavings = (savingsEur ?? 0) > 0.01;
     return Container(
       padding: const EdgeInsets.all(Tokens.space16),
@@ -4011,7 +6058,7 @@ class _RefuelSuggestionCard extends StatelessWidget {
             l.refuelSuggestionBody(
               station.stationName,
               station.distanceFromOriginKm.toStringAsFixed(0),
-              station.priceEurPerL.toStringAsFixed(3),
+              formatMoney(station.priceEurPerL, ccy, decimals: 3),
             ),
             style: t.bodyMedium,
           ),
@@ -4196,7 +6243,7 @@ class _SavingsSummaryCard extends StatelessWidget {
                 Icon(
                   Icons.alt_route,
                   size: 14,
-                  color: scheme.onTertiaryContainer.withOpacity(0.7),
+                  color: scheme.onTertiaryContainer.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 4),
                 Text.rich(
@@ -4403,7 +6450,7 @@ class _RecommendationHero extends StatelessWidget {
                 style: OutlinedButton.styleFrom(
                   foregroundColor: scheme.onPrimaryContainer,
                   side: BorderSide(
-                    color: scheme.onPrimaryContainer.withOpacity(0.5),
+                    color: scheme.onPrimaryContainer.withValues(alpha: 0.5),
                   ),
                 ),
                 onPressed: onSelect,
@@ -4613,40 +6660,10 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
               // uses — a bogus "sleep at 16:00" from either the
               // response or a resumed session gets suppressed at
               // both surfaces.
-              if (opts.sleepStop != null &&
-                  isPlausibleSleepTime(opts.sleepStop!.at)) ...[
-                const SizedBox(height: Tokens.space4),
-                Divider(color: scheme.outlineVariant),
-                const SizedBox(height: Tokens.space16),
-                InkWell(
-                  onTap: opts.sleepStop!.coordinate == null ? null : () {
-                    showPoiDetailSheet(
-                      context,
-                      kind: PoiKind.hotel,
-                      name: opts.sleepStop!.hotelName ?? '—',
-                      subtitle: [
-                        if (opts.sleepStop!.hotelPriceEurPerNight != null)
-                          '${opts.sleepStop!.hotelPriceEurPerNight!.toStringAsFixed(0)} €/night',
-                        if (opts.sleepStop!.cityHint != null)
-                          opts.sleepStop!.cityHint!,
-                      ].join(' · '),
-                      poi: opts.sleepStop!.coordinate!,
-                      origin: origin ?? opts.sleepStop!.coordinate!,
-                      destination: destination ?? opts.sleepStop!.coordinate!,
-                      routeGeometry: routeGeometry,
-                      attributes: const {},
-                      icon: Icons.hotel_outlined,
-                      accent: scheme.tertiary,
-                      isAdded: widget.addedKeys.contains(
-                          _sleepStopKey(opts.sleepStop!)),
-                      onAddToRoute: widget.onAddSleepStop != null
-                          ? () => widget.onAddSleepStop!(opts.sleepStop!)
-                          : null,
-                    );
-                  },
-                  child: _SleepStopRow(stop: opts.sleepStop!),
-                ),
-              ],
+              // _SleepStopRow ("Dormir · 20:12 · <hotel>") removed
+              // 2026-09-30 — same rationale as the _MultiDaySleepPreview
+              // removal above. Per-day _SleepHotelsBlock in the day card
+              // is now the single hotel surface.
               const SizedBox(height: Tokens.space8),
               if (opts.fuelCost.notes.isNotEmpty) ...[
                 const SizedBox(height: Tokens.space12),
@@ -4759,7 +6776,7 @@ class _FuelCostRow extends ConsumerWidget {
               ),
               Text(
                 '${cost.fuelUnits.toStringAsFixed(1)} ${cost.unitLabel} · '
-                '${cost.averageUnitPriceEur.toStringAsFixed(3)} €/${cost.unitLabel}',
+                '${formatMoney(cost.averageUnitPriceEur, ccy, decimals: 3)}/${cost.unitLabel}',
                 style: t.bodySmall,
               ),
             ],
@@ -5165,6 +7182,9 @@ class _PartialTollSkipsCard extends ConsumerWidget {
               enabled: enabledIndices.contains(i),
               onToggle: (v) => onToggle(i, v),
               onTap: () => _openSkipDetail(context, i),
+              origin: origin,
+              destination: destination,
+              routeGeometry: routeGeometry,
             ),
           if (hourlyReport != null) ...[
             const SizedBox(height: Tokens.space16),
@@ -5211,59 +7231,93 @@ class _PartialTollSkipRow extends StatelessWidget {
     required this.enabled,
     required this.onToggle,
     required this.onTap,
+    required this.origin,
+    required this.destination,
+    required this.routeGeometry,
   });
   final PartialTollSkip skip;
   final bool enabled;
   final ValueChanged<bool> onToggle;
   final VoidCallback onTap;
+  final LatLon origin;
+  final LatLon destination;
+  final List<LatLon> routeGeometry;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final accent = enabled ? scheme.tertiary : scheme.onSurfaceVariant;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(Tokens.radiusMd),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            CircleAvatar(
-              radius: 18,
-              backgroundColor: accent.withValues(alpha: 0.12),
-              child: Icon(
-                enabled ? Icons.check : Icons.remove,
-                color: accent, size: 18,
-              ),
-            ),
-            const SizedBox(width: Tokens.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    skip.localizedLabel(AppLocalizations.of(context)),
-                    style: t.titleSmall,
+    final isSkipped = !enabled;
+    final hasDetour = skip.detourGeometry.isNotEmpty;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(Tokens.radiusMd),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: accent.withValues(alpha: 0.12),
+                  child: Icon(
+                    enabled ? Icons.check : Icons.remove,
+                    color: accent, size: 18,
                   ),
-                  Text(
-                    'km ${skip.distanceFromOriginKm.toStringAsFixed(0)} · '
-                    '€${skip.savingsEur.toStringAsFixed(0)} · '
-                    '+${skip.timePenaltyMinutes.toStringAsFixed(0)} min · '
-                    '+${skip.extraDistanceKm.toStringAsFixed(0)} km',
-                    style: t.bodySmall,
+                ),
+                const SizedBox(width: Tokens.space12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        skip.localizedLabel(AppLocalizations.of(context)),
+                        style: t.titleSmall,
+                      ),
+                      Text(
+                        'km ${skip.distanceFromOriginKm.toStringAsFixed(0)} · '
+                        '€${skip.savingsEur.toStringAsFixed(0)} · '
+                        '+${skip.timePenaltyMinutes.toStringAsFixed(0)} min · '
+                        '+${skip.extraDistanceKm.toStringAsFixed(0)} km',
+                        style: t.bodySmall,
+                      ),
+                    ],
                   ),
-                ],
-              ),
+                ),
+                Switch.adaptive(
+                  value: enabled,
+                  onChanged: onToggle,
+                ),
+              ],
             ),
-            Switch.adaptive(
-              value: enabled,
-              onChanged: onToggle,
-            ),
-          ],
+          ),
         ),
-      ),
+        // Mini-map: visible when this toll is being skipped and we
+        // have the detour geometry to show. Zooms to just the
+        // detour area so the driver sees exactly where the detour goes.
+        if (isSkipped && hasDetour) ...[
+          const SizedBox(height: Tokens.space4),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Tokens.radiusMd),
+            child: SizedBox(
+              height: 140,
+              child: RouteMap(
+                origin: origin,
+                destination: destination,
+                geometry: routeGeometry,
+                alternativeGeometry: skip.detourGeometry,
+                tollMarkers: [skip],
+              ),
+            ),
+          ),
+          const SizedBox(height: Tokens.space8),
+        ],
+      ],
     );
   }
 }
@@ -5318,6 +7372,7 @@ class _PartialTollSkipSheet extends StatelessWidget {
                   origin: origin,
                   destination: destination,
                   geometry: routeGeometry,
+                  alternativeGeometry: skip.detourGeometry,
                 ),
               ),
             ),
@@ -5377,6 +7432,104 @@ class _SkipMetricRow extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Tiny inline nudge that links the driver to a relevant settings screen.
+/// Shows only when data is missing/default and would measurably improve the plan.
+class _ProfileNudge extends StatelessWidget {
+  const _ProfileNudge({required this.message, this.onTap});
+  final String message;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.info_outline, size: 12,
+                color: scheme.onSurfaceVariant),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                '$message${onTap != null ? " →" : ""}',
+                style: t.labelSmall?.copyWith(
+                  color: onTap != null
+                      ? scheme.primary
+                      : scheme.onSurfaceVariant,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Banner shown when the user edited their profile/settings after the
+/// current plan was generated and at least one plan-relevant field changed.
+class _ProfileChangedBanner extends StatelessWidget {
+  const _ProfileChangedBanner({
+    required this.onReplan,
+    required this.onDismiss,
+  });
+  final VoidCallback onReplan;
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: Tokens.space8),
+      padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16, vertical: Tokens.space12),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(Tokens.radiusMd),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.tune, size: 18, color: scheme.primary),
+          const SizedBox(width: Tokens.space8),
+          Expanded(
+            child: Text(
+              'Tus ajustes han cambiado. ¿Recalcular con los nuevos valores?',
+              style: t.bodySmall?.copyWith(color: scheme.onPrimaryContainer),
+            ),
+          ),
+          const SizedBox(width: Tokens.space8),
+          TextButton(
+            onPressed: onDismiss,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('No'),
+          ),
+          FilledButton(
+            onPressed: onReplan,
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text('Recalcular'),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -5873,7 +8026,7 @@ class _RestaurantTile extends StatelessWidget {
   }
 }
 
-class _FuelTile extends StatelessWidget {
+class _FuelTile extends ConsumerWidget {
   const _FuelTile({
     required this.price,
     this.onTap,
@@ -5886,11 +8039,12 @@ class _FuelTile extends StatelessWidget {
   final VoidCallback? onToggleAdd;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context);
+    final ccy = ref.watch(currencyCodeProvider);
     final subtitle = price.priceAvailable
-        ? '${price.priceEurPerL.toStringAsFixed(3)} ${price.unitLabel} · '
+        ? '${formatMoney(price.priceEurPerL, ccy, decimals: 3)}/L · '
               '${l.kmFromOrigin(price.distanceFromOriginKm.toStringAsFixed(0))}'
         : '${l.fuelPriceUnavailable} · '
               '${l.kmFromOrigin(price.distanceFromOriginKm.toStringAsFixed(0))}';
@@ -6395,12 +8549,30 @@ class _AddedStopsChip extends StatelessWidget {
     required this.count,
     required this.minutes,
     required this.onClear,
+    this.tollSkipsCount = 0,
+    this.hotelCount = 0,
     this.onTap,
   });
   final int count;
   final double minutes;
+  final int tollSkipsCount;
+  final int hotelCount;
   final VoidCallback onClear;
   final VoidCallback? onTap;
+
+  String _chipLabel(AppLocalizations l) {
+    final parts = <String>[];
+    if (count > 0) parts.add('$count ${count == 1 ? "parada" : "paradas"}');
+    if (tollSkipsCount > 0) {
+      parts.add('$tollSkipsCount ${tollSkipsCount == 1 ? "peaje" : "peajes"} saltado${tollSkipsCount == 1 ? "" : "s"}');
+    }
+    if (hotelCount > 0) {
+      parts.add('$hotelCount ${hotelCount == 1 ? "hotel" : "hoteles"}');
+    }
+    final base = parts.join(' · ');
+    if (minutes > 0) return '$base · +${minutes.toStringAsFixed(0)} min';
+    return base;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -6425,7 +8597,7 @@ class _AddedStopsChip extends StatelessWidget {
           const SizedBox(width: 6),
           Flexible(
             child: Text(
-              l.addedStopsChip(count, minutes.toStringAsFixed(0)),
+              _chipLabel(l),
               style: t.labelMedium?.copyWith(color: scheme.onPrimaryContainer),
             ),
           ),
@@ -6663,6 +8835,7 @@ class _MultiDaySleepPreview extends StatelessWidget {
               priceEurPerNight: sleepStop.hotelPriceEurPerNight ?? 0,
               priceBand: PriceBand.mid,
               detourMinutes: 0,
+              detourKm: 0,
               distanceFromRouteKm: 0,
               coordinate: coord,
               attributes: const {},
@@ -6761,6 +8934,153 @@ class _LegPill extends StatelessWidget {
               fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
             ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GetYourGuide activities CTA
+// ---------------------------------------------------------------------------
+
+class _ActivitiesCta extends StatelessWidget {
+  const _ActivitiesCta.fromCity({required this.cityName});
+
+  final String cityName;
+
+  /// Strip country/region suffix so "Valencia, Spain" becomes "Valencia".
+  static String extractCityName(String displayName) {
+    final comma = displayName.indexOf(',');
+    return comma == -1 ? displayName : displayName.substring(0, comma).trim();
+  }
+
+  Future<void> _launch(BuildContext context) async {
+    final encoded = Uri.encodeComponent(cityName);
+    final url = Uri.parse(
+        'https://www.getyourguide.com/s/?q=$encoded&partner_id=I4D8QQV');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir GetYourGuide')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    final city = cityName;
+
+    return GestureDetector(
+      onTap: () => _launch(context),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0A1628), Color(0xFF1A2744)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFFF59E0B).withAlpha(77), // 0.3 * 255
+          ),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            const Icon(Icons.local_activity, color: Color(0xFFF59E0B), size: 32),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l10n.activitiesCtaTitle(city),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    l10n.activitiesCtaSubtitle,
+                    style: TextStyle(
+                      color: Colors.white.withAlpha(178), // 0.7 * 255
+                      fontSize: 13,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF59E0B).withAlpha(51), // 0.2 * 255
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios,
+                color: Color(0xFFF59E0B),
+                size: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Compact inline activities CTA for intermediate overnight stops
+// ---------------------------------------------------------------------------
+
+class _IntermediateActivitiesCta extends StatelessWidget {
+  const _IntermediateActivitiesCta({required this.cityName});
+
+  final String cityName;
+
+  Future<void> _launch(BuildContext context) async {
+    final city = _ActivitiesCta.extractCityName(cityName);
+    final encoded = Uri.encodeComponent(city);
+    final url = Uri.parse(
+        'https://www.getyourguide.com/s/?q=$encoded&partner_id=I4D8QQV');
+    if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir GetYourGuide')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final city = _ActivitiesCta.extractCityName(cityName);
+    return GestureDetector(
+      onTap: () => _launch(context),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Row(
+          children: [
+            const Icon(Icons.local_activity, color: Color(0xFFF59E0B), size: 16),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'Ver actividades en $city',
+                style: const TextStyle(
+                  color: Color(0xFFF59E0B),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios, color: Color(0xFFF59E0B), size: 12),
+          ],
+        ),
       ),
     );
   }

@@ -1,0 +1,2 @@
+json_key_file("../play-key.json")  # relative to android/, resolves to mobile/play-key.json
+package_name("com.mytravelpal.travel")

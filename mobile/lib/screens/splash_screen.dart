@@ -13,8 +13,10 @@ import '../services/app_tutorial.dart';
 import '../services/biometric_auth.dart';
 import '../services/trip_session_persistence.dart';
 import '../storage/saved_trip.dart';
+import 'app_shell.dart';
 import 'login_screen.dart';
 import 'onboarding_screen.dart';
+import 'onboarding_wizard_screen.dart';
 import 'app_shell.dart';
 import 'result_screen.dart';
 
@@ -96,6 +98,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         } else {
           next = const AppShell();
         }
+      } else if (!prefs.profileWizardShown) {
+        next = const OnboardingWizardScreen();
       } else {
         next = const AppShell();
       }
@@ -126,12 +130,12 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         transitionDuration: Tokens.motionBase,
       ),
     );
-    // After the initial route lands, check for a persisted trip
-    // session and offer to resume. Doing this AFTER the transition
-    // so the user always sees Plan first (their mental home) — the
-    // resume dialog then floats on top instead of hijacking startup.
+    // Resume dialog: only show when landing directly on AppShell
+    // (authenticated + wizard already done). Skip when the wizard
+    // is shown — the dialog would appear over the wizard and
+    // leave a broken state when the wizard navigates away.
     if (!mounted) return;
-    await _maybeOfferResume();
+    if (next is AppShell) await _maybeOfferResume();
   }
 
   /// Headless equivalent of `LoginScreen._signInDemo` + the profile

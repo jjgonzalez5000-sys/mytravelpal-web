@@ -153,6 +153,45 @@ async def trip_narrative(
         for e in plan.adverse_events
     )
 
+    # Pass the ACTUAL planned stops (from optimizations + day plan) so
+    # the LLM knows what has already been scheduled and doesn't suggest
+    # stops the app has already placed.
+    planned_meal_stops = []
+    planned_sleep = None
+    planned_days = []
+    if plan.optimizations:
+        planned_meal_stops = [
+            {
+                "slot": m.slot.value if hasattr(m.slot, "value") else str(m.slot),
+                "at": m.at.isoformat(),
+                "km": m.distance_from_origin_km,
+                "restaurant": m.restaurant_name,
+                "city": m.city_hint,
+                "price_eur": m.restaurant_price_eur_per_meal,
+            }
+            for m in plan.optimizations.meal_stops
+        ]
+        s = plan.optimizations.sleep_stop
+        if s:
+            planned_sleep = {
+                "at": s.at.isoformat(),
+                "km": s.distance_from_origin_km,
+                "hotel": s.hotel_name,
+                "city": s.city_hint,
+                "price_eur": s.hotel_price_eur_per_night,
+            }
+    if plan.days:
+        planned_days = [
+            {
+                "day": d.day_index,
+                "km": d.to_km - d.from_km,
+                "from_km": d.from_km,
+                "to_km": d.to_km,
+                "sleep_at": d.sleep_at.isoformat() if d.sleep_at else None,
+            }
+            for d in plan.days
+        ]
+
     resolved_lang = _resolve_locale(payload.lang, lang, accept_language)
     narrative = await generate_trip_narrative(
         llm=providers.llm,
@@ -165,6 +204,9 @@ async def trip_narrative(
         hotels=hotels,
         restaurants=restaurants,
         adverse_events=adverse_events,
+        planned_meal_stops=planned_meal_stops,
+        planned_sleep=planned_sleep,
+        planned_days=planned_days,
         language_directive=_language_instruction(resolved_lang),
     )
 
@@ -173,4 +215,46 @@ async def trip_narrative(
         origin_name=payload.origin_name,
         destination_name=payload.destination_name,
         generated_at=datetime.now(timezone.utc),
+    )
+
+
+class AudioRequest(BaseModel):
+    """Request to synthesize a pre-generated narrative text to MP3 audio."""
+    narrative_text: str
+    voice: str = "nova"
+    speed: float = 1.0  # 0.25–4.0; passed directly to OpenAI TTS
+
+
+class AudioResponse(BaseModel):
+    audio_base64: str | None  # base64-encoded MP3; None = use device TTS
+    voice: str
+    model: str
+
+
+@router.post("/narrative/audio", response_model=AudioResponse)
+async def narrative_audio(
+    payload: AudioRequest,
+    _premium: bool = Depends(require_premium),
+    _user: AuthUser = Depends(require_narrative_quota),
+) -> AudioResponse:
+    """Synthesize narrative text to MP3 using OpenAI TTS.
+
+    Returns ``audio_base64: null`` when OPENAI_API_KEY is not configured —
+    the mobile client falls back to device TTS in that case.
+    """
+    import base64
+    from app.providers.tts_openai import synthesize, DEFAULT_MODEL
+
+    mp3_bytes = await synthesize(
+        payload.narrative_text,
+        voice=payload.voice,
+        speed=payload.speed,
+    )
+    if mp3_bytes is None:
+        return AudioResponse(audio_base64=None, voice=payload.voice, model=DEFAULT_MODEL)
+
+    return AudioResponse(
+        audio_base64=base64.b64encode(mp3_bytes).decode("ascii"),
+        voice=payload.voice,
+        model=DEFAULT_MODEL,
     )

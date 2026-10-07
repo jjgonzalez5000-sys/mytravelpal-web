@@ -43,6 +43,8 @@ class CarBridge {
   static const _kDestEtaMs = 'destinationEtaMs';
   static const _kRemainingKm = 'remainingKm';
   static const _kProgressKm = 'progressKm';
+  static const _kTotalKm = 'totalKm';
+  static const _kSpeedKmh = 'speedKmh';
   static const _kMeLat = 'meLat';
   static const _kMeLon = 'meLon';
   static const _kDestLat = 'destLat';
@@ -75,6 +77,8 @@ class CarBridge {
     );
     await prefs.setInt(_kRemainingKm, progress.remainingKm.round());
     await prefs.setInt(_kProgressKm, progress.progressKm.round());
+    await prefs.setInt(_kTotalKm, progress.totalKm.round());
+    await prefs.setInt(_kSpeedKmh, progress.currentSpeedKmh.round());
 
     // "Me" and destination anchor points for the AA PlaceListMap.
     if (me != null) {
@@ -204,7 +208,7 @@ class CarBridge {
       _kNextStopName, _kNextStopEtaMs, _kNextStopLat, _kNextStopLon,
       _kCheaperFuelBrand, _kCheaperFuelKm, _kCheaperFuelCents,
       _kCheaperFuelLat, _kCheaperFuelLon,
-      _kDestEtaMs, _kRemainingKm, _kProgressKm,
+      _kDestEtaMs, _kRemainingKm, _kProgressKm, _kTotalKm, _kSpeedKmh,
       _kMeLat, _kMeLon, _kDestLat, _kDestLon,
       _kFuelListJson, _kRestaurantsListJson, _kAlertsQueueJson,
     ]) {

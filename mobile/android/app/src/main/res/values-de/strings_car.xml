@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aa_app_title">MyTravelPal</string>
+    <string name="aa_idle_message">Starten Sie den Companion-Modus in MyTravelPal für Kraftstoff, Warnungen und Stopps unterwegs.</string>
+    <string name="aa_starting_message">Companion aktiv · Route wird überwacht…</string>
+    <string name="aa_companion_active">Companion aktiv</string>
+    <string name="aa_companion_monitoring">Warnungen und Tankstellen werden überwacht</string>
+    <string name="aa_next_stop_title">Nächster Halt</string>
+    <string name="aa_next_stop_body">%1$s · %2$s · in %3$d min</string>
+    <string name="aa_cheaper_fuel_title">Günstigere Tankstelle</string>
+    <string name="aa_cheaper_fuel_body">%1$s in %2$d km · spare %3$d ct/L</string>
+    <string name="aa_eta_title">Ankunft</string>
+    <string name="aa_eta_body">%1$s · noch %2$d km</string>
+    <string name="aa_fuel_list_row">Alle Tankstellen</string>
+    <string name="aa_restaurants_list_row">Alle Restaurants</string>
+    <string name="aa_fuel_list_title">Kraftstoff auf der Route</string>
+    <string name="aa_restaurants_list_title">Restaurants auf der Route</string>
+    <string name="aa_list_empty">Noch keine Daten.</string>
+    <string name="aa_fuel_row_price">%1$.3f €/L</string>
+    <string name="aa_fuel_row_no_price">Preis nicht verfügbar</string>
+    <string name="aa_km_from_origin">km %1$d</string>
+    <string name="aa_restaurant_row_body">%1$s · %2$.0f €/Menü · +%3$d min</string>
+    <string name="aa_notif_channel_alerts_name">Reisewarnungen</string>
+    <string name="aa_notif_channel_alerts_desc">Nahe Stopps, günstigerer Kraftstoff, neue Warnungen auf Ihrer Route.</string>
+    <string name="widget_description">Countdown zur nächsten gespeicherten Reise.</string>
+    <string name="widget_no_trip_title">Keine bevorstehende Reise</string>
+    <string name="widget_no_saved">Planen und speichern Sie eine Reise, um sie hier zu sehen.</string>
+    <string name="widget_no_upcoming">%1$d gespeicherte Reise(n) · keine bevorstehende</string>
+</resources>

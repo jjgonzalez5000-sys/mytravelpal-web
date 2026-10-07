@@ -67,7 +67,10 @@ class ClaudeLlmProvider:
             self._client = AsyncAnthropic()
         return self._client
 
-    async def generate_narrative(self, prompt: str) -> str:
+    async def generate_narrative(
+        self, prompt: str, *, user_id: str | None = None,
+        endpoint: str = "narrative",
+    ) -> str:
         client = self._get_client()
         # Haiku doesn't support `effort`, `fallbacks` or the
         # server-side beta refusal-fallback header. Use the plain
@@ -79,6 +82,27 @@ class ClaudeLlmProvider:
             max_tokens=self._MAX_TOKENS,
             messages=[{"role": "user", "content": prompt}],
         )
+        # Cost tracking: log tokens + EUR estimate to `usage_events`
+        # for the admin dashboard. Fire-and-forget — errors swallowed
+        # in the helper so telemetry can't break the primary path.
+        try:
+            from app.services.usage_tracking import (
+                log_event, estimate_llm_cost_eur,
+            )
+            usage = getattr(response, "usage", None)
+            tokens_in = getattr(usage, "input_tokens", 0) or 0
+            tokens_out = getattr(usage, "output_tokens", 0) or 0
+            await log_event(
+                user_id=user_id,
+                provider="anthropic",
+                endpoint=endpoint,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                cost_eur=estimate_llm_cost_eur(tokens_in, tokens_out),
+                meta={"model": self._model},
+            )
+        except Exception:  # noqa: BLE001
+            pass
 
         # Refusal handling — the fallbacks parameter routes most safety
         # refusals to a compatible fallback model automatically, but a

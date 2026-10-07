@@ -4,7 +4,12 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../api/api_client.dart';
+import '../api/models.dart'
+    show Country, GeocodeResult, LatLon, TripPlanRequest, TripPlanResponse;
+import '../screens/passenger_companion_screen.dart';
 import '../screens/plan_screen.dart';
+import '../screens/result_screen.dart';
 import 'maps_url_parser.dart';
 import 'trip_sharing.dart';
 
@@ -24,6 +29,7 @@ class DeepLinkHandler {
   DeepLinkHandler(
     this._navigatorKey, {
     this.geocodeResolver,
+    this.apiClientResolver,
   })  : _appLinks = AppLinks(),
         _shareChannel = const MethodChannel('mytravelpal/share');
 
@@ -37,6 +43,10 @@ class DeepLinkHandler {
   /// handler is built in `main()` before `runApp`). Kept nullable to
   /// keep tests trivial; when null we skip the share-sheet path.
   final GeocodeFn Function()? geocodeResolver;
+
+  /// Lazy accessor for the API client — used to import shared trips
+  /// via /join/{slug} deep-links. Null in tests.
+  final ApiClient Function()? apiClientResolver;
 
   Future<void> start() async {
     // Cold-start: launched from a link.
@@ -81,9 +91,104 @@ class DeepLinkHandler {
   }
 
   void _dispatch(Uri uri) {
+    // Group Companion join: mytravelpal://companion/{join_code}
+    if (uri.scheme == 'mytravelpal' &&
+        uri.host == 'companion' &&
+        uri.pathSegments.isNotEmpty) {
+      final code = uri.pathSegments.first.toUpperCase();
+      _openPassengerCompanion(code);
+      return;
+    }
+    // Handle shared trip import: https://mytravelpal.io/join/{slug}
+    if ((uri.scheme == 'https' || uri.scheme == 'http') &&
+        uri.host == 'mytravelpal.io' &&
+        uri.pathSegments.length == 2 &&
+        uri.pathSegments.first == 'join') {
+      final slug = uri.pathSegments[1];
+      // ignore: unawaited_futures
+      _importAndOpenSharedTrip(slug);
+      return;
+    }
     final shared = decodeTripLink(uri);
     if (shared == null) return;
     _openPlan(shared);
+  }
+
+  void _openPassengerCompanion(String joinCode) {
+    final nav = _navigatorKey.currentState;
+    if (nav == null) return;
+    nav.push(
+      MaterialPageRoute<void>(
+        builder: (_) => PassengerCompanionScreen(joinCode: joinCode),
+      ),
+    );
+  }
+
+  Future<void> _importAndOpenSharedTrip(String slug) async {
+    final resolver = apiClientResolver;
+    if (resolver == null) return;
+    final api = resolver();
+    try {
+      final result = await api.importSharedTrip(slug);
+      _openSharedResult(result.plan, result.requestJson);
+    } catch (_) {
+      // If the slug is invalid or network fails, silently ignore —
+      // the user lands on the home screen as normal.
+    }
+  }
+
+  void _openSharedResult(
+      TripPlanResponse plan, Map<String, dynamic> requestJson) {
+    final nav = _navigatorKey.currentState;
+    if (nav == null) return;
+
+    // Extract origin/destination from request JSON — only lat/lon needed
+    // to build the GeocodeResult stubs for the ResultScreen header.
+    final originLat =
+        (requestJson['origin']?['lat'] as num?)?.toDouble() ?? 0.0;
+    final originLon =
+        (requestJson['origin']?['lon'] as num?)?.toDouble() ?? 0.0;
+    final destLat =
+        (requestJson['destination']?['lat'] as num?)?.toDouble() ?? 0.0;
+    final destLon =
+        (requestJson['destination']?['lon'] as num?)?.toDouble() ?? 0.0;
+    final departureStr = requestJson['desired_departure_at'] as String?;
+    final departure =
+        departureStr != null ? DateTime.parse(departureStr) : DateTime.now();
+
+    // Build minimal stub GeocodeResults — coordinates used as display names;
+    // the plan route already carries the full geometry so this is cosmetic.
+    final originCoord = LatLon(lat: originLat, lon: originLon);
+    final destCoord = LatLon(lat: destLat, lon: destLon);
+    final originResult = GeocodeResult(
+      displayName: '${originLat.toStringAsFixed(4)}, ${originLon.toStringAsFixed(4)}',
+      coordinate: originCoord,
+      country: Country.es,
+    );
+    final destResult = GeocodeResult(
+      displayName: '${destLat.toStringAsFixed(4)}, ${destLon.toStringAsFixed(4)}',
+      coordinate: destCoord,
+      country: Country.es,
+    );
+
+    // Reconstruct a minimal TripPlanRequest for the ResultScreen. Only the
+    // fields that ResultScreen reads directly are populated; the rest default.
+    // A full fromJson would need mirroring every optional field — not worth
+    // it for a read-only imported view.
+    final request = _minimalRequest(requestJson, originCoord, destCoord, departure);
+
+    nav.pushAndRemoveUntil(
+      MaterialPageRoute<void>(
+        builder: (_) => ResultScreen(
+          request: request,
+          origin: originResult,
+          destination: destResult,
+          response: plan,
+          desiredDepartureAt: departure,
+        ),
+      ),
+      (route) => route.isFirst,
+    );
   }
 
   Future<void> _handleSharedText(String text) async {
@@ -124,6 +229,40 @@ class DeepLinkHandler {
       (route) => route.isFirst,
     );
   }
+
+  /// Build a minimal [TripPlanRequest] from the raw JSON returned by the
+  /// share endpoint. Only origin/destination/departure are essential for
+  /// the imported ResultScreen to display correctly; all other fields
+  /// default to their constructor defaults so re-planning works but
+  /// with the original preferences missing.
+  static TripPlanRequest _minimalRequest(
+    Map<String, dynamic> json,
+    LatLon origin,
+    LatLon destination,
+    DateTime departure,
+  ) =>
+      TripPlanRequest(
+        origin: origin,
+        destination: destination,
+        desiredDepartureAt: departure,
+        includeAdverseEvents: json['include_adverse_events'] as bool? ?? false,
+        includeTollAlternative:
+            json['include_toll_alternative'] as bool? ?? false,
+        includeRouteComparison:
+            json['include_route_comparison'] as bool? ?? false,
+        includeHourlyTollAnalysis:
+            json['include_hourly_toll_analysis'] as bool? ?? false,
+        avoidMotorways: json['avoid_motorways'] as bool? ?? false,
+        preferScenic: json['prefer_scenic'] as bool? ?? false,
+        timeWindowSpanHours: json['time_window_span_hours'] as int? ?? 3,
+        timeWindowTopN: json['time_window_top_n'] as int? ?? 5,
+        hotelMaxDetourMinutes: json['hotel_max_detour_minutes'] as int?,
+        restaurantMaxDetourMinutes:
+            json['restaurant_max_detour_minutes'] as int?,
+        adverseEventsMaxDistanceKm:
+            (json['adverse_events_max_distance_km'] as num?)?.toDouble() ??
+                50.0,
+      );
 
   static final _urlPattern = RegExp(r'https?://\S+');
 

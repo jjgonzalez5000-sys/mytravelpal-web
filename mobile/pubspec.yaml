@@ -1,7 +1,7 @@
 name: mytravelpal
 description: MyTravelPal — road-trip planning app.
 publish_to: 'none'
-version: 0.2.0+2
+version: 0.2.69+74
 
 environment:
   sdk: ^3.5.0
@@ -30,6 +30,7 @@ dependencies:
   local_auth: ^2.3.0
   flutter_tts: ^4.2.0
   share_plus: ^10.1.4
+  qr_flutter: ^4.1.0
   google_sign_in: ^6.2.2
   flutter_facebook_auth: ^7.1.1
   # sign_in_with_apple removed 2026-08-29 — Android-only. Restore
@@ -64,6 +65,15 @@ dependencies:
   # saved toast, arriving hint). Keeps binary size small — JSON
   # vector animations, not video.
   lottie: ^3.1.2
+  # Google Play Billing — subscriptions paywall (Essential + Premium).
+  # Uses the official Flutter plugin backed by Play Billing Library 6+.
+  in_app_purchase: ^3.2.0
+  # Screenshot attachments in feedback sheet.
+  image_picker: ^1.1.2
+  # Audio playback for OpenAI TTS narrative. Plays the MP3 bytes
+  # returned by /v1/trips/narrative/audio; falls back to flutter_tts
+  # when the backend has no OPENAI_API_KEY.
+  audioplayers: ^6.1.0
 
 dev_dependencies:
   flutter_test:
@@ -81,3 +91,11 @@ flutter:
   generate: true
   assets:
     - assets/lottie/
+    - assets/changelogs/
+  fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-var.ttf
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-var.ttf

@@ -8,6 +8,7 @@ import '../domain/vehicle_labels.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import 'companion_drive_screen.dart';
+import 'passenger_companion_screen.dart';
 import 'profile_screen.dart';
 
 /// Companion tab: configure driving conditions → start tracking.
@@ -42,6 +43,30 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
   bool _alertToll = true;
   bool _alertHotel = true;
 
+  // Passenger join code input.
+  final _joinCodeController = TextEditingController();
+
+  @override
+  void dispose() {
+    _joinCodeController.dispose();
+    super.dispose();
+  }
+
+  void _joinAsPassenger() {
+    final code = _joinCodeController.text.trim().toUpperCase();
+    if (code.length != 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('El codigo debe tener 6 caracteres')),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => PassengerCompanionScreen(joinCode: code),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context);
@@ -75,7 +100,53 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
             textAlign: TextAlign.center,
           ),
 
-          const SizedBox(height: Tokens.space32),
+          const SizedBox(height: Tokens.space24),
+
+          // Passenger join card
+          SoftCard(
+            padding: const EdgeInsets.all(Tokens.space16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.group_add_outlined,
+                        color: scheme.secondary, size: 22),
+                    const SizedBox(width: Tokens.space8),
+                    Text('Unirme como pasajero',
+                        style: t.titleSmall),
+                  ],
+                ),
+                const SizedBox(height: Tokens.space12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _joinCodeController,
+                        decoration: const InputDecoration(
+                          hintText: 'Codigo de 6 caracteres',
+                          isDense: true,
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 10),
+                        ),
+                        textCapitalization: TextCapitalization.characters,
+                        maxLength: 6,
+                        onSubmitted: (_) => _joinAsPassenger(),
+                      ),
+                    ),
+                    const SizedBox(width: Tokens.space8),
+                    FilledButton.tonal(
+                      onPressed: _joinAsPassenger,
+                      child: const Text('Unirme'),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: Tokens.space24),
 
           // Profile summary chip — tap opens the profile editor.
           SoftCard(

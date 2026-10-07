@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 
@@ -35,6 +36,7 @@ class PlanLoadingDialog extends StatefulWidget {
     super.key,
     this.steps = PlanStep.values,
     this.title,
+    this.externalProgress,
   });
 
   /// Ordered list of steps to cycle through. Defaults to every step —
@@ -45,6 +47,11 @@ class PlanLoadingDialog extends StatefulWidget {
   /// replan flows ("Calculating with new departure time…") where the
   /// default "Planning your trip" reads as if we're starting fresh.
   final String? title;
+
+  /// When provided, the progress bar uses this value (0.0–1.0) instead
+  /// of the fake elapsed-time estimate. Wired to the SSE /plan/stream
+  /// progress events so the bar reflects actual server-side work.
+  final ValueListenable<double>? externalProgress;
 
   @override
   State<PlanLoadingDialog> createState() => _PlanLoadingDialogState();
@@ -76,6 +83,7 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
   @override
   void initState() {
     super.initState();
+    widget.externalProgress?.addListener(_onExternalProgress);
     _rotateTimer = Timer.periodic(_rotateInterval, (_) {
       if (!mounted) return;
       setState(() => _index++);
@@ -95,8 +103,13 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
     });
   }
 
+  void _onExternalProgress() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    widget.externalProgress?.removeListener(_onExternalProgress);
     _rotateTimer?.cancel();
     _elapsedTimer?.cancel();
     super.dispose();
@@ -165,12 +178,15 @@ class _PlanLoadingDialogState extends State<PlanLoadingDialog> {
       final tail = _longTailCaptions(l);
       (icon, caption) = tail[_longTailIndex % tail.length];
     }
-    // Progress bar: interpolate 0 → plateau over `_fastPathSeconds`;
-    // pin at plateau afterwards so we don't lie about completion.
-    final progress = math.min(
-      _progressPlateau,
-      _elapsedSeconds / _fastPathSeconds * _progressPlateau,
-    );
+    // Progress bar: use real SSE progress when available; otherwise
+    // interpolate 0 → plateau over `_fastPathSeconds` so we don't
+    // lie about completion before the server responds.
+    final progress = widget.externalProgress != null
+        ? widget.externalProgress!.value.clamp(0.0, 1.0)
+        : math.min(
+            _progressPlateau,
+            _elapsedSeconds / _fastPathSeconds * _progressPlateau,
+          );
 
     return PopScope(
       // Block back button while the plan is running — cancelling

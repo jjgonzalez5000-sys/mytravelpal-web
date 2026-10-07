@@ -9,6 +9,8 @@ enum TripAlertKind {
   newAlertAhead,
   driftDetected,
   behindSchedule,
+  cheaperFuel,
+  restaurantAhead,
 }
 
 /// A single alert candidate. Pure data — the caller (dashboard)
@@ -19,23 +21,21 @@ class TripAlert {
     required this.id,
     required this.titleKey,
     required this.args,
+    this.waypointLat,
+    this.waypointLon,
   });
 
-  /// Type discriminator for icon / colour choice on the client.
   final TripAlertKind kind;
-
-  /// Session-unique id so a single logical alert (e.g. "approaching
-  /// the lunch stop") only fires once even if `evaluate` runs 50
-  /// times.
   final String id;
-
-  /// A localisation key from the ARB. Rendering is done client-side
-  /// with `AppLocalizations` so this service stays language-neutral.
   final String titleKey;
-
-  /// Positional args passed to the ARB string. Kept as `List<Object>`
-  /// so we don't pull in a specific i18n type here.
   final List<Object> args;
+
+  /// Optional POI coordinate for "Desviar en Maps" action.
+  /// When non-null, the notification includes a navigation button.
+  final double? waypointLat;
+  final double? waypointLon;
+
+  bool get hasWaypoint => waypointLat != null && waypointLon != null;
 }
 
 // --- Tuning ---------------------------------------------------------------
@@ -125,6 +125,8 @@ class TripAlertsEvaluator {
             stop.restaurantName ?? '',
             approachingStopWarnMinutes,
           ],
+          waypointLat: stop.restaurantCoordinate?.lat,
+          waypointLon: stop.restaurantCoordinate?.lon,
         );
       } else if (sleepStop != null) {
         yield TripAlert(
@@ -155,6 +157,8 @@ class TripAlertsEvaluator {
         id: 'alert:${e.id}',
         titleKey: 'alertNewAdverseAhead',
         args: [_typeSlug(e), aheadKm.toStringAsFixed(0)],
+        waypointLat: e.coordinate.lat,
+        waypointLon: e.coordinate.lon,
       );
     }
   }

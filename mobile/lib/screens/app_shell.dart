@@ -4,8 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/billing_service.dart';
+import '../services/whats_new.dart';
+import '../widgets/whats_new_sheet.dart';
+import '../storage/app_prefs.dart';
 import 'companion_screen.dart';
 import 'history_screen.dart';
+import 'onboarding_wizard_screen.dart';
 import 'plan_screen.dart';
 
 /// Root shell with a bottom navigation bar. Three tabs:
@@ -32,6 +37,9 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _tab = 0;
+  bool _checkedWhatsNew = false;
+  bool _checkedProfileWizard = false;
+  bool _billingInitialized = false;
 
   // Per-tab navigator keys so back-button pops within the tab.
   final _navigatorKeys = [
@@ -40,11 +48,102 @@ class _AppShellState extends ConsumerState<AppShell> {
     GlobalKey<NavigatorState>(),
   ];
 
+  /// One-shot: on the first frame after the shell mounts, ask the
+  /// WhatsNewService whether this launch crosses a build boundary
+  /// Show the profile setup wizard on first login. Runs after AppShell
+  /// is visible so the user sees the app before the overlay.
+  Future<void> _maybeShowProfileWizard(BuildContext context) async {
+    if (_checkedProfileWizard) return;
+    _checkedProfileWizard = true;
+    final prefs = ref.read(appPrefsProvider);
+    if (prefs.profileWizardShown) return;
+    if (!mounted) return;
+    // Push wizard as an instant-opaque overlay so AppShell never shows
+    // through. Zero transition duration = no flash of the shell UI.
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        opaque: true,
+        fullscreenDialog: true,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: Duration.zero,
+        pageBuilder: (_, __, ___) => const OnboardingWizardScreen(),
+      ),
+    );
+  }
+
+  /// and show the sheet if so. Guarded by `_checkedWhatsNew` so a
+  /// tab switch doesn't retrigger the check.
+  Future<void> _maybeShowWhatsNew(BuildContext context) async {
+    if (_checkedWhatsNew) return;
+    _checkedWhatsNew = true;
+    final prefs = ref.read(appPrefsProvider);
+    final svc = WhatsNewService(prefs: prefs);
+    final lang = Localizations.localeOf(context).languageCode;
+    final body = await svc.resolveChangelogFor(lang);
+    if (body == null || !mounted) return;
+    await showWhatsNewSheet(
+      context,
+      body: body,
+      onDismiss: () => svc.acknowledge(),
+    );
+  }
+
+  Future<bool?> _confirmExit(
+    BuildContext context, {
+    required bool companionActive,
+  }) {
+    final l = AppLocalizations.of(context);
+    return showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: Text(l.exitAppTitle),
+        content: Text(
+          companionActive
+              ? l.exitAppBodyCompanionActive
+              : l.exitAppBody,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: Text(l.exitAppStay),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+            child: Text(l.exitAppLeave),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onDestinationSelected(int i) {
     if (i == _tab) return;
     // Subtle tick on physical devices, no-op on emulators.
     HapticFeedback.selectionClick();
     setState(() => _tab = i);
+  }
+
+  /// Initialize Play Billing once after the first frame. Idempotent.
+  Future<void> _initBilling() async {
+    if (_billingInitialized) return;
+    _billingInitialized = true;
+    final api = ref.read(apiClientWithPremiumProvider);
+    await BillingService.initialize(api: api, ref: ref);
+    // Restore any purchases the user already paid for (policy requirement).
+    await BillingService.restorePurchases(api);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    // Show profile wizard + whats-new from initState so we get exactly
+    // ONE addPostFrameCallback, not one per rebuild (build() runs on every
+    // provider change).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeShowWhatsNew(context);
+      _initBilling();
+    });
   }
 
   @override
@@ -58,11 +157,23 @@ class _AppShellState extends ConsumerState<AppShell> {
         final navState = _navigatorKeys[_tab].currentState;
         if (navState != null && navState.canPop()) {
           navState.pop();
-        } else if (_tab != 0) {
-          setState(() => _tab = 0);
+          return;
         }
-        // If already on tab 0 and can't pop, do nothing — system
-        // handles the app-level back (minimize).
+        if (_tab != 0) {
+          setState(() => _tab = 0);
+          return;
+        }
+        // Root tab, empty stack → confirm quit. When Companion is
+        // running, flag it in the dialog so the driver knows the
+        // navigation session will keep running in background (or that
+        // they should stop it explicitly first).
+        final companionActive = ref.read(companionActiveProvider);
+        final shouldExit = await _confirmExit(
+          context, companionActive: companionActive,
+        );
+        if (shouldExit == true) {
+          SystemNavigator.pop();
+        }
       },
       child: Scaffold(
         body: _FadeThroughStack(

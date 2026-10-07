@@ -40,12 +40,17 @@ class AppPrefs {
   // trip dashboard. Users who saw v1 will see v2 once so they're
   // aware of the killer features shipped since their install.
   static const _onboardingKey = 'onboarding_shown.v2';
+  static const _profileWizardKey = 'profile_wizard_shown.v1';
   static const _themeModeKey = 'theme_mode.v1';
   static const _themePresetKey = 'theme_preset.v1';
   static const _themeDynamicKey = 'theme_dynamic.v1';
   static const _themeOledKey = 'theme_oled.v1';
   static const _uiDensityKey = 'ui_density.v1';
   static const _localeKey = 'locale.v1';
+  // Key must match Kotlin TripCompanionScreen.KEY_NOTIF_SOUND prefix
+  // (flutter. is added automatically by the shared_preferences plugin).
+  static const _notifSoundKey = 'notificationSound';
+  static const _tollAlternativeDefaultKey = 'toll_alternative_default.v1';
   static const _unitSystemKey = 'unit_system.v1';
   static const _tripProfileKey = 'trip_profile.v1';
   static const _premiumKey = 'premium.v1';
@@ -62,8 +67,20 @@ class AppPrefs {
   // the profile push, which piggybacks on `appSettingsSnapshot`).
   static const _hotelPrefsKey = 'hotel_prefs.v1';
   static const _restaurantPrefsKey = 'restaurant_prefs.v1';
+  // Version-bump detection: the last versionCode this user saw the
+  // What's-new sheet for. Bumped whenever the sheet is dismissed
+  // so the same release notes never show twice.
+  static const _lastSeenBuildKey = 'whats_new.last_seen_build.v1';
+  // Free-tier AI Inspire weekly usage: JSON {"week":"YYYY-WW","count":N}.
+  // Bumped on every generate call; resets automatically when the ISO week
+  // changes so the user gets a fresh credit each Monday.
+  static const _inspireWeeklyCountKey = 'inspire_weekly_count.v1';
   static const _recentSearchesLimit = 8;
   static const _emergencyContactsLimit = 3;
+  // Hall of Fame leaderboard identity. Stored locally and pushed
+  // to /v1/profile so the backend can rank the user's trips.
+  static const _hallNickKey = 'hall_nick.v1';
+  static const _hallCountryKey = 'hall_country.v1';
 
   final SharedPreferences _prefs;
 
@@ -71,8 +88,53 @@ class AppPrefs {
       AppPrefs(await SharedPreferences.getInstance());
 
   bool get onboardingShown => _prefs.getBool(_onboardingKey) ?? false;
+  bool get profileWizardShown => _prefs.getBool(_profileWizardKey) ?? false;
+  Future<void> setOnboardingShown() => _prefs.setBool(_profileWizardKey, true);
   Future<void> markOnboardingShown() =>
       _prefs.setBool(_onboardingKey, true);
+
+  // -- AI Inspire weekly gate (Free tier) ----------------------------------
+
+  /// ISO week tag for the current calendar week, e.g. "2026-W40".
+  static String _currentIsoWeek() {
+    final now = DateTime.now();
+    // ISO week number per ISO 8601: week 1 = week containing first Thursday.
+    final dayOfYear = now.difference(DateTime(now.year)).inDays + 1;
+    final dow = now.weekday; // 1=Mon … 7=Sun
+    final isoWeek = ((dayOfYear - dow + 10) ~/ 7);
+    return '${now.year}-W${isoWeek.toString().padLeft(2, '0')}';
+  }
+
+  /// How many AI Inspire generations the user has triggered this calendar week.
+  int get inspireWeekUsage {
+    final raw = _prefs.getString(_inspireWeeklyCountKey);
+    if (raw == null || raw.isEmpty) return 0;
+    try {
+      final map = jsonDecode(raw) as Map<String, dynamic>;
+      if (map['week'] != _currentIsoWeek()) return 0;
+      return (map['count'] as num?)?.toInt() ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
+  /// Increment the weekly Inspire generation counter.
+  Future<void> incrementInspireWeekUsage() async {
+    final week = _currentIsoWeek();
+    final current = inspireWeekUsage;
+    await _prefs.setString(
+      _inspireWeeklyCountKey,
+      jsonEncode({'week': week, 'count': current + 1}),
+    );
+  }
+
+  /// versionCode the user last acknowledged the What's-new sheet for.
+  /// null = fresh install (What's-new suppressed — first-run onboarding
+  /// carries the pitch instead). Positive int = install has seen at
+  /// least one release; a higher current build triggers the sheet.
+  int? get lastSeenBuild => _prefs.getInt(_lastSeenBuildKey);
+  Future<void> setLastSeenBuild(int build) =>
+      _prefs.setInt(_lastSeenBuildKey, build);
 
   ThemeMode get themeMode {
     switch (_prefs.getString(_themeModeKey)) {
@@ -163,6 +225,8 @@ class AppPrefs {
         'locale_override': localeOverride?.languageCode,
         'unit_system': unitSystem.code,
         'currency_code': currencyCode,
+        if (hallNick != null) 'hall_nick': hallNick,
+        if (hallCountry != null) 'hall_country': hallCountry,
       };
 
   /// Apply a snapshot (as returned by the backend). Silently ignores
@@ -200,6 +264,14 @@ class AppPrefs {
         setUnitSystem(UnitSystem.fromCode(s['unit_system'] as String?)));
     await _apply('currency_code',
         () => setCurrencyCode(s['currency_code'] as String? ?? 'EUR'));
+    await _apply('hall_nick', () async {
+      final nick = s['hall_nick'] as String?;
+      if (nick != null && nick.isNotEmpty) await setHallNick(nick);
+    });
+    await _apply('hall_country', () async {
+      final country = s['hall_country'] as String?;
+      if (country != null && country.isNotEmpty) await setHallCountry(country);
+    });
   }
 
   TripProfile? get tripProfile {
@@ -458,6 +530,20 @@ class AppPrefs {
     await _prefs.setString(_currencyCodeKey, code);
   }
 
+  /// Notification sound for Companion alerts.
+  /// Values: "default" | "silent"
+  String get notificationSound => _prefs.getString(_notifSoundKey) ?? 'default';
+
+  /// Whether to show toll-alternative routes by default in PlanScreen.
+  bool get tollAlternativeDefault =>
+      _prefs.getBool(_tollAlternativeDefaultKey) ?? true;
+  Future<void> setTollAlternativeDefault(bool v) =>
+      _prefs.setBool(_tollAlternativeDefaultKey, v);
+
+  Future<void> setNotificationSound(String value) async {
+    await _prefs.setString(_notifSoundKey, value);
+  }
+
   Future<void> setEmergencyContacts(List<EmergencyContact> list) async {
     final capped = list.take(_emergencyContactsLimit).toList();
     await _prefs.setStringList(
@@ -499,5 +585,17 @@ class AppPrefs {
     await _prefs.remove(_favoriteRestaurantsKey);
     await _prefs.remove(_favoritePlacesKey);
     await _prefs.remove(_emergencyContactsKey);
+    await _prefs.remove(_hallNickKey);
+    await _prefs.remove(_hallCountryKey);
   }
+
+  String? get hallNick => _prefs.getString(_hallNickKey);
+  Future<void> setHallNick(String nick) =>
+      _prefs.setString(_hallNickKey, nick.trim());
+  Future<void> clearHallNick() => _prefs.remove(_hallNickKey);
+
+  String? get hallCountry => _prefs.getString(_hallCountryKey);
+  Future<void> setHallCountry(String countryCode) =>
+      _prefs.setString(_hallCountryKey, countryCode);
+  Future<void> clearHallCountry() => _prefs.remove(_hallCountryKey);
 }

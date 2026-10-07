@@ -27,17 +27,42 @@ void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('Play Store screenshots', (tester) async {
-    // Larger settle timeout — the plan endpoint can take 30-60 s on
-    // a long-corridor trip while enrichment fanouts run.
+    // Boot the app + wait for the splash → PlanScreen routing to
+    // finish. AUTO_DEMO fires demo login + profile push + garage +
+    // trip pre-seed, then AppShell mounts — comfortably under 25 s.
     await app.main();
-    await tester.pumpAndSettle(const Duration(seconds: 10));
+    // pumpAndSettle spins the frame clock until no timers are
+    // pending; capped so an infinite spinner (e.g. Lottie loop)
+    // can't hang the test forever.
+    try {
+      await tester.pumpAndSettle(
+        const Duration(seconds: 20),
+        EnginePhase.sendSemanticsUpdate,
+        const Duration(seconds: 30),
+      );
+    } catch (_) {
+      // Long-running animations block pumpAndSettle — fall through
+      // and start polling for the CTA anyway.
+    }
+    // Poll for the PlanScreen CTA up to 30 s more; the demo login
+    // itself is a ~2 s network round-trip but a cold Fly wake-up
+    // can push that to 15-25 s.
+    final ctaReady = await _waitForAnyText(
+      tester,
+      const ['Planificar viaje', 'Plan trip', 'Plan trip'],
+      timeout: const Duration(seconds: 30),
+    );
+    // Scroll to reveal the CTA if it's below the fold on small
+    // screens — the form's own scrollable contains it.
+    if (!ctaReady) {
+      await _scrollDown(tester, pixels: 400);
+      await tester.pump(const Duration(seconds: 1));
+    }
 
     // 1) Plan screen — form pre-filled by AUTO_DEMO bootstrap.
     await _snap(binding, tester, '01-plan');
 
-    // 2) Trigger the plan. `PrimaryCta` renders `l.planCta` which
-    //    is "Planificar viaje" / "Plan trip" — text-match tolerates
-    //    both locales.
+    // 2) Trigger the plan.
     final planCta = _findByAnyText(
       tester,
       const ['Planificar viaje', 'Plan trip'],

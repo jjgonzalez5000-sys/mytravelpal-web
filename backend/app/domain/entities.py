@@ -119,6 +119,12 @@ class MealSlot(str, Enum):
     BREAKFAST = "breakfast"
     LUNCH = "lunch"
     DINNER = "dinner"
+    # Forced midway food-and-stretch break for trips that skirt every
+    # named meal window (short trips leaving after breakfast + before
+    # lunch) but are still long enough to warrant getting the driver
+    # + kids/pets out of the car. Placed by _extend_meals_for_day when
+    # no other slot fired for that day.
+    BREAK = "break"
 
 
 class AdverseEventType(str, Enum):
@@ -168,6 +174,7 @@ class AdverseEventSource(str, Enum):
     WEATHER = "weather"
     MOCK = "mock"
     OFFICIAL = "official"
+    METEOALARM = "meteoalarm"
 
 
 class PriceBand(str, Enum):
@@ -296,6 +303,7 @@ class Hotel:
     price_band: PriceBand
     distance_from_route_km: float
     detour_minutes: float
+    detour_km: float = 0.0
     kid_friendly: bool = False
     pet_friendly: bool = False
     has_parking: bool = True
@@ -316,6 +324,7 @@ class Restaurant:
     price_band: PriceBand
     distance_from_route_km: float
     detour_minutes: float
+    detour_km: float = 0.0
     kid_friendly: bool = False
     pet_friendly: bool = False
     open_meal_slots: tuple[MealSlot, ...] = ()  # empty = we don't know
@@ -365,17 +374,16 @@ class TripProfile:
     """Hard ceiling on driving hours before the planner requires an
     overnight break. Ignored when `overnight_policy == NEVER`.
     """
+    daily_km_cap: int | None = None
+    """Optional km per day cap. Combined with daily_driving_cap_hours:
+    whichever is hit first ends the driving day.
+    """
     bedtime_hour: int = 22
     wake_hour: int = 8
     break_style: BreakStyle = BreakStyle.SCENIC
-    # Preferred hour the user wants to be behind the wheel on days
-    # 2+. Independent from `wake_hour` (when they get out of bed)
-    # and `MealPreferences.breakfast_hour` (when they eat) — a
-    # driver might wake at 07:00, want to drive at 07:30, and grab
-    # breakfast at the first service area at 09:00. `None` falls
-    # back to `wake_hour` for backwards compat with profiles saved
-    # before this field existed.
     preferred_driving_start_hour: int | None = None
+    vehicle_model_id: str | None = None
+    current_tank_level_percent: int | None = None
 
 
 class RestStopType(str, Enum):

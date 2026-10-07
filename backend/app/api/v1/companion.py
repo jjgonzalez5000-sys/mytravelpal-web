@@ -607,3 +607,185 @@ async def tick(
         recommendations=recs,
         next_tick_seconds=60,
     )
+
+
+# --- Companion chat ---
+#
+# Accepts a short driver question (one of the pre-defined command patterns)
+# and returns a TTS-friendly reply plus an optional action hint.
+# LLM cost is logged to usage_events (provider=anthropic, endpoint=companion_chat).
+
+_CHAT_COMMANDS = (
+    "next stop details",
+    "cheapest fuel nearby",
+    "hotel options tonight",
+    "how far to destination",
+    "avoid tolls from here",
+    "weather ahead",
+    "navigate to current stop",
+    "how long have I been driving",
+    "suggest meal change",
+    "suggest fuel stop",
+    "show stop detail",
+)
+
+# Map of intent keywords → action hint returned to the client.
+_ACTION_MAP: list[tuple[tuple[str, ...], str]] = [
+    (("fuel", "cheapest fuel", "suggest fuel", "fuel stop"), "open_fuel_list"),
+    (("hotel", "tonight"), "open_hotel_list"),
+    (("navigate", "current stop"), "navigate_to_stop"),
+    (("suggest meal", "meal change", "advance meal", "defer meal"), "suggest_meal_change"),
+    (("suggest fuel stop", "stop for fuel"), "suggest_fuel_stop"),
+    (("show stop", "stop detail", "next stop detail"), "show_stop_detail"),
+]
+
+
+def _detect_action(message: str) -> str | None:
+    lower = message.lower()
+    for keywords, action in _ACTION_MAP:
+        if any(k in lower for k in keywords):
+            return action
+    return None
+
+
+class CompanionChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=500)
+    trip_context: dict[str, Any] | None = Field(default=None)
+    lang: str = Field(default="en", max_length=5)  # BCP-47 tag, e.g. "es", "fr"
+
+
+class CompanionChatResponse(BaseModel):
+    reply: str
+    action: str | None = None
+
+
+@router.post("/chat", response_model=CompanionChatResponse)
+async def companion_chat(
+    request: CompanionChatRequest,
+    user: AuthUser | None = Depends(current_user_optional),
+    providers: Providers = Depends(get_providers),
+) -> CompanionChatResponse:
+    """Handle a driver question during a Companion session.
+
+    Supported command patterns:
+    - next stop details
+    - cheapest fuel nearby
+    - hotel options tonight
+    - how far to destination
+    - avoid tolls from here
+    - weather ahead
+    - navigate to current stop
+    - how long have I been driving
+
+    Returns a short (< 150 char) TTS-friendly reply + optional action hint.
+    LLM call logged to usage_events for the admin dashboard.
+    """
+    from app.providers.llm import default_llm_provider
+
+    # Fetch user AI context (best-effort; empty string on any failure).
+    ai_context = ""
+    if user is not None:
+        try:
+            from app.api.v1.profile import _read_profile
+            blob = await _read_profile(user.id)
+            learning: dict[str, Any] = blob.get("learning") or {}
+            # Build a compact inline context — mirrors get_ai_context logic
+            # but we don't want to call the HTTP endpoint from here.
+            ctx_parts: list[str] = []
+            if learning.get("prefers_scenic_routes"):
+                ctx_parts.append("prefers scenic routes")
+            if learning.get("eco_conscious"):
+                ctx_parts.append("eco-conscious")
+            if learning.get("prefers_local_food"):
+                ctx_parts.append("prefers local food")
+            diet = learning.get("dietary_restrictions") or []
+            if diet:
+                ctx_parts.append(", ".join(diet))
+            dep_h = learning.get("typical_departure_hour")
+            if isinstance(dep_h, int):
+                ctx_parts.append(f"departs ~{dep_h:02d}h")
+            countries = learning.get("preferred_countries") or []
+            if countries:
+                ctx_parts.append("usually drives in " + "/".join(countries[:3]))
+            ai_context = ". ".join(ctx_parts)
+        except Exception:
+            pass
+
+    # Build trip context summary (compact, for the system prompt).
+    trip_summary = ""
+    if request.trip_context:
+        tc = request.trip_context
+        parts: list[str] = []
+        if tc.get("destination"):
+            parts.append(f"Destination: {tc['destination']}")
+        if tc.get("km_remaining") is not None:
+            parts.append(f"{tc['km_remaining']} km remaining")
+        if tc.get("next_stop"):
+            parts.append(f"Next stop: {tc['next_stop']}")
+        if tc.get("driving_time_hours") is not None:
+            h = tc["driving_time_hours"]
+            parts.append(f"Driven {h:.1f}h so far")
+        # Upcoming stops (next 3 beyond current position).
+        if tc.get("stops"):
+            upcoming = [
+                s for s in tc["stops"]
+                if s.get("km", 0) > tc.get("current_km", 0)
+            ][:3]
+            if upcoming:
+                stop_lines = []
+                for s in upcoming:
+                    km_ahead = s.get("km", 0) - tc.get("current_km", 0)
+                    name = s.get("name") or s.get("type", "stop")
+                    stop_lines.append(
+                        f"{name} in ~{km_ahead:.0f} km ({s.get('type', 'stop')})"
+                    )
+                parts.append("Upcoming stops: " + "; ".join(stop_lines))
+        trip_summary = ". ".join(parts)
+
+    # Supported commands clause — keeps the LLM from free-ranging.
+    commands_clause = (
+        "You ONLY answer these question types: "
+        + ", ".join(f'"{c}"' for c in _CHAT_COMMANDS)
+        + ". For anything else reply: 'I can only help with driving-related questions.'"
+    )
+
+    system_prompt = (
+        f"You are a road-trip driving companion assistant. "
+        f"Answer in {request.lang}, max 2 short sentences, TTS-friendly (no markdown, no bullet points). "
+        f"Driver context: {ai_context or 'No preferences known'}. "
+        f"Current trip: {trip_summary or 'No trip context provided'}. "
+        f"{commands_clause}"
+    )
+
+    full_prompt = f"{system_prompt}\n\nDriver: {request.message}"
+
+    llm = default_llm_provider()
+    try:
+        reply_raw = await llm.generate_narrative(full_prompt)
+    except Exception:
+        reply_raw = "I'm having trouble right now. Please try again in a moment."
+
+    # Truncate to 150 chars for TTS safety.
+    reply = reply_raw.strip()
+    if len(reply) > 150:
+        reply = reply[:147] + "..."
+
+    # Log to usage_events (fire-and-forget).
+    try:
+        from app.services.usage_tracking import log_event
+        await log_event(
+            user_id=user.id if user else None,
+            provider="anthropic",
+            endpoint="companion_chat",
+            tokens_in=0,
+            tokens_out=0,
+            cost_eur=0.0,
+            meta={"message": request.message[:80]},
+        )
+    except Exception:
+        pass
+
+    return CompanionChatResponse(
+        reply=reply,
+        action=_detect_action(request.message),
+    )

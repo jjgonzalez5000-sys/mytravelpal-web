@@ -38,9 +38,7 @@ class TripForegroundService {
             'Keeps MyTravelPal alive while you drive with Google Maps.',
         channelImportance: NotificationChannelImportance.LOW,
         priority: NotificationPriority.LOW,
-        // No visibility on lock screen — nothing driver-critical
-        // shows here beyond "we're alive".
-        visibility: NotificationVisibility.VISIBILITY_SECRET,
+        visibility: NotificationVisibility.VISIBILITY_PUBLIC,
         playSound: false,
         enableVibration: false,
       ),
@@ -83,6 +81,9 @@ class TripForegroundService {
     final result = await FlutterForegroundTask.startService(
       notificationTitle: title,
       notificationText: body,
+      notificationButtons: const [
+        NotificationButton(id: 'stop_companion', text: 'Detener'),
+      ],
     );
     if (result is ServiceRequestFailure) {
       // Common causes: missing <service> in AndroidManifest, missing

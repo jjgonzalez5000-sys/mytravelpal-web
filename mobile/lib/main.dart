@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
@@ -37,6 +38,12 @@ Future<void> main() async {
 
 Future<void> _boot() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Manrope + Inter are bundled as assets (see pubspec.yaml + theme.dart).
+  // Disable google_fonts' network fallback so a device with no route to
+  // fonts.gstatic.com (corporate proxy, censored region, offline first
+  // launch) can't throw the unhandled fetch exception Sentry surfaced
+  // on 2026-09-29 for a OnePlus 8 Pro tester.
+  GoogleFonts.config.allowRuntimeFetching = false;
   // Required by flutter_foreground_task so the main isolate can
   // receive messages from a background TaskHandler. Even if we don't
   // ship a TaskHandler yet, the plugin's own start/stop bookkeeping
@@ -61,6 +68,11 @@ Future<void> _boot() async {
     await NotificationService.instance.init();
   }
   await TripForegroundService.instance.init();
+  // Kill any stale foreground notification left by a previous crash
+  // (e.g. the Android 14 location-type SecurityException left the
+  // service orphaned). Safe to call unconditionally — stop() is a
+  // no-op when the service isn't running.
+  await TripForegroundService.instance.stop();
   await ReviewPrompter.instance.markLaunched();
 
   // ignore: unawaited_futures
@@ -88,6 +100,7 @@ Future<void> _boot() async {
     rootNavigatorKey,
     geocodeResolver: () =>
         container.read(apiClientWithPremiumProvider).geocode,
+    apiClientResolver: () => container.read(apiClientWithPremiumProvider),
   );
   WidgetsBinding.instance.addPostFrameCallback((_) {
     deepLinks.start();

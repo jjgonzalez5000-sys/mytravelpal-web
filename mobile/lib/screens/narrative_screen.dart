@@ -1,8 +1,14 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../api/models.dart';
 import '../design/components.dart';
@@ -80,45 +86,121 @@ class _NarrativeScreenState extends ConsumerState<NarrativeScreen> {
   }
 }
 
-class _LoadingState extends StatelessWidget {
+class _LoadingState extends StatefulWidget {
   const _LoadingState();
+
+  @override
+  State<_LoadingState> createState() => _LoadingStateState();
+}
+
+class _LoadingStateState extends State<_LoadingState> {
+  static const _steps = [
+    (Icons.map_outlined,         'Analizando tu ruta…'),
+    (Icons.euro_outlined,        'Calculando costes reales…'),
+    (Icons.local_gas_station_outlined, 'Revisando gasolineras y peajes…'),
+    (Icons.hotel_outlined,       'Buscando las mejores paradas…'),
+    (Icons.edit_note_outlined,   'Componiendo tu resumen…'),
+    (Icons.auto_awesome,         'Últimos retoques…'),
+  ];
+
+  int _step = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(milliseconds: 1800), (_) {
+      if (mounted) {
+        setState(() => _step = (_step + 1).clamp(0, _steps.length - 1));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final (icon, label) = _steps[_step];
+    final progress = (_step + 1) / _steps.length;
+
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: scheme.primaryContainer,
-              borderRadius: BorderRadius.circular(Tokens.radiusPill),
-            ),
-            child: Icon(Icons.auto_awesome,
-                color: scheme.onPrimaryContainer, size: 28),
-          )
-              .animate(onPlay: (c) => c.repeat())
-              .scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.06, 1.06),
-                duration: 800.ms,
-                curve: Curves.easeInOut,
-              )
-              .then()
-              .scale(
-                begin: const Offset(1.06, 1.06),
-                end: const Offset(1, 1),
-                duration: 800.ms,
-                curve: Curves.easeInOut,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Tokens.space32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Pulsing icon
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(Tokens.radiusPill),
               ),
-          const SizedBox(height: Tokens.space16),
-          Text(AppLocalizations.of(context).narrativeBusy,
-              style: t.bodyMedium),
-        ],
+              child: Icon(icon, color: scheme.onPrimaryContainer, size: 32),
+            )
+                .animate(onPlay: (c) => c.repeat())
+                .scale(
+                  begin: const Offset(1, 1),
+                  end: const Offset(1.06, 1.06),
+                  duration: 900.ms,
+                  curve: Curves.easeInOut,
+                )
+                .then()
+                .scale(
+                  begin: const Offset(1.06, 1.06),
+                  end: const Offset(1, 1),
+                  duration: 900.ms,
+                  curve: Curves.easeInOut,
+                ),
+            const SizedBox(height: Tokens.space24),
+            // Cycling step label
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              transitionBuilder: (child, anim) => FadeTransition(
+                opacity: anim,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.15),
+                    end: Offset.zero,
+                  ).animate(anim),
+                  child: child,
+                ),
+              ),
+              child: Text(
+                label,
+                key: ValueKey(label),
+                style: t.bodyMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: Tokens.space20),
+            // Thin progress bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 4,
+                backgroundColor: scheme.outlineVariant,
+                color: scheme.primary,
+              ),
+            ),
+            const SizedBox(height: Tokens.space8),
+            Text(
+              '${(_step + 1)} / ${_steps.length}',
+              style: t.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -145,7 +227,7 @@ class _ErrorState extends StatelessWidget {
   }
 }
 
-class _NarrativeBody extends StatefulWidget {
+class _NarrativeBody extends ConsumerStatefulWidget {
   const _NarrativeBody({
     required this.data,
     required this.origin,
@@ -157,23 +239,33 @@ class _NarrativeBody extends StatefulWidget {
   final String destination;
 
   @override
-  State<_NarrativeBody> createState() => _NarrativeBodyState();
+  ConsumerState<_NarrativeBody> createState() => _NarrativeBodyState();
 }
 
-class _NarrativeBodyState extends State<_NarrativeBody> {
+class _NarrativeBodyState extends ConsumerState<_NarrativeBody> {
+  // OpenAI audio player (primary, natural voice).
+  final AudioPlayer _player = AudioPlayer();
+  // Device TTS fallback when OpenAI audio is unavailable.
   final FlutterTts _tts = FlutterTts();
   bool _speaking = false;
+  bool _loading = false; // true while fetching/buffering audio
   bool _ttsReady = false;
+  bool _usingAi = false; // true when playing OpenAI audio
+  double _speed = 1.0; // 0.75 / 1.0 / 1.25 / 1.5
 
   @override
   void initState() {
     super.initState();
     _initTts();
+    _player.onPlayerStateChanged.listen((s) {
+      if (!mounted) return;
+      setState(() => _speaking = s == PlayerState.playing);
+    });
   }
 
   Future<void> _initTts() async {
     try {
-      await _tts.setSpeechRate(0.5);
+      await _tts.setSpeechRate(0.45);
       await _tts.setPitch(1.0);
       await _tts.setVolume(1.0);
       _tts.setStartHandler(() {
@@ -190,23 +282,65 @@ class _NarrativeBodyState extends State<_NarrativeBody> {
       });
       if (mounted) setState(() => _ttsReady = true);
     } catch (e) {
-      // Non-fatal; button just stays disabled.
       debugPrint('TTS init failed: $e');
     }
   }
 
   @override
   void dispose() {
+    _player.dispose();
     _tts.stop();
     super.dispose();
   }
 
+  /// Strip markdown so device TTS reads clean prose.
+  static String _stripMarkdown(String text) => text
+      .replaceAll(RegExp(r'\*\*([^*]+)\*\*'), r'$1')
+      .replaceAll(RegExp(r'\*([^*]+)\*'), r'$1')
+      .replaceAll(RegExp(r'__([^_]+)__'), r'$1')
+      .replaceAll(RegExp(r'_([^_]+)_'), r'$1')
+      .replaceAll(RegExp(r'^#{1,6}\s+', multiLine: true), '')
+      .replaceAll(RegExp(r'`[^`]+`'), '')
+      .replaceAll(RegExp(r'\[([^\]]+)\]\([^\)]+\)'), r'$1')
+      .replaceAll(RegExp(r'^\s*[-*+]\s+', multiLine: true), '')
+      .replaceAll(RegExp(r'^\s*\d+\.\s+', multiLine: true), '')
+      .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+      .trim();
+
   Future<void> _toggleSpeak() async {
     if (_speaking) {
+      await _player.stop();
       await _tts.stop();
       if (mounted) setState(() => _speaking = false);
-    } else {
-      await _tts.speak(widget.data.narrative);
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      // Try OpenAI TTS first.
+      final api = ref.read(apiClientWithPremiumProvider);
+      final b64 = await api.narrativeAudio(
+        narrativeText: _stripMarkdown(widget.data.narrative),
+        speed: _speed,
+      );
+      if (b64 != null && b64.isNotEmpty && mounted) {
+        // Write to a temp file so audioplayers can stream it.
+        final bytes = base64Decode(b64);
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/narrative_audio.mp3');
+        await file.writeAsBytes(bytes);
+        setState(() { _loading = false; _usingAi = true; });
+        await _player.play(DeviceFileSource(file.path));
+        return;
+      }
+    } catch (e) {
+      debugPrint('OpenAI TTS failed, falling back to device TTS: $e');
+    }
+
+    // Fallback: device TTS.
+    if (mounted) {
+      setState(() { _loading = false; _usingAi = false; });
+      await _tts.speak(_stripMarkdown(widget.data.narrative));
     }
   }
 
@@ -261,11 +395,72 @@ class _NarrativeBodyState extends State<_NarrativeBody> {
               style: t.bodySmall,
             ),
             const Spacer(),
-            if (_ttsReady)
+            if (_ttsReady || true) // always show button; AI path doesn't need init
               FilledButton.tonalIcon(
-                onPressed: _toggleSpeak,
-                icon: Icon(_speaking ? Icons.stop_rounded : Icons.play_arrow_rounded),
-                label: Text(_speaking ? l.narrativeStop : l.narrativeReadAloud),
+                onPressed: _loading ? null : _toggleSpeak,
+                icon: _loading
+                    ? const SizedBox(
+                        width: 16, height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : Icon(_speaking
+                        ? Icons.stop_rounded
+                        : Icons.play_arrow_rounded),
+                label: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_loading
+                        ? 'Preparando…'
+                        : _speaking
+                            ? l.narrativeStop
+                            : l.narrativeReadAloud),
+                    if (_usingAi && _speaking) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          'AI',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                            color: Theme.of(context).colorScheme.onPrimary,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: Tokens.space12),
+        // Speed selector — disabled while playing to avoid re-generating mid-speech.
+        Row(
+          children: [
+            Icon(Icons.speed, size: 14, color: scheme.onSurfaceVariant),
+            const SizedBox(width: 6),
+            for (final s in [0.75, 1.0, 1.25, 1.5])
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: ChoiceChip(
+                  label: Text('${s}x',
+                      style: t.labelSmall
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  selected: _speed == s,
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  visualDensity: VisualDensity.compact,
+                  onSelected: _speaking ? null : (_) {
+                    setState(() => _speed = s);
+                    // Also update device TTS rate for the fallback path.
+                    _tts.setSpeechRate((s * 0.45).clamp(0.1, 1.0));
+                  },
+                ),
               ),
           ],
         ),

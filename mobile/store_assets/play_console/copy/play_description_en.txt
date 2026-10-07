@@ -1,0 +1,21 @@
+Plan the journey, not just the destination. MyTravelPal turns "A to B" into a real road-trip itinerary: daily stages that respect your driving hours, meal windows and bedtime, with hotels near every overnight stop, the cheapest petrol station along your route, real toll costs and the best time to leave based on traffic.
+
+Google Maps gives you the fastest route. MyTravelPal gives you the SMART route: when to leave to dodge jams, where to sleep on multi-day trips, which petrol station is cheapest, what the weather will be like tomorrow, and which tolls you can skip with a short detour.
+
+Real fuel prices from official government feeds in Spain, France and Italy — the cheapest station on YOUR route, not a generic list. Cross-border arbitrage alert when it's worth filling up before crossing (ES↔FR, FR↔IT).
+
+Real toll costs section by section via HERE Routing. Per-booth skip suggestions with the actual detour drawn on the map. Country vignettes (Switzerland, Austria, Romania) broken out separately so you know what's tradable and what's mandatory.
+
+Multi-day itinerary with automatic day splits, hotel and restaurant suggestions filtered by price, stars, cuisine, dietary needs, pet-friendly, kid-friendly and camper facilities. Rest stops with service areas and playgrounds.
+
+Adverse-event alerts: active fires, earthquakes, heatwaves and severe weather crossed against your route.
+
+AI Trip Inspiration: describe your dream trip in one sentence and get a full multi-day itinerary you convert into a real plan with one tap.
+
+Save trips with your tweaks — picked hotels, chosen fuel stops, per-day overrides — and pick up where you left off.
+
+Available in English, Spanish, French, German and Italian.
+
+Privacy first: no ad tracking, no location selling. The driving mode's GPS is never persisted server-side — only processed in memory during the trip. Delete your account in one tap. EU backend, Paris region.
+
+Ready for your next road trip? www.mytravelpal.io

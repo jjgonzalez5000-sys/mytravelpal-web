@@ -290,12 +290,18 @@ class _TripDashboardScreenState extends ConsumerState<TripDashboardScreen> {
         body: body,
       ));
       // Native car-extended notification so the same alert shows up
-      // on the Android Auto head unit. Uses the same numeric id as
-      // the phone notif so both surfaces get one, coherent card.
+      // on the Android Auto head unit. Pass waypoint coords when the
+      // alert has a navigable POI so the car card shows "Desviar".
+      final dest = widget.destination.coordinate;
       unawaited(CarNotificationBridge.instance.postAlert(
         id: NotificationService.notificationIdFor('trip_alert:${a.id}'),
         title: title,
         body: body,
+        waypointLat: a.waypointLat,
+        waypointLon: a.waypointLon,
+        destLat: a.hasWaypoint ? dest.lat : null,
+        destLon: a.hasWaypoint ? dest.lon : null,
+        actionLabel: a.hasWaypoint ? 'Desviar' : null,
       ));
     }
   }
@@ -332,6 +338,15 @@ class _TripDashboardScreenState extends ConsumerState<TripDashboardScreen> {
           l.alertBehindScheduleTitle,
           l.alertBehindScheduleBody(slip),
         );
+      case TripAlertKind.cheaperFuel:
+        final name = a.args[0] as String;
+        final savings = a.args[1] as String;
+        final km = a.args[2] as String;
+        return ('⛽ $name −${savings}ct/L', 'A $km km · Desvía en Maps para repostar');
+      case TripAlertKind.restaurantAhead:
+        final name = a.args[0] as String;
+        final km = a.args[1] as String;
+        return ('🍽 $name', 'A $km km · ¿Paramos?');
     }
   }
 

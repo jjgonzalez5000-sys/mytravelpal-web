@@ -98,7 +98,9 @@ class _AttributionsList extends StatelessWidget {
             onPressed: () => showLicensePage(
               context: context,
               applicationName: 'MyTravelPal',
-              applicationVersion: '0.1.0',
+              applicationVersion: const String.fromEnvironment(
+                'APP_VERSION', defaultValue: '—',
+              ),
             ),
             icon: const Icon(Icons.article_outlined),
             label: Text(l.attributionsShowLicenses),

@@ -1,13 +1,19 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_map/flutter_map.dart' as fmap;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart' as ll;
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
@@ -15,11 +21,13 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/car_bridge.dart';
+import '../services/car_notification_bridge.dart';
 import '../services/crash_detector.dart';
 import '../services/notifications.dart';
 import '../services/trip_foreground.dart';
 import '../services/trip_progress.dart';
 import '../services/trip_share_image.dart';
+import '../services/user_learning_tracker.dart';
 import '../widgets/crash_sos_modal.dart';
 
 /// Active driving screen for the Companion mode. Once the driver
@@ -135,6 +143,20 @@ class _CompanionDriveScreenState
   // confirms "end session", trapping them on the screen.
   bool _leaving = false;
 
+  // Off-route detection. When the driver is far from the planned
+  // route for several consecutive GPS fixes we offer "free navigation"
+  // mode so the km counter doesn't go haywire.
+  static const _offRouteKmThreshold = 2.0; // km off polyline
+  static const _offRouteFixesNeeded = 3;   // consecutive fixes before asking
+  int _consecutiveOffRouteFixes = 0;
+  bool _freeNavigationMode = false;        // true = skip route calculations
+  bool _offRouteDialogShowing = false;
+
+  // Companion chat state. Simple single-turn: user types/selects →
+  // backend replies → reply displayed + spoken. No history kept.
+  bool _chatBusy = false;
+  String? _chatReply;
+
   @override
   void initState() {
     super.initState();
@@ -143,6 +165,9 @@ class _CompanionDriveScreenState
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(companionActiveProvider.notifier).state = true;
     });
+    // Listen for the "Detener" notification button press. The plugin
+    // sends the button id as data to any registered callbacks.
+    FlutterForegroundTask.addTaskDataCallback(_onForegroundTaskData);
     _initTts();
     _initTracking();
     // Precompute the route reference + planned arrival once when
@@ -187,6 +212,7 @@ class _CompanionDriveScreenState
       WidgetsBinding.instance.addPostFrameCallback((_) {
         unawaited(_pollAdverse());
         unawaited(_pollWeatherHazards());
+        unawaited(_loadRadars());
       });
     }
   }
@@ -278,6 +304,33 @@ class _CompanionDriveScreenState
   /// the first poll hasn't landed yet or the backend returned
   /// nothing along the sampled corridor.
   List<WeatherHazard> _upcomingHazards = const [];
+
+  // Speed camera state. Loaded once on Companion start (24-h server cache
+  // means repeat fetches are free). _radarAlertedIds tracks cameras whose
+  // 400-m alert has already fired so we don't re-alert after the driver
+  // passes and then re-approaches the same km bucket (unlikely but cheap).
+  List<SpeedCamera> _radars = const [];
+  final Set<double> _radarAlertedIds = {};
+  final Set<String> _notifiedFuelIds = {}; // dedup fuel notifications
+  SpeedCamera? _nextRadar;      // camera in 0–1.5 km ahead (warning band)
+  SpeedCamera? _activeRadarAlert; // camera in 0–0.4 km (alert banner)
+
+  // Proactive suggestion banner. Cleared on dismiss; re-set when the
+  // next 5-km bucket fires and the suggest endpoint returns a tip.
+  String? _proactiveSuggestion;
+  // Last km bucket at which we fired a proactive suggest call so we
+  // only trigger once per 5-km increment (not on every GPS fix).
+  int _lastSuggestBucketKm = -1;
+  // Meal stops the driver has chosen to "defer" (remove from the
+  // upcoming context for the rest of the session). Simple in-memory
+  // set; full re-plan is a future iteration.
+  final Set<double> _deferredMealKms = {};
+
+  // Group Companion session — driver creates once, passengers join via QR/code.
+  String? _groupSessionId;
+  String? _groupJoinCode;
+  Timer? _groupPushTimer;
+  static const _groupPushInterval = Duration(seconds: 10);
 
   /// Live weather-hazards check. Samples 5 coords along the next
   /// 200 km of the route and hits `/v1/trips/weather-hazards-check`
@@ -397,6 +450,246 @@ class _CompanionDriveScreenState
     return 2 * r * math.asin(math.min(1.0, math.sqrt(h)));
   }
 
+  /// Fetch speed cameras for the active trip. Silently no-ops when
+  /// there is no active trip or the backend returns an error — the
+  /// Companion still starts normally and _radars stays empty.
+  Future<void> _loadRadars() async {
+    final origin = widget.tripOrigin?.coordinate;
+    final dest = widget.tripDestination?.coordinate;
+    if (origin == null || dest == null) return;
+    final api = ref.read(apiClientWithPremiumProvider);
+    final cameras = await api.getRadarsAlongRoute(
+      originLat: origin.lat,
+      originLon: origin.lon,
+      destLat: dest.lat,
+      destLon: dest.lon,
+    );
+    if (mounted) setState(() => _radars = cameras);
+  }
+
+  /// Called from [_onPosition] on every GPS fix. Finds the nearest
+  /// camera ahead on the route and drives the warning / alert UI.
+  /// Gated behind the radarAlertsEnabled setting and Essential tier.
+  void _checkRadarProximity(double currentKm) {
+    if (!ref.read(radarAlertsEnabledProvider)) return;
+    if (!ref.read(isEssentialOrAboveProvider)) return;
+    if (_radars.isEmpty) return;
+
+    const alertKm = 0.4;
+    const warningKm = 1.5;
+
+    SpeedCamera? nextWarning;
+    for (final cam in _radars) {
+      final ahead = cam.distanceFromOriginKm - currentKm;
+      if (ahead < 0 || ahead > warningKm) continue;
+      nextWarning ??= cam;
+      if (ahead < alertKm &&
+          !_radarAlertedIds.contains(cam.distanceFromOriginKm)) {
+        _radarAlertedIds.add(cam.distanceFromOriginKm);
+        _triggerRadarAlert(cam);
+        break;
+      }
+    }
+
+    // Update the warning-band camera (or clear when none in range).
+    if (nextWarning != _nextRadar) {
+      setState(() => _nextRadar = nextWarning);
+    }
+  }
+
+  /// Fire a "Gasolinera barata a X km – Desviar?" notification once
+  /// per station. Only fires when the station is within 15 km ahead
+  /// and saves ≥ 5 ct/L vs the route median.
+  void _maybeFuelNotification(TripProgress progress) {
+    final hint = progress.cheaperFuelAhead;
+    if (hint == null) return;
+    final coord = hint.station.coordinate;
+    if (coord == null) return;
+    final stationId = hint.station.stationName +
+        hint.station.distanceFromOriginKm.toStringAsFixed(0);
+    if (_notifiedFuelIds.contains(stationId)) return;
+    if (hint.aheadKm > 15) return; // only notify when close
+    _notifiedFuelIds.add(stationId);
+
+    final savings = (hint.savingsEurPerL * 100).toStringAsFixed(0);
+    final km = hint.aheadKm.toStringAsFixed(0);
+    final dest = widget.tripDestination?.coordinate;
+    unawaited(CarNotificationBridge.instance.postAlert(
+      id: stationId.hashCode.abs() % 10000 + 2000,
+      title: '⛽ ${hint.station.stationName} − ${savings}ct/L',
+      body: 'A $km km · Toca "Desviar" para añadirla a tu ruta en Maps',
+      waypointLat: coord.lat,
+      waypointLon: coord.lon,
+      destLat: dest?.lat,
+      destLon: dest?.lon,
+      actionLabel: 'Desviar',
+    ));
+  }
+
+  /// Injects a fake GPS position for demo purposes.
+  void _injectPosition(double lat, double lon, {double speedKmh = 110}) {
+    // Position.fromMap is the cleanest way to construct a fake Position
+    // without requiring a real Geolocator fix.
+    final fake = Position(
+      latitude: lat,
+      longitude: lon,
+      timestamp: DateTime.now(),
+      accuracy: 5.0,
+      altitude: 650.0,
+      altitudeAccuracy: 10.0,
+      heading: 90.0,
+      headingAccuracy: 5.0,
+      speed: speedKmh / 3.6,
+      speedAccuracy: 1.0,
+    );
+    _onPosition(fake);
+  }
+
+  /// Demo that cycles through AA companion states every 7 s.
+  /// Shows: active companion → fuel alert → adverse event → restaurant → ETA.
+  Future<void> _runDemo() async {
+    const dest = LatLon(lat: 41.6488, lon: -0.8891); // Zaragoza
+    const fuelCoord = LatLon(lat: 40.5100, lon: -3.2900);
+    const fireCoord = LatLon(lat: 41.0800, lon: -1.9500);
+    const restCoord = LatLon(lat: 41.3600, lon: -1.6200);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('▶ Demo AA iniciado — Madrid → Zaragoza'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+
+    // Inject starting position so companion screen shows live data
+    _injectPosition(40.4168, -3.7038, speedKmh: 0);
+    await Future<void>.delayed(const Duration(seconds: 2));
+
+    final steps = [
+      () async {
+        // Step 1: Fuel alert
+        _injectPosition(fuelCoord.lat, fuelCoord.lon, speedKmh: 110);
+        await CarNotificationBridge.instance.postAlert(
+          id: 9001,
+          title: '⛽ Repsol — −9 ct/L',
+          body: 'A 3 km · Desvía en Maps para repostar',
+          waypointLat: fuelCoord.lat,
+          waypointLon: fuelCoord.lon,
+          destLat: dest.lat,
+          destLon: dest.lon,
+          actionLabel: 'Desviar',
+        );
+        await CarBridge.instance.updateTrip(
+          progress: TripProgress(
+            progressKm: 30,
+            totalKm: 300,
+            remainingKm: 270,
+            currentSpeedKmh: 110,
+            etaToDestination: DateTime.now().add(const Duration(hours: 3)),
+            offRouteMeters: 0,
+          ),
+          destination: dest,
+          me: fuelCoord,
+        );
+      },
+      () async {
+        // Step 2: Adverse event (fire)
+        _injectPosition(fireCoord.lat, fireCoord.lon, speedKmh: 120);
+        await CarNotificationBridge.instance.postAlert(
+          id: 9002,
+          title: '🔥 Incendio forestal detectado',
+          body: 'A 18 km en tu ruta · Considera la N-II · Desviar en Maps',
+          waypointLat: fireCoord.lat,
+          waypointLon: fireCoord.lon,
+          destLat: dest.lat,
+          destLon: dest.lon,
+          actionLabel: 'Evitar zona',
+        );
+        await CarBridge.instance.updateTrip(
+          progress: TripProgress(
+            progressKm: 80,
+            totalKm: 300,
+            remainingKm: 220,
+            currentSpeedKmh: 120,
+            etaToDestination: DateTime.now().add(const Duration(hours: 2, minutes: 30)),
+            offRouteMeters: 0,
+          ),
+          destination: dest,
+          me: fireCoord,
+        );
+      },
+      () async {
+        // Step 3: Restaurant suggestion
+        _injectPosition(restCoord.lat, restCoord.lon, speedKmh: 105);
+        await CarNotificationBridge.instance.postAlert(
+          id: 9003,
+          title: '🍽 El Portal del Jiloca',
+          body: 'Menú €12 · A 4 km · ¿Paramos a comer? Desviar en Maps',
+          waypointLat: restCoord.lat,
+          waypointLon: restCoord.lon,
+          destLat: dest.lat,
+          destLon: dest.lon,
+          actionLabel: '¿Paramos?',
+        );
+        await CarBridge.instance.updateTrip(
+          progress: TripProgress(
+            progressKm: 150,
+            totalKm: 300,
+            remainingKm: 150,
+            currentSpeedKmh: 105,
+            etaToDestination: DateTime.now().add(const Duration(hours: 1, minutes: 45)),
+            offRouteMeters: 0,
+          ),
+          destination: dest,
+          me: restCoord,
+        );
+      },
+      () async {
+        // Step 4: Approaching destination
+        _injectPosition(dest.lat, dest.lon, speedKmh: 80);
+        await CarNotificationBridge.instance.postAlert(
+          id: 9004,
+          title: '🏁 Llegando a Zaragoza',
+          body: 'ETA en 10 min · 12 km · Sin incidencias',
+        );
+        await CarBridge.instance.updateTrip(
+          progress: TripProgress(
+            progressKm: 288,
+            totalKm: 300,
+            remainingKm: 12,
+            currentSpeedKmh: 80,
+            etaToDestination: DateTime.now().add(const Duration(minutes: 10)),
+            offRouteMeters: 0,
+          ),
+          destination: dest,
+          me: dest,
+        );
+      },
+    ];
+
+    for (final step in steps) {
+      if (!mounted) return;
+      await step();
+      await Future<void>.delayed(const Duration(seconds: 12));
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Demo completado')),
+      );
+    }
+  }
+
+  void _triggerRadarAlert(SpeedCamera radar) {
+    HapticFeedback.heavyImpact();
+    HapticFeedback.heavyImpact();
+    setState(() => _activeRadarAlert = radar);
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _activeRadarAlert = null);
+    });
+  }
+
   /// User-visible notification title. Severity determines the
   /// wording ("Peligro" for critical, "Aviso" for warning) but the
   /// actual translation is deferred to a future localisation pass —
@@ -407,6 +700,337 @@ class _CompanionDriveScreenState
         ? 'Alert'
         : 'Warning';
     return '$prefix: ${e.type.name} ahead';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stop context helpers (Change 1 + 2)
+  // ---------------------------------------------------------------------------
+
+  /// Build a flat list of upcoming stops from the active trip plan:
+  /// meal stops from per-day plans, top-level optimizations, and the
+  /// first three fuel picks. Sorted by km from origin. Deferred meal
+  /// stops (driver chose "skip") are excluded.
+  List<Map<String, dynamic>> _buildStopsForContext() {
+    final response = widget.activeTrip;
+    if (response == null) return [];
+    final stops = <Map<String, dynamic>>[];
+
+    // Per-day meal stops
+    for (final day in response.days) {
+      for (final meal in day.mealStops) {
+        if (_deferredMealKms.contains(meal.distanceFromOriginKm)) continue;
+        stops.add({
+          'name': meal.restaurantName ?? meal.slot,
+          'km': meal.distanceFromOriginKm,
+          'type': meal.slot,
+          'eta_ms': meal.at.millisecondsSinceEpoch,
+        });
+      }
+    }
+    // Top-level optimizations meal stops (dedup by km)
+    final existingKms = stops.map((s) => s['km'] as double).toSet();
+    for (final m in response.optimizations?.mealStops ?? const []) {
+      if (_deferredMealKms.contains(m.distanceFromOriginKm)) continue;
+      if (!existingKms.contains(m.distanceFromOriginKm)) {
+        stops.add({
+          'name': m.restaurantName ?? m.slot,
+          'km': m.distanceFromOriginKm,
+          'type': m.slot,
+          'eta_ms': m.at.millisecondsSinceEpoch,
+        });
+      }
+    }
+    // Top-3 fuel picks
+    for (final fuel in response.fuelPrices.take(3)) {
+      stops.add({
+        'name': fuel.stationName,
+        'km': fuel.distanceFromOriginKm,
+        'type': 'fuel',
+      });
+    }
+
+    stops.sort((a, b) => (a['km'] as num).compareTo(b['km'] as num));
+    return stops;
+  }
+
+  /// Fire the proactive suggest endpoint when the driver crosses a new
+  /// 5-km bucket. No-ops when there is no active group session ID or
+  /// no trip attached.
+  Future<void> _maybeFireProactiveSuggest(double currentKm) async {
+    final sid = _groupSessionId;
+    if (sid == null) return; // only relevant with an active session
+    final bucket = (currentKm / 5.0).floor();
+    if (bucket <= _lastSuggestBucketKm) return;
+    _lastSuggestBucketKm = bucket;
+
+    final allStops = _buildStopsForContext();
+    final upcomingStops = allStops
+        .where((s) => (s['km'] as num) > currentKm)
+        .take(5)
+        .toList();
+    if (upcomingStops.isEmpty) return;
+
+    final lang = Localizations.localeOf(context).languageCode;
+    final api = ref.read(apiClientWithPremiumProvider);
+    final result = await api.sendCompanionSuggest(
+      sessionId: sid,
+      currentKm: currentKm,
+      stops: upcomingStops,
+      lang: lang,
+    );
+    if (!mounted || result == null) return;
+    setState(() => _proactiveSuggestion = result.suggestion);
+    // Handle action returned alongside the suggestion (e.g. delay_meal_stop)
+    if (result.action == 'delay_meal_stop') {
+      _showDelayMealStopSheet();
+    }
+  }
+
+  // Quick-tap commands shown as chips in the chat dialog.
+  static const _quickCommands = [
+    'next stop details',
+    'cheapest fuel nearby',
+    'hotel options tonight',
+    'how far to destination',
+    'avoid tolls from here',
+  ];
+
+  /// Opens the single-turn companion chat bottom sheet. The driver
+  /// types (or taps a chip), gets an AI reply displayed + spoken.
+  Future<void> _showChatDialog() async {
+    final api = ref.read(apiClientWithPremiumProvider);
+    final controller = TextEditingController();
+    String? localReply;
+    bool localBusy = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheet) {
+            Future<void> send(String text) async {
+              final trimmed = text.trim();
+              if (trimmed.isEmpty || localBusy) return;
+              setSheet(() {
+                localBusy = true;
+                localReply = null;
+              });
+              final tripCtx = widget.activeTrip == null
+                  ? null
+                  : <String, dynamic>{
+                      'origin': widget.tripOrigin?.displayName,
+                      'destination': widget.tripDestination?.displayName,
+                      'km_remaining':
+                          _tripProgress?.remainingKm.toStringAsFixed(0),
+                    };
+              // Bug fixes 2026-10-01:
+              // #1 — pass lang so LLM answers in the driver's language
+              // #2 — setLanguage before speak so TTS uses correct voice
+              // #3 — include GPS position in tripCtx when available
+              final lang =
+                  Localizations.localeOf(context).languageCode;
+              // Add GPS position to context when available (bug fix #3)
+              final mutableCtx = Map<String, dynamic>.from(tripCtx ?? {});
+              if (_lastPosition != null) {
+                mutableCtx['lat'] = _lastPosition!.latitude;
+                mutableCtx['lon'] = _lastPosition!.longitude;
+                mutableCtx['speed_kmh'] =
+                    (_lastPosition!.speed * 3.6).toStringAsFixed(0);
+              }
+              // Change 2: include current km + upcoming stops so the LLM
+              // can reason about the next stops ahead.
+              final currentKm = _tripProgress?.progressKm ?? 0.0;
+              mutableCtx['current_km'] = currentKm;
+              final allStops = _buildStopsForContext();
+              final upcomingStops = allStops
+                  .where((s) => (s['km'] as num) > currentKm)
+                  .take(5)
+                  .toList();
+              if (upcomingStops.isNotEmpty) {
+                mutableCtx['stops'] = upcomingStops;
+              }
+              final result = await api.sendCompanionChat(
+                message: trimmed,
+                tripContext: mutableCtx,
+                lang: lang,
+              );
+              if (_ttsReady && result.reply.isNotEmpty) {
+                await _tts.setLanguage(lang);
+                unawaited(_tts.speak(result.reply));
+              }
+              // Change 4: delay_meal_stop action from chat
+              if (result.action == 'delay_meal_stop') {
+                // Close the bottom sheet first, then show the delay sheet.
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) _showDelayMealStopSheet();
+                });
+              }
+              setSheet(() {
+                localReply = result.reply;
+                localBusy = false;
+              });
+            }
+
+            final scheme = Theme.of(ctx).colorScheme;
+            final t = Theme.of(ctx).textTheme;
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(ctx).viewInsets.bottom,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: scheme.surfaceContainerHigh,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(Tokens.radiusLg),
+                  ),
+                ),
+                padding: const EdgeInsets.fromLTRB(
+                  Tokens.space16,
+                  Tokens.space12,
+                  Tokens.space16,
+                  Tokens.space24,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle bar
+                    Center(
+                      child: Container(
+                        width: 36,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: scheme.onSurfaceVariant.withOpacity(0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: Tokens.space12),
+                    Text(
+                      AppLocalizations.of(context).companionAssistantTitle,
+                      style: t.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: Tokens.space12),
+                    // Quick-tap command chips
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _quickCommands.map((cmd) {
+                        return ActionChip(
+                          label: Text(cmd),
+                          onPressed: localBusy
+                              ? null
+                              : () {
+                                  controller.text = cmd;
+                                  send(cmd);
+                                },
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: Tokens.space12),
+                    // Free-text input + send button
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: controller,
+                            enabled: !localBusy,
+                            textInputAction: TextInputAction.send,
+                            decoration: InputDecoration(
+                              hintText: AppLocalizations.of(context).companionAskHint,
+                              filled: true,
+                              fillColor: scheme.surfaceContainerHighest,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(
+                                    Tokens.radiusMd),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding:
+                                  const EdgeInsets.symmetric(
+                                horizontal: Tokens.space12,
+                                vertical: Tokens.space8,
+                              ),
+                            ),
+                            onSubmitted: send,
+                          ),
+                        ),
+                        const SizedBox(width: Tokens.space8),
+                        FilledButton.icon(
+                          onPressed: localBusy
+                              ? null
+                              : () => send(controller.text),
+                          icon: localBusy
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2),
+                                )
+                              : const Icon(Icons.send, size: 18),
+                          label: Text(AppLocalizations.of(context).companionSend),
+                        ),
+                      ],
+                    ),
+                    // AI reply bubble
+                    if (localReply != null) ...[
+                      const SizedBox(height: Tokens.space16),
+                      Container(
+                        width: double.infinity,
+                        padding:
+                            const EdgeInsets.all(Tokens.space12),
+                        decoration: BoxDecoration(
+                          color: scheme.primaryContainer,
+                          borderRadius:
+                              BorderRadius.circular(Tokens.radiusMd),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              localReply!,
+                              style: t.bodyMedium?.copyWith(
+                                color: scheme.onPrimaryContainer,
+                              ),
+                            ),
+                            if (_ttsReady) ...[
+                              const SizedBox(height: Tokens.space4),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: IconButton(
+                                  tooltip: 'Replay',
+                                  iconSize: 20,
+                                  visualDensity: VisualDensity.compact,
+                                  icon: Icon(
+                                    Icons.volume_up,
+                                    color: scheme.onPrimaryContainer
+                                        .withOpacity(0.7),
+                                  ),
+                                  onPressed: () {
+                                    final reply = localReply;
+                                    if (reply != null &&
+                                        reply.isNotEmpty) {
+                                      unawaited(_tts.speak(reply));
+                                    }
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<void> _initTts() async {
@@ -465,6 +1089,20 @@ class _CompanionDriveScreenState
     // the area) within the first 5 s instead of after 60.
     _tickTimer = Timer.periodic(_tickInterval, (_) => _tick());
     unawaited(_tick());
+
+    // Signal Android Auto bridge that companion is active — even in
+    // assistant-only mode (no planned trip) so the head unit exits
+    // the idle screen and shows the "starting" template.
+    unawaited(SharedPreferences.getInstance().then((p) =>
+        p.setBool('activeTrip', true)));
+
+    // Track companion usage for AI context.
+    unawaited(
+      UserLearningTracker.onFeatureUsed(
+        'companion_started',
+        ref.read(apiClientWithPremiumProvider),
+      ),
+    );
   }
 
   /// Share the current drive as a story-format image. Reverse-
@@ -547,11 +1185,11 @@ class _CompanionDriveScreenState
         _lastStopAt = now;
       }
     }
-    // Update trip progress when Companion is anchored to a plan.
-    // Same helper the (now-legacy) TripDashboardScreen used, so
-    // ETA + km-remaining calculations stay identical.
+    // Update trip progress when Companion is anchored to a plan
+    // AND the driver is on/near the route. In free-navigation mode
+    // we skip route-based calculations to avoid nonsensical km readings.
     final route = _routeRef;
-    if (route != null && widget.activeTrip != null) {
+    if (route != null && widget.activeTrip != null && !_freeNavigationMode) {
       final fixLL = LatLon(lat: p.latitude, lon: p.longitude);
       _speedTracker.addFix(fixLL, now, speedKmh: speedKmh);
       final next = _nextStop();
@@ -566,6 +1204,22 @@ class _CompanionDriveScreenState
         fuelPrices: widget.activeTrip!.fuelPrices,
       );
       setState(() => _tripProgress = progress);
+
+      // Off-route detection: if the driver is far from the planned
+      // polyline for several consecutive fixes, offer free-nav mode.
+      if (!_freeNavigationMode && !_offRouteDialogShowing) {
+        final offKm = progress.offRouteMeters / 1000.0;
+        if (offKm > _offRouteKmThreshold) {
+          _consecutiveOffRouteFixes++;
+          if (_consecutiveOffRouteFixes >= _offRouteFixesNeeded) {
+            _consecutiveOffRouteFixes = 0;
+            _showOffRouteDialog();
+          }
+        } else {
+          _consecutiveOffRouteFixes = 0;
+        }
+      }
+
       // Push snapshot to the Android Auto bridge — the head unit
       // re-invalidates its own templates every ~5 s and reads from
       // SharedPreferences, so fire-and-forget is fine. Skip on
@@ -578,6 +1232,60 @@ class _CompanionDriveScreenState
         fuelStations: widget.activeTrip!.fuelPrices,
         restaurants: widget.activeTrip!.restaurants,
       ));
+      // Proximity check — runs after progress is computed so
+      // progressKm is available via _tripProgress.
+      _checkRadarProximity(progress.progressKm);
+      // Cheaper fuel notification — fires once per station.
+      _maybeFuelNotification(progress);
+      // Proactive stop suggestion — fires at each 5-km bucket crossing.
+      unawaited(_maybeFireProactiveSuggest(progress.progressKm));
+    }
+  }
+
+  /// Receives data from the FGS notification buttons (e.g. "Detener")
+  /// and acts on them in the main isolate.
+  void _onForegroundTaskData(Object data) {
+    if (data == 'stop_companion' && mounted) {
+      setState(() => _leaving = true);
+      Future<void>.delayed(Duration.zero).then((_) {
+        if (mounted) Navigator.of(context).pop();
+      });
+    }
+  }
+
+  Future<void> _showOffRouteDialog() async {
+    if (!mounted || _offRouteDialogShowing) return;
+    _offRouteDialogShowing = true;
+    final l = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Estás fuera de la ruta?'),
+        content: const Text(
+          'Tu posición está lejos de la ruta planificada. '
+          'En modo libre el asistente sigue contigo sin calcular km de ruta.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Volver a la ruta'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Modo libre'),
+          ),
+        ],
+      ),
+    );
+    _offRouteDialogShowing = false;
+    if (!mounted) return;
+    if (confirmed == true) {
+      setState(() => _freeNavigationMode = true);
+    } else {
+      // User wants to return to route — reset counter so we don't
+      // immediately re-prompt if they're still off-route.
+      _consecutiveOffRouteFixes = 0;
     }
   }
 
@@ -683,15 +1391,36 @@ class _CompanionDriveScreenState
         // (simplified: just remove; server re-emits after cooldown).
         _dismissRec(rec);
       case 'open_maps':
+      case 'navigate_via':
         final lat = action.payload['lat'];
         final lon = action.payload['lon'];
         if (lat != null && lon != null) {
-          final uri = Uri.parse('geo:$lat,$lon?q=$lat,$lon');
-          try {
-            await launchUrl(uri, mode: LaunchMode.externalApplication);
-          } catch (_) {
-            // Ignore.
+          // Use waypoint navigation when we know the trip destination
+          // so Maps recalculates via the POI and then continues.
+          final dest = widget.tripDestination;
+          final Uri uri;
+          if (dest != null) {
+            final destLat = dest.coordinate.lat;
+            final destLon = dest.coordinate.lon;
+            uri = Uri.parse(
+              'https://www.google.com/maps/dir/?api=1'
+              '&destination=$destLat,$destLon'
+              '&waypoints=$lat,$lon'
+              '&travelmode=driving',
+            );
+          } else {
+            uri = Uri.parse('google.navigation:q=$lat,$lon');
           }
+          try {
+            final launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+            if (!launched) {
+              // Maps not installed — fallback to browser URL
+              await launchUrl(uri, mode: LaunchMode.platformDefault);
+            }
+          } catch (_) {}
         }
       case 'call':
         // Reserved for future emergency-call action.
@@ -699,10 +1428,208 @@ class _CompanionDriveScreenState
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Group Companion session helpers
+  // ---------------------------------------------------------------------------
+
+  Future<void> _startGroupSession() async {
+    final api = ref.read(apiClientWithPremiumProvider);
+    try {
+      final session = await api.createCompanionSession();
+      setState(() {
+        _groupSessionId = session.sessionId;
+        _groupJoinCode = session.joinCode;
+      });
+      // Start periodic push.
+      _groupPushTimer?.cancel();
+      _groupPushTimer =
+          Timer.periodic(_groupPushInterval, (_) => _pushGroupState());
+      _pushGroupState(); // immediate first push
+      if (mounted) _showGroupSessionSheet();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No se pudo crear la sesion grupal: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _pushGroupState() async {
+    final sid = _groupSessionId;
+    if (sid == null) return;
+    final p = _lastPosition;
+    if (p == null) return;
+    final api = ref.read(apiClientWithPremiumProvider);
+    final nextStop = _nextStop();
+    final progress = _tripProgress;
+    final radarKm = _nextRadar?.distanceFromOriginKm != null && progress != null
+        ? _nextRadar!.distanceFromOriginKm - progress.progressKm
+        : null;
+    final destEtaMin = progress?.remainingKm != null
+        ? ((progress!.remainingKm / 100.0) * 60).round()
+        : null;
+    final etaMin = nextStop != null && progress != null
+        ? ((nextStop.distanceFromOriginKm - progress.progressKm) / 100.0 * 60)
+            .round()
+        : null;
+    await api.updateCompanionSession(
+      sid,
+      CompanionSessionState(
+        lat: p.latitude,
+        lon: p.longitude,
+        speedKmh: p.speed * 3.6,
+        nextStopName: nextStop?.restaurantName ?? widget.tripDestination?.displayName,
+        etaMinutes: etaMin,
+        destinationName: widget.tripDestination?.displayName,
+        destinationEtaMinutes: destEtaMin,
+        radarAheadKm: radarKm?.clamp(0.0, 999.0),
+      ),
+    );
+  }
+
+  Future<void> _endGroupSession() async {
+    final sid = _groupSessionId;
+    _groupPushTimer?.cancel();
+    _groupPushTimer = null;
+    setState(() {
+      _groupSessionId = null;
+      _groupJoinCode = null;
+    });
+    if (sid != null) {
+      final api = ref.read(apiClientWithPremiumProvider);
+      await api.deleteCompanionSession(sid);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Change 4: dynamic meal-stop deferral (MVP)
+  // ---------------------------------------------------------------------------
+
+  /// Show a bottom sheet asking the driver if they want to defer the next
+  /// meal stop. Confirming removes it from the upcoming context list for
+  /// the rest of the session (no full re-plan; that's a future iteration).
+  void _showDelayMealStopSheet() {
+    final progressKm = _tripProgress?.progressKm ?? 0.0;
+    final nextMeal = _nextStop();
+    if (nextMeal == null) return;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(Tokens.space24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Cambiar parada de comida',
+                style: Theme.of(sheetCtx).textTheme.titleLarge,
+              ),
+              const SizedBox(height: Tokens.space12),
+              Text(
+                'Quieres retrasar la parada de comida? '
+                'La moveremos al siguiente area de servicio.',
+                style: Theme.of(sheetCtx).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: Tokens.space24),
+              FilledButton(
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  setState(() {
+                    _deferredMealKms.add(nextMeal.distanceFromOriginKm);
+                    // Clear the proactive suggestion that triggered this.
+                    _proactiveSuggestion = null;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Parada de comida eliminada del recorrido'),
+                    ),
+                  );
+                },
+                child: const Text('Si, adelante'),
+              ),
+              const SizedBox(height: Tokens.space8),
+              OutlinedButton(
+                onPressed: () => Navigator.of(sheetCtx).pop(),
+                child: const Text('No, mantener'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showGroupSessionSheet() {
+    final code = _groupJoinCode;
+    if (code == null) return;
+    final deepLink = 'mytravelpal://companion/$code';
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(Tokens.space24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Sesion grupal activa',
+                style: Theme.of(sheetCtx).textTheme.titleLarge,
+              ),
+              const SizedBox(height: Tokens.space16),
+              QrImageView(
+                data: deepLink,
+                version: QrVersions.auto,
+                size: 200,
+              ),
+              const SizedBox(height: Tokens.space16),
+              Text(
+                'Codigo: $code',
+                style: Theme.of(sheetCtx)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(letterSpacing: 4),
+              ),
+              const SizedBox(height: Tokens.space12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.copy),
+                label: const Text('Copiar codigo'),
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Codigo copiado')),
+                  );
+                },
+              ),
+              const SizedBox(height: Tokens.space12),
+              FilledButton.icon(
+                icon: const Icon(Icons.group_off),
+                label: const Text('Finalizar sesion'),
+                style: FilledButton.styleFrom(
+                  backgroundColor: Theme.of(sheetCtx).colorScheme.error,
+                  foregroundColor: Theme.of(sheetCtx).colorScheme.onError,
+                ),
+                onPressed: () {
+                  Navigator.of(sheetCtx).pop();
+                  _endGroupSession();
+                },
+              ),
+              const SizedBox(height: Tokens.space8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   void dispose() {
+    FlutterForegroundTask.removeTaskDataCallback(_onForegroundTaskData);
     _tickTimer?.cancel();
     _advTimer?.cancel();
+    _groupPushTimer?.cancel();
     _positionSub?.cancel();
     _crashSub?.cancel();
     unawaited(_crashDetector.dispose());
@@ -712,9 +1639,11 @@ class _CompanionDriveScreenState
     // the idle "no active trip" template when the driver ends
     // the session. Only meaningful when the session HAD a plan
     // attached; assistant-only sessions never touched the bridge.
-    if (_hasActiveTrip) {
-      unawaited(CarBridge.instance.clearTrip());
-    }
+    // Clear AA bridge — always, not only when a trip was active,
+    // so assistant-only sessions also revert the head unit to idle.
+    unawaited(CarBridge.instance.clearTrip());
+    unawaited(SharedPreferences.getInstance().then((p) =>
+        p.setBool('activeTrip', false)));
     // Companion session ended — clear badge in AppShell.
     ref.read(companionActiveProvider.notifier).state = false;
     super.dispose();
@@ -769,18 +1698,78 @@ class _CompanionDriveScreenState
         appBar: AppBar(
           title: Text(l.companionDriveTitle),
           actions: [
+            // Group session: active = filled icon (tapping re-opens sheet),
+            // inactive = outline icon (tapping creates a new session).
+            IconButton(
+              tooltip: _groupJoinCode != null
+                  ? 'Sesion grupal activa'
+                  : 'Iniciar sesion grupal',
+              icon: Icon(_groupJoinCode != null
+                  ? Icons.group
+                  : Icons.group_outlined),
+              onPressed: _groupJoinCode != null
+                  ? _showGroupSessionSheet
+                  : _startGroupSession,
+            ),
             IconButton(
               tooltip: l.shareCardOption,
               icon: const Icon(Icons.ios_share),
               onPressed: _shareLive,
             ),
+            if (const bool.fromEnvironment('COMPANION_DEMO'))
+              IconButton(
+                tooltip: 'Demo AA',
+                icon: const Icon(Icons.science_outlined),
+                onPressed: _runDemo,
+              ),
           ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          tooltip: 'Ask companion',
+          onPressed: _showChatDialog,
+          child: const Icon(Icons.chat_outlined),
         ),
         body: Stack(
           children: [
             ListView(
               padding: const EdgeInsets.all(Tokens.space20),
               children: [
+                // Change 3: proactive suggestion banner (amber, dismissible).
+                if (_proactiveSuggestion != null)
+                  Dismissible(
+                    key: ValueKey(_proactiveSuggestion),
+                    onDismissed: (_) =>
+                        setState(() => _proactiveSuggestion = null),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: Tokens.space12),
+                      padding: const EdgeInsets.all(Tokens.space12),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.shade800,
+                        borderRadius:
+                            BorderRadius.circular(Tokens.radiusMd),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lightbulb_outline,
+                              color: Colors.white),
+                          const SizedBox(width: Tokens.space8),
+                          Expanded(
+                            child: Text(
+                              _proactiveSuggestion!,
+                              style: const TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.close, color: Colors.white,
+                                size: 18),
+                            onPressed: () =>
+                                setState(() => _proactiveSuggestion = null),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 // Live mini-map at the top — only when Companion is
                 // anchored to a real plan (assistant-only sessions
                 // have no route to render). Shows remaining polyline,
@@ -823,13 +1812,31 @@ class _CompanionDriveScreenState
                 // stop, % complete). Assistant-only sessions
                 // (no active trip) don't have this data so the
                 // block is skipped, keeping the screen minimal.
-                if (_hasActiveTrip && _tripProgress != null) ...[
+                // Free-navigation mode banner
+                if (_freeNavigationMode) ...[
+                  const SizedBox(height: Tokens.space12),
+                  _FreeNavBanner(
+                    onReturnToRoute: () => setState(() {
+                      _freeNavigationMode = false;
+                      _consecutiveOffRouteFixes = 0;
+                    }),
+                  ),
+                ] else if (_hasActiveTrip && _tripProgress != null) ...[
                   const SizedBox(height: Tokens.space12),
                   _TripProgressCard(
                     progress: _tripProgress!,
                     nextStop: _nextStop(),
                     destinationName: widget.tripDestination?.displayName,
                   ),
+                ],
+                // Radar proximity info row — shown when a camera is
+                // in the 0–1.5 km warning band but the 5 s alert
+                // banner hasn't fired yet (or has already dismissed).
+                if (_nextRadar != null && _activeRadarAlert == null &&
+                    ref.watch(isEssentialOrAboveProvider) &&
+                    ref.watch(radarAlertsEnabledProvider)) ...[
+                  const SizedBox(height: Tokens.space12),
+                  _RadarProximityRow(camera: _nextRadar!),
                 ],
                 const SizedBox(height: Tokens.space24),
                 if (_recs.where((r) => !r.isCritical).isEmpty)
@@ -856,6 +1863,16 @@ class _CompanionDriveScreenState
                   ),
               ],
             ),
+            // Radar alert banner — slides in from top, auto-dismisses
+            // after 5 s. Rendered above the critical-rec overlay so
+            // a blocking rec doesn't hide the speed-camera warning.
+            if (_activeRadarAlert != null)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _RadarAlertBanner(camera: _activeRadarAlert!),
+              ),
             if (_blockingRec != null)
               _CriticalOverlay(
                 rec: _blockingRec!,
@@ -2142,6 +3159,140 @@ class _CompanionLiveMapState extends State<_CompanionLiveMap>
             if (markers.isNotEmpty) fmap.MarkerLayer(markers: markers),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Full-width red banner that drops from the top of the screen when
+/// a speed camera is within 400 m. Auto-dismissed after 5 s.
+class _RadarAlertBanner extends StatelessWidget {
+  const _RadarAlertBanner({required this.camera});
+
+  final SpeedCamera camera;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: Container(
+        color: Colors.red.shade700,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        child: SafeArea(
+          bottom: false,
+          child: Row(
+            children: [
+              const Icon(Icons.speed, color: Colors.white, size: 28),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'RADAR',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  if (camera.maxSpeedKmh != null)
+                    Text(
+                      '${camera.maxSpeedKmh} km/h',
+                      style: const TextStyle(color: Colors.white70),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().slideY(begin: -1, duration: 250.ms, curve: Curves.easeOut);
+  }
+}
+
+/// Subtle info row shown in the Companion card list when a camera is
+/// in the 0–1.5 km warning band but the 5 s alert hasn't fired yet.
+class _RadarProximityRow extends StatelessWidget {
+  const _RadarProximityRow({required this.camera});
+
+  final SpeedCamera camera;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final distStr = camera.distanceFromOriginKm.toStringAsFixed(1);
+    final speedStr =
+        camera.maxSpeedKmh != null ? ' · ${camera.maxSpeedKmh} km/h' : '';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade700.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.shade700, width: 1),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.speed, color: Colors.orange.shade700, size: 20),
+          const SizedBox(width: 8),
+          Text(
+            'Radar en ${distStr} km$speedStr',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Shown when the driver is in free-navigation mode (GPS far from
+/// planned route). Offers to return to route tracking.
+class _FreeNavBanner extends StatelessWidget {
+  const _FreeNavBanner({required this.onReturnToRoute});
+  final VoidCallback onReturnToRoute;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space16, vertical: Tokens.space12),
+      decoration: BoxDecoration(
+        color: scheme.tertiaryContainer.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(Tokens.radiusMd),
+        border: Border.all(color: scheme.tertiary.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.explore_outlined, color: scheme.tertiary, size: 20),
+          const SizedBox(width: Tokens.space12),
+          Expanded(
+            child: Text(
+              'Modo navegación libre · el asistente sigue contigo',
+              style: t.bodySmall?.copyWith(
+                color: scheme.onTertiaryContainer,
+              ),
+            ),
+          ),
+          const SizedBox(width: Tokens.space8),
+          TextButton(
+            onPressed: onReturnToRoute,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: Text(
+              'Volver a ruta',
+              style: t.labelSmall?.copyWith(color: scheme.tertiary),
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -27,10 +27,13 @@ class Skeleton extends StatefulWidget {
 
 class _SkeletonState extends State<Skeleton>
     with SingleTickerProviderStateMixin {
+  // Loops once left→right per cycle (no reverse) so the shimmer
+  // band always sweeps in the same direction — feels like a proper
+  // loading indicator rather than a pulse breath.
   late final AnimationController _ctrl = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
 
   @override
   void dispose() {
@@ -41,21 +44,39 @@ class _SkeletonState extends State<Skeleton>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final base = scheme.surfaceContainerHigh;
+    final highlight = Color.lerp(
+      scheme.surfaceContainerHighest, scheme.primary, 0.10,
+    ) ?? scheme.surfaceContainerHighest;
     return AnimatedBuilder(
       animation: _ctrl,
-      builder: (_, __) => Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: Color.lerp(
-            scheme.surfaceContainerHigh,
-            scheme.surfaceContainerHighest,
-            _ctrl.value,
-          ),
+      builder: (_, __) {
+        // Shimmer band sweeps left→right. `stop` positions the
+        // highlight along the gradient; we move it beyond [0..1]
+        // so the band enters + exits smoothly.
+        final t = _ctrl.value;
+        final stop = -0.5 + 2.0 * t;
+        return ClipRRect(
           borderRadius: widget.borderRadius ??
               BorderRadius.circular(Tokens.radiusSm),
-        ),
-      ),
+          child: Container(
+            width: widget.width,
+            height: widget.height,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+                colors: [base, highlight, base],
+                stops: [
+                  (stop - 0.3).clamp(0.0, 1.0),
+                  stop.clamp(0.0, 1.0),
+                  (stop + 0.3).clamp(0.0, 1.0),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

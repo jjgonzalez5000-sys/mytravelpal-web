@@ -345,7 +345,7 @@ async def inspire(
         f"Prompt: {payload.prompt}"
     )
     try:
-        raw = await providers.llm.generate_narrative(user_prompt)
+        raw = await providers.llm.generate_narrative(user_prompt, user_id=user.id, endpoint="inspire")
     except Exception as exc:  # noqa: BLE001
         _log.warning("LLM inspiration failed: %r", exc)
         raise HTTPException(
@@ -498,7 +498,7 @@ async def inspire_refine(
         f"`assistant_note` field on the top level."
     )
     try:
-        raw = await providers.llm.generate_narrative(user_prompt)
+        raw = await providers.llm.generate_narrative(user_prompt, user_id=user.id, endpoint="inspire")
     except Exception as exc:  # noqa: BLE001
         _log.warning("LLM refine failed: %r", exc)
         raise HTTPException(

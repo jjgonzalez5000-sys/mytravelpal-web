@@ -4,11 +4,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'models.dart';
+
 import '../domain/auth_user.dart';
 import '../domain/garage_vehicle.dart';
 import '../domain/vehicle_model.dart';
 import 'config.dart';
-import 'models.dart';
 
 @immutable
 class AuthSessionResponse {
@@ -96,8 +97,11 @@ class ApiClient {
   /// Same 120 s cap + 3-attempt retry chain as [planTrip] — a
   /// long-haul plan still fans out server-side and can take tens of
   /// seconds when the backend is on a cold Fly machine.
-  Future<TripPlanResponse> planTripCore(TripPlanRequest request) =>
-      _postPlanVariant(request, '/v1/trips/plan/core');
+  Future<TripPlanResponse> planTripCore(
+    TripPlanRequest request, {
+    String? locale,
+  }) =>
+      _postPlanVariant(request, '/v1/trips/plan/core', locale: locale);
 
   /// Two-phase progressive plan: SLOWER phase.
   ///
@@ -108,13 +112,91 @@ class ApiClient {
   /// Shares the server-side `plan_cache` with [planTripCore], so
   /// firing this right after `planTripCore` for the same request
   /// pays the compute cost ONCE (the second call is a cache hit).
-  Future<TripPlanResponse> planTripEnrich(TripPlanRequest request) =>
-      _postPlanVariant(request, '/v1/trips/plan/enrich');
+  Future<TripPlanResponse> planTripEnrich(
+    TripPlanRequest request, {
+    String? locale,
+  }) =>
+      _postPlanVariant(request, '/v1/trips/plan/enrich', locale: locale);
+
+  /// SSE streaming plan — connects to /plan/stream, fires [onProgress]
+  /// for each "progress" event (pct 0-100, label string), and returns
+  /// the merged TripPlanResponse from the final "result" event.
+  ///
+  /// Use this instead of [planTripCore] + [planTripEnrich] when you
+  /// want a real progress bar rather than a time-based estimate. Falls
+  /// back to the caller's discretion — this method throws on any error
+  /// so the caller can catch and retry via the two-phase path.
+  Future<TripPlanResponse> streamPlan(
+    TripPlanRequest request, {
+    String? locale,
+    void Function(int pct, String label)? onProgress,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/plan/stream');
+    final req = http.Request('POST', uri)
+      ..headers.addAll(_headers(acceptLanguage: locale))
+      ..body = jsonEncode(request.toJson());
+
+    final streamed = await _http
+        .send(req)
+        .timeout(const Duration(seconds: 30)); // connection timeout
+
+    if (streamed.statusCode >= 400) {
+      final body = await streamed.stream.bytesToString();
+      throw ApiException(streamed.statusCode, body);
+    }
+
+    TripPlanResponse? result;
+    var buffer = '';
+
+    await for (final chunk in streamed.stream
+        .transform(utf8.decoder)
+        .timeout(const Duration(seconds: 180))) {
+      buffer += chunk;
+      // Process all complete lines in the buffer.
+      while (buffer.contains('\n')) {
+        final idx = buffer.indexOf('\n');
+        final line = buffer.substring(0, idx).trim();
+        buffer = buffer.substring(idx + 1);
+        if (!line.startsWith('data: ')) continue;
+        final Map<String, dynamic> data;
+        try {
+          data = jsonDecode(line.substring(6)) as Map<String, dynamic>;
+        } catch (_) {
+          continue;
+        }
+        final event = data['event'] as String?;
+        if (event == 'progress') {
+          onProgress?.call(
+            (data['pct'] as num).toInt(),
+            (data['label'] as String?) ?? '',
+          );
+        } else if (event == 'result') {
+          result = TripPlanResponse.fromJson(
+            data['plan'] as Map<String, dynamic>,
+          );
+        } else if (event == 'done') {
+          break;
+        } else if (event == 'error') {
+          throw ApiException(
+            500,
+            (data['message'] as String?) ?? 'stream error',
+          );
+        }
+      }
+      if (result != null) break; // done event may arrive after result
+    }
+
+    if (result == null) {
+      throw Exception('streamPlan: stream ended without a result event');
+    }
+    return result;
+  }
 
   Future<TripPlanResponse> _postPlanVariant(
     TripPlanRequest request,
-    String pathSuffix,
-  ) async {
+    String pathSuffix, {
+    String? locale,
+  }) async {
     final uri = Uri.parse('$_baseUrl$pathSuffix');
     final body = jsonEncode(request.toJson());
     const attempts = 3;
@@ -122,7 +204,7 @@ class ApiClient {
     for (var i = 0; i < attempts; i++) {
       try {
         final response = await _http
-            .post(uri, headers: _headers(), body: body)
+            .post(uri, headers: _headers(acceptLanguage: locale), body: body)
             .timeout(const Duration(seconds: 120));
         if (response.statusCode == 200) {
           return TripPlanResponse.fromJson(
@@ -146,7 +228,10 @@ class ApiClient {
     throw Exception(lastError?.toString() ?? 'plan variant failed');
   }
 
-  Future<TripPlanResponse> planTrip(TripPlanRequest request) async {
+  Future<TripPlanResponse> planTrip(
+    TripPlanRequest request, {
+    String? locale,
+  }) async {
     final uri = Uri.parse('$_baseUrl/v1/trips/plan');
     final body = jsonEncode(request.toJson());
     // /plan fans out to routing, weather, POI providers and gov fuel
@@ -166,7 +251,7 @@ class ApiClient {
     for (var i = 0; i < attempts; i++) {
       try {
         final response = await _http
-            .post(uri, headers: _headers(), body: body)
+            .post(uri, headers: _headers(acceptLanguage: locale), body: body)
             // 120s per attempt — long cross-country plans (e.g.
             // Switzerland → Toledo, ~2000 km) hit ~70-90 s on the
             // backend fanning weather/POI/fuel across 4-5 countries.
@@ -262,6 +347,34 @@ class ApiClient {
     );
   }
 
+  /// POST /v1/trips/narrative/audio — synthesize [narrativeText] to MP3
+  /// using OpenAI TTS on the backend. Returns base64-encoded MP3 bytes,
+  /// or null when the backend has no OPENAI_API_KEY (client should fall
+  /// back to device TTS in that case).
+  Future<String?> narrativeAudio({
+    required String narrativeText,
+    String voice = 'nova',
+    double speed = 1.0,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/narrative/audio');
+    try {
+      final response = await _http.post(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({
+          'narrative_text': narrativeText,
+          'voice': voice,
+          'speed': speed,
+        }),
+      );
+      if (response.statusCode != 200) return null;
+      final j = jsonDecode(response.body) as Map<String, dynamic>;
+      return j['audio_base64'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>> submitAdverseEvent({
     required AdverseEventType type,
     required AdverseEventSeverity severity,
@@ -327,6 +440,24 @@ class ApiClient {
       if (response.statusCode != 200) return null;
       final body = jsonDecode(response.body) as Map<String, dynamic>;
       return body['profile'] as Map<String, dynamic>?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Check whether a Hall of Fame nick is available (not taken by
+  /// another user). Returns null on any network/parse error so the
+  /// caller can treat it as "unknown" and allow saving anyway.
+  Future<bool?> checkNickAvailable(String nick) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/check-nick')
+        .replace(queryParameters: {'nick': nick});
+    try {
+      final response = await _http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode != 200) return null;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return body['available'] as bool?;
     } catch (_) {
       return null;
     }
@@ -807,6 +938,316 @@ class ApiClient {
       return response.statusCode == 200 || response.statusCode == 404;
     } catch (_) {
       return false;
+    }
+  }
+
+  // --------------- User Learning / AI Profile ---------------
+
+  /// GET /v1/profile/learning — fetch the stored learning blob.
+  /// Returns an empty map on any failure (including 401 — not logged in).
+  Future<Map<String, dynamic>> getUserLearning() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/learning');
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return const {};
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['learning'] as Map<String, dynamic>?) ?? const {};
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  /// PUT /v1/profile/learning — merge learning updates.
+  /// Fire-and-forget: callers swallow errors.
+  Future<void> putUserLearning(Map<String, dynamic> learning) async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/learning');
+    try {
+      await _http.put(
+        uri,
+        headers: _headers(),
+        body: jsonEncode({'learning': learning}),
+      );
+    } catch (_) {
+      // Fire-and-forget.
+    }
+  }
+
+  /// GET /v1/profile/ai-context — returns a short LLM context string
+  /// summarising the user's learning profile. Returns empty string
+  /// on any failure.
+  Future<String> getAiContext() async {
+    final uri = Uri.parse('$_baseUrl/v1/profile/ai-context');
+    try {
+      final response = await _http.get(uri, headers: _headers());
+      if (response.statusCode != 200) return '';
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['context'] as String?) ?? '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  /// POST /v1/companion/chat — single-turn driving assistant query.
+  /// Returns the AI reply and an optional action slug. Both
+  /// transport errors and backend 5xx yield a safe fallback reply.
+  Future<({String reply, String? action})> sendCompanionChat({
+    required String message,
+    Map<String, dynamic>? tripContext,
+    String lang = 'en',
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/companion/chat');
+    try {
+      final response = await _http
+          .post(
+            uri,
+            headers: _headers(),
+            body: jsonEncode({
+              'message': message,
+              'lang': lang,
+              if (tripContext != null) 'trip_context': tripContext,
+            }),
+          )
+          .timeout(const Duration(seconds: 30));
+      if (response.statusCode != 200) {
+        return (reply: 'Sorry, something went wrong.', action: null);
+      }
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (
+        reply: (body['reply'] as String?) ?? '',
+        action: body['action'] as String?,
+      );
+    } catch (_) {
+      return (reply: 'Could not reach the assistant.', action: null);
+    }
+  }
+
+  /// POST /v1/companion/session/{sessionId}/suggest — proactive stop tip.
+  /// Called every 5 km. Returns a one-sentence suggestion and an action slug.
+  /// Returns null on network error or when the backend fires no tip.
+  Future<({String suggestion, String? action})?> sendCompanionSuggest({
+    required String sessionId,
+    required double currentKm,
+    required List<Map<String, dynamic>> stops,
+    String lang = 'en',
+  }) async {
+    final uri = Uri.parse(
+        '$_baseUrl/v1/companion/session/$sessionId/suggest');
+    try {
+      final response = await _http
+          .post(
+            uri,
+            headers: _headers(),
+            body: jsonEncode({
+              'current_km': currentKm,
+              'stops': stops,
+              'lang': lang,
+            }),
+          )
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode != 200) return null;
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      final s = body['suggestion'] as String?;
+      if (s == null || s.isEmpty) return null;
+      return (suggestion: s, action: body['action'] as String?);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // --------------- Feedback ---------------
+
+  /// POST /v1/feedback — send a free-form suggestion. Returns the
+  /// backend-generated id on success. Reply email is optional; when
+  /// set, the user opted in to "quiero respuesta".
+  Future<int> submitFeedback({
+    required String bodyText,
+    required String appVersion,
+    required String locale,
+    String? replyEmail,
+    String category = 'suggestion',
+    String platform = 'android',
+    List<String> attachments = const [],
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/feedback');
+    final response = await _http.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({
+        'body_text': bodyText,
+        'app_version': appVersion,
+        'locale': locale,
+        'category': category,
+        'platform': platform,
+        if (replyEmail != null && replyEmail.isNotEmpty)
+          'reply_email': replyEmail,
+        if (attachments.isNotEmpty)
+          'attachments': attachments,
+      }),
+    );
+    if (response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final j = jsonDecode(response.body) as Map<String, dynamic>;
+    return (j['id'] as num).toInt();
+  }
+
+  /// Validate a Play Billing purchase receipt with the backend.
+  ///
+  /// [purchaseToken] is the token returned by Play Billing after a
+  /// successful purchase. [productId] is the SKU (e.g.
+  /// `mytravelpal_premium_yearly`). Returns the resolved tier string
+  /// ("essential" / "premium") on success or throws [ApiException].
+  Future<String> validatePurchase({
+    required String purchaseToken,
+    required String productId,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/billing/validate');
+    final response = await _http.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode({
+        'purchase_token': purchaseToken,
+        'product_id': productId,
+        'platform': 'android',
+      }),
+    );
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final j = jsonDecode(response.body) as Map<String, dynamic>;
+    return (j['tier'] as String?) ?? 'premium';
+  }
+
+  /// Fetch speed cameras along a route corridor from the backend.
+  /// Returns an empty list on any network or parse error — the
+  /// caller treats absence of cameras as "no data" rather than an
+  /// error so the Companion still starts normally.
+  Future<List<SpeedCamera>> getRadarsAlongRoute({
+    required double originLat,
+    required double originLon,
+    required double destLat,
+    required double destLon,
+  }) async {
+    try {
+      final uri =
+          Uri.parse('$_baseUrl/v1/trips/radars').replace(queryParameters: {
+        'origin_lat': originLat.toString(),
+        'origin_lon': originLon.toString(),
+        'dest_lat': destLat.toString(),
+        'dest_lon': destLon.toString(),
+      });
+      final response = await _http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 20));
+      if (response.statusCode != 200) return const [];
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      return (body['cameras'] as List<dynamic>? ?? [])
+          .map((c) => SpeedCamera.fromJson(c as Map<String, dynamic>))
+          .toList(growable: false);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  Future<({String slug, String url})> shareTrip({
+    required TripPlanResponse plan,
+    required TripPlanRequest request,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/share');
+    final body = jsonEncode({
+      'plan': plan.rawJson ?? {},
+      'request': request.toJson(),
+    });
+    final response = await _http
+        .post(uri, headers: _headers(), body: body)
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      slug: json['slug'] as String,
+      url: json['url'] as String,
+    );
+  }
+
+  Future<({TripPlanResponse plan, Map<String, dynamic> requestJson})>
+      importSharedTrip(String slug) async {
+    final uri = Uri.parse('$_baseUrl/v1/trips/share/$slug');
+    final response = await _http
+        .get(uri, headers: _headers())
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      plan: TripPlanResponse.fromJson(json['plan'] as Map<String, dynamic>),
+      requestJson: json['request'] as Map<String, dynamic>,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Group Companion session — driver creates / pushes, passengers poll.
+  // ---------------------------------------------------------------------------
+
+  /// Driver creates a group session. Returns sessionId + joinCode (6-char).
+  /// Throws [ApiException] on failure.
+  Future<({String sessionId, String joinCode})> createCompanionSession() async {
+    final uri = Uri.parse('$_baseUrl/v1/companion/session');
+    final response = await _http
+        .post(uri, headers: _headers(), body: '{}')
+        .timeout(const Duration(seconds: 20));
+    if (response.statusCode != 200 && response.statusCode != 201) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return (
+      sessionId: json['session_id'] as String,
+      joinCode: json['join_code'] as String,
+    );
+  }
+
+  /// Driver pushes current state to the session every 10 s.
+  /// Silently ignores errors — best-effort synchronisation.
+  Future<void> updateCompanionSession(
+    String sessionId,
+    CompanionSessionState state,
+  ) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/v1/companion/session/$sessionId');
+      await _http
+          .put(uri, headers: _headers(), body: jsonEncode(state.toJson()))
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // best-effort
+    }
+  }
+
+  /// Passenger polls. Returns the raw JSON payload (lat, lon, next_stop,
+  /// eta_minutes, radar_ahead_km, etc.) or null on any error.
+  Future<Map<String, dynamic>?> getCompanionSession(String joinCode) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/v1/companion/session/$joinCode');
+      final response = await _http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Driver ends the group session.
+  Future<void> deleteCompanionSession(String sessionId) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/v1/companion/session/$sessionId');
+      await _http
+          .delete(uri, headers: _headers())
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      // best-effort
     }
   }
 

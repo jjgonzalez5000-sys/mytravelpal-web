@@ -1,1228 +1,2546 @@
 {
-    "@@locale": "en",
-
-    "appName": "MyTravelPal",
-    "appTagline": "Plan the drive, not just the destination",
-
-    "onboardEyebrowKiller": "THE MISSING FEATURE",
-    "onboardTitleKiller": "Leave at the right time",
-    "onboardBodyKiller": "We look at historic traffic around your desired departure and show you the sweet spot — sometimes leaving 30 minutes earlier saves you 90.",
-    "onboardEyebrowHonest": "HONEST PLANNING",
-    "onboardTitleHonest": "Every cost, up front",
-    "onboardBodyHonest": "Toll totals, cheapest fuel and EV charging along the route, suggested stops, and hotels or restaurants at the exact detour you can afford.",
-    "onboardEyebrowAlerts": "STAY AWARE",
-    "onboardTitleAlerts": "Alerts that matter",
-    "onboardBodyAlerts": "Fires, floods, severe weather, earthquakes — serious hazards only, and only when they actually touch your route.",
-    "onboardSkip": "Skip",
-    "onboardContinue": "Continue",
-    "onboardGetStarted": "Get started",
-    "onboardFooter": "Free to start · Premium unlocks the AI trip briefing",
-
-    "loginContinueApple": "Continue with Apple",
-    "loginContinueGoogle": "Continue with Google",
-    "loginContinueFacebook": "Continue with Facebook",
-    "loginContinueDemo": "Continue as demo",
-    "loginContinueDemo": "Continue as demo",
-    "loginDivider": "or",
-    "loginTerms": "By continuing you accept our terms and privacy policy.",
-    "loginBusy": "Signing you in…",
-
-    "planTitle": "Plan a road trip",
-    "planEyebrow": "THE PLANNER",
-    "planHero": "Where are we going\ntoday?",
-    "planHeroPersonal": "Hi {name}, where to?",
-    "@planHeroPersonal": {"placeholders": {"name": {"type": "String"}}},
-    "planIntro": "Pick two points and a time. We handle the rest.",
-    "planFrom": "From",
-    "planTo": "To",
-    "planDesiredDeparture": "Desired departure",
-    "planCta": "Plan trip",
-    "planCtaBusy": "Planning your trip…",
-    "planCountriesNote": "Countries are detected automatically from your route.",
-    "planSectionOptional": "Along the route",
-    "planMoreOptions": "More options",
-    "planLessOptions": "Fewer options",
-    "planRoundTripChip": "Round trip",
-    "planLeaveNowFabTitle": "Leave now",
-    "leaveNowConfirmTitle": "Leave now to",
-    "leaveNowConfirmBody": "Head to {name}?",
-    "@leaveNowConfirmBody": {"placeholders": {"name": {}}},
-    "leaveNowConfirmCta": "Let's go",
-    "leaveNowConfirmChange": "Change destination",
-    "settingsBiometric": "Biometric unlock",
-    "settingsBiometricSub": "Use fingerprint or face to open the app",
-    "settingsBiometricUnavailable": "Not available on this device",
-    "settingsReplayTutorial": "Replay tutorial",
-    "settingsReplayTutorialSub": "Show the guided coach-marks again",
-    "settingsReplayTutorialToast": "Tutorial reset. Reopen Plan to see it.",
-    "settingsColorPreset": "Colour preset",
-    "settingsPresetForest": "Forest",
-    "settingsPresetSunset": "Sunset",
-    "settingsPresetOcean": "Ocean",
-    "settingsDynamicColor": "Material You (dynamic)",
-    "settingsDynamicColorSub": "Match colours to your wallpaper (Android 12+)",
-    "settingsOled": "Pure black (OLED)",
-    "settingsOledSub": "Deeper blacks in dark mode, saves battery on OLED screens",
-    "parkingSearchTitle": "Find parking",
-    "parkingSearchLabel": "Where are you going?",
-    "parkingSearchHint": "Pick a destination and see parking nearby.",
-    "parkingRadiusLabel": "Radius",
-    "parkingNoResults": "No parking found within radius.",
-    "parkingPriceUnknown": "Price ?",
-    "parkingCovered": "Covered",
-    "parkingFilterKids": "Kids",
-    "parkingFilterDogs": "Dogs",
-    "parkingFilterToilets": "Toilets",
-    "parkingFilterFood": "Food",
-    "parkingFilterShowers": "Showers",
-    "parkingFilterEv": "EV charger",
-    "parkingFilterFuel": "Fuel",
-    "parkingFilterWheelchair": "Wheelchair",
-    "parkingFilterRv": "RV / camper",
-    "parkingFilterTruck": "Truck",
-    "planFindParkingCta": "Find parking",
-    "poiFindParking": "Parking",
-    "parkingPrefTitle": "Parking",
-    "parkingPrefSub": "Show parkings near the destination.",
-    "parkingResultTitle": "Parking near destination",
-    "inspireTitle": "Trip Inspiration",
-    "inspireHero": "Describe your dream road trip",
-    "inspireSub": "AI drafts a multi-day itinerary you can turn into a real plan in one tap.",
-    "inspireHint": "e.g. Romantic 4-day drive through Italian lakes",
-    "inspireGenerate": "Inspire me",
-    "inspireGenerating": "Thinking up your trip…",
-    "inspireError": "The muse is offline. Try a different prompt or try again.",
-    "inspireResultTitle": "Your proposed itinerary",
-    "inspireDayLabel": "Day {n}",
-    "@inspireDayLabel": {"placeholders": {"n": {}}},
-    "inspireBudgetLabel": "Estimated budget",
-    "inspireConvertToPlan": "Turn into a real plan",
-    "inspireSave": "Save",
-    "inspireSavedToast": "Idea saved. Find it in your saved inspirations.",
-    "inspireRecentTitle": "Recent inspirations",
-    "inspireHistoryTitle": "My AI plans",
-    "inspireHistoryEmpty": "No AI plans yet. Generate one from the Plan tab.",
-    "inspireHistoryDelete": "Delete",
-    "settingsMyAiPlans": "My AI plans",
-    "settingsMyAiPlansSub": "History of Trip Inspiration results",
-    "inspireChatTitle": "Refine the itinerary",
-    "inspireChatHint": "Change something: \"remove Cremona\", \"leave Friday evening\"…",
-    "inspireExamplesTitle": "Or start from an idea",
-    "inspireExample1": "Weekend of castles in the Loire Valley",
-    "inspireExample2": "Coastal drive Barcelona to Marseille",
-    "inspireExample3": "5-day Alpine loop from Milan",
-    "inspireExample4": "Northern Spain with kids, no highways",
-    "planOverrideForTrip": "Override for this trip",
-    "planOverrideActive": "Overriding for this trip",
-    "planOverrideClear": "Clear override",
-    "planTooltipDashboard": "Dashboard",
-    "planTooltipReport": "Report an event",
-    "planTooltipSaved": "Saved trips",
-    "tabPlan": "Plan",
-    "tabCompanion": "Companion",
-    "tabMyTrips": "My trips",
-    "companionHeroTitle": "Your driving companion",
-    "companionHeroBody": "Set your conditions, then start. The app tracks your drive and recommends when to stop, where to eat, and where to refuel.",
-    "companionConfigSection": "CONFIGURATION",
-    "companionBreakInterval": "Rest suggestions",
-    "companionSuggestBreak": "Suggest a rest based on drive time",
-    "companionBreakHint": "Recommend a stop every {hours} h of driving",
-    "@companionBreakHint": {"placeholders": {"hours": {"type": "String"}}},
-    "companionFatigueStopExperimental": "Suggest pulling over on fatigue (experimental)",
-    "companionFatigueStopHint": "Timer-only signal today — over-eager for short micro-pauses.",
-    "companionAlerts": "Alert types",
-    "companionAlertCriticalAdverse": "Critical incidents (fires, floods, quakes)",
-    "companionAlertCriticalAdverseHint": "Recommended. Something serious happening near you — not just weather.",
-    "companionAlertWeather": "Weather ahead",
-    "companionAlertFuel": "Cheapest fuel along the route",
-    "companionAlertBorder": "Border crossing info",
-    "companionAlertToll": "Toll skip suggestions",
-    "companionAlertHotel": "Hotel when past bedtime + 5h of drive",
-    "companionStart": "Start companion",
-    "companionComingSoon": "Companion mode launching soon!",
-    "companionDriveTitle": "Companion drive",
-    "companionForegroundBody": "MyTravelPal is tracking your drive",
-    "companionLocationDenied": "Location permission is required for the companion.",
-    "companionDriving": "driving",
-    "companionAllGood": "No alerts — enjoy the drive.",
-    "companionWeatherRowEmpty": "Clear skies ahead",
-    "companionEndTitle": "End companion?",
-    "companionEndBody": "Tracking will stop and any active alerts will be lost.",
-    "companionEndKeep": "Keep driving",
-    "companionEndConfirm": "End session",
-    "emergencyContactsTitle": "Emergency contacts",
-    "emergencyContactsSubtitle": "Notified by SMS on crash detection",
-    "emergencyContactsBody": "Up to 3 people receive an SMS with your location if the companion detects a crash.",
-    "emergencyContactsEmpty": "No contacts added yet.",
-    "emergencyContactsAdd": "Add contact",
-    "emergencyContactsPickFromDevice": "Pick from contacts",
-    "emergencyContactsPickSearch": "Search contacts",
-    "emergencyContactsPermDenied": "Contacts permission denied. You can still add manually.",
-    "emergencyContactsNoDevice": "No contacts with a phone number on this device.",
-    "emergencyContactAddTitle": "Add emergency contact",
-    "emergencyContactName": "Name",
-    "emergencyContactNameRequired": "Enter a name",
-    "emergencyContactPhone": "Phone (E.164)",
-    "emergencyContactPhoneRequired": "Enter a phone number",
-    "emergencyContactPhoneInvalid": "Use international format: +34612345678",
-    "cancel": "Cancel",
-    "save": "Save",
-    "sosTitle": "Possible crash detected",
-    "sosBody": "Impact peak {g}g · speed drop {speed} km/h.",
-    "@sosBody": {"placeholders": {"g": {"type": "String"}, "speed": {"type": "String"}}},
-    "sosCountdown": "{seconds}s",
-    "@sosCountdown": {"placeholders": {"seconds": {"type": "int"}}},
-    "sosImOk": "I'm OK — cancel",
-    "sosCall112": "Call 112",
-    "sosCancelled": "Alert cancelled.",
-    "sosClose": "Close",
-    "sosNoContacts": "No emergency contacts configured. Add one in Settings.",
-    "sosSmsDispatched": "SMS prepared for {count} contact(s).",
-    "@sosSmsDispatched": {"placeholders": {"count": {"type": "int"}}},
-    "sosSmsFailed": "Could not open SMS. Call manually below.",
-    "sosSmsPrefix": "MyTravelPal — possible crash detected. My location:",
-    "weatherForecastTitle": "7-day forecast",
-    "weatherToday": "Today",
-    "leaveNowTitle": "Leave now with companion",
-    "leaveNowSubtitle": "Pick a destination and go — we track and guide you.",
-    "leaveNowSheetTitle": "Where are you heading?",
-    "leaveNowPremiumTitle": "Premium feature",
-    "leaveNowPremiumBody": "'Leave now' bundles the full plan with the driving companion. Available with MyTravelPal Premium.",
-    "leaveNowPremiumDismiss": "Later",
-    "leaveNowPremiumCta": "Try 7 days free",
-    "shareCardOption": "Share as image",
-    "shareCardOptionSub": "Perfect for Instagram Stories, WhatsApp, X",
-    "shareLinkOption": "Share as link",
-    "shareLinkOptionSub": "Text summary + deep link to reopen the plan",
-    "shareLiveHeadline": "Driving through {city}",
-    "@shareLiveHeadline": {"placeholders": {"city": {"type": "String"}}},
-    "shareLiveCaption": "Driving through {city} with MyTravelPal 🚗",
-    "@shareLiveCaption": {"placeholders": {"city": {"type": "String"}}},
-    "planAddStop": "Add stop",
-    "planStopDwellPassThrough": "Just passing through",
-    "planStopDwellOneNight": "1 night",
-    "planStopDwellNights": "{n} nights",
-    "@planStopDwellNights": {"placeholders": {"n": {"type": "int"}}},
-    "planStopDwellHours": "{n} hours",
-    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
-    "planStopDwellTitle": "How long at {name}?",
-    "@planStopDwellTitle": {"placeholders": {"name": {}}},
-    "planAddStopTitle": "New stop",
-    "planStopLabel": "Stop {n}",
-    "@planStopLabel": {"placeholders": {"n": {"type": "int"}}},
-    "planStopRemove": "Remove stop",
-    "settingsCurrency": "Currency",
-    "planErrorPickEndpoints": "Pick an origin and a destination.",
-
-    "resultBestTimeToLeave": "BEST TIME TO LEAVE",
-    "resultTripSavings": "YOUR SAVINGS ON THIS TRIP",
-    "resultSavingsSuggestionsTitle": "Ways to save more",
-    "resultSavingsClaimedHint": "Savings will show once you apply the recommended window.",
-    "resultTimeSavedLabel": "time saved",
-    "resultExtraTimeLabel": "extra time",
-    "resultMoneySavedLabel": "money saved",
-    "resultDepartureWindowTitle": "Departure window",
-    "resultDepartureWindowDesc": "Total minutes at each candidate departure time.",
-    "resultCompareVariantsTitle": "Compare your options",
-    "resultCompareVariantsEyebrow": "Route variants",
-    "resultAlertsTitle": "Alerts along your route",
-    "resultRestStopsTitle": "Rest stops",
-    "resultHotelsTitle": "Hotels",
-    "resultRestaurantsTitle": "Restaurants",
-    "resultFuelTitle": "Fuel",
-    "resultTollAlternativeEyebrow": "TOLL-FREE ALTERNATIVE",
-    "resultTollAlternativeWorthIt": "Worth it",
-    "resultTollAlternativeMarginal": "Marginal",
-    "resultShareTooltip": "Share this trip",
-    "resultExplainTooltip": "Explain my trip (Premium)",
-    "resultSaveTooltip": "Save trip",
-    "resultSaveChangesTooltip": "Save changes",
-    "resultSavedTooltip": "Saved",
-    "resultTripSaved": "Trip saved",
-
-    "dashboardTitle": "Dashboard",
-    "dashboardGreeting": "Hi, {name}",
-    "@dashboardGreeting": {"placeholders": {"name": {"type": "String"}}},
-    "dashboardTravelSoFar": "Your travel so far",
-    "dashboardTrips": "Trips",
-    "dashboardDistance": "Distance",
-    "dashboardHours": "Hours",
-    "dashboardTimeSaved": "TIME SAVED",
-    "dashboardMoneySaved": "MONEY SAVED",
-    "dashboardFuelBudget": "ESTIMATED FUEL BUDGET",
-    "dashboardTopSavers": "Top savers",
-    "dashboardCountries": "Countries",
-    "dashboardSignOut": "Sign out",
-
-    "profileTitle": "Trip profile",
-    "profileOverrideTitle": "Override for this trip",
-    "profileSave": "Save",
-    "profileUse": "Use",
-    "profileWhoTravelling": "Who is travelling",
-    "profileTravellers": "Travellers",
-    "profileHasKids": "Travelling with kids",
-    "profileHasPets": "Travelling with pets",
-    "profileVehicle": "Vehicle",
-    "profileMealTimes": "Meal schedule",
-    "profileReminders": "Reminders",
-    "profilePremiumSection": "Premium (demo)",
-    "profileClearProfile": "Clear profile",
-
-    "commonRetry": "Retry",
-    "commonCancel": "Cancel",
-    "commonClear": "Clear",
-    "commonShowNMore": "Show {n} more",
-    "@commonShowNMore": {"placeholders": {"n": {"type": "int"}}},
-    "commonShowLess": "Show less",
-    "planLoadingElapsed": "{seconds}s elapsed",
-    "@planLoadingElapsed": {"placeholders": {"seconds": {"type": "int"}}},
-    "planLoadingLongCrossingCountries": "Cross-checking tolls across the countries you're crossing…",
-    "planLoadingLongScanningFuel": "Scanning European fuel-price feeds along the route…",
-    "planLoadingLongBigTrip": "Long trips take a bit more — pulling extra hotel and rest data.",
-    "planLoadingLongAlmostDone": "Almost there — final touches on the itinerary.",
-    "commonSave": "Save",
-    "commonRemove": "Remove",
-
-    "searchPlaceholderLegacy": "Search a city…",
-    "searchNoMatches": "No matches.",
-    "searchStartTyping": "Type at least 2 characters.",
-    "searchRecent": "RECENT",
-    "searchUseMyLocation": "Use my location",
-
-    "locationServiceOff": "Location services are off on this device.",
-    "locationPermissionDenied": "Location permission denied.",
-    "locationUnavailable": "Couldn't determine your location.",
-
-    "favoritesTitle": "Favorites",
-    "favoritesEmptyHotels": "No favorite hotels yet. Tap the star on any hotel to save it.",
-    "favoritesEmptyRestaurants": "No favorite restaurants yet. Tap the star on any restaurant to save it.",
-    "favoritesTabHotels": "Hotels",
-    "favoritesTabRestaurants": "Restaurants",
-    "favoritesTooltipAdd": "Add to favorites",
-    "favoritesTooltipRemove": "Remove from favorites",
-    "planTooltipFavorites": "Favorites",
-
-    "resultBackToPlan": "Back to plan",
-    "alertsAlongYourRoute": "Alerts along your route",
-    "alertsAlongYourRouteDesc": "Fires, floods, severe weather, snow, earthquakes, landslides — sorted by severity.",
-    "restStopsHint": "Recommended every 2 h of driving. Short breaks keep you sharp on long trips.",
-    "fuelAlongTheRoute": "Fuel along the route",
-    "hotelsNearYourRoute": "Hotels near your route",
-    "restaurantsNearYourRoute": "Restaurants near your route",
-    "narrativeTitle": "Trip briefing",
-    "narrativeGenerating": "Writing your briefing…",
-    "narrativeFailed": "Couldn't generate the briefing. Try again in a bit.",
-    "narrativeFooter": "Generated by Claude — content may miss real-time changes.",
-    "narrativePremiumBadge": "Premium",
-    "shareTripSubject": "My road trip via MyTravelPal",
-    "shareFormatTitle": "Share as…",
-    "shareFormatStory": "Story · 9:16",
-    "shareFormatStorySub": "Instagram / TikTok / WhatsApp Stories",
-    "shareFormatFeed": "Square · 1:1",
-    "shareFormatFeedSub": "Instagram feed, Facebook, LinkedIn",
-    "shareTitle": "MyTravelPal — road trip plan",
-    "shareRouteLine": "{km} km · {hours} h free flow · tolls {tolls} €",
-    "@shareRouteLine": {"placeholders": {"km": {"type": "String"}, "hours": {"type": "String"}, "tolls": {"type": "String"}}},
-    "shareBestTime": "Best time to leave: {when} ({minutes} min total)",
-    "@shareBestTime": {"placeholders": {"when": {"type": "String"}, "minutes": {"type": "String"}}},
-    "shareTollFreeAlt": "Toll-free alt: save €{savings} for +{minutes} min",
-    "@shareTollFreeAlt": {"placeholders": {"savings": {"type": "String"}, "minutes": {"type": "String"}}},
-    "shareRefuelHint": "Refuel in {cheap} (~{price}€/L) before {pricey} — save ~{savings}€/tank",
-    "@shareRefuelHint": {"placeholders": {"cheap": {"type": "String"}, "price": {"type": "String"}, "pricey": {"type": "String"}, "savings": {"type": "String"}}},
-    "shareHotelsHeader": "Top hotels considered:",
-    "shareRestaurantsHeader": "Top restaurants considered:",
-    "shareHotelLine": "{name} — {price} €/night · {km} km off route",
-    "@shareHotelLine": {"placeholders": {"name": {"type": "String"}, "price": {"type": "String"}, "km": {"type": "String"}}},
-    "shareRestaurantLine": "{name} — {price} €/meal · {km} km off route",
-    "@shareRestaurantLine": {"placeholders": {"name": {"type": "String"}, "price": {"type": "String"}, "km": {"type": "String"}}},
-    "shareOpenInApp": "Open in MyTravelPal:",
-
-    "eventReport": "Report an event",
-    "eventDescription": "Description",
-    "eventType": "Type",
-    "eventSeverity": "Severity",
-    "eventLocation": "Location",
-    "eventSubmit": "Submit",
-    "eventSubmitted": "Reported.",
-
-    "resultStatDistance": "Distance",
-    "resultStatFreeFlow": "Free flow",
-    "resultStatTolls": "Tolls",
-    "resultEyebrowNearRoute": "Near your route",
-    "resultEyebrowAlongRoute": "Along the route",
-    "resultAlerts": "Alerts",
-    "resultRestStops": "Recommended stops",
-    "resultHotels": "Hotels",
-    "resultRestaurants": "Restaurants",
-    "resultFuel": "Fuel",
-    "resultOptimizedFuelBudget": "Estimated fuel budget",
-    "resultCompareTitle": "Compare your options",
-    "resultCompareStraightApprox": "Straight-line approx.",
-    "resultSleepAt": "Sleep · {when}",
-    "@resultSleepAt": {"placeholders": {"when": {"type": "String"}}},
-    "resultHourlyTollEyebrow": "HOURLY TOLL VERDICT",
-    "resultSkipLabel": "Skip",
-    "resultKeepLabel": "Keep",
-    "resultSaveExactly": "Save ",
-
-    "notificationsLeaveSoonTitle": "Time to leave soon",
-
-    "localeSystem": "System",
-    "localeMenuTooltip": "Language",
-
-    "dashboardCountry": "Country",
-    "dashboardNoTripsYet": "No saved trips yet. Plan and save one to see stats.",
-    "dashboardStatCards": "OVERVIEW",
-    "profileVehicleType": "Vehicle type",
-    "profileFuelType": "Fuel type",
-    "profileConsumption": "Consumption",
-    "profileEvRange": "EV range",
-    "profileFuelTank": "Fuel tank",
-    "profileBreakfast": "Breakfast",
-    "profileLunch": "Lunch",
-    "profileDinner": "Dinner",
-    "profileStopMinutes": "Typical stop minutes",
-    "profileReminderMinutes": "Reminder before departure",
-    "profilePremiumHint": "Toggle to preview Premium features locally.",
-    "profileNoProfile": "No profile saved yet.",
-
-    "eventPlaceholderDescription": "Short description of what you saw",
-    "eventCurrentLocation": "Current location",
-    "eventPickOnMap": "Pick on map",
-    "eventLocationCoords": "Selected: {lat}, {lon}",
-    "@eventLocationCoords": {"placeholders": {"lat": {"type": "String"}, "lon": {"type": "String"}}},
-
-    "narrativeRegenerate": "Regenerate",
-    "narrativeUpgrade": "Unlock the AI briefing with Premium.",
-
-    "compareVariantsRecommended": "Recommended",
-    "compareVariantsFastest": "Fastest",
-    "compareVariantsCheapest": "Cheapest",
-    "compareVariantsScenic": "Scenic",
-    "compareVariantsAvoidTolls": "No tolls",
-    "compareVariantsAvoidMotorways": "No motorways",
-
-    "hourlyBestHours": "Best hours to skip tolls",
-    "hourlyWorstHours": "Worst hours to skip tolls",
-    "partialTollSkipsTitle": "Booth-by-booth skips",
-    "partialTollSkipsEyebrow": "Zoom in",
-
-    "sleepEyebrow": "OVERNIGHT",
-    "sleepNoHotelSuggestion": "No hotel picked yet — see the Hotels section.",
-    "lunchEyebrow": "LUNCH STOP",
-    "dinnerEyebrow": "DINNER STOP",
-    "breakfastEyebrow": "BREAKFAST STOP",
-
-    "resultCompareEyebrow": "Route variants",
-    "resultCompareDescription": "Same start and end — different priorities. Numbers are free-flow.",
-    "resultVariantDashed": "Dashed on the map above",
-    "dayTollsHeader": "Tolls today · {amount} € ({count})",
-    "@dayTollsHeader": {"placeholders": {"amount": {}, "count": {"type": "int"}}},
-    "dayTollsSavedSummary": "You'll save {amount} € by skipping {count}.",
-    "@dayTollsSavedSummary": {"placeholders": {"amount": {}, "count": {"type": "int"}}},
-    "tollHourGoodToSkip": "Good hour to skip ({hh}:00)",
-    "@tollHourGoodToSkip": {"placeholders": {"hh": {}}},
-    "tollHourAvoidSkip": "Avoid skipping — peak at {hh}:00",
-    "@tollHourAvoidSkip": {"placeholders": {"hh": {}}},
-    "partialTollsPerDayHint": "You can also toggle these per day in the itinerary below ↓",
-    "resultCityHint": "Near {city}",
-    "@resultCityHint": {"placeholders": {"city": {}}},
-    "resultSavingsShiftAndSkip": "By shifting your departure and skipping tolls.",
-    "resultSavingsShift": "By shifting your departure to the recommended window.",
-    "resultSavingsSkip": "By taking the toll-free alternative.",
-    "resultSavingsNone": "No savings identified for this route yet.",
-    "resultBypassSavingsPrefix": "You could save up to",
-    "resultBypassSavingsSuffix": "with +{minutes} min extra",
-    "@resultBypassSavingsSuffix": {
-        "placeholders": {
-            "minutes": {"type": "String"}
-        }
-    },
-    "resultArrival": "ARRIVAL",
-    "resultShift": "SHIFT",
-    "resultTraffic": "TRAFFIC",
-    "resultTotal": "TOTAL",
-    "resultRestStopNoRestaurant": "Rest stop at {km} km — no matching restaurant found.",
-    "@resultRestStopNoRestaurant": {"placeholders": {"km": {"type": "String"}}},
-    "resultNoHotelHere": "You should stop around here (~{km} km). No matching hotel found.",
-    "@resultNoHotelHere": {"placeholders": {"km": {"type": "String"}}},
-    "resultMealFallback": "Meal",
-    "resultHourlyExplainer": "Common in France & Italy: exit before an expensive toll, take a parallel road for a stretch, re-enter later — often 15-40 min but saves €5-15.",
-
-    "profileSaved": "Profile saved",
-    "profileWhoEyebrow": "People",
-    "profileKidsSubtitle": "Prefers kid-friendly restaurants and hotels.",
-    "profilePetsSubtitle": "Prefers pet-friendly places, prioritises parking.",
-    "profileVehicleEyebrow": "For cost + parking hints",
-    "profileMealsEyebrow": "To match restaurant stops",
-    "profileRemindersEyebrow": "Local notifications",
-    "profileNotifyBefore": "Notify me before departure",
-    "profileNotifyOff": "Off — no reminder will be scheduled.",
-    "profileNotifyMinutesBefore": "{minutes} minutes before",
-    "@profileNotifyMinutesBefore": {"placeholders": {"minutes": {"type": "int"}}},
-    "profilePremiumEyebrow": "Local toggle · no real payment",
-    "profilePremiumBody": "Real StoreKit / Play Billing gating comes later. For now this toggle enables Premium locally so you can preview those features.",
-    "profileSimulatePremium": "Simulate Premium",
-    "profileSimulatePremiumSubtitle": "Unlocks the AI trip briefing and hourly toll analysis.",
-    "profileOverrideHeroDesc": "Change your profile just for this trip — different vehicle, travellers or meal times without touching your saved profile.",
-    "profileGlobalHeroDesc": "Set this once. Every plan uses it to rank hotels and restaurants, estimate fuel, and time meal stops.",
-
-    "eventPickPlace": "Pick a place and describe what you saw.",
-    "eventThankYou": "Report submitted — thank you!",
-    "eventCouldNotSubmit": "Could not submit: {reason}",
-    "@eventCouldNotSubmit": {"placeholders": {"reason": {"type": "String"}}},
-    "eventIntro": "Help other drivers know what you saw. Reports expire after 24 hours by default.",
-    "eventWhatHappened": "What happened",
-    "eventWhatHappenedEyebrow": "Type",
-    "eventSeverityInfo": "Info",
-    "eventSeverityWarning": "Warning",
-    "eventSeverityCritical": "Critical",
-    "eventWhere": "Where",
-    "eventWhereEyebrow": "Nearest city",
-    "eventDescribeTitle": "Describe it",
-    "eventDescribeEyebrow": "Short & useful",
-    "eventDescribeHint": "e.g. Trees down on A6 southbound, 2 lanes closed",
-    "eventSubmitting": "Submitting…",
-    "eventSubmitReport": "Submit report",
-
-    "narrativeBusy": "Composing your trip briefing…",
-    "narrativeErrorTitle": "Could not fetch the briefing",
-    "narrativeGeneratedAt": "Generated {when}",
-    "@narrativeGeneratedAt": {"placeholders": {"when": {"type": "String"}}},
-    "narrativeReadAloud": "Read aloud",
-    "narrativeStop": "Stop",
-
-    "historyTitle": "Saved trips",
-    "historyEmptyTitle": "No saved trips yet",
-    "historyEmptyBody": "Plan a trip and tap the bookmark to keep it here for later.",
-    "historyPlanCta": "Plan a trip",
-    "historyDeleted": "Deleted {trip}",
-    "@historyDeleted": {"placeholders": {"trip": {"type": "String"}}},
-    "historyReplanFailed": "Re-plan failed: {status}",
-    "@historyReplanFailed": {"placeholders": {"status": {"type": "int"}}},
-    "historyDeleteTooltip": "Delete",
-    "historyReopenCta": "Reopen",
-    "historyRepeatCta": "Repeat",
-    "resultFuelCollapsedHint": "Show the {count} cheapest stations along the route",
-    "@resultFuelCollapsedHint": {"placeholders": {"count": {"type": "int"}}},
-    "resultBestTimeVsFreeFlow": "{delta} min vs free flow",
-    "@resultBestTimeVsFreeFlow": {"placeholders": {"delta": {"type": "String"}}},
-    "resultBestTimeEarlier": "{minutes} min earlier than your target",
-    "@resultBestTimeEarlier": {"placeholders": {"minutes": {"type": "int"}}},
-    "resultBestTimeLater": "{minutes} min later than your target",
-    "@resultBestTimeLater": {"placeholders": {"minutes": {"type": "int"}}},
-    "resultHeroSavedBadge": "{magnitude} saved",
-    "@resultHeroSavedBadge": {"placeholders": {"magnitude": {"type": "String"}}},
-    "consistencyNeedsReview": "Trip plan needs review",
-    "consistencyNeedsReviewErrors": "Trip plan needs review · {errors} errors",
-    "@consistencyNeedsReviewErrors": {"placeholders": {"errors": {"type": "int"}}},
-    "consistencyNeedsReviewMixed": "Trip plan needs review · {errors} error(s), {warnings} warning(s)",
-    "@consistencyNeedsReviewMixed": {"placeholders": {"errors": {"type": "int"}, "warnings": {"type": "int"}}},
-    "consistencyFuelNoStations": "Trip is {km} km, but we can't see any gas stations along the route right now. Pricing and refuel picks are unavailable for this leg.",
-    "@consistencyFuelNoStations": {"placeholders": {"km": {"type": "String"}}},
-    "consistencyFuelNoStationsHint": "Data may still be loading — try refreshing in a couple of minutes, or add your own stop by tapping the map.",
-    "consistencyFuelRangeExceeded": "Your vehicle can't cover the route on a single tank/charge — you'll need to refuel or recharge during the trip.",
-    "consistencyMealBeforeDeparture": "{slot} is scheduled at km {km} before the trip departs. Adjust the stop time or the departure hour.",
-    "@consistencyMealBeforeDeparture": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}}},
-    "consistencyMealAfterArrival": "{slot} is scheduled at km {km} after the trip already ends. Adjust the stop time or the trip pace.",
-    "@consistencyMealAfterArrival": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}}},
-    "consistencyMealImpossibleSpeed": "Reaching {slot} at km {km} from departure would need ~{kmh} km/h — not possible. Review the stop.",
-    "@consistencyMealImpossibleSpeed": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "consistencyMealSuspiciousSpeed": "Reaching {slot} at km {km} from departure would need ~{kmh} km/h. Check if that pace is realistic.",
-    "@consistencyMealSuspiciousSpeed": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "consistencyMealTooCloseToArrival": "{slot} at km {km} is very close to arrival ({mins} min before). You might as well eat at the destination.",
-    "@consistencyMealTooCloseToArrival": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}, "mins": {"type": "String"}}},
-    "consistencySleepBeforeDeparture": "Overnight rest is scheduled before departure (km {km}). Check the time.",
-    "@consistencySleepBeforeDeparture": {"placeholders": {"km": {"type": "String"}}},
-    "consistencySleepAfterArrival": "Overnight rest is scheduled after arrival (km {km}). It may not be needed.",
-    "@consistencySleepAfterArrival": {"placeholders": {"km": {"type": "String"}}},
-    "consistencySleepImpossibleSpeed": "Reaching the overnight rest at km {km} needs ~{kmh} km/h — impossible. Review the leg.",
-    "@consistencySleepImpossibleSpeed": {"placeholders": {"km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "consistencySleepSuspiciousSpeed": "The overnight rest at km {km} implies ~{kmh} km/h average. Check the pace.",
-    "@consistencySleepSuspiciousSpeed": {"placeholders": {"km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "mealSlotBreakfastCap": "Breakfast",
-    "mealSlotLunchCap": "Lunch",
-    "mealSlotDinnerCap": "Dinner",
-    "consistencyHeadsUp": "Heads-up on your trip plan",
-    "consistencyHeadsUpWarnings": "Heads-up on your trip plan · {warnings} warnings",
-    "@consistencyHeadsUpWarnings": {"placeholders": {"warnings": {"type": "int"}}},
-    "consistencyMoreCount": "+{count} more",
-    "@consistencyMoreCount": {"placeholders": {"count": {"type": "int"}}},
-    "planProfileClearOverride": "Clear override",
-    "weatherSunny": "Sunny",
-    "weatherPartlyCloudy": "Partly cloudy",
-    "weatherCloudy": "Cloudy",
-    "weatherFog": "Fog",
-    "weatherDrizzle": "Drizzle",
-    "weatherRain": "Rain",
-    "weatherHeavyRain": "Heavy rain",
-    "weatherSnow": "Snow",
-    "weatherHeavySnow": "Heavy snow",
-    "weatherThunderstorm": "Thunderstorm",
-    "historyBestAt": "Best {when}",
-    "@historyBestAt": {"placeholders": {"when": {"type": "String"}}},
-    "historyWantedAt": "Wanted {when}",
-    "@historyWantedAt": {"placeholders": {"when": {"type": "String"}}},
-
-    "searchPlaceholder": "Search a city, museum, place…",
-    "placesSectionTitle": "SAVED PLACES",
-    "placeSaveAsTooltip": "Save as place",
-    "placeSaveDialogTitle": "Save as…",
-    "placeCustomLabel": "Label",
-    "placeCustomHint": "Home, Work, Grandma…",
-    "placePresetHome": "Home",
-    "placePresetWork": "Work",
-    "placePresetSchool": "School",
-    "placePresetGym": "Gym",
-    "placeSavedAs": "Saved as {label}",
-    "@placeSavedAs": {"placeholders": {"label": {"type": "String"}}},
-    "favoritesTabPlaces": "Places",
-    "favoritesEmptyPlaces": "No saved places yet. Tap the star on any search result to save it.",
-
-    "settingsTitle": "Settings",
-    "settingsSectionAppearance": "Appearance",
-    "settingsDensityLabel": "Density",
-    "settingsDensityComfortable": "Comfortable",
-    "settingsDensityCompact": "Compact",
-    "settingsLanguage": "Language",
-    "settingsTheme": "Theme",
-    "settingsSectionUnits": "Units",
-    "settingsUnitSystem": "Unit system",
-    "settingsUnitsMetric": "Metric",
-    "settingsUnitsImperial": "Imperial",
-    "settingsSectionTrip": "Trip",
-    "settingsSectionAbout": "About",
-    "settingsSectionData": "Your data",
-    "settingsExportData": "Download my data",
-    "settingsExportDataSub": "Get a JSON file with everything MyTravelPal holds about you.",
-    "settingsExportError": "Couldn't export data — check your connection.",
-    "settingsDeleteAccount": "Delete my account",
-    "settingsDeleteAccountSub": "Removes your profile, saved trips and preferences permanently.",
-    "settingsDeleteAccountConfirmTitle": "Delete account?",
-    "settingsDeleteAccountConfirmBody": "This deletes your profile and every saved trip from our servers. This action cannot be undone.",
-    "settingsDeleteAccountCancel": "Cancel",
-    "settingsDeleteAccountConfirm": "Delete forever",
-    "settingsDeleteAccountPartial": "Signed out locally, but the server may still hold data. Try again from a stable connection.",
-    "settingsDeleteAccountDone": "Account deleted. Signed out.",
-    "settingsDeleteAccountInProgress": "Deleting account…",
-    "settingsSupport": "Support & contact",
-    "settingsPrivacyPolicy": "Privacy Policy",
-    "settingsTerms": "Terms of Service",
-    "settingsVersion": "Version",
-    "planTooltipSettings": "Settings",
-
-    "styleSectionTitle": "Travel style",
-    "styleSectionEyebrow": "How you like to drive",
-    "stylePresetDirect": "Direct",
-    "stylePresetBalanced": "Balanced",
-    "stylePresetSlow": "Slow",
-    "stylePresetDirectHint": "Push through, minimal stops, never overnight.",
-    "stylePresetBalancedHint": "Steady pace, breaks when it makes sense.",
-    "stylePresetSlowHint": "Savour the drive, generous stops, split long trips.",
-    "styleCustom": "Custom",
-    "styleAdvanced": "Advanced",
-    "stylePaceLabel": "Pace",
-    "stylePacePush": "Push",
-    "stylePaceSteady": "Steady",
-    "stylePaceSavour": "Savour",
-    "styleOvernightLabel": "Overnight stops",
-    "styleOvernightNever": "Never",
-    "styleOvernightIfNeeded": "If needed",
-    "styleOvernightAlwaysIfLong": "Split long trips",
-    "styleDailyCapLabel": "Max hours driving per day",
-    "styleBedtimeLabel": "Bedtime",
-    "styleWakeLabel": "Wake time",
-    "styleDrivingStartLabel": "Preferred time to start driving",
-    "dayEditSheetTitle": "Adjust day {day}",
-    "@dayEditSheetTitle": {"placeholders": {"day": {"type": "int"}}},
-    "dayEditStartHour": "Start driving hour",
-    "dayEditMaxDriving": "Max driving hours: {hours} h (includes breaks)",
-    "@dayEditMaxDriving": {"placeholders": {"hours": {"type": "int"}}},
-    "dayEditSave": "Apply",
-    "dayEditCancel": "Cancel",
-    "dayEditReset": "Reset",
-    "resultReplanning": "Recalculating...",
-    "styleBreakLabel": "Break style",
-    "styleBreakMinimal": "Minimal",
-    "styleBreakScenic": "Scenic",
-    "styleBreakFoodie": "Foodie",
-
-    "planStyleChip": "{preset} · {hours}h/day",
-    "@planStyleChip": {"placeholders": {"preset": {"type": "String"}, "hours": {"type": "int"}}},
-    "planStyleChipCustom": "Custom · {hours}h/day",
-    "@planStyleChipCustom": {"placeholders": {"hours": {"type": "int"}}},
-    "planStyleOverrideTitle": "Style for this trip",
-    "planStyleOverrideSubtitle": "Overrides your saved profile only for this plan.",
-    "planStyleUseSavedProfile": "Use my saved profile",
-
-    "arrivalHintTitle": "You'd arrive at {hour}:00",
-    "@arrivalHintTitle": {"placeholders": {"hour": {"type": "String"}}},
-    "arrivalHintBody": "Later than your bedtime ({bedtime}:00). Consider stopping overnight — hotels are ready below.",
-    "@arrivalHintBody": {"placeholders": {"bedtime": {"type": "String"}}},
-    "arrivalHintCta": "See hotels",
-
-    "vehicleTypeCar": "Car",
-    "vehicleTypeMotorbike": "Motorbike",
-    "vehicleTypeVan": "Van",
-    "vehicleTypeCamper": "Camper",
-    "fuelTypePetrol": "Petrol",
-    "fuelTypeDiesel": "Diesel",
-    "fuelTypeHybrid": "Hybrid",
-    "fuelTypeElectric": "Electric",
-    "fuelTypeLpg": "LPG",
-
-    "routeVariantFastest": "Fastest",
-    "routeVariantTollFree": "Toll-free",
-    "routeVariantScenic": "Scenic",
-
-    "eventTypeFire": "Fire",
-    "eventTypeStrike": "Strike",
-    "eventTypeWeather": "Adverse weather",
-    "eventTypeAccident": "Accident",
-    "eventTypeRoadwork": "Roadwork",
-    "eventTypeFlood": "Flood",
-    "eventTypeSnow": "Snow",
-    "eventTypeProtest": "Protest",
-    "eventTypeEarthquake": "Earthquake",
-    "eventTypeLandslide": "Landslide",
-    "eventTypeAvalanche": "Avalanche",
-    "eventTypeClosure": "Road closure",
-    "eventTypeHeatwave": "Heatwave",
-    "eventTypeHeavyRain": "Heavy rain",
-    "eventTypeHail": "Hail",
-    "eventTypeThunderstorm": "Thunderstorm",
-    "eventTypeHighWind": "High wind",
-    "eventTypeDenseFog": "Dense fog",
-    "eventTypeFreezingRain": "Freezing rain",
-    "eventTypeOther": "Other",
-    "eventSeverityCritical": "Critical",
-    "eventSeverityWarning": "Warning",
-    "eventSeverityInfo": "Info",
-
-    "tollStretchLabel": "Toll stretch {index} / {total}",
-    "@tollStretchLabel": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}}},
-    "tollBoothLabel": "Toll booth {index}",
-    "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
-
-    "addedToRouteLabel": "ADDED",
-    "replanWithStops": "Recalculate route with stops",
-    "addToRouteTooltip": "Add to route",
-    "removeFromRouteTooltip": "Remove from route",
-    "addedStopsChip": "{count, plural, =1{1 stop added · +{minutes} min} other{{count} stops added · +{minutes} min}}",
-    "@addedStopsChip": {"placeholders": {"count": {"type": "int"}, "minutes": {"type": "String"}}},
-    "addedStopsClear": "Clear",
-
-    "settingsLicensesAndData": "Licenses & data sources",
-    "settingsLicensesAndDataSub": "Attributions for open data and libraries",
-    "attributionsTitle": "Licenses & data",
-    "attributionsIntro": "MyTravelPal is built on open data feeds and open-source libraries. This screen credits every source we use, links to the underlying licences, and covers our legal attribution obligations.",
-    "attributionsSectionMap": "Map & geodata",
-    "attributionsSectionFuel": "Fuel prices",
-    "attributionsSectionHazards": "Adverse events",
-    "attributionsSectionWeather": "Weather",
-    "attributionsSectionSoftware": "Software libraries",
-    "attributionsShowLicenses": "Show package licences",
-    "attributionsFailed": "Couldn't load attributions. Please try again.",
-
-    "fuelPriceUnavailable": "Price not available",
-    "fuelPriceUnavailableHint": "No public price feed for this country yet",
-
-    "planSectionOptionalEyebrow": "Optional",
-    "planOptAlertsTitle": "Alert me to critical events on the route",
-    "planOptAlertsSub": "Fires, floods, severe weather, and serious hazards within 25 km of the route.",
-    "planOptTollFreeTitle": "Show toll-free alternative",
-    "planOptTollFreeSub": "Compare a route that skips tolls — money saved vs. minutes added.",
-    "planOptHourlyTollTitle": "Hourly toll analysis",
-    "planOptHourlyTollSub": "When during the day skipping tolls actually beats keeping them (traffic-aware).",
-    "planOptRouteVariantsTitle": "Compare route variants",
-    "planOptRouteVariantsSub": "Fastest vs. toll-free vs. scenic — see all three side by side on the results.",
-    "planOptAvoidMotorwaysTitle": "Avoid motorways",
-    "planOptAvoidMotorwaysSub": "Slower and longer, but no tolls and quieter.",
-    "planOptPreferScenicTitle": "Prefer scenic",
-    "planOptPreferScenicSub": "Bias to more interesting roads. A little slower.",
-    "planPremiumBadge": "Premium",
-
-    "planProfileTravellers": "{count, plural, =1{1 traveller} other{{count} travellers}}",
-    "@planProfileTravellers": {"placeholders": {"count": {"type": "int"}}},
-    "planProfileWithKids": "kids",
-    "planProfileWithPets": "pets",
-    "planProfileOverrideActive": "OVERRIDE ACTIVE",
-    "planProfileOverride": "Override for this trip",
-    "planProfileOverriding": "Overriding for this trip",
-    "profilePromptSetup": "Set up your trip profile",
-
-    "hotelPrefTitle": "Find hotels near stops",
-    "hotelPrefSubOn": "Shows accommodation options near each overnight stop",
-    "hotelPrefSubOff": "Off",
-    "restaurantPrefTitle": "Add restaurants along the route",
-    "restaurantPrefSubEnabled": "Up to {minutes} min detour · {band}",
-    "@restaurantPrefSubEnabled": {"placeholders": {"minutes": {"type": "int"}, "band": {"type": "String"}}},
-    "restaurantPrefSubOff": "Off. Turn on to see restaurants near your route.",
-    "prefMaxDetour": "Max detour: {minutes} min",
-    "@prefMaxDetour": {"placeholders": {"minutes": {"type": "int"}}},
-    "prefBandBudget": "Budget",
-    "prefBandMid": "Mid",
-    "prefBandLuxury": "Luxury",
-    "prefBandAny": "Any",
-
-    "mealSlotBreakfast": "Suggested for breakfast",
-    "mealSlotLunch": "Suggested for lunch",
-    "mealSlotDinner": "Suggested for dinner",
-    "mealSlotOther": "Other restaurants",
-    "poiDistanceKm": "{km} km · +{minutes} min detour",
-    "@poiDistanceKm": {"placeholders": {"km": {"type": "String"}, "minutes": {"type": "String"}}},
-
-    "fuelSavingsChipCheap": "-{amount}€/L vs country avg",
-    "@fuelSavingsChipCheap": {"placeholders": {"amount": {"type": "String"}}},
-    "fuelSavingsChipDear": "+{amount}€/L vs country avg",
-    "@fuelSavingsChipDear": {"placeholders": {"amount": {"type": "String"}}},
-
-    "fuelArbitrageTitle": "Refuel smart on this route",
-    "fuelArbitrageBody": "Fuel in {cheap} is around {cheapPrice}€/L. In {dear} it's ~{dearPrice}€/L. Filling the tank in {cheap} before crossing saves ~{savings}€.",
-    "@fuelArbitrageBody": {"placeholders": {"cheap": {"type": "String"}, "cheapPrice": {"type": "String"}, "dear": {"type": "String"}, "dearPrice": {"type": "String"}, "savings": {"type": "String"}}},
-
-    "dayTabLabel": "Day {index}",
-    "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
-    "dayHeaderRange": "Day {index} · km {fromKm} → {toKm}",
-    "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
-    "dayHeaderCity": "Day {index} · {from} → {to}",
-    "@dayHeaderCity": {"placeholders": {"index": {"type": "int"}, "from": {"type": "String"}, "to": {"type": "String"}}},
-    "dayArrivalMarker": "Arrive at your destination around {time}",
-    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
-    "daySleepMarker": "Finish driving around {time}",
-    "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
-    "dayStartsAt": "Departs at {time}",
-    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
-    "dayDriveWindow": "{start} → {end}",
-    "@dayDriveWindow": {"placeholders": {"start": {"type": "String"}, "end": {"type": "String"}}},
-    "restStopWhyTitle": "Why this stop?",
-    "restStopWhyKidFriendly": "Service area marked as kid-friendly",
-    "restStopWhyPetFriendly": "Dog / pet area nearby",
-    "restStopWhyRvFriendly": "Motorhome-compatible (sanitary / dump station)",
-    "restStopWhySafety": "Recommended for road safety: you've been driving {hours}h. EU regulation 561/2006 suggests at least a 45 min break after 4h30 at the wheel.",
-    "@restStopWhySafety": {"placeholders": {"hours": {"type": "String"}}},
-    "restStopWhyClose": "Got it",
-    "dayMealStopAt": "🍽 {time} · {name}",
-    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
-    "dayRestStopAt": "☕ {time} · {label}",
-    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
-    "restStopFilterAll": "All",
-    "restStopFilterKidFriendly": "Kid-friendly",
-    "restStopFilterPetFriendly": "Pet-friendly",
-    "restStopFilterRvFriendly": "RV-friendly",
-    "dayHeaderDwell": "Day {index} · {place}",
-    "@dayHeaderDwell": {"placeholders": {"index": {"type": "int"}, "place": {"type": "String"}}},
-    "daySleepStay": "Staying in {place}",
-    "@daySleepStay": {"placeholders": {"place": {"type": "String"}}},
-
-    "nextStopHeroLabel": "Next suggested stop",
-    "nextStopHeroBody": "{slot} in {name} · around {time}",
-    "@nextStopHeroBody": {"placeholders": {"slot": {"type": "String"}, "name": {"type": "String"}, "time": {"type": "String"}}},
-
-    "daySleepHotelsLabel": "Hotels near your overnight stop",
-    "hotelDistFromStop": "{km} km from stop",
-    "@hotelDistFromStop": {"placeholders": {"km": {"type": "String"}}},
-    "hotelDistFromDestination": "{km} km from destination",
-    "@hotelDistFromDestination": {"placeholders": {"km": {"type": "String"}}},
-    "daySleepHotelsLabelDestination": "Hotels near your destination",
-    "daySleepHotelsEmpty": "Enable hotels in the plan preferences to see overnight options here.",
-    "daySleepHotelsNotFound": "We couldn't find hotels close to this route. Try widening the max detour in Preferences.",
-    "daySleepHotelsSearching": "Looking for hotels near your stop...",
-    "enrichmentLoadingTitle": "Loading extras",
-    "enrichmentChipHotels": "Hotels",
-    "enrichmentChipRestaurants": "Restaurants",
-    "enrichmentChipFuel": "Fuel stations",
-    "enrichmentChipWeather": "Weather",
-    "enrichmentChipAdverse": "Alerts",
-    "enrichPulseHeader": "Right now…",
-    "enrichPulseHotels": "Finding hotels with the best price/stars",
-    "enrichPulseRestaurants": "Filtering restaurants to your preferences",
-    "enrichPulseFuel": "Locating the cheapest gas stations along the corridor",
-    "enrichPulseTolls": "Spotting tolls you can skip without a detour",
-    "enrichPulseWindows": "Comparing departure hours by expected traffic",
-    "enrichPulseWeather": "Hour-by-hour forecast across 5 route segments",
-    "enrichPulseAdverse": "Cross-checking active fires and quakes against your route",
-    "enrichPulseKids": "Rest stops with playgrounds nearby",
-    "enrichPulsePets": "Locating dog areas and pet-friendly stops",
-    "enrichPulseCamper": "Camper areas with dump and sanitary facilities",
-    "enrichPulseVehicle": "Tuning refuel plan for your {vehicle} ({tank} L)",
-    "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
-    "restStopsWidenedHint": "No stops match the filter; showing the best on this leg.",
-    "windowsSheetTitle": "Departure windows",
-    "windowsSheetHint": "Tap a card to replan with that departure.",
-    "windowsSheetOpen": "See hour-by-hour detail",
-    "windowsBadgeCurrent": "Current",
-    "windowsBadgeRecommended": "Recommended",
-    "windowsMetaDuration": "Duration",
-    "windowsMetaArrival": "Arrival",
-    "windowsMetaTraffic": "Traffic",
-    "trafficLight": "Light",
-    "trafficMedium": "Moderate",
-    "trafficDense": "Heavy",
-    "todEarlyMorning": "Early morning",
-    "todMorning": "Morning",
-    "todNoon": "Midday",
-    "todAfternoon": "Afternoon",
-    "todNight": "Night",
-
-    "restaurantPrefCuisinesLabel": "Cuisine",
-    "cuisineItalian": "Italian",
-    "cuisineSpanish": "Spanish",
-    "cuisineTapas": "Tapas",
-    "cuisineFrench": "French",
-    "cuisineMediterranean": "Mediterranean",
-    "cuisineAsian": "Asian",
-    "cuisineIndian": "Indian",
-    "cuisineBurger": "Burgers",
-    "cuisineSeafood": "Seafood",
-    "cuisineVegetarian": "Vegetarian",
-    "cuisineBbq": "BBQ / grill",
-    "cuisineRegional": "Regional",
-
-    "timeWindowSpanLabel": "Show ±{hours}h",
-    "@timeWindowSpanLabel": {"placeholders": {"hours": {"type": "int"}}},
-    "timeWindowSpanHelper": "Drag to widen the window and see if leaving earlier or later saves more time.",
-    "timeWindowTapHint": "Tap a bar to replan with that departure time.",
-
-    "planLoadingTitle": "Building your road trip",
-    "planLoadingStepRouting": "Computing the fastest route…",
-    "planLoadingStepTraffic": "Sampling traffic to pick the best departure hour…",
-    "planLoadingStepFuel": "Fetching live fuel prices along the corridor…",
-    "planLoadingStepHotels": "Looking for hotels around any overnight stops…",
-    "planLoadingStepRestaurants": "Sorting restaurants by meal slot and cuisine…",
-    "planLoadingStepAlerts": "Scanning for fires, floods, severe weather, and hazards…",
-    "planLoadingStepTolls": "Comparing toll routes with toll-free alternatives…",
-    "planLoadingStepAlmost": "Almost there — assembling everything for you…",
-    "planLoadingHelper": "This can take up to a few minutes. Feel free to keep the phone in your pocket.",
-    "timeWindowApplyLabel": "Apply · depart at {time}",
-    "@timeWindowApplyLabel": {"placeholders": {"time": {"type": "String"}}},
-    "planErrorAuth": "Session expired. Sign in again and try once more.",
-    "planErrorPremium": "This route needs Premium. Enable it to include hourly toll analysis.",
-    "planErrorRateLimit": "Too many requests in a short time. Wait a few seconds and retry.",
-    "planErrorGeneric": "Something went wrong while planning (code {code}). Retry or change your inputs.",
-    "@planErrorGeneric": {
-      "placeholders": {"code": {"type": "int"}}
-    },
-    "planErrorNetwork": "We couldn't reach the server. Check your connection and retry.",
-    "planErrorRetry": "Retry",
-    "emptyAlertsTitle": "No serious hazards detected",
-    "emptyAlertsBody": "No fires, floods or serious hazards reported on your corridor. Safe travels.",
-    "emptyHotelsTitle": "No hotels close to the route",
-    "emptyHotelsBody": "Try widening the max detour or changing the price band to see more options.",
-    "emptyRestaurantsTitle": "No restaurants match",
-    "emptyRestaurantsBody": "Widen the max detour or clear cuisine filters to see more options.",
-    "emptyRestaurantsNotFoundTitle": "No restaurants close to the route",
-    "emptyRestaurantsNotFoundBody": "The search returned no options. Try widening the max detour in Preferences.",
-    "emptyFuelNotFoundTitle": "No fuel data in this area",
-    "emptyFuelNotFoundBody": "Providers don't cover this route. Live prices will appear in areas with official data.",
-    "onboardEyebrowFuel": "REAL PRICES",
-    "onboardTitleFuel": "Save on every refuel",
-    "onboardBodyFuel": "Live per-station prices along your route across Europe. Premium brands mixed in with low-cost independents.",
-    "onboardEyebrowDriving": "ON THE ROAD",
-    "onboardTitleDriving": "Your smart copilot",
-    "onboardBodyDriving": "Live dashboard with next stop, dynamic ETA and new alerts. Android Auto ready.",
-    "onboardEyebrowProfile": "PERSONALISED",
-    "onboardTitleProfile": "Fill your profile",
-    "onboardBodyProfile": "Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.",
-    "multiDaySleepLabel": "You'll sleep at",
-    "multiDaySleepNoHotel": "Overnight stop — no hotel available",
-    "resumeTripTitle": "Resume your trip?",
-    "resumeTripBody": "We detected a {origin} → {destination} trip in progress. Continue where you left off?",
-    "@resumeTripBody": {
-      "placeholders": {
-        "origin": {"type": "String"},
-        "destination": {"type": "String"}
+  "@@locale": "en",
+  "appName": "MyTravelPal",
+  "appTagline": "Plan the drive, not just the destination",
+  "onboardEyebrowKiller": "THE REAL COST",
+  "onboardTitleKiller": "Your GPS shows the way.\nWe show what it costs.",
+  "onboardBodyKiller": "Tolls, fuel, hotels and meals — all calculated before you leave. No surprises.",
+  "onboardEyebrowHonest": "YOUR PROFILE, YOUR TRIP",
+  "onboardTitleHonest": "2 adults, 1 kid, dog.\nParking. 3 stars max €€.",
+  "onboardBodyHonest": "Hotels and restaurants filtered by your actual preferences. Not a generic list — yours.",
+  "onboardEyebrowAlerts": "REAL-TIME ALERTS",
+  "onboardTitleAlerts": "Wildfire 14 km\nfrom your route.",
+  "onboardBodyAlerts": "Fires, storms, earthquakes, road closures. Only events that affect your specific route, before you reach them.",
+  "onboardSkip": "Skip",
+  "onboardContinue": "Continue",
+  "onboardGetStarted": "Get started",
+  "onboardFooter": "Free to start · Premium unlocks the AI trip briefing",
+  "loginContinueApple": "Continue with Apple",
+  "loginContinueGoogle": "Continue with Google",
+  "loginContinueFacebook": "Continue with Facebook",
+  "loginContinueDemo": "Continue as demo",
+  "loginDivider": "or",
+  "loginTerms": "By continuing you accept our terms and privacy policy.",
+  "loginBusy": "Signing you in…",
+  "planTitle": "Plan a road trip",
+  "planEyebrow": "THE PLANNER",
+  "planHero": "Where are we going\ntoday?",
+  "planHeroPersonal": "Hi {name}, where to?",
+  "@planHeroPersonal": {
+    "placeholders": {
+      "name": {
+        "type": "String"
       }
-    },
-    "resumeTripResume": "Resume",
-    "resumeTripDismiss": "Dismiss",
-    "hotelPrefStarsLabel": "Stars",
-    "hotelPrefDestRadiusLabel": "Radius from destination",
-    "biometricPromptReason": "Verify your identity to open MyTravelPal",
-    "biometricPromptSettings": "Confirm to enable biometric unlock",
-    "planDepartureLabel": "Preferred departure",
-    "hotelPrefStarsAny": "Any",
-    "hotelPrefParkingTitle": "With parking",
-    "hotelPrefParkingSub": "Only hotels tagged with parking. Ones missing the tag pass through.",
-    "hotelFilterParking": "Parking",
-    "hotelFilterWifi": "Free WiFi",
-    "hotelFilterAccessible": "Accessible",
-    "hotelFilterOtherTypes": "Apartments, houses & more",
-    "restaurantFilterVegetarian": "Vegetarian",
-    "restaurantFilterVegan": "Vegan",
-    "restaurantFilterGlutenFree": "Gluten-free",
-    "restaurantFilterHalal": "Halal",
-    "restaurantFilterKosher": "Kosher",
-    "restaurantDietaryLabel": "Dietary",
-    "tollSkipSelectAll": "Select all",
-    "mapShowLabel": "Show map",
-    "mapHideLabel": "Hide map",
-    "tripCostTitle": "TOTAL TRIP COST",
-    "tripCostFuel": "Fuel",
-    "tripCostTolls": "Tolls",
-    "tripCostMeals": "Meals",
-    "tripCostHotel": "Hotel",
-    "tripCostTotal": "Total estimated",
-    "tripCostPerPerson": "{amount} / person",
-    "@tripCostPerPerson": {"placeholders": {"amount": {"type": "String"}}},
-    "tripCostPerDay": "{amount} / day",
-    "@tripCostPerDay": {"placeholders": {"amount": {"type": "String"}}},
-    "poiSpotlightRating": "rating",
-    "poiSpotlightStars": "stars",
-    "poiSpotlightReviews": "{count} reviews",
-    "@poiSpotlightReviews": {"placeholders": {"count": {"type": "String"}}},
-    "poiSpotlightPricePerNight": "per night",
-    "poiSpotlightPricePerMeal": "per meal",
-    "poiSpotlightPricePerL": "per litre",
-    "poiFeaturesHeading": "Amenities",
-    "poiMoreInfoLabel": "More info",
-    "poiMoreInfoHide": "Hide",
-    "addToRouteLabel": "Add to route",
-    "biometricSetupTitle": "Enable biometric login?",
-    "biometricSetupBody": "Use your fingerprint or face to unlock MyTravelPal next time.",
-    "biometricSetupEnable": "Enable",
-    "biometricSetupSkip": "Not now",
-    "weatherAlongRouteTitle": "WEATHER ALONG YOUR ROUTE",
-    "fuelNotificationTitle": "Fill up before the border!",
-    "fuelNotificationBody": "Fuel in {cheap} (~{price}€/L) before crossing into {pricey} — save ~{savings}€ per tank",
-    "@fuelNotificationBody": {"placeholders": {"cheap": {"type": "String"}, "price": {"type": "String"}, "pricey": {"type": "String"}, "savings": {"type": "String"}}},
-    "tutorialSkip": "Skip",
-    "tutorialOriginTitle": "Where are you starting?",
-    "tutorialOriginBody": "Tap here to search for a city or use the location button to start from your current position.",
-    "tutorialDestinationTitle": "Where are you going?",
-    "tutorialDestinationBody": "Search for your destination. We'll plan the full route with stops, hotels, and tolls.",
-    "tutorialPrefsTitle": "Customize your trip",
-    "tutorialPrefsBody": "Toggle hotels, restaurants, and alerts. Set dietary preferences, star ratings, and more.",
-    "tutorialTimeWindowTitle": "Pick the best departure time",
-    "tutorialTimeWindowBody": "Tap any row to replan your trip with that departure time. The chart shows traffic impact at each hour.",
-    "tutorialTollTitle": "Manage toll costs",
-    "tutorialTollBody": "Toggle individual toll stretches to skip. The total savings update in real time. The color strip shows the best hours to skip.",
-    "styleDailyCapRecommendedHint": "For this pace we suggest {hours} h/day.",
-    "@styleDailyCapRecommendedHint": {
-      "placeholders": {"hours": {"type": "int"}}
-    },
-    "aaCoachTitle": "How to open it on Android Auto",
-    "aaCoachStep1": "Connect the phone to the car by USB (or wireless if your head unit supports it).",
-    "aaCoachStep2": "In the car's launcher, switch to the 'Point of Interest' or 'Apps' category. It does NOT appear next to Google Maps.",
-    "aaCoachStep3": "Tap MyTravelPal. The companion shows next stop, cheaper fuel and ETA.",
-    "aaCoachHint": "First launch takes a few seconds. Park with clear sky to get a GPS fix before starting.",
-    "aaCoachDontShowAgain": "Don't show again",
-    "aaCoachDone": "Got it",
-    "batteryWhitelistTitle": "Stop Android from closing us",
-    "batteryWhitelistBody": "Xiaomi/MIUI, Samsung and other vendors kill backgrounded apps after a few minutes. If you're navigating with Google Maps and MyTravelPal dies, you lose the live alerts.",
-    "batteryWhitelistSteps": "Settings → Apps → MyTravelPal → Battery → No restrictions\n(or 'Don't optimize' depending on your model)",
-    "batteryWhitelistDontShowAgain": "Don't show again",
-    "batteryWhitelistLater": "Not now",
-    "batteryWhitelistOpen": "Open help",
-    "planRoundTripTitle": "Round trip",
-    "planRoundTripSubtitle": "We plan the return leg at the same time with the same preferences.",
-    "roundTripLegOutbound": "OUTBOUND",
-    "roundTripLegReturn": "RETURN",
-    "roundTripSwapTo": "View {leg}",
-    "@roundTripSwapTo": {
-      "placeholders": {"leg": {"type": "String"}}
-    },
-
-    "resultStartTrip": "Start trip",
-    "resultStartCompanion": "Start Companion mode",
-    "companionPreflightTitle": "Pre-flight setup",
-    "companionPreflightMealWindows": "Meal times",
-    "companionPreflightDetourTolerance": "Max detour",
-    "companionPreflightMealBudget": "Meal budget",
-    "companionPreflightHotelBudget": "Hotel budget",
-    "companionPreflightSaveToProfile": "Save to my profile",
-    "companionPreflightStart": "Start driving",
-    "companionPreflightBreakfast": "Breakfast",
-    "companionPreflightLunch": "Lunch",
-    "companionPreflightDinner": "Dinner",
-    "navPickerTitle": "Continue in…",
-    "tripDashboardTitle": "On the road",
-    "tripDashboardCenterOnMe": "Centre on my location",
-    "tripDashboardOpenNav": "Open navigation",
-    "tripDashboardNextStopLabel": "NEXT {slot}",
-    "@tripDashboardNextStopLabel": {
-      "placeholders": {"slot": {"type": "String"}}
-    },
-    "tripDashboardInMinutes": "in {n} min",
-    "@tripDashboardInMinutes": {
-      "placeholders": {"n": {"type": "int"}}
-    },
-    "tripDashboardPermissionDenied": "Location denied. Grant the permission to see your position on the route.",
-    "tripDashboardServiceDisabled": "GPS is off. Enable it to follow your progress on the route.",
-
-    "tripDashboardProgressLine": "{done} / {total} km",
-    "@tripDashboardProgressLine": {
-      "placeholders": {
-        "done": {"type": "String"},
-        "total": {"type": "String"}
+    }
+  },
+  "planIntro": "Pick two points and a time. We handle the rest.",
+  "planFrom": "From",
+  "planTo": "To",
+  "planDesiredDeparture": "Desired departure",
+  "planCta": "Plan trip",
+  "planCtaBusy": "Planning your trip…",
+  "planCountriesNote": "Countries are detected automatically from your route.",
+  "planSectionOptional": "Along the route",
+  "planMoreOptions": "More options",
+  "planLessOptions": "Fewer options",
+  "planRoundTripChip": "Round trip",
+  "planLeaveNowFabTitle": "Leave now",
+  "leaveNowConfirmTitle": "Leave now to",
+  "leaveNowConfirmBody": "Head to {name}?",
+  "@leaveNowConfirmBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "leaveNowConfirmCta": "Let's go",
+  "leaveNowConfirmChange": "Change destination",
+  "settingsBiometric": "Biometric unlock",
+  "settingsBiometricSub": "Use fingerprint or face to open the app",
+  "settingsBiometricUnavailable": "Not available on this device",
+  "settingsReplayTutorial": "Replay tutorial",
+  "settingsReplayTutorialSub": "Show the guided coach-marks again",
+  "settingsReplayTutorialToast": "Tutorial reset. Reopen Plan to see it.",
+  "settingsColorPreset": "Colour preset",
+  "settingsPresetForest": "Forest",
+  "settingsPresetSunset": "Sunset",
+  "settingsPresetOcean": "Ocean",
+  "settingsDynamicColor": "Material You (dynamic)",
+  "settingsDynamicColorSub": "Match colours to your wallpaper (Android 12+)",
+  "settingsOled": "Pure black (OLED)",
+  "settingsOledSub": "Deeper blacks in dark mode, saves battery on OLED screens",
+  "parkingSearchTitle": "Find parking",
+  "parkingSearchLabel": "Where are you going?",
+  "parkingSearchHint": "Pick a destination and see parking nearby.",
+  "parkingRadiusLabel": "Radius",
+  "parkingNoResults": "No parking found within radius.",
+  "parkingPriceUnknown": "Price ?",
+  "parkingCovered": "Covered",
+  "parkingFilterKids": "Kids",
+  "parkingFilterDogs": "Dogs",
+  "parkingFilterToilets": "Toilets",
+  "parkingFilterFood": "Food",
+  "parkingFilterShowers": "Showers",
+  "parkingFilterEv": "EV charger",
+  "parkingFilterFuel": "Fuel",
+  "parkingFilterWheelchair": "Wheelchair",
+  "parkingFilterRv": "RV / camper",
+  "parkingFilterTruck": "Truck",
+  "planFindParkingCta": "Find parking",
+  "poiFindParking": "Parking",
+  "parkingPrefTitle": "Parking",
+  "parkingPrefSub": "Show parkings near the destination.",
+  "parkingResultTitle": "Parking near destination",
+  "inspireTitle": "Trip Inspiration",
+  "inspireHero": "Describe your dream road trip",
+  "inspireSub": "AI drafts a multi-day itinerary you can turn into a real plan in one tap.",
+  "inspireHint": "e.g. Romantic 4-day drive through Italian lakes",
+  "inspireGenerate": "Inspire me",
+  "inspireGenerating": "Thinking up your trip…",
+  "inspireError": "The muse is offline. Try a different prompt or try again.",
+  "inspireResultTitle": "Your proposed itinerary",
+  "inspireDayLabel": "Day {n}",
+  "@inspireDayLabel": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "inspireBudgetLabel": "Estimated budget",
+  "inspireConvertToPlan": "Turn into a real plan",
+  "inspireSave": "Save",
+  "inspireSavedToast": "Idea saved. Find it in your saved inspirations.",
+  "inspireRecentTitle": "Recent inspirations",
+  "inspireHistoryTitle": "My AI plans",
+  "inspireHistoryEmpty": "No AI plans yet. Generate one from the Plan tab.",
+  "inspireHistoryDelete": "Delete",
+  "settingsMyAiPlans": "My AI plans",
+  "settingsMyAiPlansSub": "History of Trip Inspiration results",
+  "inspireChatTitle": "Refine the itinerary",
+  "inspireChatHint": "Change something: \"remove Cremona\", \"leave Friday evening\"…",
+  "inspireExamplesTitle": "Or start from an idea",
+  "inspireExample1": "Weekend of castles in the Loire Valley",
+  "inspireExample2": "Coastal drive Barcelona to Marseille",
+  "inspireExample3": "5-day Alpine loop from Milan",
+  "inspireExample4": "Northern Spain with kids, no highways",
+  "planOverrideForTrip": "Override for this trip",
+  "planOverrideActive": "Overriding for this trip",
+  "planOverrideClear": "Clear override",
+  "planTooltipDashboard": "Dashboard",
+  "planTooltipReport": "Report an event",
+  "planTooltipSaved": "Saved trips",
+  "tabPlan": "Plan",
+  "tabCompanion": "Companion",
+  "tabMyTrips": "My trips",
+  "companionHeroTitle": "Your driving companion",
+  "companionHeroBody": "Set your conditions, then start. The app tracks your drive and recommends when to stop, where to eat, and where to refuel.",
+  "companionConfigSection": "CONFIGURATION",
+  "companionBreakInterval": "Rest suggestions",
+  "companionSuggestBreak": "Suggest a rest based on drive time",
+  "companionBreakHint": "Recommend a stop every {hours} h of driving",
+  "@companionBreakHint": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
       }
-    },
-    "tripDashboardEta": "ETA {time}",
-    "@tripDashboardEta": {
-      "placeholders": {"time": {"type": "String"}}
-    },
-    "tripDashboardActiveNotifTitle": "Trip in progress",
-    "tripDashboardActiveNotifBody": "MyTravelPal is following your route in the background.",
-    "tripDashboardForegroundBodyBare": "{done} / {total} km covered",
-    "@tripDashboardForegroundBodyBare": {
-      "placeholders": {
-        "done": {"type": "String"},
-        "total": {"type": "String"}
+    }
+  },
+  "companionFatigueStopExperimental": "Suggest pulling over on fatigue (experimental)",
+  "companionFatigueStopHint": "Timer-only signal today — over-eager for short micro-pauses.",
+  "companionAlerts": "Alert types",
+  "companionAlertCriticalAdverse": "Critical incidents (fires, floods, quakes)",
+  "companionAlertCriticalAdverseHint": "Recommended. Something serious happening near you — not just weather.",
+  "companionAlertWeather": "Weather ahead",
+  "companionAlertFuel": "Cheapest fuel along the route",
+  "companionAlertBorder": "Border crossing info",
+  "companionAlertToll": "Toll skip suggestions",
+  "companionAlertHotel": "Hotel when past bedtime + 5h of drive",
+  "companionStart": "Start companion",
+  "companionComingSoon": "Companion mode launching soon!",
+  "companionDriveTitle": "Companion drive",
+  "companionForegroundBody": "MyTravelPal is tracking your drive",
+  "companionLocationDenied": "Location permission is required for the companion.",
+  "companionDriving": "driving",
+  "companionAllGood": "No alerts — enjoy the drive.",
+  "companionWeatherRowEmpty": "Clear skies ahead",
+  "companionEndTitle": "End companion?",
+  "companionEndBody": "Tracking will stop and any active alerts will be lost.",
+  "companionEndKeep": "Keep driving",
+  "companionEndConfirm": "End session",
+  "emergencyContactsTitle": "Emergency contacts",
+  "emergencyContactsSubtitle": "Notified by SMS on crash detection",
+  "emergencyContactsBody": "Up to 3 people receive an SMS with your location if the companion detects a crash.",
+  "emergencyContactsEmpty": "No contacts added yet.",
+  "emergencyContactsAdd": "Add contact",
+  "emergencyContactsPickFromDevice": "Pick from contacts",
+  "emergencyContactsPickSearch": "Search contacts",
+  "emergencyContactsPermDenied": "Contacts permission denied. You can still add manually.",
+  "emergencyContactsNoDevice": "No contacts with a phone number on this device.",
+  "emergencyContactAddTitle": "Add emergency contact",
+  "emergencyContactName": "Name",
+  "emergencyContactNameRequired": "Enter a name",
+  "emergencyContactPhone": "Phone (E.164)",
+  "emergencyContactPhoneRequired": "Enter a phone number",
+  "emergencyContactPhoneInvalid": "Use international format: +34612345678",
+  "cancel": "Cancel",
+  "save": "Save",
+  "sosTitle": "Possible crash detected",
+  "sosBody": "Impact peak {g}g · speed drop {speed} km/h.",
+  "@sosBody": {
+    "placeholders": {
+      "g": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
       }
-    },
-    "tripDashboardForegroundBodyWithStop": "{done} / {total} km · next stop: {name}",
-    "@tripDashboardForegroundBodyWithStop": {
-      "placeholders": {
-        "done": {"type": "String"},
-        "total": {"type": "String"},
-        "name": {"type": "String"}
+    }
+  },
+  "sosCountdown": "{seconds}s",
+  "@sosCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
       }
-    },
-    "tripDashboardSleepStopLabel": "hotel",
-    "alertApproachingStopTitle": "Stop coming up",
-    "alertApproachingStopBody": "{slot} at {name} in about {mins} min. Get ready for the exit.",
-    "@alertApproachingStopBody": {
-      "placeholders": {
-        "slot": {"type": "String"},
-        "name": {"type": "String"},
-        "mins": {"type": "int"}
+    }
+  },
+  "sosImOk": "I'm OK — cancel",
+  "sosCall112": "Call 112",
+  "sosCancelled": "Alert cancelled.",
+  "sosClose": "Close",
+  "sosNoContacts": "No emergency contacts configured. Add one in Settings.",
+  "sosSmsDispatched": "SMS prepared for {count} contact(s).",
+  "@sosSmsDispatched": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
-    },
-    "alertNewAdverseAheadTitle": "New alert on your route",
-    "alertNewAdverseAheadBody": "{type} reported {km} km ahead.",
-    "@alertNewAdverseAheadBody": {
-      "placeholders": {
-        "type": {"type": "String"},
-        "km": {"type": "String"}
+    }
+  },
+  "sosSmsFailed": "Could not open SMS. Call manually below.",
+  "sosSmsPrefix": "MyTravelPal — possible crash detected. My location:",
+  "weatherForecastTitle": "7-day forecast",
+  "weatherToday": "Today",
+  "leaveNowTitle": "Leave now with companion",
+  "leaveNowSubtitle": "Pick a destination and go — we track and guide you.",
+  "leaveNowSheetTitle": "Where are you heading?",
+  "leaveNowPremiumTitle": "Premium feature",
+  "leaveNowPremiumBody": "'Leave now' bundles the full plan with the driving companion. Available with MyTravelPal Premium.",
+  "leaveNowPremiumDismiss": "Later",
+  "leaveNowPremiumCta": "Try 7 days free",
+  "shareCardOption": "Share as image",
+  "shareCardOptionSub": "Perfect for Instagram Stories, WhatsApp, X",
+  "shareLinkOption": "Share as link",
+  "shareLinkOptionSub": "Text summary + deep link to reopen the plan",
+  "shareToSocial": "Share to social",
+  "sharePlanTitle": "Share trip link",
+  "sharePlanSubtitle": "QR code + link to reopen this plan",
+  "sharePlanCopy": "Copy link",
+  "sharePlanCopied": "Link copied",
+  "shareLiveHeadline": "Driving through {city}",
+  "@shareLiveHeadline": {
+    "placeholders": {
+      "city": {
+        "type": "String"
       }
-    },
-    "alertDriftDetectedTitle": "You've left the route",
-    "alertDriftDetectedBody": "You're {off} m off the planned track. Recalculate?",
-    "@alertDriftDetectedBody": {
-      "placeholders": {"off": {"type": "String"}}
-    },
-    "alertBehindScheduleTitle": "Running behind",
-    "alertBehindScheduleBody": "You'll arrive {mins} min later than planned.",
-    "@alertBehindScheduleBody": {
-      "placeholders": {"mins": {"type": "int"}}
-    },
-    "tripDashboardCheaperFuel": "{brand} in {km} km · save {cts} ct/L",
-    "@tripDashboardCheaperFuel": {
-      "placeholders": {
-        "brand": {"type": "String"},
-        "km": {"type": "String"},
-        "cts": {"type": "String"}
+    }
+  },
+  "shareLiveCaption": "Driving through {city} with MyTravelPal 🚗",
+  "@shareLiveCaption": {
+    "placeholders": {
+      "city": {
+        "type": "String"
       }
-    },
-    "resultOptimalDeparture": "Your departure time is optimal",
-    "shortLastDayWarning": "Short last leg ({km} km) — you could arrive today if you push further the day before.",
-    "@shortLastDayWarning": {
-      "placeholders": {
-        "km": {"type": "String"}
+    }
+  },
+  "planAddStop": "Add stop",
+  "planStopDwellPassThrough": "Just passing through",
+  "planStopDwellOneNight": "1 night",
+  "planStopDwellNights": "{n} nights",
+  "@planStopDwellNights": {
+    "placeholders": {
+      "n": {
+        "type": "int"
       }
-    },
-    "prepareDepartureNow": "Leave now",
-    "replanNewDepartureTitle": "Recalculating with new departure time…",
-    "planStopReorderHint": "Long-press the handle to reorder",
-    "planSwapOriginDestination": "Swap",
-    "planStopMoveUp": "Move up",
-    "planStopMoveDown": "Move down",
-    "recentTripsTitle": "Recent trips",
-    "recentTripsSubtitle": "{count} saved — tap to reuse",
-    "@recentTripsSubtitle": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "onRouteTitle": "Along the route",
-    "onRouteEmpty": "Tap to pick options",
-    "exportShareTitle": "Share route",
-    "exportOpenInMaps": "Open in Google Maps",
-    "exportOpenInMapsSub": "With added stops and detours",
-    "exportCopyLink": "Copy link",
-    "exportLinkCopied": "Link copied to clipboard",
-    "exportShareOs": "Share…",
-    "exportShareSubject": "My route on MyTravelPal",
-    "importFromMaps": "Import from Maps",
-    "importFromMapsTitle": "Import a Google Maps route",
-    "importFromMapsHint": "Paste a Google Maps link here",
-    "importFromMapsPaste": "Paste",
-    "importFromMapsImport": "Import",
-    "importFromMapsError": "URL not recognised",
-    "importFromMapsErrorMalformed": "Invalid URL — check the link and try again",
-    "importFromMapsErrorShortlink": "Could not expand the short link — try opening it in Maps and copying the long URL",
-    "importFromMapsErrorGeocode": "Could not locate the places on the map — try a shorter route or type them manually",
-    "importFromMapsLoading": "Parsing link…",
-    "adverseEventsBannerCount": "{count} alert(s) on your route",
-    "@adverseEventsBannerCount": {
-      "placeholders": {
-        "count": {"type": "int"}
+    }
+  },
+  "planStopDwellHours": "{n} hours",
+  "@planStopDwellHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
       }
-    },
-    "pricePerMeal": "{price} €/meal",
-    "@pricePerMeal": {
-      "placeholders": { "price": {"type": "String"} }
-    },
-    "kmFromOrigin": "{km} km from origin",
-    "@kmFromOrigin": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "profileVehicleModel": "Model",
-    "profileVehicleModelHint": "Pick your car model",
-    "profileVehicleModelClear": "Clear model",
-    "profileTankLevel": "Current tank",
-    "vehiclePickerSearchHint": "Search brand or model",
-    "vehiclePickerEmpty": "No models match your search",
-    "vehiclePickerLoadError": "Could not load models. Try again later.",
-    "refuelWindowComfortable": "Refuel by km {km} (comfortable)",
-    "@refuelWindowComfortable": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "refuelWindowCritical": "Refuel by km {km} (critical)",
-    "@refuelWindowCritical": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "refuelSuggestionTitle": "Refuel here to save",
-    "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
-    "@refuelSuggestionBody": {
-      "placeholders": {
-        "station": {"type": "String"},
-        "km": {"type": "String"},
-        "price": {"type": "String"}
+    }
+  },
+  "planStopDwellTitle": "How long at {name}?",
+  "@planStopDwellTitle": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "planAddStopTitle": "New stop",
+  "planStopLabel": "Stop {n}",
+  "@planStopLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
       }
-    },
-    "refuelSuggestionSavings": "You save {eur} €",
-    "@refuelSuggestionSavings": {
-      "placeholders": { "eur": {"type": "String"} }
-    },
-    "savingsFuelRow": "Fuel: {eur} €",
-    "@savingsFuelRow": {
-      "placeholders": { "eur": {"type": "String"} }
-    },
-    "garageTitle": "My garage",
-    "garageEmpty": "No vehicles yet — add your first car",
-    "garageAdd": "Add vehicle",
-    "garageEdit": "Edit vehicle",
-    "garageDelete": "Delete",
-    "garageCancel": "Cancel",
-    "garageSave": "Save",
-    "garageDefaultName": "My car",
-    "garageNameHint": "Give it a name (e.g. Mi Golf)",
-    "garageDefaultTankLabel": "Default tank level",
-    "garageAddError": "Could not save. Try again.",
-    "garageDeleteTitle": "Delete vehicle?",
-    "garageDeleteBody": "\"{name}\" will be removed from your garage.",
-    "@garageDeleteBody": {
-      "placeholders": { "name": {"type": "String"} }
-    },
-    "garageSettingsRow": "My garage ({count})",
-    "@garageSettingsRow": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "planScreenGarageChip": "Car: {name} · {pct}%",
-    "@planScreenGarageChip": {
-      "placeholders": {
-        "name": {"type": "String"},
-        "pct": {"type": "int"}
+    }
+  },
+  "planStopRemove": "Remove stop",
+  "settingsCurrency": "Currency",
+  "planErrorPickEndpoints": "Pick an origin and a destination.",
+  "resultBestTimeToLeave": "BEST TIME TO LEAVE",
+  "resultTripSavings": "YOUR SAVINGS ON THIS TRIP",
+  "resultSavingsDetected": "Detected savings",
+  "resultTollSaving": "Toll alternative",
+  "resultFuelSaving": "Fuel",
+  "resultTimeSaving": "Optimal departure",
+  "resultTotalSaving": "TOTAL SAVINGS",
+  "resultSavingPct": "{pct}% less",
+  "@resultSavingPct": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
       }
-    },
-    "planScreenGarageChooseVehicle": "Choose a vehicle for this trip"
+    }
+  },
+  "resultSavingsSuggestionsTitle": "Ways to save time",
+  "resultSavingsClaimedHint": "Savings will show once you apply the recommended window.",
+  "resultTimeSavedLabel": "time saved",
+  "resultExtraTimeLabel": "extra time",
+  "resultMoneySavedLabel": "money saved",
+  "resultDepartureWindowTitle": "Departure window",
+  "resultDepartureWindowDesc": "Total minutes at each candidate departure time.",
+  "resultCompareVariantsTitle": "Compare your options",
+  "resultCompareVariantsEyebrow": "Route variants",
+  "resultAlertsTitle": "Alerts along your route",
+  "resultRestStopsTitle": "Rest stops",
+  "resultHotelsTitle": "Hotels",
+  "resultRestaurantsTitle": "Restaurants",
+  "resultFuelTitle": "Fuel",
+  "resultTollAlternativeEyebrow": "TOLL-FREE ALTERNATIVE",
+  "resultTollAlternativeWorthIt": "Worth it",
+  "resultTollAlternativeMarginal": "Marginal",
+  "resultShareTooltip": "Share this trip",
+  "resultExplainTooltip": "Explain my trip (Premium)",
+  "resultSaveTooltip": "Save trip",
+  "resultSaveChangesTooltip": "Save changes",
+  "resultSavedTooltip": "Saved",
+  "resultTripSaved": "Trip saved",
+  "dashboardTitle": "Dashboard",
+  "dashboardGreeting": "Hi, {name}",
+  "@dashboardGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardTravelSoFar": "Your travel so far",
+  "dashboardTrips": "Trips",
+  "dashboardDistance": "Distance",
+  "dashboardHours": "Hours",
+  "dashboardTimeSaved": "TIME SAVED",
+  "dashboardMoneySaved": "MONEY SAVED",
+  "dashboardFuelBudget": "ESTIMATED FUEL BUDGET",
+  "dashboardTopSavers": "Top savers",
+  "dashboardSaved": "saved",
+  "dashboardCountries": "Countries",
+  "dashboardSignOut": "Sign out",
+  "profileTitle": "Trip profile",
+  "profileOverrideTitle": "Override for this trip",
+  "profileSave": "Save",
+  "profileUse": "Use",
+  "profileWhoTravelling": "Who is travelling",
+  "profileTravellers": "Travellers",
+  "profileHasKids": "Travelling with kids",
+  "profileHasPets": "Travelling with pets",
+  "profileVehicle": "Vehicle",
+  "profileMealTimes": "Meal schedule",
+  "profileReminders": "Reminders",
+  "profilePremiumSection": "Premium (demo)",
+  "profileClearProfile": "Clear profile",
+  "commonRetry": "Retry",
+  "commonCancel": "Cancel",
+  "commonClear": "Clear",
+  "commonShowNMore": "Show {n} more",
+  "@commonShowNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "commonShowLess": "Show less",
+  "planLoadingElapsed": "{seconds}s elapsed",
+  "@planLoadingElapsed": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "planLoadingLongCrossingCountries": "Cross-checking tolls across the countries you're crossing…",
+  "planLoadingLongScanningFuel": "Scanning European fuel-price feeds along the route…",
+  "planLoadingLongBigTrip": "Long trips take a bit more — pulling extra hotel and rest data.",
+  "planLoadingLongAlmostDone": "Almost there — final touches on the itinerary.",
+  "commonSave": "Save",
+  "commonRemove": "Remove",
+  "searchPlaceholderLegacy": "Search a city…",
+  "searchNoMatches": "No matches.",
+  "searchStartTyping": "Type at least 2 characters.",
+  "searchRecent": "RECENT",
+  "searchUseMyLocation": "Use my location",
+  "locationServiceOff": "Location services are off on this device.",
+  "locationPermissionDenied": "Location permission denied.",
+  "locationUnavailable": "Couldn't determine your location.",
+  "favoritesTitle": "Favorites",
+  "favoritesEmptyHotels": "No favorite hotels yet. Tap the star on any hotel to save it.",
+  "favoritesEmptyRestaurants": "No favorite restaurants yet. Tap the star on any restaurant to save it.",
+  "favoritesTabHotels": "Hotels",
+  "favoritesTabRestaurants": "Restaurants",
+  "favoritesTooltipAdd": "Add to favorites",
+  "favoritesTooltipRemove": "Remove from favorites",
+  "planTooltipFavorites": "Favorites",
+  "resultBackToPlan": "Back to plan",
+  "alertsAlongYourRoute": "Alerts along your route",
+  "alertsAlongYourRouteDesc": "Fires, floods, severe weather, snow, earthquakes, landslides — sorted by severity.",
+  "restStopsHint": "Recommended every 2 h of driving. Short breaks keep you sharp on long trips.",
+  "fuelAlongTheRoute": "Fuel along the route",
+  "hotelsNearYourRoute": "Hotels near your route",
+  "restaurantsNearYourRoute": "Restaurants near your route",
+  "narrativeTitle": "Trip briefing",
+  "narrativeGenerating": "Writing your briefing…",
+  "narrativeFailed": "Couldn't generate the briefing. Try again in a bit.",
+  "narrativeFooter": "Generated by Claude — content may miss real-time changes.",
+  "narrativePremiumBadge": "Premium",
+  "shareTripSubject": "My road trip via MyTravelPal",
+  "shareFormatTitle": "Share as…",
+  "shareFormatStory": "Story · 9:16",
+  "shareFormatStorySub": "Instagram / TikTok / WhatsApp Stories",
+  "shareFormatFeed": "Square · 1:1",
+  "shareFormatFeedSub": "Instagram feed, Facebook, LinkedIn",
+  "shareTitle": "MyTravelPal — road trip plan",
+  "shareRouteLine": "{km} km · {hours} h free flow · tolls {tolls} €",
+  "@shareRouteLine": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "String"
+      },
+      "tolls": {
+        "type": "String"
+      }
+    }
+  },
+  "shareBestTime": "Best time to leave: {when} ({minutes} min total)",
+  "@shareBestTime": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTollFreeAlt": "Toll-free alt: save €{savings} for +{minutes} min",
+  "@shareTollFreeAlt": {
+    "placeholders": {
+      "savings": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRefuelHint": "Refuel in {cheap} (~{price}€/L) before {pricey} — save ~{savings}€/tank",
+  "@shareRefuelHint": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "pricey": {
+        "type": "String"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "shareHotelsHeader": "Top hotels considered:",
+  "shareRestaurantsHeader": "Top restaurants considered:",
+  "shareHotelLine": "{name} — {price} €/night · {km} km off route",
+  "@shareHotelLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRestaurantLine": "{name} — {price} €/meal · {km} km off route",
+  "@shareRestaurantLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "shareOpenInApp": "Open in MyTravelPal:",
+  "eventReport": "Report an event",
+  "eventDescription": "Description",
+  "eventType": "Type",
+  "eventSeverity": "Severity",
+  "eventLocation": "Location",
+  "eventSubmit": "Submit",
+  "eventSubmitted": "Reported.",
+  "resultStatDistance": "Distance",
+  "resultStatFreeFlow": "Free flow",
+  "resultStatTolls": "Tolls",
+  "resultEyebrowNearRoute": "Near your route",
+  "resultEyebrowAlongRoute": "Along the route",
+  "resultAlerts": "Alerts",
+  "resultRestStops": "Recommended stops",
+  "resultHotels": "Hotels",
+  "resultRestaurants": "Restaurants",
+  "resultFuel": "Fuel",
+  "resultOptimizedFuelBudget": "Estimated fuel budget",
+  "resultCompareTitle": "Compare your options",
+  "resultCompareStraightApprox": "Straight-line approx.",
+  "resultSleepAt": "Sleep · {when}",
+  "@resultSleepAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "resultHourlyTollEyebrow": "HOURLY TOLL VERDICT",
+  "resultSkipLabel": "Skip",
+  "resultKeepLabel": "Keep",
+  "resultSaveExactly": "Save ",
+  "notificationsLeaveSoonTitle": "Time to leave soon",
+  "localeSystem": "System",
+  "localeMenuTooltip": "Language",
+  "dashboardCountry": "Country",
+  "dashboardNoTripsYet": "No saved trips yet. Plan and save one to see stats.",
+  "dashboardStatCards": "OVERVIEW",
+  "profileVehicleType": "Vehicle type",
+  "profileFuelType": "Fuel type",
+  "profileConsumption": "Consumption",
+  "profileEvRange": "EV range",
+  "profileFuelTank": "Fuel tank",
+  "profileBreakfast": "Breakfast",
+  "profileLunch": "Lunch",
+  "profileDinner": "Dinner",
+  "mealSlotBreak": "Break",
+  "profileStopMinutes": "Typical stop minutes",
+  "profileReminderMinutes": "Reminder before departure",
+  "profilePremiumHint": "Toggle to preview Premium features locally.",
+  "profileNoProfile": "No profile saved yet.",
+  "eventPlaceholderDescription": "Short description of what you saw",
+  "eventCurrentLocation": "Current location",
+  "eventPickOnMap": "Pick on map",
+  "eventLocationCoords": "Selected: {lat}, {lon}",
+  "@eventLocationCoords": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lon": {
+        "type": "String"
+      }
+    }
+  },
+  "narrativeRegenerate": "Regenerate",
+  "narrativeUpgrade": "Unlock the AI briefing with Premium.",
+  "compareVariantsRecommended": "Recommended",
+  "compareVariantsFastest": "Fastest",
+  "compareVariantsCheapest": "Cheapest",
+  "compareVariantsScenic": "Scenic",
+  "compareVariantsAvoidTolls": "No tolls",
+  "compareVariantsAvoidMotorways": "No motorways",
+  "hourlyBestHours": "Best hours to skip tolls",
+  "hourlyWorstHours": "Worst hours to skip tolls",
+  "partialTollSkipsTitle": "Toll by toll · Premium optimisation",
+  "partialTollSkipsEyebrow": "Zoom in",
+  "sleepEyebrow": "OVERNIGHT",
+  "sleepNoHotelSuggestion": "No hotel picked yet — see the Hotels section.",
+  "lunchEyebrow": "LUNCH STOP",
+  "dinnerEyebrow": "DINNER STOP",
+  "breakfastEyebrow": "BREAKFAST STOP",
+  "resultCompareEyebrow": "Route variants",
+  "resultCompareDescription": "Same start and end — different priorities. Numbers are free-flow.",
+  "resultVariantDashed": "Dashed on the map above",
+  "dayTollsHeader": "Tolls today · {amount} € ({count})",
+  "@dayTollsHeader": {
+    "placeholders": {
+      "amount": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dayTollsSavedSummary": "You'll save {amount} € by skipping {count}.",
+  "@dayTollsSavedSummary": {
+    "placeholders": {
+      "amount": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tollHourGoodToSkip": "Good hour to skip ({hh}:00)",
+  "@tollHourGoodToSkip": {
+    "placeholders": {
+      "hh": {}
+    }
+  },
+  "tollHourAvoidSkip": "Avoid skipping — peak at {hh}:00",
+  "@tollHourAvoidSkip": {
+    "placeholders": {
+      "hh": {}
+    }
+  },
+  "partialTollsPerDayHint": "You can also toggle these per day in the itinerary below ↓",
+  "resultCityHint": "Near {city}",
+  "@resultCityHint": {
+    "placeholders": {
+      "city": {}
+    }
+  },
+  "resultSavingsShiftAndSkip": "By shifting your departure and skipping tolls.",
+  "resultSavingsShift": "By shifting your departure to the recommended window.",
+  "resultSavingsSkip": "By taking the toll-free alternative.",
+  "resultSavingsNone": "No savings identified for this route yet.",
+  "resultBypassSavingsPrefix": "You could save up to",
+  "resultBypassSavingsSuffix": "with +{minutes} min extra",
+  "@resultBypassSavingsSuffix": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "resultArrival": "ARRIVAL",
+  "resultShift": "SHIFT",
+  "resultTraffic": "TRAFFIC",
+  "resultTotal": "TOTAL",
+  "resultRestStopNoRestaurant": "Rest stop at {km} km — no matching restaurant found.",
+  "@resultRestStopNoRestaurant": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "resultNoHotelHere": "You should stop around here (~{km} km). No matching hotel found.",
+  "@resultNoHotelHere": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "resultMealFallback": "Meal",
+  "resultHourlyExplainer": "Common in France & Italy: exit before an expensive toll, take a parallel road for a stretch, re-enter later — often 15-40 min but saves €5-15.",
+  "profileSaved": "Profile saved",
+  "profileWhoEyebrow": "People",
+  "profileKidsSubtitle": "Prefers kid-friendly restaurants and hotels.",
+  "profilePetsSubtitle": "Prefers pet-friendly places, prioritises parking.",
+  "profileVehicleEyebrow": "For cost + parking hints",
+  "profileMealsEyebrow": "To match restaurant stops",
+  "profileRemindersEyebrow": "Local notifications",
+  "profileNotifyBefore": "Notify me before departure",
+  "profileNotifyOff": "Off — no reminder will be scheduled.",
+  "profileNotifyMinutesBefore": "{minutes} minutes before",
+  "@profileNotifyMinutesBefore": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "profilePremiumEyebrow": "Local toggle · no real payment",
+  "profilePremiumBody": "Real StoreKit / Play Billing gating comes later. For now this toggle enables Premium locally so you can preview those features.",
+  "profileSimulatePremium": "Simulate Premium",
+  "profileSimulatePremiumSubtitle": "Unlocks the AI trip briefing and hourly toll analysis.",
+  "profileOverrideHeroDesc": "Change your profile just for this trip — different vehicle, travellers or meal times without touching your saved profile.",
+  "profileGlobalHeroDesc": "Set this once. Every plan uses it to rank hotels and restaurants, estimate fuel, and time meal stops.",
+  "eventPickPlace": "Pick a place and describe what you saw.",
+  "eventThankYou": "Report submitted — thank you!",
+  "eventCouldNotSubmit": "Could not submit: {reason}",
+  "@eventCouldNotSubmit": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "eventIntro": "Help other drivers know what you saw. Reports expire after 24 hours by default.",
+  "eventWhatHappened": "What happened",
+  "eventWhatHappenedEyebrow": "Type",
+  "eventSeverityInfo": "Info",
+  "eventSeverityWarning": "Warning",
+  "eventSeverityCritical": "Critical",
+  "eventWhere": "Where",
+  "eventWhereEyebrow": "Nearest city",
+  "eventDescribeTitle": "Describe it",
+  "eventDescribeEyebrow": "Short & useful",
+  "eventDescribeHint": "e.g. Trees down on A6 southbound, 2 lanes closed",
+  "eventSubmitting": "Submitting…",
+  "eventSubmitReport": "Submit report",
+  "narrativeBusy": "Composing your trip briefing…",
+  "narrativeErrorTitle": "Could not fetch the briefing",
+  "narrativeGeneratedAt": "Generated {when}",
+  "@narrativeGeneratedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "narrativeReadAloud": "Read aloud",
+  "narrativeStop": "Stop",
+  "historyTitle": "Saved trips",
+  "historyEmptyTitle": "No saved trips yet",
+  "historyEmptyBody": "Plan a trip and tap the bookmark to keep it here for later.",
+  "historyPlanCta": "Plan a trip",
+  "historyDeleted": "Deleted {trip}",
+  "@historyDeleted": {
+    "placeholders": {
+      "trip": {
+        "type": "String"
+      }
+    }
+  },
+  "historyReplanFailed": "Re-plan failed: {status}",
+  "@historyReplanFailed": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "historyReplanNetworkError": "Connection dropped during re-plan. Check your signal and try again.",
+  "@historyReplanNetworkError": {},
+  "retryLabel": "Retry",
+  "@retryLabel": {},
+  "historyDeleteTooltip": "Delete",
+  "historyReopenCta": "Reopen",
+  "historyRepeatCta": "Repeat",
+  "historySavedCount": "{count, plural, one{1 saved} other{{count} saved}}",
+  "@historySavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resultFuelCollapsedHint": "Show the {count} cheapest stations along the route",
+  "@resultFuelCollapsedHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resultBestTimeVsFreeFlow": "{delta} min vs free flow",
+  "@resultBestTimeVsFreeFlow": {
+    "placeholders": {
+      "delta": {
+        "type": "String"
+      }
+    }
+  },
+  "resultBestTimeEarlier": "{minutes} min earlier than your target",
+  "@resultBestTimeEarlier": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "resultBestTimeLater": "{minutes} min later than your target",
+  "@resultBestTimeLater": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "resultHeroSavedBadge": "{magnitude} saved",
+  "@resultHeroSavedBadge": {
+    "placeholders": {
+      "magnitude": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyNeedsReview": "Trip plan needs review",
+  "consistencyNeedsReviewErrors": "Trip plan needs review · {errors} errors",
+  "@consistencyNeedsReviewErrors": {
+    "placeholders": {
+      "errors": {
+        "type": "int"
+      }
+    }
+  },
+  "consistencyNeedsReviewMixed": "Trip plan needs review · {errors} error(s), {warnings} warning(s)",
+  "@consistencyNeedsReviewMixed": {
+    "placeholders": {
+      "errors": {
+        "type": "int"
+      },
+      "warnings": {
+        "type": "int"
+      }
+    }
+  },
+  "consistencyFuelNoStations": "Trip is {km} km, but we can't see any gas stations along the route right now. Pricing and refuel picks are unavailable for this leg.",
+  "@consistencyFuelNoStations": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyFuelNoStationsHint": "Data may still be loading — try refreshing in a couple of minutes, or add your own stop by tapping the map.",
+  "consistencyFuelRangeExceeded": "Your vehicle can't cover the route on a single tank/charge — you'll need to refuel or recharge during the trip.",
+  "consistencyMealBeforeDeparture": "{slot} is scheduled at km {km} before the trip departs. Adjust the stop time or the departure hour.",
+  "@consistencyMealBeforeDeparture": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealAfterArrival": "{slot} is scheduled at km {km} after the trip already ends. Adjust the stop time or the trip pace.",
+  "@consistencyMealAfterArrival": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealImpossibleSpeed": "Reaching {slot} at km {km} from departure would need ~{kmh} km/h — not possible. Review the stop.",
+  "@consistencyMealImpossibleSpeed": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealSuspiciousSpeed": "Reaching {slot} at km {km} from departure would need ~{kmh} km/h. Check if that pace is realistic.",
+  "@consistencyMealSuspiciousSpeed": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealTooCloseToArrival": "{slot} at km {km} is very close to arrival ({mins} min before). You might as well eat at the destination.",
+  "@consistencyMealTooCloseToArrival": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "mins": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepBeforeDeparture": "Overnight rest is scheduled before departure (km {km}). Check the time.",
+  "@consistencySleepBeforeDeparture": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepAfterArrival": "Overnight rest is scheduled after arrival (km {km}). It may not be needed.",
+  "@consistencySleepAfterArrival": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepImpossibleSpeed": "Reaching the overnight rest at km {km} needs ~{kmh} km/h — impossible. Review the leg.",
+  "@consistencySleepImpossibleSpeed": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepSuspiciousSpeed": "The overnight rest at km {km} implies ~{kmh} km/h average. Check the pace.",
+  "@consistencySleepSuspiciousSpeed": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "mealSlotBreakfastCap": "Breakfast",
+  "mealSlotLunchCap": "Lunch",
+  "mealSlotDinnerCap": "Dinner",
+  "consistencyHeadsUp": "Heads-up on your trip plan",
+  "consistencyHeadsUpWarnings": "Heads-up on your trip plan · {warnings} warnings",
+  "@consistencyHeadsUpWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "int"
+      }
+    }
+  },
+  "consistencyMoreCount": "+{count} more",
+  "@consistencyMoreCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planProfileClearOverride": "Clear override",
+  "weatherSunny": "Sunny",
+  "weatherPartlyCloudy": "Partly cloudy",
+  "weatherCloudy": "Cloudy",
+  "weatherFog": "Fog",
+  "weatherDrizzle": "Drizzle",
+  "weatherRain": "Rain",
+  "weatherHeavyRain": "Heavy rain",
+  "weatherSnow": "Snow",
+  "weatherHeavySnow": "Heavy snow",
+  "weatherThunderstorm": "Thunderstorm",
+  "historyBestAt": "Best {when}",
+  "@historyBestAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "historyWantedAt": "Wanted {when}",
+  "@historyWantedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPlaceholder": "Search a city, museum, place…",
+  "placesSectionTitle": "SAVED PLACES",
+  "placeSaveAsTooltip": "Save as place",
+  "placeSaveDialogTitle": "Save as…",
+  "placeCustomLabel": "Label",
+  "placeCustomHint": "Home, Work, Grandma…",
+  "placePresetHome": "Home",
+  "placePresetWork": "Work",
+  "placePresetSchool": "School",
+  "placePresetGym": "Gym",
+  "placeSavedAs": "Saved as {label}",
+  "@placeSavedAs": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "favoritesTabPlaces": "Places",
+  "favoritesEmptyPlaces": "No saved places yet. Tap the star on any search result to save it.",
+  "settingsTitle": "Settings",
+  "settingsSectionVehicle": "Vehicle & Route",
+  "settingsSectionAppearance": "Appearance",
+  "settingsSectionAI": "AI Personalisation",
+  "notifSoundTitle": "Alert sound",
+  "@notifSoundTitle": {},
+  "notifSoundDefault": "Default sound",
+  "@notifSoundDefault": {},
+  "notifSoundDefaultSub": "Uses the system notification sound",
+  "@notifSoundDefaultSub": {},
+  "notifSoundSilent": "Silent",
+  "@notifSoundSilent": {},
+  "notifSoundSilentSub": "No sound for alerts",
+  "@notifSoundSilentSub": {},
+  "settingsSectionSafety": "Contacts & Safety",
+  "settingsSectionAccount": "Account",
+  "settingsDensityLabel": "Density",
+  "settingsDensityComfortable": "Comfortable",
+  "settingsDensityCompact": "Compact",
+  "settingsLanguage": "Language",
+  "settingsTheme": "Theme",
+  "settingsSectionUnits": "Units",
+  "settingsUnitSystem": "Unit system",
+  "settingsUnitsMetric": "Metric",
+  "settingsUnitsImperial": "Imperial",
+  "settingsSectionTrip": "Trip",
+  "settingsRadarAlerts": "Speed camera alerts",
+  "settingsRadarAlertsSubtitle": "Vibrate and show a banner when a speed camera is within 400 m (Essential+).",
+  "settingsSectionAbout": "About",
+  "settingsSectionData": "Your data",
+  "settingsExportData": "Download my data",
+  "settingsExportDataSub": "Get a JSON file with everything MyTravelPal holds about you.",
+  "settingsExportError": "Couldn't export data — check your connection.",
+  "settingsDeleteAccount": "Delete my account",
+  "settingsDeleteAccountSub": "Removes your profile, saved trips and preferences permanently.",
+  "settingsDeleteAccountConfirmTitle": "Delete account?",
+  "settingsDeleteAccountConfirmBody": "This deletes your profile and every saved trip from our servers. This action cannot be undone.",
+  "settingsDeleteAccountCancel": "Cancel",
+  "settingsDeleteAccountConfirm": "Delete forever",
+  "settingsDeleteAccountPartial": "Signed out locally, but the server may still hold data. Try again from a stable connection.",
+  "settingsDeleteAccountDone": "Account deleted. Signed out.",
+  "settingsDeleteAccountInProgress": "Deleting account…",
+  "settingsSupport": "Support & contact",
+  "settingsPrivacyPolicy": "Privacy Policy",
+  "settingsTerms": "Terms of Service",
+  "settingsVersion": "Version",
+  "planTooltipSettings": "Settings",
+  "styleSectionTitle": "Driving rhythm",
+  "styleSectionEyebrow": "How you organise your driving days",
+  "stylePresetDirect": "Direct",
+  "stylePresetBalanced": "Balanced",
+  "stylePresetSlow": "Slow",
+  "stylePresetDirectHint": "Push through, minimal stops, never overnight.",
+  "stylePresetBalancedHint": "Steady pace, breaks when it makes sense.",
+  "stylePresetSlowHint": "Savour the drive, generous stops, split long trips.",
+  "styleCustom": "Custom",
+  "styleAdvanced": "Advanced",
+  "stylePaceLabel": "Pace",
+  "stylePacePush": "Push",
+  "stylePaceSteady": "Steady",
+  "stylePaceSavour": "Savour",
+  "styleOvernightLabel": "Overnight stops",
+  "styleOvernightNever": "Never",
+  "styleOvernightIfNeeded": "If needed",
+  "styleOvernightAlwaysIfLong": "Split long trips",
+  "styleDailyCapLabel": "Max hours driving per day",
+  "styleBedtimeLabel": "Bedtime",
+  "styleWakeLabel": "Wake time",
+  "styleDrivingStartLabel": "Preferred time to start driving",
+  "dayEditSheetTitle": "Adjust day {day}",
+  "@dayEditSheetTitle": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "dayEditStartHour": "Start driving hour",
+  "dayEditMaxDriving": "Max driving hours: {hours} h (includes breaks)",
+  "@dayEditMaxDriving": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "dayExtendKmTitle": "You have more time available",
+  "@dayExtendKmTitle": {},
+  "dayExtendKmBody": "With this schedule you could cover +{extraKm} km more. Extend the day or keep the current route?",
+  "@dayExtendKmBody": {
+    "placeholders": {
+      "extraKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayExtendKmKeep": "Keep current route",
+  "@dayExtendKmKeep": {},
+  "dayExtendKmAdjust": "Extend the day (+{extraKm} km)",
+  "@dayExtendKmAdjust": {
+    "placeholders": {
+      "extraKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayEditEndHour": "Stop driving at {time}",
+  "@dayEditEndHour": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayEditPickTime": "Pick time",
+  "@dayEditPickTime": {},
+  "dayEditEndTimePicker": "Stop driving at",
+  "@dayEditEndTimePicker": {},
+  "dayEditSave": "Apply",
+  "dayEditCancel": "Cancel",
+  "dayEditReset": "Reset",
+  "resultReplanning": "Recalculating...",
+  "styleBreakLabel": "Break style",
+  "styleBreakMinimal": "Minimal",
+  "styleBreakScenic": "Scenic",
+  "styleBreakFoodie": "Foodie",
+  "planStyleChip": "{preset} · {hours}h/day",
+  "@planStyleChip": {
+    "placeholders": {
+      "preset": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "planStyleChipCustom": "Custom · {hours}h/day",
+  "@planStyleChipCustom": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "planStyleOverrideTitle": "Style for this trip",
+  "planStyleOverrideSubtitle": "Overrides your saved profile only for this plan.",
+  "planStyleUseSavedProfile": "Use my saved profile",
+  "arrivalHintTitle": "You'd arrive at {hour}:00",
+  "@arrivalHintTitle": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "arrivalHintBody": "Later than your bedtime ({bedtime}:00). Consider stopping overnight — hotels are ready below.",
+  "@arrivalHintBody": {
+    "placeholders": {
+      "bedtime": {
+        "type": "String"
+      }
+    }
+  },
+  "arrivalHintCta": "See hotels",
+  "vehicleTypeCar": "Car",
+  "vehicleTypeMotorbike": "Motorbike",
+  "vehicleTypeVan": "Van",
+  "vehicleTypeCamper": "Camper",
+  "fuelTypePetrol": "Petrol",
+  "fuelTypeDiesel": "Diesel",
+  "fuelTypeHybrid": "Hybrid",
+  "fuelTypeElectric": "Electric",
+  "fuelTypeLpg": "LPG",
+  "routeVariantFastest": "Fastest",
+  "routeVariantTollFree": "Toll-free",
+  "routeVariantScenic": "Scenic",
+  "eventTypeFire": "Fire",
+  "eventTypeStrike": "Strike",
+  "eventTypeWeather": "Adverse weather",
+  "eventTypeAccident": "Accident",
+  "eventTypeRoadwork": "Roadwork",
+  "eventTypeFlood": "Flood",
+  "eventTypeSnow": "Snow",
+  "eventTypeProtest": "Protest",
+  "eventTypeEarthquake": "Earthquake",
+  "eventTypeLandslide": "Landslide",
+  "eventTypeAvalanche": "Avalanche",
+  "eventTypeClosure": "Road closure",
+  "eventTypeHeatwave": "Heatwave",
+  "eventTypeHeavyRain": "Heavy rain",
+  "eventTypeHail": "Hail",
+  "eventTypeThunderstorm": "Thunderstorm",
+  "eventTypeHighWind": "High wind",
+  "eventTypeDenseFog": "Dense fog",
+  "eventTypeFreezingRain": "Freezing rain",
+  "eventTypeOther": "Other",
+  "tollStretchLabel": "Toll stretch {index} / {total}",
+  "@tollStretchLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tollBoothLabel": "Toll booth {index}",
+  "@tollBoothLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "addedToRouteLabel": "ADDED",
+  "replanWithStops": "Recalculate route with stops",
+  "addToRouteTooltip": "Add to route",
+  "removeFromRouteTooltip": "Remove from route",
+  "addedStopsChip": "{count, plural, =1{1 stop added · +{minutes} min} other{{count} stops added · +{minutes} min}}",
+  "@addedStopsChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "addedStopsClear": "Clear",
+  "settingsLicensesAndData": "Licenses & data sources",
+  "settingsLicensesAndDataSub": "Attributions for open data and libraries",
+  "attributionsTitle": "Licenses & data",
+  "attributionsIntro": "MyTravelPal is built on open data feeds and open-source libraries. This screen credits every source we use, links to the underlying licences, and covers our legal attribution obligations.",
+  "attributionsSectionMap": "Map & geodata",
+  "attributionsSectionFuel": "Fuel prices",
+  "attributionsSectionHazards": "Adverse events",
+  "attributionsSectionWeather": "Weather",
+  "attributionsSectionSoftware": "Software libraries",
+  "attributionsShowLicenses": "Show package licences",
+  "attributionsFailed": "Couldn't load attributions. Please try again.",
+  "fuelPriceUnavailable": "Price not available",
+  "fuelPriceUnavailableHint": "No public price feed for this country yet",
+  "planSectionOptionalEyebrow": "Optional",
+  "planOptAlertsTitle": "Alert me to critical events on the route",
+  "planOptAlertsSub": "Fires, floods, severe weather, and serious hazards within 25 km of the route.",
+  "planOptTollFreeTitle": "Show toll-free alternative",
+  "planOptTollFreeSub": "Compare a route that skips tolls — money saved vs. minutes added.",
+  "planOptHourlyTollTitle": "Hourly toll analysis",
+  "planOptHourlyTollSub": "When during the day skipping tolls actually beats keeping them (traffic-aware).",
+  "planOptRouteVariantsTitle": "Compare route variants",
+  "planOptRouteVariantsSub": "Fastest vs. toll-free vs. scenic — see all three side by side on the results.",
+  "planOptAvoidMotorwaysTitle": "Avoid motorways",
+  "planOptAvoidMotorwaysSub": "Slower and longer, but no tolls and quieter.",
+  "planOptPreferScenicTitle": "Prefer scenic",
+  "planOptPreferScenicSub": "Bias to more interesting roads. A little slower.",
+  "planPremiumBadge": "Premium",
+  "planProfileTravellers": "{count, plural, =1{1 traveller} other{{count} travellers}}",
+  "@planProfileTravellers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planProfileWithKids": "kids",
+  "planProfileWithPets": "pets",
+  "planProfileOverrideActive": "OVERRIDE ACTIVE",
+  "planProfileOverride": "Override for this trip",
+  "planProfileOverriding": "Overriding for this trip",
+  "profilePromptSetup": "Set up your trip profile",
+  "hotelPrefTitle": "Find hotels near stops",
+  "hotelPrefSubOn": "Shows accommodation options near each overnight stop",
+  "hotelPrefSubOff": "Off",
+  "restaurantPrefTitle": "Add restaurants along the route",
+  "restaurantPrefSubEnabled": "Up to {minutes} min detour · {band}",
+  "@restaurantPrefSubEnabled": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "band": {
+        "type": "String"
+      }
+    }
+  },
+  "restaurantPrefSubOff": "Off. Turn on to see restaurants near your route.",
+  "prefMaxDetour": "Max detour: {minutes} min",
+  "@prefMaxDetour": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prefBandBudget": "Budget",
+  "prefBandMid": "Mid",
+  "prefBandLuxury": "Luxury",
+  "prefBandAny": "Any",
+  "mealSlotBreakfast": "Suggested for breakfast",
+  "mealSlotLunch": "Suggested for lunch",
+  "mealSlotDinner": "Suggested for dinner",
+  "mealSlotOther": "Other restaurants",
+  "poiDistanceKm": "{km} km · +{minutes} min detour",
+  "@poiDistanceKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelSavingsChipCheap": "-{amount}€/L vs country avg",
+  "@fuelSavingsChipCheap": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelSavingsChipDear": "+{amount}€/L vs country avg",
+  "@fuelSavingsChipDear": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelArbitrageTitle": "Refuel smart on this route",
+  "fuelArbitrageBody": "Fuel in {cheap} is around {cheapPrice}€/L. In {dear} it's ~{dearPrice}€/L. Filling the tank in {cheap} before crossing saves ~{savings}€.",
+  "@fuelArbitrageBody": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "cheapPrice": {
+        "type": "String"
+      },
+      "dear": {
+        "type": "String"
+      },
+      "dearPrice": {
+        "type": "String"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "dayTabLabel": "Day {index}",
+  "@dayTabLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "dayHeaderRange": "Day {index} · km {fromKm} → {toKm}",
+  "@dayHeaderRange": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "fromKm": {
+        "type": "String"
+      },
+      "toKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayHeaderCity": "Day {index} · {from} → {to}",
+  "@dayHeaderCity": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "dayArrivalMarker": "Arrive at your destination around {time}",
+  "@dayArrivalMarker": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepMarker": "Finish driving around {time}",
+  "@daySleepMarker": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayStartsAt": "Departs at {time}",
+  "@dayStartsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayDriveWindow": "{start} → {end}",
+  "@dayDriveWindow": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopWhyTitle": "Why this stop?",
+  "restStopWhyKidFriendly": "Service area marked as kid-friendly",
+  "restStopWhyPetFriendly": "Dog / pet area nearby",
+  "restStopWhyRvFriendly": "Motorhome-compatible (sanitary / dump station)",
+  "restStopWhySafety": "Recommended for road safety: you've been driving {hours}h. EU regulation 561/2006 suggests at least a 45 min break after 4h30 at the wheel.",
+  "@restStopWhySafety": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopWhyClose": "Got it",
+  "dayMealStopAt": "🍽 {time} · {name}",
+  "@dayMealStopAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dayRestStopAt": "☕ {time} · {label}",
+  "@dayRestStopAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopFilterAll": "All",
+  "restStopFilterKidFriendly": "Kid-friendly",
+  "restStopFilterPetFriendly": "Pet-friendly",
+  "restStopFilterRvFriendly": "RV-friendly",
+  "dayHeaderDwell": "Day {index} · {place}",
+  "@dayHeaderDwell": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepStay": "Staying in {place}",
+  "@daySleepStay": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "nextStopHeroLabel": "Next suggested stop",
+  "nextStopHeroBody": "{slot} in {name} · around {time}",
+  "@nextStopHeroBody": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepHotelsLabel": "Hotels near your overnight stop",
+  "hotelDistFromStop": "{km} km from stop",
+  "@hotelDistFromStop": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "hotelDistFromDestination": "{km} km from destination",
+  "@hotelDistFromDestination": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepHotelsLabelDestination": "Hotels near your destination",
+  "daySleepHotelsEmpty": "Enable hotels in the plan preferences to see overnight options here.",
+  "daySleepHotelsNotFound": "No hotels found near this route with your current preferences.",
+  "noHotelsAdjustPrefs": "Adjust preferences",
+  "noRestaurantsAdjustPrefs": "No restaurants found with your current preferences.",
+  "companionAssistantTitle": "Companion assistant",
+  "settingsAiPersonalisation": "AI Personalisation",
+  "companionAskHint": "Ask something…",
+  "companionSend": "Send",
+  "companionGroupJoin": "Join as passenger",
+  "companionJoin": "Join",
+  "resultFuelSavingsTitle": "Cheap fuel on your route",
+  "daySleepHotelsSearching": "Looking for hotels near your stop...",
+  "enrichmentLoadingTitle": "Loading extras",
+  "enrichmentChipHotels": "Hotels",
+  "enrichmentChipRestaurants": "Restaurants",
+  "enrichmentChipFuel": "Fuel stations",
+  "enrichmentChipWeather": "Weather",
+  "enrichmentChipAdverse": "Alerts",
+  "enrichPulseHeader": "Right now…",
+  "enrichPulseHotels": "Finding hotels with the best price/stars",
+  "enrichPulseRestaurants": "Filtering restaurants to your preferences",
+  "enrichPulseFuel": "Locating the cheapest gas stations along the corridor",
+  "enrichPulseTolls": "Spotting tolls you can skip without a detour",
+  "enrichPulseWindows": "Comparing departure hours by expected traffic",
+  "enrichPulseWeather": "Hour-by-hour forecast across 5 route segments",
+  "enrichPulseAdverse": "Cross-checking active fires and quakes against your route",
+  "enrichPulseKids": "Rest stops with playgrounds nearby",
+  "enrichPulsePets": "Locating dog areas and pet-friendly stops",
+  "enrichPulseCamper": "Camper areas with dump and sanitary facilities",
+  "enrichPulseVehicleEv": "Planning charging stops for your {vehicle} ({tank} kWh)",
+  "@enrichPulseVehicleEv": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "tank": {
+        "type": "String"
+      }
+    }
+  },
+  "enrichPulseVehicle": "Tuning refuel plan for your {vehicle} ({tank} L)",
+  "@enrichPulseVehicle": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "tank": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopsWidenedHint": "No stops match the filter; showing the best on this leg.",
+  "windowsSheetTitle": "Departure windows",
+  "windowsSheetHint": "Tap a card to replan with that departure.",
+  "windowsSheetOpen": "See hour-by-hour detail",
+  "windowsBadgeCurrent": "Your time",
+  "windowsBadgeRecommended": "Recommended",
+  "windowsMetaDuration": "Duration",
+  "windowsMetaArrival": "Arrival",
+  "windowsMetaTraffic": "Traffic",
+  "trafficLight": "Light",
+  "trafficMedium": "Moderate",
+  "trafficDense": "Heavy",
+  "todEarlyMorning": "Early morning",
+  "todMorning": "Morning",
+  "todNoon": "Midday",
+  "todAfternoon": "Afternoon",
+  "todNight": "Night",
+  "restaurantPrefCuisinesLabel": "Cuisine",
+  "cuisineItalian": "Italian",
+  "cuisineSpanish": "Spanish",
+  "cuisineTapas": "Tapas",
+  "cuisineFrench": "French",
+  "cuisineMediterranean": "Mediterranean",
+  "cuisineAsian": "Asian",
+  "cuisineIndian": "Indian",
+  "cuisineBurger": "Burgers",
+  "cuisineSeafood": "Seafood",
+  "cuisineVegetarian": "Vegetarian",
+  "cuisineBbq": "BBQ / grill",
+  "cuisineRegional": "Regional",
+  "timeWindowSpanLabel": "Show ±{hours}h",
+  "@timeWindowSpanLabel": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timeWindowSpanHelper": "Drag to widen the window and see if leaving earlier or later saves more time.",
+  "timeWindowTapHint": "Tap a bar to replan with that departure time.",
+  "planLoadingRecalculating": "Recalculating with your settings...",
+  "@planLoadingRecalculating": {},
+  "planLoadingTitle": "Building your road trip",
+  "planLoadingStepRouting": "Computing the fastest route…",
+  "planLoadingStepTraffic": "Sampling traffic to pick the best departure hour…",
+  "planLoadingStepFuel": "Fetching live fuel prices along the corridor…",
+  "planLoadingStepHotels": "Looking for hotels around any overnight stops…",
+  "planLoadingStepRestaurants": "Sorting restaurants by meal slot and cuisine…",
+  "planLoadingStepAlerts": "Scanning for fires, floods, severe weather, and hazards…",
+  "planLoadingStepTolls": "Comparing toll routes with toll-free alternatives…",
+  "planLoadingStepAlmost": "Almost there — assembling everything for you…",
+  "planLoadingHelper": "This can take up to a few minutes. Feel free to keep the phone in your pocket.",
+  "timeWindowApplyLabel": "Apply · depart at {time}",
+  "@timeWindowApplyLabel": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "planErrorAuth": "Session expired. Sign in again and try once more.",
+  "planErrorPremium": "This route needs Premium. Enable it to include hourly toll analysis.",
+  "planErrorRateLimit": "Too many requests in a short time. Wait a few seconds and retry.",
+  "planErrorGeneric": "Something went wrong while planning (code {code}). Retry or change your inputs.",
+  "@planErrorGeneric": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "planErrorNetwork": "We couldn't reach the server. Check your connection and retry.",
+  "planErrorRetry": "Retry",
+  "emptyAlertsTitle": "No serious hazards detected",
+  "emptyAlertsBody": "No fires, floods or serious hazards reported on your corridor. Safe travels.",
+  "emptyHotelsTitle": "No hotels close to the route",
+  "emptyHotelsBody": "Try widening the max detour or changing the price band to see more options.",
+  "emptyRestaurantsTitle": "No restaurants match",
+  "emptyRestaurantsBody": "Widen the max detour or clear cuisine filters to see more options.",
+  "emptyRestaurantsNotFoundTitle": "No restaurants close to the route",
+  "emptyRestaurantsNotFoundBody": "The search returned no options. Try widening the max detour in Preferences.",
+  "emptyFuelNotFoundTitle": "No fuel data in this area",
+  "emptyFuelNotFoundBody": "Providers don't cover this route. Live prices will appear in areas with official data.",
+  "onboardEyebrowFuel": "TOLLS & FUEL",
+  "onboardTitleFuel": "Skip this toll?\nFill up before France?",
+  "onboardBodyFuel": "We show which tolls are worth skipping by hour, and which fuel station on your route has the best price right now.",
+  "onboardEyebrowDriving": "AI CO-PILOT · PREMIUM",
+  "onboardTitleDriving": "\"Should I stop\nfor fuel here?\"",
+  "onboardBodyDriving": "It knows your route, tank level, next prices and schedule. Answers in seconds. Works with Android Auto. (Premium)",
+  "onboardEyebrowProfile": "PERSONALISED",
+  "onboardTitleProfile": "Fill your profile",
+  "onboardBodyProfile": "Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.",
+  "multiDaySleepLabel": "You'll sleep at",
+  "multiDaySleepNoHotel": "Overnight stop — no hotel available",
+  "resumeTripTitle": "Resume your trip?",
+  "resumeTripBody": "We detected a {origin} → {destination} trip in progress. Continue where you left off?",
+  "@resumeTripBody": {
+    "placeholders": {
+      "origin": {
+        "type": "String"
+      },
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "resumeTripResume": "Resume",
+  "resumeTripDismiss": "Dismiss",
+  "hotelPrefStarsLabel": "Stars",
+  "hotelPrefDestRadiusLabel": "Radius from destination",
+  "biometricPromptReason": "Verify your identity to open MyTravelPal",
+  "biometricPromptSettings": "Confirm to enable biometric unlock",
+  "planDepartureLabel": "Preferred departure",
+  "hotelPrefStarsAny": "Any",
+  "hotelPrefParkingTitle": "With parking",
+  "hotelPrefParkingSub": "Only hotels tagged with parking. Ones missing the tag pass through.",
+  "hotelFilterParking": "Parking",
+  "hotelFilterWifi": "Free WiFi",
+  "hotelFilterAccessible": "Accessible",
+  "hotelFilterOtherTypes": "Apartments, houses & more",
+  "restaurantFilterVegetarian": "Vegetarian",
+  "restaurantFilterVegan": "Vegan",
+  "restaurantFilterGlutenFree": "Gluten-free",
+  "restaurantFilterHalal": "Halal",
+  "restaurantFilterKosher": "Kosher",
+  "restaurantDietaryLabel": "Dietary",
+  "tollSkipSelectAll": "Select all",
+  "mapShowLabel": "Show map",
+  "mapHideLabel": "Hide map",
+  "tripCostTitle": "TOTAL TRIP COST",
+  "tripCostFuel": "Fuel",
+  "tripCostTolls": "Tolls",
+  "tripCostMeals": "Meals",
+  "tripCostHotel": "Hotel",
+  "tripCostTotal": "Total estimated",
+  "tripCostPerPerson": "{amount} / person",
+  "@tripCostPerPerson": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tripCostPerDay": "{amount} / day",
+  "@tripCostPerDay": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "poiSpotlightRating": "rating",
+  "poiSpotlightStars": "stars",
+  "poiSpotlightReviews": "{count} reviews",
+  "@poiSpotlightReviews": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "poiSpotlightPricePerNight": "per night",
+  "poiSpotlightPricePerMeal": "per meal",
+  "poiSpotlightPricePerL": "per litre",
+  "poiFeaturesHeading": "Amenities",
+  "poiMoreInfoLabel": "More info",
+  "poiMoreInfoHide": "Hide",
+  "poiNoExtraInfo": "No extra info from OSM for this place.",
+  "poiOpenError": "Could not open {url}",
+  "@poiOpenError": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "poiCtaGoogleMaps": "Google Maps",
+  "poiCtaTheFork": "TheFork",
+  "poiCtaBooking": "Booking",
+  "poiCtaAirbnb": "Airbnb",
+  "poiCtaCall": "Call",
+  "poiCtaWebsite": "Website",
+  "poiContactAddress": "Address",
+  "poiContactPhone": "Phone",
+  "poiContactWebsite": "Website",
+  "poiContactHours": "Opening hours",
+  "poiContactCheckin": "Check-in",
+  "poiContactCheckout": "Check-out",
+  "poiAttr_wifi": "Free Wi-Fi",
+  "poiAttr_parking": "Parking",
+  "poiAttr_pool": "Swimming pool",
+  "poiAttr_airConditioning": "Air conditioning",
+  "poiAttr_breakfast": "Breakfast",
+  "poiAttr_petFriendly": "Pets allowed",
+  "poiAttr_childFriendly": "Child friendly",
+  "poiAttr_wheelchairAccess": "Wheelchair accessible",
+  "poiAttr_toilets": "Toilets",
+  "poiAttr_restaurant": "Restaurant",
+  "poiAttr_bar": "Bar",
+  "poiAttr_shop": "Shop",
+  "poiAttr_outdoorSeating": "Outdoor seating",
+  "poiAttr_takeaway": "Takeaway",
+  "poiAttr_delivery": "Delivery",
+  "poiAttr_creditCards": "Cards accepted",
+  "poiAttr_carWash": "Car wash",
+  "poiAttr_smoking": "Smoking area",
+  "poiAttr_nonSmoking": "Non-smoking",
+  "poiAttr_elevator": "Elevator",
+  "poiAttr_checkIn": "Check-in",
+  "poiAttr_checkOut": "Check-out",
+  "poiAttr_dietVegetarian": "Vegetarian",
+  "poiAttr_dietVegan": "Vegan",
+  "poiAttr_dietHalal": "Halal",
+  "poiAttr_dietKosher": "Kosher",
+  "poiAttr_dietGlutenFree": "Gluten-free",
+  "poiAttr_dog": "Pets welcome",
+  "poiAttr_brand": "Brand",
+  "poiAttr_city": "City",
+  "poiAttr_street": "Street",
+  "poiAttr_address": "Address",
+  "poiAttr_openingHours": "Opening hours",
+  "poiAttr_name": "Name",
+  "poiAttr_phone": "Phone",
+  "poiAttr_stars": "Stars",
+  "poiAttr_website": "Website",
+  "poiPickerChoose": "Choose",
+  "poiPickerSelected": "Selected",
+  "poiPickerHotels": "See alternatives",
+  "poiPickerRestaurants": "See nearby restaurants",
+  "addToRouteLabel": "Add to route",
+  "biometricSetupTitle": "Enable biometric login?",
+  "biometricSetupBody": "Use your fingerprint or face to unlock MyTravelPal next time.",
+  "biometricSetupEnable": "Enable",
+  "biometricSetupSkip": "Not now",
+  "weatherAlongRouteTitle": "WEATHER ALONG YOUR ROUTE",
+  "fuelNotificationTitle": "Fill up before the border!",
+  "fuelNotificationBody": "Fuel in {cheap} (~{price}€/L) before crossing into {pricey} — save ~{savings}€ per tank",
+  "@fuelNotificationBody": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "pricey": {
+        "type": "String"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "tutorialSkip": "Skip",
+  "tutorialOriginTitle": "Where are you starting?",
+  "tutorialOriginBody": "Tap here to search for a city or use the location button to start from your current position.",
+  "tutorialDestinationTitle": "Where are you going?",
+  "tutorialDestinationBody": "Search for your destination. We'll plan the full route with stops, hotels, and tolls.",
+  "tutorialPrefsTitle": "Customize your trip",
+  "tutorialPrefsBody": "Toggle hotels, restaurants, and alerts. Set dietary preferences, star ratings, and more.",
+  "tutorialTimeWindowTitle": "Pick the best departure time",
+  "tutorialTimeWindowBody": "Tap any row to replan your trip with that departure time. The chart shows traffic impact at each hour.",
+  "tutorialTollTitle": "Manage toll costs",
+  "tutorialTollBody": "Toggle individual toll stretches to skip. The total savings update in real time. The color strip shows the best hours to skip.",
+  "styleDailyCapRecommendedHint": "For this pace we suggest {hours} h/day.",
+  "@styleDailyCapRecommendedHint": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "aaCoachTitle": "How to open it on Android Auto",
+  "aaCoachStep1": "Connect the phone to the car by USB (or wireless if your head unit supports it).",
+  "aaCoachStep2": "In the car's launcher, switch to the 'Point of Interest' or 'Apps' category. It does NOT appear next to Google Maps.",
+  "aaCoachStep3": "Tap MyTravelPal. The companion shows next stop, cheaper fuel and ETA.",
+  "aaCoachHint": "First launch takes a few seconds. Park with clear sky to get a GPS fix before starting.",
+  "aaCoachDontShowAgain": "Don't show again",
+  "aaCoachDone": "Got it",
+  "batteryWhitelistTitle": "Stop Android from closing us",
+  "batteryWhitelistBody": "Xiaomi/MIUI, Samsung and other vendors kill backgrounded apps after a few minutes. If you're navigating with Google Maps and MyTravelPal dies, you lose the live alerts.",
+  "batteryWhitelistSteps": "Settings → Apps → MyTravelPal → Battery → No restrictions\n(or 'Don't optimize' depending on your model)",
+  "batteryWhitelistDontShowAgain": "Don't show again",
+  "batteryWhitelistLater": "Not now",
+  "batteryWhitelistOpen": "Open help",
+  "planRoundTripTitle": "Round trip",
+  "planRoundTripSubtitle": "We plan the return leg at the same time with the same preferences.",
+  "roundTripLegOutbound": "OUTBOUND",
+  "roundTripLegReturn": "RETURN",
+  "roundTripSwapTo": "View {leg}",
+  "@roundTripSwapTo": {
+    "placeholders": {
+      "leg": {
+        "type": "String"
+      }
+    }
+  },
+  "resultStartTrip": "Start trip",
+  "resultStartCompanion": "Start Driving Assistant (Premium)",
+  "companionPreflightTitle": "Pre-flight setup",
+  "companionPreflightMealWindows": "Meal times",
+  "companionPreflightDetourTolerance": "Max detour",
+  "companionPreflightMealBudget": "Meal budget",
+  "companionPreflightHotelBudget": "Hotel budget",
+  "companionPreflightSaveToProfile": "Save to my profile",
+  "companionPreflightStart": "Start driving",
+  "companionPreflightBreakfast": "Breakfast",
+  "companionPreflightLunch": "Lunch",
+  "companionPreflightDinner": "Dinner",
+  "navPickerTitle": "Continue in…",
+  "tripDashboardTitle": "On the road",
+  "tripDashboardCenterOnMe": "Centre on my location",
+  "tripDashboardOpenNav": "Open navigation",
+  "tripDashboardNextStopLabel": "NEXT {slot}",
+  "@tripDashboardNextStopLabel": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardInMinutes": "in {n} min",
+  "@tripDashboardInMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "tripDashboardPermissionDenied": "Location denied. Grant the permission to see your position on the route.",
+  "tripDashboardServiceDisabled": "GPS is off. Enable it to follow your progress on the route.",
+  "tripDashboardProgressLine": "{done} / {total} km",
+  "@tripDashboardProgressLine": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardEta": "ETA {time}",
+  "@tripDashboardEta": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardActiveNotifTitle": "Trip in progress",
+  "tripDashboardActiveNotifBody": "MyTravelPal is following your route in the background.",
+  "tripDashboardForegroundBodyBare": "{done} / {total} km covered",
+  "@tripDashboardForegroundBodyBare": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardForegroundBodyWithStop": "{done} / {total} km · next stop: {name}",
+  "@tripDashboardForegroundBodyWithStop": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardSleepStopLabel": "hotel",
+  "alertApproachingStopTitle": "Stop coming up",
+  "alertApproachingStopBody": "{slot} at {name} in about {mins} min. Get ready for the exit.",
+  "@alertApproachingStopBody": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "mins": {
+        "type": "int"
+      }
+    }
+  },
+  "alertNewAdverseAheadTitle": "New alert on your route",
+  "alertNewAdverseAheadBody": "{type} reported {km} km ahead.",
+  "@alertNewAdverseAheadBody": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertDriftDetectedTitle": "You've left the route",
+  "alertDriftDetectedBody": "You're {off} m off the planned track. Recalculate?",
+  "@alertDriftDetectedBody": {
+    "placeholders": {
+      "off": {
+        "type": "String"
+      }
+    }
+  },
+  "alertBehindScheduleTitle": "Running behind",
+  "alertBehindScheduleBody": "You'll arrive {mins} min later than planned.",
+  "@alertBehindScheduleBody": {
+    "placeholders": {
+      "mins": {
+        "type": "int"
+      }
+    }
+  },
+  "tripDashboardCheaperFuel": "{brand} in {km} km · save {cts} ct/L",
+  "@tripDashboardCheaperFuel": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "cts": {
+        "type": "String"
+      }
+    }
+  },
+  "resultOptimalDeparture": "Your departure time is optimal",
+  "shortLastDayWarning": "Short last leg ({km} km) — you could arrive today if you push further the day before.",
+  "@shortLastDayWarning": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "prepareDepartureNow": "Leave now",
+  "replanNewDepartureTitle": "Recalculating with new departure time…",
+  "planStopReorderHint": "Long-press the handle to reorder",
+  "planSwapOriginDestination": "Swap",
+  "planStopMoveUp": "Move up",
+  "planStopMoveDown": "Move down",
+  "recentTripsTitle": "Recent trips",
+  "recentTripsSubtitle": "{count} saved — tap to reuse",
+  "@recentTripsSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentTripsSeeAll": "See {n} more trips in My Trips",
+  "@recentTripsSeeAll": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onRouteTitle": "Along the route",
+  "onRouteEmpty": "Tap to pick options",
+  "exportShareTitle": "Share route",
+  "exportOpenInMaps": "Open in Google Maps",
+  "exportOpenInMapsSub": "With added stops and detours",
+  "exportCopyLink": "Copy link",
+  "exportLinkCopied": "Link copied to clipboard",
+  "exportShareOs": "Share…",
+  "exportShareSubject": "My route on MyTravelPal",
+  "importFromMaps": "Import from Maps",
+  "importFromMapsTitle": "Import a Google Maps route",
+  "importFromMapsHint": "Paste a Google Maps link here",
+  "importFromMapsPaste": "Paste",
+  "importFromMapsImport": "Import",
+  "importFromMapsError": "URL not recognised",
+  "importFromMapsErrorMalformed": "Invalid URL — check the link and try again",
+  "importFromMapsErrorShortlink": "Could not expand the short link — try opening it in Maps and copying the long URL",
+  "importFromMapsErrorGeocode": "Could not locate the places on the map — try a shorter route or type them manually",
+  "importFromMapsLoading": "Parsing link…",
+  "adverseEventsBannerCount": "{count} alert(s) on your route",
+  "@adverseEventsBannerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pricePerMeal": "{price} €/meal",
+  "@pricePerMeal": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "kmFromOrigin": "{km} km from origin",
+  "@kmFromOrigin": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "profileVehicleModel": "Model",
+  "profileVehicleModelHint": "Pick your car model",
+  "profileVehicleModelClear": "Clear model",
+  "profileTankLevel": "Current tank",
+  "vehiclePickerSearchHint": "Search brand or model",
+  "vehiclePickerEmpty": "No models match your search",
+  "vehiclePickerLoadError": "Could not load models. Try again later.",
+  "vehiclePickerCustomOption": "Custom vehicle",
+  "vehiclePickerCustomOptionSubtitle": "Enter tank size and consumption manually",
+  "vehicleCustomTitle": "Custom vehicle",
+  "vehicleCustomName": "Vehicle name (optional)",
+  "vehicleCustomNameHint": "e.g. My SUV",
+  "vehicleCustomTank": "Tank size (L)",
+  "vehicleCustomTankEv": "Battery (kWh)",
+  "vehicleCustomConsumption": "Consumption (L/100 km)",
+  "vehicleCustomConsumptionEv": "Consumption (kWh/100 km)",
+  "vehicleCustomSave": "Use custom",
+  "refuelWindowComfortable": "Refuel by km {km} (comfortable)",
+  "@refuelWindowComfortable": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelWindowCritical": "Refuel by km {km} (critical)",
+  "@refuelWindowCritical": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelSuggestionTitle": "Refuel here to save",
+  "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
+  "@refuelSuggestionBody": {
+    "placeholders": {
+      "station": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelSuggestionSavings": "You save {eur} €",
+  "@refuelSuggestionSavings": {
+    "placeholders": {
+      "eur": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsFuelRow": "Fuel: {eur} €",
+  "@savingsFuelRow": {
+    "placeholders": {
+      "eur": {
+        "type": "String"
+      }
+    }
+  },
+  "garageTitle": "My garage",
+  "garageEmpty": "No vehicles yet — add your first car",
+  "garageAdd": "Add vehicle",
+  "garageEdit": "Edit vehicle",
+  "garageDelete": "Delete",
+  "garageCancel": "Cancel",
+  "garageSave": "Save",
+  "garageDefaultName": "My car",
+  "garageNameHint": "Give it a name (e.g. Mi Golf)",
+  "garageDefaultTankLabel": "Default tank level",
+  "garageDefaultChargeLevelLabel": "Initial charge level",
+  "garageAddError": "Could not save. Try again.",
+  "garageDeleteTitle": "Delete vehicle?",
+  "garageDeleteBody": "\"{name}\" will be removed from your garage.",
+  "@garageDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "garageSettingsRow": "My garage ({count})",
+  "@garageSettingsRow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planScreenGarageChip": "Car: {name} · {pct}%",
+  "@planScreenGarageChip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "planScreenGarageChooseVehicle": "Choose a vehicle for this trip",
+  "hotelArbitrageTitle": "Hotels cheaper next door",
+  "hotelArbitrageBody": "This night lands in {dear}. Hotels there run ~{dearPrice}€/night vs ~{cheapPrice}€/night in {cheap} ({pct}% less). Push {nights, plural, one{one night} other{{nights} nights}} south and save ~{savings}€.",
+  "@hotelArbitrageBody": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "cheapPrice": {
+        "type": "String"
+      },
+      "dear": {
+        "type": "String"
+      },
+      "dearPrice": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "String"
+      },
+      "nights": {
+        "type": "int",
+        "format": "compact"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "hotelArbitrageMiniHint": "Same savings if you shift this night south too",
+  "whatsNewSheetTitle": "What's new",
+  "whatsNewSheetDismiss": "Got it",
+  "profileChipChangeVehicle": "Change vehicle",
+  "profileChipEditProfile": "Edit trip profile",
+  "whatsNewSheetSuggest": "Suggest something",
+  "feedbackSheetTitle": "Suggestions",
+  "feedbackSheetSubtitle": "Tell us what would make MyTravelPal better for you. We read every message.",
+  "feedbackBodyHint": "What would you change or add?",
+  "feedbackWantReply": "I'd like a reply",
+  "feedbackEmailHint": "Your email (optional)",
+  "feedbackSendButton": "Send",
+  "feedbackThanks": "Thanks! We've got it.",
+  "feedbackErrorEmpty": "Say a bit more (min. 3 characters)",
+  "feedbackErrorEmail": "That doesn't look like a valid email",
+  "feedbackErrorSend": "Couldn't send. Try again in a moment.",
+  "settingsSendFeedback": "Send a suggestion",
+  "settingsSendFeedbackSubtitle": "Tell us what to build next",
+  "enrichPulseRestStops": "Looking for rest areas along the route",
+  "exitAppTitle": "Leave MyTravelPal?",
+  "exitAppBody": "Are you sure you want to close the app?",
+  "exitAppBodyCompanionActive": "Companion mode is running. If you leave now, the drive session keeps running in the background. Stop it from the Companion tab first if you want to close it cleanly.",
+  "exitAppStay": "Stay",
+  "exitAppLeave": "Leave",
+  "enrichPulseChargers": "Locating charging stations along the route",
+  "advEventLabelSource": "Source",
+  "advEventLabelReported": "Reported",
+  "advEventLabelExpires": "Valid until",
+  "advEventLabelDuration": "Estimated duration",
+  "advEventSourceWeather": "Weather forecast (Open-Meteo)",
+  "advEventSourceOfficial": "Official feed",
+  "advEventSourceEffis": "EFFIS wildfire monitor",
+  "advEventSourceUsgs": "USGS earthquake feed",
+  "advEventSourceUser": "Community-reported",
+  "advEventSourceMock": "Simulated (dev)",
+  "advEventDurationHours": "{h} h",
+  "advEventDurationDays": "{d} d {h} h",
+  "advEventDurationOngoing": "Ongoing",
+  "@advEventDurationHours": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "@advEventDurationDays": {
+    "placeholders": {
+      "d": {
+        "type": "String"
+      },
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "exportShareMtp": "Share with MyTravelPal users",
+  "exportShareMtpSubtitle": "Opens directly in the app — they choose their own preferences",
+  "exportShareMtpSubject": "{origin} → {destination} | MyTravelPal",
+  "@exportShareMtpSubject": {
+    "placeholders": {
+      "origin": {
+        "type": "String"
+      },
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "resultFuelStationsOnRoute": "Fuel stations on route",
+  "@resultFuelStationsOnRoute": {},
+  "resultFuelSavingsAccordionTitle": "Fuel savings",
+  "resultTimeSavingsOptimal": "Your departure time is optimal",
+  "@resultTimeSavingsOptimal": {},
+  "hotelMapFullscreenTitle": "Hotels in the area",
+  "@hotelMapFullscreenTitle": {},
+  "restaurantMapFullscreenTitle": "Restaurants in the area",
+  "@restaurantMapFullscreenTitle": {},
+  "tollSummaryTitle": "Trip tolls",
+  "@tollSummaryTitle": {},
+  "tollSummaryMapButton": "View on map",
+  "@tollSummaryMapButton": {},
+  "activitiesCtaTitle": "Things to do in {city}",
+  "@activitiesCtaTitle": {
+    "placeholders": {
+      "city": {}
+    }
+  },
+  "activitiesCtaSubtitle": "Local activities and experiences",
+  "@activitiesCtaSubtitle": {},
+  "planIncludeActivities": "Activities at destination",
+  "@planIncludeActivities": {},
+  "planIncludeActivitiesHint": "GetYourGuide suggestions in each city",
+  "@planIncludeActivitiesHint": {},
+  "aiPrefScenicRoutes": "Prefer scenic routes",
+  "@aiPrefScenicRoutes": {},
+  "aiPrefScenicRoutesSub": "Recommend detours via viewpoints & passes",
+  "@aiPrefScenicRoutesSub": {},
+  "aiPrefEcoConscious": "Eco-conscious",
+  "@aiPrefEcoConscious": {},
+  "aiPrefEcoConsciousSub": "Favour EVs, avoid motorways when practical",
+  "@aiPrefEcoConsciousSub": {},
+  "aiPrefLocalFood": "Local food first",
+  "@aiPrefLocalFood": {},
+  "aiPrefLocalFoodSub": "Prioritise local restaurants over chains",
+  "@aiPrefLocalFoodSub": {},
+  "aiPrefDepartureHour": "Usual departure hour",
+  "@aiPrefDepartureHour": {},
+  "aiPrefDietary": "DIETARY RESTRICTIONS",
+  "@aiPrefDietary": {},
+  "aiPrefInterests": "INTERESTS",
+  "@aiPrefInterests": {},
+  "aiDietVegetarian": "Vegetarian",
+  "@aiDietVegetarian": {},
+  "aiDietVegan": "Vegan",
+  "@aiDietVegan": {},
+  "aiDietGlutenFree": "Gluten-free",
+  "@aiDietGlutenFree": {},
+  "aiDietHalal": "Halal",
+  "@aiDietHalal": {},
+  "aiInterestCulture": "Culture",
+  "@aiInterestCulture": {},
+  "aiInterestNature": "Nature",
+  "@aiInterestNature": {},
+  "aiInterestGastronomy": "Gastronomy",
+  "@aiInterestGastronomy": {},
+  "aiInterestShopping": "Shopping",
+  "@aiInterestShopping": {},
+  "aiInterestAdventure": "Adventure",
+  "@aiInterestAdventure": {},
+  "wizardSkip": "Skip",
+  "@wizardSkip": {},
+  "wizardStart": "Get started",
+  "@wizardStart": {},
+  "wizardBack": "Back",
+  "@wizardBack": {},
+  "wizardNext": "Next",
+  "@wizardNext": {},
+  "wizardTakesSeconds": "Takes about 30 seconds",
+  "@wizardTakesSeconds": {},
+  "wizardWelcomeTitle": "Welcome to MyTravelPal",
+  "@wizardWelcomeTitle": {},
+  "wizardWelcomeBody": "Tell us a bit about your trips and we'll personalise everything from the start.",
+  "@wizardWelcomeBody": {},
+  "wizardWhoTitle": "Who are you travelling with?",
+  "@wizardWhoTitle": {},
+  "wizardWhoSubtitle": "Select all that apply. You can change this later.",
+  "@wizardWhoSubtitle": {},
+  "wizardWhoKids": "Travelling with kids",
+  "@wizardWhoKids": {},
+  "wizardWhoPets": "Travelling with pets",
+  "@wizardWhoPets": {},
+  "wizardWhoCamper": "Travelling by motorhome",
+  "@wizardWhoCamper": {},
+  "wizardVehicleTitle": "Your vehicle",
+  "@wizardVehicleTitle": {},
+  "wizardVehicleSubtitle": "We'll use this to estimate fuel and suggest routes.",
+  "@wizardVehicleSubtitle": {},
+  "wizardVehicleType": "Vehicle type",
+  "@wizardVehicleType": {},
+  "wizardFuelType": "Fuel type",
+  "@wizardFuelType": {},
+  "wizardRhythmTitle": "Your driving rhythm",
+  "@wizardRhythmTitle": {},
+  "wizardRhythmSubtitle": "These are default values — you can change them trip by trip.",
+  "@wizardRhythmSubtitle": {},
+  "wizardWakeHour": "I leave at {h}",
+  "@wizardWakeHour": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wizardBreakEvery": "I stop every {n}h",
+  "@wizardBreakEvery": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "wizardBedtime": "I reach the hotel by {h}",
+  "@wizardBedtime": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wizardHotelBudget": "Hotel budget / night",
+  "@wizardHotelBudget": {},
+  "wizardMealBudget": "Meal budget / meal",
+  "@wizardMealBudget": {},
+  "wizardDoneTitle": "You're all set!",
+  "@wizardDoneTitle": {},
+  "wizardDoneSubtitle": "Your first route will already be personalised for you.",
+  "@wizardDoneSubtitle": {},
+  "wizardTeaserTitle": "Whenever you want, you can also configure in Settings:",
+  "@wizardTeaserTitle": {},
+  "wizardTeaserVehicleModel": "Exact vehicle model (real consumption)",
+  "@wizardTeaserVehicleModel": {},
+  "wizardTeaserRoute": "Preferred route: motorway or scenic",
+  "@wizardTeaserRoute": {},
+  "wizardTeaserEmergency": "Emergency contacts",
+  "@wizardTeaserEmergency": {},
+  "wizardTeaserAlertSound": "Companion alert sound",
+  "@wizardTeaserAlertSound": {},
+  "wizardTeaserStars": "Minimum hotel star rating",
+  "@wizardTeaserStars": {},
+  "wizardPlanFirstTrip": "Plan my first trip",
+  "@wizardPlanFirstTrip": {},
+  "priceBandBudget": "Budget",
+  "@priceBandBudget": {},
+  "priceBandMid": "Standard",
+  "@priceBandMid": {},
+  "priceBandLux": "Premium",
+  "@priceBandLux": {},
+  "wizardModelTitle": "Your vehicle model",
+  "@wizardModelTitle": {},
+  "wizardModelSubtitle": "Real data lets us calculate when and where to refuel to save you money.",
+  "@wizardModelSubtitle": {},
+  "wizardModelSearch": "Search make or model...",
+  "@wizardModelSearch": {},
+  "wizardModelGeneric": "Use generic values",
+  "@wizardModelGeneric": {},
+  "wizardModelGenericSub": "Standard estimate for your vehicle type",
+  "@wizardModelGenericSub": {},
+  "wizardTollTitle": "Avoid tolls?",
+  "@wizardTollTitle": {},
+  "wizardTollSubtitle": "We analyse thousands of routes to know when a detour is worth it.",
+  "@wizardTollSubtitle": {},
+  "wizardTollAvoid": "Avoid when possible",
+  "@wizardTollAvoid": {},
+  "wizardTollAvoidSub": "Propose alternatives by default",
+  "@wizardTollAvoidSub": {},
+  "wizardTollPay": "Always prefer motorway",
+  "@wizardTollPay": {},
+  "wizardTollPaySub": "Prefer motorway unless savings are very clear",
+  "@wizardTollPaySub": {},
+  "wizardTollNote": "You can change this for each trip from the planning screen",
+  "@wizardTollNote": {},
+  "wizardDrivingNow": "Drive now with the assistant",
+  "@wizardDrivingNow": {},
+  "companionModeLabel": "Driving assistant",
+  "@companionModeLabel": {},
+  "companionModeDesc": "AI co-pilot · Recommends toll alternatives, restaurants by your taste and cheap fuel stops in real time · Premium",
+  "@companionModeDesc": {},
+  "aiLearningTitle": "The assistant knows you at",
+  "@aiLearningTitle": {},
+  "aiScoreExcellent": "Excellent · Recommendations are very precise",
+  "@aiScoreExcellent": {},
+  "aiScoreGood": "Good · You can still improve personalisation",
+  "@aiScoreGood": {},
+  "aiScoreBasic": "Basic · Complete your profile for better results",
+  "@aiScoreBasic": {},
+  "aiFactorVehicleModel": "Vehicle model",
+  "@aiFactorVehicleModel": {},
+  "aiFactorVehicleModelHint": "Set your model for exact fuel calculations",
+  "@aiFactorVehicleModelHint": {},
+  "aiFactorTrips": "{count} trips completed",
+  "@aiFactorTrips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiFactorTripsHint": "More trips = better understanding of your usual routes",
+  "@aiFactorTripsHint": {},
+  "aiFactorHotelPrefs": "Hotel preferences",
+  "@aiFactorHotelPrefs": {},
+  "aiFactorHotelPrefsHint": "Add stars, parking or wifi to filter better",
+  "@aiFactorHotelPrefsHint": {},
+  "aiFactorRestPrefs": "Restaurant preferences",
+  "@aiFactorRestPrefs": {},
+  "aiFactorRestPrefsHint": "Add cuisine types for more accurate suggestions",
+  "@aiFactorRestPrefsHint": {},
+  "aiFactorNick": "Nick and country set",
+  "@aiFactorNick": {},
+  "aiFactorNickHint": "Complete your name and country in Settings",
+  "@aiFactorNickHint": {},
+  "aiFactorEmergency": "Emergency contacts",
+  "@aiFactorEmergency": {},
+  "aiFactorEmergencyHint": "Add a contact for the safety system",
+  "@aiFactorEmergencyHint": {},
+  "aiFactorProfile": "Basic travel profile",
+  "@aiFactorProfile": {},
+  "aiFactorProfileHint": "Set your driving hours in Settings",
+  "@aiFactorProfileHint": {},
+  "tripQualityTitle": "Trip quality",
+  "@tripQualityTitle": {},
+  "tripQualityExcellent": "Excellent",
+  "@tripQualityExcellent": {},
+  "tripQualityGood": "Good",
+  "@tripQualityGood": {},
+  "tripQualityFair": "Fair",
+  "@tripQualityFair": {},
+  "tripQualityPoor": "Limited",
+  "@tripQualityPoor": {},
+  "tripQualityFactorRoute": "Route",
+  "@tripQualityFactorRoute": {},
+  "tripQualityFactorFuel": "Fuel stations",
+  "@tripQualityFactorFuel": {},
+  "tripQualityFactorHotels": "Hotels",
+  "@tripQualityFactorHotels": {},
+  "tripQualityFactorWeather": "Weather",
+  "@tripQualityFactorWeather": {},
+  "tripQualityFactorAlerts": "Alerts",
+  "@tripQualityFactorAlerts": {},
+  "tripQualityFactorTolls": "Tolls",
+  "@tripQualityFactorTolls": {},
+  "tripQualityFactorStops": "Stops",
+  "@tripQualityFactorStops": {},
+  "wizardModelConsumption": "Consumption",
+  "@wizardModelConsumption": {},
+  "wizardModelTank": "Tank size",
+  "@wizardModelTank": {},
+  "wizardRhythmNote": "Adjust any day directly in the trip result by tapping the ⚙ icon on each stage.",
+  "@wizardRhythmNote": {},
+  "wizardTollHowTitle": "HOW IT WORKS",
+  "@wizardTollHowTitle": {},
+  "wizardTollHowBody": "On each trip we analyse every toll individually: if the detour saves real money and the extra time is minimal, we propose it on the result screen. You decide whether to take it, and can fine-tune exactly how many extra minutes you're willing to spend.",
+  "@wizardTollHowBody": {},
+  "wizardTollPreference": "What's your starting point?",
+  "@wizardTollPreference": {},
+  "resultStartCompanionNow": "Leave now! · Companion mode",
+  "@resultStartCompanionNow": {},
+  "resultCompanionFarFromOrigin": "Get closer to the departure point to activate driving mode",
+  "@resultCompanionFarFromOrigin": {},
+  "resultReplanWithChanges": "Recalculate with applied changes",
+  "@resultReplanWithChanges": {},
+  "replanTipRoute": "Optimising day stages...",
+  "@replanTipRoute": {},
+  "replanTipFuel": "Finding the best fuel stations on route...",
+  "@replanTipFuel": {},
+  "replanTipStops": "Adjusting stops and arrival times...",
+  "@replanTipStops": {},
+  "tripDayBarsTitle": "Day breakdown",
+  "@tripDayBarsTitle": {}
 }

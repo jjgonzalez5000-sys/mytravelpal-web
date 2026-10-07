@@ -1,6 +1,5 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'design/tokens.dart';
 import 'storage/app_prefs.dart';
@@ -375,8 +374,17 @@ class AppTheme {
     Color muted, {
     bool compact = false,
   }) {
-    final heading = GoogleFonts.manropeTextTheme();
-    final text = GoogleFonts.interTextTheme();
+    // Fonts are bundled as assets (see pubspec.yaml). We build the
+    // text themes from Flutter's built-in Material 3 typography and
+    // re-anchor fontFamily to the bundled Manrope/Inter — going
+    // through GoogleFonts.*TextTheme() would still trigger its asset
+    // lookup for `Manrope-Regular.ttf` (static filename convention)
+    // which our bundled variable font doesn't satisfy, throwing the
+    // "font not found in assets" exception Sentry surfaced right
+    // after the fonts.gstatic.com fetch was disabled on 2026-09-29.
+    final baseM3 = Typography.material2021().englishLike;
+    final heading = baseM3.apply(fontFamily: 'Manrope');
+    final text = baseM3.apply(fontFamily: 'Inter');
     // Body/label copy scales by 0.94, titles/headlineSmall by 0.90
     // in compact mode. The bigger displays keep their weight so
     // hero moments still hit; the middle titles shrink hardest

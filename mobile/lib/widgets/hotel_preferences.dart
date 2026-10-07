@@ -213,29 +213,26 @@ class HotelPreferencesSection extends StatelessWidget {
           ),
           const SizedBox(height: Tokens.space12),
           // Destination radius — how far from the final stop we
-          // scan for hotels. Rural destinations benefit from
-          // pushing it up; city centres are fine at 40 km.
-          Row(
+          // scan for hotels. Chip selector replaces the invisible
+          // slider on dark backgrounds.
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(l.hotelPrefDestRadiusLabel, style: t.bodyMedium),
-              const SizedBox(width: Tokens.space8),
-              Expanded(
-                child: Slider(
-                  min: 10, max: 100, divisions: 9,
-                  value: value.destinationRadiusKm.toDouble(),
-                  label: '${value.destinationRadiusKm} km',
-                  onChanged: (v) => onChanged(
-                    value.copyWith(destinationRadiusKm: v.round()),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width: 48,
-                child: Text(
-                  '${value.destinationRadiusKm} km',
-                  textAlign: TextAlign.end,
-                  style: t.bodyMedium,
-                ),
+              const SizedBox(height: Tokens.space8),
+              Wrap(
+                spacing: Tokens.space8,
+                runSpacing: Tokens.space4,
+                children: [
+                  for (final km in const [10, 20, 30, 50, 80, 100])
+                    ChoiceChip(
+                      label: Text('$km km'),
+                      selected: value.destinationRadiusKm == km,
+                      onSelected: (_) => onChanged(
+                        value.copyWith(destinationRadiusKm: km),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),

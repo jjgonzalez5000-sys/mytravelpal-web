@@ -59,7 +59,13 @@ def filter_hotels(
     if bands is None and price_band is not PriceBand.ANY:
         bands = (price_band,)
     if bands is not None:
-        kept = [h for h in kept if h.price_band in bands]
+        strict = [h for h in kept if h.price_band in bands]
+        # Graceful degradation: if strict price filter removes everything
+        # (common in Scandinavia, Alpine resorts, London — all expensive),
+        # fall back to the full set and sort cheapest-first so the driver
+        # at least sees something rather than a blank screen. The price
+        # preference is still honoured via ranking, not exclusion.
+        kept = strict if strict else kept
 
     # Star rating (OSM `stars` self-declared tag). Only enforced
     # when the caller asks; missing stars are DROPPED under a

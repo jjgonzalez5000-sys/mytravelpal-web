@@ -223,6 +223,7 @@ class TripProfile {
     this.breakStyle = BreakStyle.scenic,
     this.vehicleModelId,
     this.currentTankLevelPercent,
+    this.dailyKmCap,
   });
 
   final int travellers;
@@ -255,6 +256,11 @@ class TripProfile {
   /// the backend returns a `refuel_window` hint.
   final int? currentTankLevelPercent;
 
+  /// Optional km per day cap. When set, each day ends when either
+  /// `dailyDrivingCapHours` OR this km limit is reached — whichever
+  /// comes first. Null means uncapped (hours-only constraint).
+  final int? dailyKmCap;
+
   TripProfile copyWith({
     int? travellers,
     bool? hasKids,
@@ -273,6 +279,7 @@ class TripProfile {
     // the "not passed" case.
     Object? vehicleModelId = _sentinel,
     Object? currentTankLevelPercent = _sentinel,
+    Object? dailyKmCap = _sentinel,
   }) =>
       TripProfile(
         travellers: travellers ?? this.travellers,
@@ -296,6 +303,9 @@ class TripProfile {
         currentTankLevelPercent: currentTankLevelPercent == _sentinel
             ? this.currentTankLevelPercent
             : currentTankLevelPercent as int?,
+        dailyKmCap: dailyKmCap == _sentinel
+            ? this.dailyKmCap
+            : dailyKmCap as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -315,6 +325,7 @@ class TripProfile {
         if (vehicleModelId != null) 'vehicle_model_id': vehicleModelId,
         if (currentTankLevelPercent != null)
           'current_tank_level_percent': currentTankLevelPercent,
+        if (dailyKmCap != null) 'daily_km_cap': dailyKmCap,
       };
 
   factory TripProfile.fromJson(Map<String, dynamic> j) => TripProfile(
@@ -340,6 +351,7 @@ class TripProfile {
         vehicleModelId: j['vehicle_model_id'] as String?,
         currentTankLevelPercent:
             (j['current_tank_level_percent'] as num?)?.toInt(),
+        dailyKmCap: (j['daily_km_cap'] as num?)?.toInt(),
       );
 }
 

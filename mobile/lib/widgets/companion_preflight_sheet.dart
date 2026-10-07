@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/models.dart';
 import '../design/tokens.dart';
@@ -6,6 +7,8 @@ import '../domain/trip_profile.dart';
 import '../l10n/app_localizations.dart';
 import 'hotel_preferences.dart';
 import 'restaurant_preferences.dart';
+
+const _kSkipCarConfirmKey = 'companion_skip_car_confirm';
 
 /// Snapshot of the driver's ad-hoc Companion tweaks for this trip.
 ///
@@ -29,6 +32,7 @@ class CompanionOverrides {
     required this.maxDetourMinutes,
     required this.mealPriceBands,
     required this.hotelPriceBands,
+    required this.tankLevelPct,
     required this.saveToProfile,
   });
 
@@ -36,17 +40,18 @@ class CompanionOverrides {
   final TimeOfDay lunchAt;
   final TimeOfDay dinnerAt;
 
-  /// How far around the target meal time the Companion may slide a
-  /// stop. Currently unused inside this widget but part of the public
-  /// contract — reserved for a future "meal window" control.
+  /// How far around the target meal time the Companion may slide a stop.
   final Duration mealTolerance;
 
-  /// Shared cap for both hotel and restaurant detours, kept simple so
-  /// the driver has a single knob at wheel-side.
+  /// Shared cap for both hotel and restaurant detours.
   final int maxDetourMinutes;
 
   final Set<PriceBand> mealPriceBands;
   final Set<PriceBand> hotelPriceBands;
+
+  /// Current fuel tank level 0–100 %. Used to filter reachable
+  /// stations and compute accurate fuel-spend estimates.
+  final int tankLevelPct;
 
   /// When true, the caller should also write these tweaks back to the
   /// user profile so they become the new default for future trips.
@@ -55,14 +60,20 @@ class CompanionOverrides {
 
 /// Show the Companion pre-flight sheet.
 ///
-/// Returns the driver's overrides on confirm, or `null` when the sheet
-/// is dismissed (swipe down, back button, tap outside).
+/// [vehicleLabel] is the human-readable "Make Model" string for the
+/// vehicle in the profile. Pass null when the profile has no model set.
+///
+/// Returns the driver's overrides on confirm, or `null` when dismissed.
 Future<CompanionOverrides?> showCompanionPreflightSheet(
   BuildContext context, {
   required HotelPreferences initialHotel,
   required RestaurantPreferences initialRestaurant,
   required TripProfile? initialProfile,
-}) {
+  String? vehicleLabel,
+}) async {
+  final prefs = await SharedPreferences.getInstance();
+  final skipCarConfirm = prefs.getBool(_kSkipCarConfirmKey) ?? false;
+  if (!context.mounted) return null;
   return showModalBottomSheet<CompanionOverrides>(
     context: context,
     isScrollControlled: true,
@@ -72,6 +83,7 @@ Future<CompanionOverrides?> showCompanionPreflightSheet(
       initialHotel: initialHotel,
       initialRestaurant: initialRestaurant,
       initialProfile: initialProfile,
+      vehicleLabel: skipCarConfirm ? null : vehicleLabel,
     ),
   );
 }
@@ -84,11 +96,16 @@ class _CompanionPreflightSheet extends StatefulWidget {
     required this.initialHotel,
     required this.initialRestaurant,
     required this.initialProfile,
+    this.vehicleLabel,
   });
 
   final HotelPreferences initialHotel;
   final RestaurantPreferences initialRestaurant;
   final TripProfile? initialProfile;
+  /// Non-null only when we should show the car-confirmation row
+  /// (i.e. skip-flag is NOT set). Null means either no model in
+  /// profile or the user already confirmed "don't ask again".
+  final String? vehicleLabel;
 
   @override
   State<_CompanionPreflightSheet> createState() =>
@@ -102,6 +119,9 @@ class _CompanionPreflightSheetState extends State<_CompanionPreflightSheet> {
   late int _maxDetourMinutes;
   late Set<PriceBand> _mealBands;
   late Set<PriceBand> _hotelBands;
+  int _tankPct = 75;
+  bool _carConfirmed = true;   // "yes, I'm driving this car"
+  bool _skipCarConfirmNext = false;
   bool _saveToProfile = false;
 
   static const _detourMin = 5;
@@ -127,6 +147,10 @@ class _CompanionPreflightSheetState extends State<_CompanionPreflightSheet> {
         .clamp(_detourMin, _detourMax);
     _mealBands = {...widget.initialRestaurant.priceBands};
     _hotelBands = {...widget.initialHotel.priceBands};
+    // Seed tank level from profile if available, else default 75 %.
+    final savedTank =
+        widget.initialProfile?.currentTankLevelPercent;
+    if (savedTank != null) _tankPct = savedTank.clamp(0, 100);
   }
 
   Future<void> _pickTime(
@@ -162,16 +186,17 @@ class _CompanionPreflightSheetState extends State<_CompanionPreflightSheet> {
     }
   }
 
-  void _onConfirm() {
+  Future<void> _onConfirm() async {
+    if (_skipCarConfirmNext) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_kSkipCarConfirmKey, true);
+    }
+    if (!mounted) return;
     Navigator.of(context).pop(
       CompanionOverrides(
         breakfastAt: _breakfast,
         lunchAt: _lunch,
         dinnerAt: _dinner,
-        // No dedicated slider yet — fall back to the profile's typical
-        // stop duration so downstream code has a sensible non-zero
-        // value. The public contract keeps the field for when we surface
-        // a tolerance control.
         mealTolerance: Duration(
           minutes:
               widget.initialProfile?.meals.typicalStopMinutes ?? 45,
@@ -179,6 +204,7 @@ class _CompanionPreflightSheetState extends State<_CompanionPreflightSheet> {
         maxDetourMinutes: _maxDetourMinutes,
         mealPriceBands: _mealBands,
         hotelPriceBands: _hotelBands,
+        tankLevelPct: _tankPct,
         saveToProfile: _saveToProfile,
       ),
     );
@@ -224,7 +250,125 @@ class _CompanionPreflightSheetState extends State<_CompanionPreflightSheet> {
                         ),
                       ),
 
-                      // 2. Meal times.
+                      // 2a. Car model confirmation (shown only when
+                      //     the user hasn't checked "don't ask again").
+                      if (widget.vehicleLabel != null) ...[
+                        Text(
+                          'Coche',
+                          style: tt.labelMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: Tokens.space8),
+                        Container(
+                          padding: const EdgeInsets.all(Tokens.space12),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerLow,
+                            borderRadius:
+                                BorderRadius.circular(Tokens.radiusMd),
+                            border: Border.all(
+                              color: theme.colorScheme.outlineVariant),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.directions_car_outlined,
+                                      size: 18,
+                                      color: theme.colorScheme.primary),
+                                  const SizedBox(width: Tokens.space8),
+                                  Expanded(
+                                    child: Text(
+                                      widget.vehicleLabel!,
+                                      style: tt.bodyMedium?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                  // Toggle: "sí, conduzco este coche"
+                                  Switch.adaptive(
+                                    value: _carConfirmed,
+                                    onChanged: (v) =>
+                                        setState(() => _carConfirmed = v),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: Tokens.space4),
+                              Row(
+                                children: [
+                                  Checkbox(
+                                    value: _skipCarConfirmNext,
+                                    visualDensity: VisualDensity.compact,
+                                    onChanged: (v) => setState(
+                                      () => _skipCarConfirmNext = v ?? false,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Text(
+                                      'No volver a preguntar para este coche',
+                                      style: tt.bodySmall?.copyWith(
+                                        color: theme.colorScheme
+                                            .onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: Tokens.space20),
+                      ],
+
+                      // 2b. Tank level.
+                      Text(
+                        'Nivel de depósito',
+                        style: tt.labelMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: Tokens.space4),
+                      Row(
+                        children: [
+                          Icon(
+                            _tankPct <= 25
+                                ? Icons.local_gas_station_outlined
+                                : Icons.local_gas_station,
+                            size: 20,
+                            color: _tankPct <= 25
+                                ? theme.colorScheme.error
+                                : theme.colorScheme.primary,
+                          ),
+                          Expanded(
+                            child: Slider(
+                              min: 0,
+                              max: 100,
+                              divisions: 20,
+                              value: _tankPct.toDouble(),
+                              label: '$_tankPct %',
+                              onChanged: (v) =>
+                                  setState(() => _tankPct = v.round()),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 48,
+                            child: Text(
+                              '$_tankPct %',
+                              textAlign: TextAlign.end,
+                              style: tt.bodyMedium?.copyWith(
+                                color: _tankPct <= 25
+                                    ? theme.colorScheme.error
+                                    : null,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: Tokens.space20),
+
+                      // 3. Meal times.
                       Text(
                         l.companionPreflightMealWindows,
                         style: tt.labelMedium?.copyWith(

@@ -389,11 +389,15 @@ class GeoapifyHotelsProvider:
             price_band=PriceBand.from_price_eur(price),
             distance_from_route_km=round(distance_km, 2),
             detour_minutes=round(detour_minutes, 1),
+            detour_km=round(distance_km * 2, 2),
             kid_friendly=_yes(_tag(feature, "family_friendly")),
             pet_friendly=(
                 _yes(_tag(feature, "dog")) or _yes(_tag(feature, "pets"))
             ),
-            has_parking=_tag(feature, "parking") not in (None, "no"),
+            # Absent tag = unknown → assume parking available (most hotels
+            # have parking but don't bother tagging it in OSM). Only mark
+            # False when the tag explicitly says "no".
+            has_parking=_tag(feature, "parking") != "no",
             attributes=attrs,
         )
 
@@ -540,6 +544,7 @@ class GeoapifyRestaurantsProvider:
             price_band=_classify_meal_price(price),
             distance_from_route_km=round(distance_km, 2),
             detour_minutes=round(detour_minutes, 1),
+            detour_km=round(distance_km * 2, 2),
             kid_friendly=_yes(_tag(feature, "family_friendly")),
             pet_friendly=_yes(_tag(feature, "dog")),
             attributes=attrs,
@@ -580,13 +585,20 @@ class GeoapifyFuelProvider:
                 _ALONG_BUDGET_S, route.distance_km,
             )
             return ()
+        # Charging stations are ~10× scarcer than petrol stations in
+        # rural EU corridors — a 15 km tolerance drops entire routes to
+        # zero (Toledo → Murcia via A-31: all EV pins Geoapify returns
+        # sit on the parallel A-3). Give EVs a 35 km buffer so the
+        # driver still sees somewhere to plug in even if it's a short
+        # detour off the direct route.
+        corridor_max = 35.0 if is_ev else _MAX_OFF_CORRIDOR_KM
         prices: list[FuelPrice] = []
         for f in features:
             coord = _coord(f)
             if coord is None:
                 continue
             distance_km = _distance_to_points(coord, reference)
-            if distance_km > _MAX_OFF_CORRIDOR_KM:
+            if distance_km > corridor_max:
                 continue
             country = _country_of(coord, route)
             anchor = COUNTRIES.get(country.value)

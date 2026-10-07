@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -43,7 +45,31 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
     );
     if (modelId == null || modelId.isEmpty) return;
     if (!mounted) return;
-    // 2) Ask for friendly name + tank level via a bottom sheet.
+
+    if (modelId == kCustomVehicleId) {
+      // Custom vehicle: ask for name, fuel type, tank, and consumption.
+      final custom = await _promptForCustomGarage(context: context, l: l);
+      if (custom == null || !mounted) return;
+      final notes = jsonEncode({
+        't': custom.tankL,
+        'c': custom.consumptionL100km,
+        'f': custom.fuelType.name,
+      });
+      final added = await ref.read(garageProvider.notifier).add(
+            name: custom.name,
+            modelId: kCustomVehicleId,
+            defaultTankPercent: custom.tankPercent,
+            notes: notes,
+          );
+      if (!mounted) return;
+      if (added == null) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(l.garageAddError)));
+      }
+      return;
+    }
+
+    // 2) Standard model: ask for friendly name + tank level.
     final draft = await _promptForNameAndTank(
       context: context,
       defaultName: _defaultNameFor(modelId, l),
@@ -114,6 +140,7 @@ class _GarageScreenState extends ConsumerState<GarageScreen> {
   }
 
   String _defaultNameFor(String modelId, AppLocalizations l) {
+    if (modelId == kCustomVehicleId) return l.vehicleCustomTitle;
     final async = ref.read(vehicleCatalogueProvider);
     final m = async.valueOrNull?.firstWhere(
       (v) => v.id == modelId,
@@ -227,9 +254,22 @@ class _GarageRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final subtitle = model == null
-        ? vehicle.modelId
-        : '${model!.make} ${model!.model} · ${vehicle.defaultTankPercent} %';
+    final String subtitle;
+    if (vehicle.modelId == kCustomVehicleId) {
+      final specs = _parseCustomNotes(vehicle.notes);
+      if (specs != null) {
+        final unit = specs.fuelType == FuelType.electric ? 'kWh' : 'L';
+        subtitle = '${specs.tankL.toStringAsFixed(0)} $unit · '
+            '${specs.consumptionL100km.toStringAsFixed(1)} $unit/100km · '
+            '${vehicle.defaultTankPercent} %';
+      } else {
+        subtitle = '${vehicle.defaultTankPercent} %';
+      }
+    } else if (model == null) {
+      subtitle = '${vehicle.defaultTankPercent} %';
+    } else {
+      subtitle = '${model!.make} ${model!.model} · ${vehicle.defaultTankPercent} %';
+    }
     return Dismissible(
       key: ValueKey('garage-${vehicle.id}'),
       direction: DismissDirection.endToStart,
@@ -275,6 +315,225 @@ class _GarageDraft {
   const _GarageDraft({required this.name, required this.tankPercent});
   final String name;
   final int tankPercent;
+}
+
+class _GarageCustomDraft {
+  const _GarageCustomDraft({
+    required this.name,
+    required this.tankPercent,
+    required this.fuelType,
+    required this.tankL,
+    required this.consumptionL100km,
+  });
+  final String name;
+  final int tankPercent;
+  final FuelType fuelType;
+  final double tankL;
+  final double consumptionL100km;
+}
+
+/// Decode custom vehicle specs from the notes JSON stored on the backend.
+_GarageCustomDraft? _parseCustomNotes(String? notes) {
+  if (notes == null) return null;
+  try {
+    final m = jsonDecode(notes) as Map<String, dynamic>;
+    final fuelName = m['f'] as String? ?? 'petrol';
+    final ft = FuelType.values.firstWhere(
+      (e) => e.name == fuelName,
+      orElse: () => FuelType.petrol,
+    );
+    return _GarageCustomDraft(
+      name: '',
+      tankPercent: 100,
+      fuelType: ft,
+      tankL: (m['t'] as num?)?.toDouble() ?? 55.0,
+      consumptionL100km: (m['c'] as num?)?.toDouble() ?? 7.5,
+    );
+  } catch (_) {
+    return null;
+  }
+}
+
+String _fuelTypeLabelGarage(FuelType ft, AppLocalizations l) {
+  switch (ft) {
+    case FuelType.petrol:
+      return l.fuelTypePetrol;
+    case FuelType.diesel:
+      return l.fuelTypeDiesel;
+    case FuelType.electric:
+      return l.fuelTypeElectric;
+    case FuelType.hybrid:
+      return l.fuelTypeHybrid;
+    case FuelType.lpg:
+      return l.fuelTypeLpg;
+  }
+}
+
+Future<_GarageCustomDraft?> _promptForCustomGarage({
+  required BuildContext context,
+  required AppLocalizations l,
+}) async {
+  final nameCtrl = TextEditingController(text: l.vehicleCustomTitle);
+  final tankCtrl = TextEditingController(text: '55');
+  final consCtrl = TextEditingController(text: '7.5');
+  final formKey = GlobalKey<FormState>();
+  FuelType selectedFuelType = FuelType.petrol;
+  int tank = 100;
+  const notches = <int>[25, 50, 75, 100];
+
+  return showModalBottomSheet<_GarageCustomDraft>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (sheetCtx, setState) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Tokens.space16, Tokens.space20, Tokens.space16, Tokens.space16,
+          ),
+          child: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(l.vehicleCustomTitle,
+                      style: Theme.of(sheetCtx).textTheme.titleLarge),
+                  const SizedBox(height: Tokens.space16),
+                  TextFormField(
+                    controller: nameCtrl,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: l.garageNameHint,
+                      border: const OutlineInputBorder(),
+                      isDense: true,
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? '!' : null,
+                  ),
+                  const SizedBox(height: Tokens.space16),
+                  Text(l.profileFuelType,
+                      style: Theme.of(sheetCtx).textTheme.labelMedium),
+                  const SizedBox(height: Tokens.space8),
+                  Wrap(
+                    spacing: Tokens.space8,
+                    runSpacing: Tokens.space4,
+                    children: [
+                      for (final ft in FuelType.values)
+                        ChoiceChip(
+                          label: Text(_fuelTypeLabelGarage(ft, l)),
+                          selected: selectedFuelType == ft,
+                          onSelected: (_) =>
+                              setState(() => selectedFuelType = ft),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Tokens.space16),
+                  TextFormField(
+                    controller: tankCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                        decimal: false),
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: selectedFuelType == FuelType.electric
+                          ? l.vehicleCustomTankEv
+                          : l.vehicleCustomTank,
+                      border: const OutlineInputBorder(),
+                      suffixText: selectedFuelType == FuelType.electric
+                          ? 'kWh'
+                          : 'L',
+                      isDense: true,
+                    ),
+                    validator: (v) {
+                      final n = double.tryParse(v ?? '');
+                      if (n == null || n < 1 || n > 300) return '1 – 300';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: Tokens.space12),
+                  TextFormField(
+                    controller: consCtrl,
+                    keyboardType:
+                        const TextInputType.numberWithOptions(decimal: true),
+                    textInputAction: TextInputAction.next,
+                    decoration: InputDecoration(
+                      labelText: selectedFuelType == FuelType.electric
+                          ? l.vehicleCustomConsumptionEv
+                          : l.vehicleCustomConsumption,
+                      border: const OutlineInputBorder(),
+                      suffixText: selectedFuelType == FuelType.electric
+                          ? 'kWh/100km'
+                          : 'L/100km',
+                      isDense: true,
+                    ),
+                    validator: (v) {
+                      final n = double.tryParse(v ?? '');
+                      if (n == null || n < 0.5 || n > 50) return '0.5 – 50';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: Tokens.space16),
+                  Text(
+                      selectedFuelType == FuelType.electric
+                          ? l.garageDefaultChargeLevelLabel
+                          : l.garageDefaultTankLabel,
+                      style: Theme.of(sheetCtx).textTheme.labelMedium),
+                  const SizedBox(height: Tokens.space8),
+                  Wrap(
+                    spacing: Tokens.space8,
+                    children: [
+                      for (final n in notches)
+                        ChoiceChip(
+                          label: Text('$n %'),
+                          selected: tank == n,
+                          onSelected: (yes) {
+                            if (yes) setState(() => tank = n);
+                          },
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: Tokens.space16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.of(sheetCtx).pop(),
+                        child: Text(l.garageCancel),
+                      ),
+                      const SizedBox(width: Tokens.space8),
+                      FilledButton(
+                        onPressed: () {
+                          if (!formKey.currentState!.validate()) return;
+                          Navigator.of(sheetCtx).pop(
+                            _GarageCustomDraft(
+                              name: nameCtrl.text.trim(),
+                              tankPercent: tank,
+                              fuelType: selectedFuelType,
+                              tankL: double.parse(tankCtrl.text.trim()),
+                              consumptionL100km:
+                                  double.parse(consCtrl.text.trim()),
+                            ),
+                          );
+                        },
+                        child: Text(l.garageSave),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
 }
 
 Future<_GarageDraft?> _promptForNameAndTank({

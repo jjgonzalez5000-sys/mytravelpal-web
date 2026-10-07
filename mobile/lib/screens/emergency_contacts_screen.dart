@@ -33,6 +33,8 @@ class _EmergencyContactsScreenState
     await ref
         .read(appPrefsProvider)
         .setEmergencyContacts(_contacts);
+    // Sync to backend so contacts survive a reinstall + re-login.
+    ref.read(tripProfileProvider.notifier).pushSettingsChange();
   }
 
   Future<void> _add() async {

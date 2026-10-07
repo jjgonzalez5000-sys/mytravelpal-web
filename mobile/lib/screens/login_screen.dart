@@ -13,7 +13,9 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/biometric_auth.dart';
+import '../storage/app_prefs.dart';
 import 'app_shell.dart';
+import 'onboarding_wizard_screen.dart';
 
 /// Sign-in screen. In production this offers Google + Facebook + Apple;
 /// in dev/demo builds a **Continue as demo** button lets you skip
@@ -87,9 +89,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         }
       }
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => const AppShell()),
-      );
+      final prefs = ref.read(appPrefsProvider);
+      if (!prefs.profileWizardShown) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+              builder: (_) => const OnboardingWizardScreen()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(builder: (_) => const AppShell()),
+        );
+      }
     } on ApiException catch (e) {
       setState(() => _error = 'Auth failed (${e.statusCode})');
     } catch (e) {

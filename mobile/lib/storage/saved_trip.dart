@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../api/models.dart';
+import '../domain/trip_profile.dart';
 
 /// A trip the user chose to remember: enough to re-plan it later plus a
 /// small summary card for the history list.
@@ -22,6 +23,7 @@ class SavedTrip {
     this.reminderMinutesBefore = 0,
     this.notificationId,
     this.userSelections,
+    this.tripProfile,
   });
 
   final String id;
@@ -75,6 +77,12 @@ class SavedTrip {
   ///   destination_hotel: {name,lat,lon}
   final Map<String, dynamic>? userSelections;
 
+  /// Snapshot of the TripProfile used when this trip was planned.
+  /// Restored as _overrideProfile when the user taps "repetir" so the
+  /// re-plan uses the same overnight policy, daily cap, vehicle, etc.
+  /// Null for trips saved before this field was added (backward-compat).
+  final TripProfile? tripProfile;
+
   Map<String, dynamic> toJson() => {
         'id': id,
         'origin': _geocodeJson(origin),
@@ -93,6 +101,8 @@ class SavedTrip {
         if (notificationId != null) 'notification_id': notificationId,
         if (userSelections != null && userSelections!.isNotEmpty)
           'user_selections': userSelections,
+        if (tripProfile != null)
+          'trip_profile': tripProfile!.toJson(),
       };
 
   factory SavedTrip.fromJson(Map<String, dynamic> json) => SavedTrip(
@@ -117,6 +127,10 @@ class SavedTrip {
             (json['reminder_minutes_before'] as num?)?.toInt() ?? 0,
         notificationId: (json['notification_id'] as num?)?.toInt(),
         userSelections: json['user_selections'] as Map<String, dynamic>?,
+        tripProfile: json['trip_profile'] == null
+            ? null
+            : TripProfile.fromJson(
+                json['trip_profile'] as Map<String, dynamic>),
       );
 }
 

@@ -33,6 +33,10 @@ dependencies = [
     # visualisation on the day map so the driver sees the actual
     # secondary road they'd take instead of a rough straight line.
     "flexpolyline>=0.1.0",
+    # OpenAI TTS for natural-sounding trip narrative audio.
+    # Only used when OPENAI_API_KEY is set — falls back to an empty
+    # response that tells the client to use device TTS.
+    "openai>=1.0",
 ]
 
 [project.optional-dependencies]

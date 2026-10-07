@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 
 import '../l10n/app_localizations.dart';
+import 'notifications.dart';
 import 'trip_foreground.dart';
 
 /// Runs [work] with an Android foreground service pinned to the
@@ -54,8 +55,11 @@ Future<T> runInForeground<T>(
     // POST_NOTIFICATIONS, or the OEM ROM kill-listed the service).
     debugPrint('runInForeground: start/update failed: $e\n$st');
   }
+  T result;
+  bool planSucceeded = false;
   try {
-    return await work();
+    result = await work();
+    planSucceeded = true;
   } finally {
     if (!wasRunning) {
       try {
@@ -65,4 +69,29 @@ Future<T> runInForeground<T>(
       }
     }
   }
+  // When the plan finishes while the app is backgrounded, fire a
+  // heads-up notification so the driver knows the results are ready.
+  // Checking `WidgetsBinding.instance.lifecycleState` is the
+  // lightweight way to detect background without a platform channel.
+  if (planSucceeded) {
+    final lc = WidgetsBinding.instance.lifecycleState;
+    final isBackground =
+        lc == AppLifecycleState.paused ||
+        lc == AppLifecycleState.detached ||
+        lc == AppLifecycleState.hidden;
+    if (isBackground) {
+      try {
+        await NotificationService.instance.showTripAlert(
+          stableId: 'plan_ready',
+          title: '¡Tu plan está listo! 🗺️',
+          body: label.isNotEmpty
+              ? 'Resultados de "$label" disponibles.'
+              : 'Toca para ver tu ruta.',
+        );
+      } catch (e) {
+        debugPrint('runInForeground: plan-ready notification failed: $e');
+      }
+    }
+  }
+  return result;
 }

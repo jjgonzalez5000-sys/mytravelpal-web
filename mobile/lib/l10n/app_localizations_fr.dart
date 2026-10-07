@@ -15,34 +15,36 @@ class AppLocalizationsFr extends AppLocalizations {
   String get appTagline => 'Planifiez le trajet, pas juste la destination';
 
   @override
-  String get onboardEyebrowKiller => 'LA FONCTIONNALITÉ MANQUANTE';
+  String get onboardEyebrowKiller => 'LE VRAI COÛT';
 
   @override
-  String get onboardTitleKiller => 'Partez à la bonne heure';
+  String get onboardTitleKiller =>
+      'Votre GPS indique le chemin.\nNous indiquons le prix.';
 
   @override
   String get onboardBodyKiller =>
-      'Nous analysons le trafic historique autour de votre heure de départ souhaitée et vous montrons le moment idéal — parfois partir 30 minutes plus tôt vous fait gagner 90.';
+      'Péages, carburant, hôtels et repas calculés avant de partir. Aucune surprise.';
 
   @override
-  String get onboardEyebrowHonest => 'PLANIFICATION HONNÊTE';
+  String get onboardEyebrowHonest => 'VOTRE PROFIL, VOTRE VOYAGE';
 
   @override
-  String get onboardTitleHonest => 'Tous les coûts, dès le départ';
+  String get onboardTitleHonest =>
+      '2 adultes, 1 enfant, chien.\nParking. 3 étoiles max €€.';
 
   @override
   String get onboardBodyHonest =>
-      'Totaux de péages, essence et recharge électrique moins chères sur la route, arrêts suggérés, hôtels et restaurants au détour que vous pouvez vous permettre.';
+      'Hôtels et restaurants filtrés selon vos vraies préférences. Pas une liste générique — la vôtre.';
 
   @override
-  String get onboardEyebrowAlerts => 'RESTEZ INFORMÉ';
+  String get onboardEyebrowAlerts => 'ALERTES EN TEMPS RÉEL';
 
   @override
-  String get onboardTitleAlerts => 'Des alertes qui comptent';
+  String get onboardTitleAlerts => 'Incendie à 14 km\nde votre itinéraire.';
 
   @override
   String get onboardBodyAlerts =>
-      'Incendies, inondations, météo extrême, tremblements de terre — uniquement les dangers réels qui touchent votre itinéraire.';
+      'Incendies, tempêtes, tremblements de terre, fermetures de routes. Seulement les événements qui affectent votre route.';
 
   @override
   String get onboardSkip => 'Passer';
@@ -602,6 +604,21 @@ class AppLocalizationsFr extends AppLocalizations {
   String get shareLinkOptionSub => 'Résumé texte + lien pour rouvrir le plan';
 
   @override
+  String get shareToSocial => 'Partager';
+
+  @override
+  String get sharePlanTitle => 'Partager le lien du voyage';
+
+  @override
+  String get sharePlanSubtitle => 'QR code + lien pour rouvrir ce plan';
+
+  @override
+  String get sharePlanCopy => 'Copier le lien';
+
+  @override
+  String get sharePlanCopied => 'Lien copié';
+
+  @override
   String shareLiveHeadline(String city) {
     return 'En route à travers $city';
   }
@@ -660,8 +677,28 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultTripSavings => 'VOS ÉCONOMIES SUR CE VOYAGE';
 
   @override
+  String get resultSavingsDetected => 'Économies détectées';
+
+  @override
+  String get resultTollSaving => 'Alternative sans péage';
+
+  @override
+  String get resultFuelSaving => 'Carburant';
+
+  @override
+  String get resultTimeSaving => 'Départ optimal';
+
+  @override
+  String get resultTotalSaving => 'ÉCONOMIE TOTALE';
+
+  @override
+  String resultSavingPct(String pct) {
+    return '$pct% de moins';
+  }
+
+  @override
   String get resultSavingsSuggestionsTitle =>
-      'Suggestions pour économiser plus';
+      'Suggestions pour gagner du temps';
 
   @override
   String get resultSavingsClaimedHint =>
@@ -762,6 +799,9 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dashboardTopSavers => 'Meilleures économies';
+
+  @override
+  String get dashboardSaved => 'économisé';
 
   @override
   String get dashboardCountries => 'Pays';
@@ -1126,6 +1166,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileDinner => 'Dîner';
 
   @override
+  String get mealSlotBreak => 'Pause';
+
+  @override
   String get profileStopMinutes => 'Durée typique d\'arrêt';
 
   @override
@@ -1184,7 +1227,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get hourlyWorstHours => 'Pires heures pour éviter les péages';
 
   @override
-  String get partialTollSkipsTitle => 'Péage par péage';
+  String get partialTollSkipsTitle => 'Péage par péage · Optimisation Premium';
 
   @override
   String get partialTollSkipsEyebrow => 'Détail';
@@ -1446,6 +1489,13 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get historyReplanNetworkError =>
+      'La connexion a été interrompue pendant le recalcul. Vérifiez votre signal et réessayez.';
+
+  @override
+  String get retryLabel => 'Réessayer';
+
+  @override
   String get historyDeleteTooltip => 'Supprimer';
 
   @override
@@ -1453,6 +1503,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get historyRepeatCta => 'Répéter';
+
+  @override
+  String historySavedCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count enregistrés',
+      one: '1 enregistré',
+    );
+    return '$_temp0';
+  }
 
   @override
   String resultFuelCollapsedHint(int count) {
@@ -1661,7 +1722,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get settingsTitle => 'Paramètres';
 
   @override
+  String get settingsSectionVehicle => 'Véhicule et itinéraire';
+
+  @override
   String get settingsSectionAppearance => 'Apparence';
+
+  @override
+  String get settingsSectionAI => 'Personnalisation IA';
+
+  @override
+  String get notifSoundTitle => 'Son des alertes';
+
+  @override
+  String get notifSoundDefault => 'Son par défaut';
+
+  @override
+  String get notifSoundDefaultSub => 'Utilise le son de notification système';
+
+  @override
+  String get notifSoundSilent => 'Silencieux';
+
+  @override
+  String get notifSoundSilentSub => 'Sans son pour les alertes';
+
+  @override
+  String get settingsSectionSafety => 'Contacts et sécurité';
+
+  @override
+  String get settingsSectionAccount => 'Compte';
 
   @override
   String get settingsDensityLabel => 'Densité';
@@ -1692,6 +1780,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsSectionTrip => 'Voyage';
+
+  @override
+  String get settingsRadarAlerts => 'Alertes radars';
+
+  @override
+  String get settingsRadarAlertsSubtitle =>
+      'Vibration et bannière quand un radar est à moins de 400 m (Essential+).';
 
   @override
   String get settingsSectionAbout => 'À propos';
@@ -1756,10 +1851,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get planTooltipSettings => 'Paramètres';
 
   @override
-  String get styleSectionTitle => 'Style de voyage';
+  String get styleSectionTitle => 'Rythme de conduite';
 
   @override
-  String get styleSectionEyebrow => 'Comment vous aimez conduire';
+  String get styleSectionEyebrow => 'Comment vous organisez vos journées';
 
   @override
   String get stylePresetDirect => 'Direct';
@@ -1837,6 +1932,33 @@ class AppLocalizationsFr extends AppLocalizations {
   String dayEditMaxDriving(int hours) {
     return 'Heures max au volant : $hours h (pauses incluses)';
   }
+
+  @override
+  String get dayExtendKmTitle => 'Vous avez plus de temps disponible';
+
+  @override
+  String dayExtendKmBody(String extraKm) {
+    return 'Avec cet horaire vous pourriez faire +$extraKm km de plus. Étendre la journée ou garder l\'itinéraire actuel ?';
+  }
+
+  @override
+  String get dayExtendKmKeep => 'Garder l\'itinéraire actuel';
+
+  @override
+  String dayExtendKmAdjust(String extraKm) {
+    return 'Étendre la journée (+$extraKm km)';
+  }
+
+  @override
+  String dayEditEndHour(String time) {
+    return 'Fin de conduite à $time';
+  }
+
+  @override
+  String get dayEditPickTime => 'Choisir l\'heure';
+
+  @override
+  String get dayEditEndTimePicker => 'Heure de fin de conduite';
 
   @override
   String get dayEditSave => 'Appliquer';
@@ -2341,7 +2463,35 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get daySleepHotelsNotFound =>
-      'We couldn\'t find hotels close to this route. Try widening the max detour in Preferences.';
+      'Aucun hôtel trouvé près de cet itinéraire avec vos préférences actuelles.';
+
+  @override
+  String get noHotelsAdjustPrefs => 'Ajuster les préférences';
+
+  @override
+  String get noRestaurantsAdjustPrefs =>
+      'Aucun restaurant trouvé avec vos préférences actuelles.';
+
+  @override
+  String get companionAssistantTitle => 'Assistant companion';
+
+  @override
+  String get settingsAiPersonalisation => 'Personnalisation IA';
+
+  @override
+  String get companionAskHint => 'Demandez quelque chose…';
+
+  @override
+  String get companionSend => 'Envoyer';
+
+  @override
+  String get companionGroupJoin => 'Rejoindre comme passager';
+
+  @override
+  String get companionJoin => 'Rejoindre';
+
+  @override
+  String get resultFuelSavingsTitle => 'Carburant bon marché sur votre trajet';
 
   @override
   String get daySleepHotelsSearching =>
@@ -2403,6 +2553,11 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get enrichPulseCamper =>
       'Aires camping-car avec vidange et sanitaires';
+
+  @override
+  String enrichPulseVehicleEv(String vehicle, String tank) {
+    return 'Planification des recharges pour ta $vehicle ($tank kWh)';
+  }
 
   @override
   String enrichPulseVehicle(String vehicle, String tank) {
@@ -2515,6 +2670,9 @@ class AppLocalizationsFr extends AppLocalizations {
       'Appuyez sur une barre pour recalculer avec cet horaire de départ.';
 
   @override
+  String get planLoadingRecalculating => 'Recalcul avec tes paramètres...';
+
+  @override
   String get planLoadingTitle => 'Préparation de votre trajet';
 
   @override
@@ -2617,24 +2775,25 @@ class AppLocalizationsFr extends AppLocalizations {
       'Providers don\'t cover this route. Live prices will appear in areas with official data.';
 
   @override
-  String get onboardEyebrowFuel => 'PRIX RÉELS';
+  String get onboardEyebrowFuel => 'PÉAGES ET CARBURANT';
 
   @override
-  String get onboardTitleFuel => 'Économisez à chaque plein';
+  String get onboardTitleFuel =>
+      'Sauter ce péage?\nFaire le plein avant l\'Espagne?';
 
   @override
   String get onboardBodyFuel =>
-      'Prix par station le long de ta route à travers l\'Europe. Marques premium mélangées aux low-cost.';
+      'Nous indiquons quels péages méritent d\'être évités selon l\'heure, et quelle station sur votre route a le meilleur prix maintenant.';
 
   @override
-  String get onboardEyebrowDriving => 'SUR LA ROUTE';
+  String get onboardEyebrowDriving => 'CO-PILOTE IA · PREMIUM';
 
   @override
-  String get onboardTitleDriving => 'Votre copilote intelligent';
+  String get onboardTitleDriving => '\"Je fais le plein\nici ou j\'attends?\"';
 
   @override
   String get onboardBodyDriving =>
-      'Tableau de bord en direct avec prochain arrêt, arrivée dynamique et nouvelles alertes. Compatible Android Auto.';
+      'Il connaît votre itinéraire, votre réservoir et les prochains prix. Répond en secondes. Fonctionne avec Android Auto. (Premium)';
 
   @override
   String get onboardEyebrowProfile => 'PERSONNALISÉ';
@@ -2790,6 +2949,173 @@ class AppLocalizationsFr extends AppLocalizations {
   String get poiMoreInfoHide => 'Masquer';
 
   @override
+  String get poiNoExtraInfo => 'Aucune info OSM supplémentaire pour ce lieu.';
+
+  @override
+  String poiOpenError(String url) {
+    return 'Impossible d\'ouvrir $url';
+  }
+
+  @override
+  String get poiCtaGoogleMaps => 'Google Maps';
+
+  @override
+  String get poiCtaTheFork => 'TheFork';
+
+  @override
+  String get poiCtaBooking => 'Booking';
+
+  @override
+  String get poiCtaAirbnb => 'Airbnb';
+
+  @override
+  String get poiCtaCall => 'Appeler';
+
+  @override
+  String get poiCtaWebsite => 'Site web';
+
+  @override
+  String get poiContactAddress => 'Adresse';
+
+  @override
+  String get poiContactPhone => 'Téléphone';
+
+  @override
+  String get poiContactWebsite => 'Site web';
+
+  @override
+  String get poiContactHours => 'Horaires';
+
+  @override
+  String get poiContactCheckin => 'Arrivée';
+
+  @override
+  String get poiContactCheckout => 'Départ';
+
+  @override
+  String get poiAttr_wifi => 'WiFi';
+
+  @override
+  String get poiAttr_parking => 'Parking';
+
+  @override
+  String get poiAttr_pool => 'Piscine';
+
+  @override
+  String get poiAttr_airConditioning => 'Climatisation';
+
+  @override
+  String get poiAttr_breakfast => 'Petit-déjeuner inclus';
+
+  @override
+  String get poiAttr_petFriendly => 'Animaux acceptés';
+
+  @override
+  String get poiAttr_childFriendly => 'Adapté enfants';
+
+  @override
+  String get poiAttr_wheelchairAccess => 'Accessible fauteuil roulant';
+
+  @override
+  String get poiAttr_toilets => 'Toilettes';
+
+  @override
+  String get poiAttr_restaurant => 'Restaurant';
+
+  @override
+  String get poiAttr_bar => 'Bar';
+
+  @override
+  String get poiAttr_shop => 'Boutique';
+
+  @override
+  String get poiAttr_outdoorSeating => 'Terrasse';
+
+  @override
+  String get poiAttr_takeaway => 'À emporter';
+
+  @override
+  String get poiAttr_delivery => 'Livraison';
+
+  @override
+  String get poiAttr_creditCards => 'Cartes acceptées';
+
+  @override
+  String get poiAttr_carWash => 'Lavage auto';
+
+  @override
+  String get poiAttr_smoking => 'Espace fumeurs';
+
+  @override
+  String get poiAttr_nonSmoking => 'Non-fumeurs';
+
+  @override
+  String get poiAttr_elevator => 'Ascenseur';
+
+  @override
+  String get poiAttr_checkIn => 'Arrivée';
+
+  @override
+  String get poiAttr_checkOut => 'Départ';
+
+  @override
+  String get poiAttr_dietVegetarian => 'Végétarien';
+
+  @override
+  String get poiAttr_dietVegan => 'Végétalien';
+
+  @override
+  String get poiAttr_dietHalal => 'Halal';
+
+  @override
+  String get poiAttr_dietKosher => 'Casher';
+
+  @override
+  String get poiAttr_dietGlutenFree => 'Sans gluten';
+
+  @override
+  String get poiAttr_dog => 'Animaux acceptés';
+
+  @override
+  String get poiAttr_brand => 'Marque';
+
+  @override
+  String get poiAttr_city => 'Ville';
+
+  @override
+  String get poiAttr_street => 'Rue';
+
+  @override
+  String get poiAttr_address => 'Adresse';
+
+  @override
+  String get poiAttr_openingHours => 'Horaires d\'ouverture';
+
+  @override
+  String get poiAttr_name => 'Nom';
+
+  @override
+  String get poiAttr_phone => 'Téléphone';
+
+  @override
+  String get poiAttr_stars => 'Étoiles';
+
+  @override
+  String get poiAttr_website => 'Site web';
+
+  @override
+  String get poiPickerChoose => 'Choisir';
+
+  @override
+  String get poiPickerSelected => 'Sélectionné';
+
+  @override
+  String get poiPickerHotels => 'Voir les alternatives';
+
+  @override
+  String get poiPickerRestaurants => 'Voir les restaurants proches';
+
+  @override
   String get addToRouteLabel => 'Ajouter à l\'itinéraire';
 
   @override
@@ -2928,7 +3254,8 @@ class AppLocalizationsFr extends AppLocalizations {
   String get resultStartTrip => 'Démarrer le trajet';
 
   @override
-  String get resultStartCompanion => 'Démarrer le mode Compagnon';
+  String get resultStartCompanion =>
+      'Démarrer l\'assistant de conduite (Premium)';
 
   @override
   String get companionPreflightTitle => 'Réglages avant conduite';
@@ -3094,6 +3421,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String recentTripsSeeAll(int n) {
+    return 'Voir les $n autres trajets dans Mes voyages';
+  }
+
+  @override
   String get onRouteTitle => 'Sur l\'itinéraire';
 
   @override
@@ -3191,6 +3523,37 @@ class AppLocalizationsFr extends AppLocalizations {
       'Impossible de charger la liste. Réessayez plus tard.';
 
   @override
+  String get vehiclePickerCustomOption => 'Véhicule personnalisé';
+
+  @override
+  String get vehiclePickerCustomOptionSubtitle =>
+      'Saisissez la capacité du réservoir et la consommation manuellement';
+
+  @override
+  String get vehicleCustomTitle => 'Véhicule personnalisé';
+
+  @override
+  String get vehicleCustomName => 'Nom du véhicule (optionnel)';
+
+  @override
+  String get vehicleCustomNameHint => 'ex. Mon SUV';
+
+  @override
+  String get vehicleCustomTank => 'Réservoir (L)';
+
+  @override
+  String get vehicleCustomTankEv => 'Batterie (kWh)';
+
+  @override
+  String get vehicleCustomConsumption => 'Consommation (L/100 km)';
+
+  @override
+  String get vehicleCustomConsumptionEv => 'Consommation (kWh/100 km)';
+
+  @override
+  String get vehicleCustomSave => 'Utiliser ce véhicule';
+
+  @override
   String refuelWindowComfortable(String km) {
     return 'Faites le plein avant le km $km (confortable)';
   }
@@ -3249,6 +3612,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get garageDefaultTankLabel => 'Niveau de réservoir par défaut';
 
   @override
+  String get garageDefaultChargeLevelLabel => 'Niveau de charge initial';
+
+  @override
   String get garageAddError => 'Impossible d\'enregistrer. Réessayez.';
 
   @override
@@ -3272,4 +3638,568 @@ class AppLocalizationsFr extends AppLocalizations {
   @override
   String get planScreenGarageChooseVehicle =>
       'Choisir un véhicule pour ce trajet';
+
+  @override
+  String get hotelArbitrageTitle => 'Hôtels moins chers à côté';
+
+  @override
+  String hotelArbitrageBody(String cheap, String cheapPrice, String dear,
+      String dearPrice, String pct, int nights, String savings) {
+    final intl.NumberFormat nightsNumberFormat = intl.NumberFormat.compact(
+      locale: localeName,
+    );
+    final String nightsString = nightsNumberFormat.format(nights);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      nights,
+      locale: localeName,
+      other: '$nightsString nuits',
+      one: 'une nuit',
+    );
+    return 'Cette nuit tombe en $dear, ~$dearPrice€/nuit. En $cheap il faut compter ~$cheapPrice€ ($pct% moins). Décale $_temp0 et économise ~$savings€.';
+  }
+
+  @override
+  String get hotelArbitrageMiniHint =>
+      'Même économie si vous décalez cette nuit au sud aussi';
+
+  @override
+  String get whatsNewSheetTitle => 'Nouveautés';
+
+  @override
+  String get whatsNewSheetDismiss => 'Compris';
+
+  @override
+  String get profileChipChangeVehicle => 'Changer de véhicule';
+
+  @override
+  String get profileChipEditProfile => 'Modifier le profil du trajet';
+
+  @override
+  String get whatsNewSheetSuggest => 'Suggérer';
+
+  @override
+  String get feedbackSheetTitle => 'Suggestions';
+
+  @override
+  String get feedbackSheetSubtitle =>
+      'Dites-nous ce qui améliorerait MyTravelPal pour vous. Nous lisons tout.';
+
+  @override
+  String get feedbackBodyHint => 'Que changeriez-vous ou ajouteriez-vous ?';
+
+  @override
+  String get feedbackWantReply => 'Je veux une réponse';
+
+  @override
+  String get feedbackEmailHint => 'Votre email (optionnel)';
+
+  @override
+  String get feedbackSendButton => 'Envoyer';
+
+  @override
+  String get feedbackThanks => 'Merci ! Bien reçu.';
+
+  @override
+  String get feedbackErrorEmpty =>
+      'Un peu plus, s\'il vous plaît (min. 3 caractères)';
+
+  @override
+  String get feedbackErrorEmail => 'Cet email ne semble pas valide';
+
+  @override
+  String get feedbackErrorSend => 'Envoi impossible. Réessayez dans un moment.';
+
+  @override
+  String get settingsSendFeedback => 'Envoyer une suggestion';
+
+  @override
+  String get settingsSendFeedbackSubtitle => 'Dites-nous quoi construire';
+
+  @override
+  String get enrichPulseRestStops =>
+      'Recherche d\'aires de repos sur l\'itinéraire';
+
+  @override
+  String get exitAppTitle => 'Quitter MyTravelPal ?';
+
+  @override
+  String get exitAppBody => 'Voulez-vous vraiment fermer l\'app ?';
+
+  @override
+  String get exitAppBodyCompanionActive =>
+      'Le mode Companion est actif. Si vous quittez maintenant, la session de conduite continue en arrière-plan. Arrêtez-la depuis l\'onglet Companion pour la fermer proprement.';
+
+  @override
+  String get exitAppStay => 'Rester';
+
+  @override
+  String get exitAppLeave => 'Quitter';
+
+  @override
+  String get enrichPulseChargers =>
+      'Recherche des bornes de recharge sur l\'itinéraire';
+
+  @override
+  String get advEventLabelSource => 'Source';
+
+  @override
+  String get advEventLabelReported => 'Détecté';
+
+  @override
+  String get advEventLabelExpires => 'Valable jusqu\'à';
+
+  @override
+  String get advEventLabelDuration => 'Durée estimée';
+
+  @override
+  String get advEventSourceWeather => 'Prévisions météo (Open-Meteo)';
+
+  @override
+  String get advEventSourceOfficial => 'Flux officiel';
+
+  @override
+  String get advEventSourceEffis => 'Moniteur incendies EFFIS';
+
+  @override
+  String get advEventSourceUsgs => 'Flux sismique USGS';
+
+  @override
+  String get advEventSourceUser => 'Signalé par la communauté';
+
+  @override
+  String get advEventSourceMock => 'Simulé (dev)';
+
+  @override
+  String advEventDurationHours(String h) {
+    return '$h h';
+  }
+
+  @override
+  String advEventDurationDays(String d, String h) {
+    return '$d j $h h';
+  }
+
+  @override
+  String get advEventDurationOngoing => 'En cours';
+
+  @override
+  String get exportShareMtp => 'Partager avec des utilisateurs MyTravelPal';
+
+  @override
+  String get exportShareMtpSubtitle =>
+      'S\'ouvre directement dans l\'app — ils choisissent leurs préférences';
+
+  @override
+  String exportShareMtpSubject(String origin, String destination) {
+    return '$origin → $destination | MyTravelPal';
+  }
+
+  @override
+  String get resultFuelStationsOnRoute => 'Stations-service sur l\'itinéraire';
+
+  @override
+  String get resultFuelSavingsAccordionTitle => 'Économies carburant';
+
+  @override
+  String get resultTimeSavingsOptimal => 'Votre heure de départ est optimale';
+
+  @override
+  String get hotelMapFullscreenTitle => 'Hôtels dans la zone';
+
+  @override
+  String get restaurantMapFullscreenTitle => 'Restaurants dans la zone';
+
+  @override
+  String get tollSummaryTitle => 'Péages du trajet';
+
+  @override
+  String get tollSummaryMapButton => 'Voir sur la carte';
+
+  @override
+  String activitiesCtaTitle(Object city) {
+    return 'Activités à $city';
+  }
+
+  @override
+  String get activitiesCtaSubtitle => 'Activités et expériences locales';
+
+  @override
+  String get planIncludeActivities => 'Activités à destination';
+
+  @override
+  String get planIncludeActivitiesHint =>
+      'Suggestions GetYourGuide dans chaque ville';
+
+  @override
+  String get aiPrefScenicRoutes => 'Préférer les routes panoramiques';
+
+  @override
+  String get aiPrefScenicRoutesSub =>
+      'Recommander des détours via belvédères et cols';
+
+  @override
+  String get aiPrefEcoConscious => 'Conduite éco-responsable';
+
+  @override
+  String get aiPrefEcoConsciousSub =>
+      'Privilégier les VE, éviter les autoroutes si possible';
+
+  @override
+  String get aiPrefLocalFood => 'Cuisine locale en priorité';
+
+  @override
+  String get aiPrefLocalFoodSub =>
+      'Privilégier les restaurants locaux aux chaînes';
+
+  @override
+  String get aiPrefDepartureHour => 'Heure de départ habituelle';
+
+  @override
+  String get aiPrefDietary => 'RESTRICTIONS ALIMENTAIRES';
+
+  @override
+  String get aiPrefInterests => 'INTÉRÊTS';
+
+  @override
+  String get aiDietVegetarian => 'Végétarien';
+
+  @override
+  String get aiDietVegan => 'Végétalien';
+
+  @override
+  String get aiDietGlutenFree => 'Sans gluten';
+
+  @override
+  String get aiDietHalal => 'Halal';
+
+  @override
+  String get aiInterestCulture => 'Culture';
+
+  @override
+  String get aiInterestNature => 'Nature';
+
+  @override
+  String get aiInterestGastronomy => 'Gastronomie';
+
+  @override
+  String get aiInterestShopping => 'Shopping';
+
+  @override
+  String get aiInterestAdventure => 'Aventure';
+
+  @override
+  String get wizardSkip => 'Passer';
+
+  @override
+  String get wizardStart => 'Commencer';
+
+  @override
+  String get wizardBack => 'Retour';
+
+  @override
+  String get wizardNext => 'Suivant';
+
+  @override
+  String get wizardTakesSeconds => '30 secondes environ';
+
+  @override
+  String get wizardWelcomeTitle => 'Bienvenue sur MyTravelPal';
+
+  @override
+  String get wizardWelcomeBody =>
+      'Parlez-nous de vos voyages et nous personnaliserons tout dès le départ.';
+
+  @override
+  String get wizardWhoTitle => 'Avec qui voyagez-vous?';
+
+  @override
+  String get wizardWhoSubtitle =>
+      'Sélectionnez tout ce qui s\'applique. Modifiable plus tard.';
+
+  @override
+  String get wizardWhoKids => 'Voyage avec des enfants';
+
+  @override
+  String get wizardWhoPets => 'Voyage avec des animaux';
+
+  @override
+  String get wizardWhoCamper => 'Voyage en camping-car';
+
+  @override
+  String get wizardVehicleTitle => 'Votre véhicule';
+
+  @override
+  String get wizardVehicleSubtitle =>
+      'Nous l\'utiliserons pour estimer le carburant et suggérer des itinéraires.';
+
+  @override
+  String get wizardVehicleType => 'Type de véhicule';
+
+  @override
+  String get wizardFuelType => 'Carburant';
+
+  @override
+  String get wizardRhythmTitle => 'Votre rythme de conduite';
+
+  @override
+  String get wizardRhythmSubtitle =>
+      'Ce sont des valeurs indicatives — modifiables voyage par voyage.';
+
+  @override
+  String wizardWakeHour(String h) {
+    return 'Je pars à $h';
+  }
+
+  @override
+  String wizardBreakEvery(int n) {
+    return 'Je m\'arrête toutes les ${n}h';
+  }
+
+  @override
+  String wizardBedtime(String h) {
+    return 'J\'arrive à l\'hôtel à $h';
+  }
+
+  @override
+  String get wizardHotelBudget => 'Budget hôtel / nuit';
+
+  @override
+  String get wizardMealBudget => 'Budget repas / repas';
+
+  @override
+  String get wizardDoneTitle => 'C\'est parti!';
+
+  @override
+  String get wizardDoneSubtitle =>
+      'Votre premier itinéraire sera déjà personnalisé.';
+
+  @override
+  String get wizardTeaserTitle =>
+      'Dans les Paramètres vous pouvez aussi configurer:';
+
+  @override
+  String get wizardTeaserVehicleModel =>
+      'Modèle exact de véhicule (consommation réelle)';
+
+  @override
+  String get wizardTeaserRoute =>
+      'Itinéraire préféré: autoroute ou panoramique';
+
+  @override
+  String get wizardTeaserEmergency => 'Contacts d\'urgence';
+
+  @override
+  String get wizardTeaserAlertSound => 'Son des alertes Companion';
+
+  @override
+  String get wizardTeaserStars => 'Catégorie minimale d\'hôtel';
+
+  @override
+  String get wizardPlanFirstTrip => 'Planifier mon premier voyage';
+
+  @override
+  String get priceBandBudget => 'Économique';
+
+  @override
+  String get priceBandMid => 'Standard';
+
+  @override
+  String get priceBandLux => 'Supérieur';
+
+  @override
+  String get wizardModelTitle => 'Votre modèle de véhicule';
+
+  @override
+  String get wizardModelSubtitle =>
+      'Des données réelles pour calculer où et quand faire le plein et économiser.';
+
+  @override
+  String get wizardModelSearch => 'Rechercher marque ou modèle...';
+
+  @override
+  String get wizardModelGeneric => 'Utiliser des valeurs génériques';
+
+  @override
+  String get wizardModelGenericSub =>
+      'Estimation standard pour votre type de véhicule';
+
+  @override
+  String get wizardTollTitle => 'Éviter les péages?';
+
+  @override
+  String get wizardTollSubtitle =>
+      'Nous analysons des milliers d\'itinéraires pour savoir si le détour vaut la peine.';
+
+  @override
+  String get wizardTollAvoid => 'Éviter si possible';
+
+  @override
+  String get wizardTollAvoidSub => 'Proposer des alternatives par défaut';
+
+  @override
+  String get wizardTollPay => 'Toujours préférer l\'autoroute';
+
+  @override
+  String get wizardTollPaySub =>
+      'Préférer l\'autoroute sauf économies très claires';
+
+  @override
+  String get wizardTollNote =>
+      'Vous pouvez modifier cela pour chaque trajet depuis l\'écran de planification';
+
+  @override
+  String get wizardDrivingNow => 'Conduire maintenant avec l\'assistant';
+
+  @override
+  String get companionModeLabel => 'Assistant de conduite';
+
+  @override
+  String get companionModeDesc =>
+      'Co-pilote IA · Recommande alternatives de péage, restaurants selon vos goûts et stations pas chères en temps réel · Premium';
+
+  @override
+  String get aiLearningTitle => 'L\'assistant vous connaît à';
+
+  @override
+  String get aiScoreExcellent =>
+      'Excellent · Les recommandations sont très précises';
+
+  @override
+  String get aiScoreGood =>
+      'Bien · Vous pouvez encore améliorer la personnalisation';
+
+  @override
+  String get aiScoreBasic =>
+      'Basique · Complétez votre profil pour de meilleurs résultats';
+
+  @override
+  String get aiFactorVehicleModel => 'Modèle de véhicule';
+
+  @override
+  String get aiFactorVehicleModelHint =>
+      'Configurez votre modèle pour des calculs de carburant exacts';
+
+  @override
+  String aiFactorTrips(int count) {
+    return '$count voyages effectués';
+  }
+
+  @override
+  String get aiFactorTripsHint =>
+      'Plus de voyages = meilleure compréhension de vos routes habituelles';
+
+  @override
+  String get aiFactorHotelPrefs => 'Préférences hôtel';
+
+  @override
+  String get aiFactorHotelPrefsHint =>
+      'Ajoutez étoiles, parking ou wifi pour mieux filtrer';
+
+  @override
+  String get aiFactorRestPrefs => 'Préférences restaurant';
+
+  @override
+  String get aiFactorRestPrefsHint =>
+      'Ajoutez des types de cuisine pour de meilleures suggestions';
+
+  @override
+  String get aiFactorNick => 'Pseudo et pays configurés';
+
+  @override
+  String get aiFactorNickHint =>
+      'Complétez votre nom et pays dans les Paramètres';
+
+  @override
+  String get aiFactorEmergency => 'Contacts d\'urgence';
+
+  @override
+  String get aiFactorEmergencyHint =>
+      'Ajoutez un contact pour le système de sécurité';
+
+  @override
+  String get aiFactorProfile => 'Profil de voyage de base';
+
+  @override
+  String get aiFactorProfileHint =>
+      'Configurez vos horaires de conduite dans les Paramètres';
+
+  @override
+  String get tripQualityTitle => 'Qualité du voyage';
+
+  @override
+  String get tripQualityExcellent => 'Excellent';
+
+  @override
+  String get tripQualityGood => 'Bon';
+
+  @override
+  String get tripQualityFair => 'Acceptable';
+
+  @override
+  String get tripQualityPoor => 'Limité';
+
+  @override
+  String get tripQualityFactorRoute => 'Itinéraire';
+
+  @override
+  String get tripQualityFactorFuel => 'Stations';
+
+  @override
+  String get tripQualityFactorHotels => 'Hôtels';
+
+  @override
+  String get tripQualityFactorWeather => 'Météo';
+
+  @override
+  String get tripQualityFactorAlerts => 'Alertes';
+
+  @override
+  String get tripQualityFactorTolls => 'Péages';
+
+  @override
+  String get tripQualityFactorStops => 'Arrêts';
+
+  @override
+  String get wizardModelConsumption => 'Consommation';
+
+  @override
+  String get wizardModelTank => 'Réservoir';
+
+  @override
+  String get wizardRhythmNote =>
+      'Ajustez n\'importe quelle étape directement dans le résultat du voyage.';
+
+  @override
+  String get wizardTollHowTitle => 'COMMENT ÇA MARCHE';
+
+  @override
+  String get wizardTollHowBody =>
+      'À chaque voyage, nous analysons péage par péage : si le détour économise de l\'argent et le temps supplémentaire est minime, nous le proposons sur l\'écran de résultat. Vous décidez et pouvez ajuster exactement combien de temps vous êtes prêt à perdre.';
+
+  @override
+  String get wizardTollPreference => 'Quel est votre point de départ ?';
+
+  @override
+  String get resultStartCompanionNow => 'Partir maintenant ! · Mode Compagnon';
+
+  @override
+  String get resultCompanionFarFromOrigin =>
+      'Rapprochez-vous du point de départ pour activer le mode conduite';
+
+  @override
+  String get resultReplanWithChanges => 'Recalculer avec les modifications';
+
+  @override
+  String get replanTipRoute => 'Optimisation des étapes de la journée...';
+
+  @override
+  String get replanTipFuel =>
+      'Recherche des meilleures stations sur le trajet...';
+
+  @override
+  String get replanTipStops => 'Ajustement des arrêts et heures d\'arrivée...';
+
+  @override
+  String get tripDayBarsTitle => 'Répartition par étapes';
 }

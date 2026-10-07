@@ -46,3 +46,16 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# fastlane / Play Console upload automation
+mobile/play-key.json
+play-key.json
+android/fastlane/report.xml
+android/fastlane/README.md
+android/fastlane/*.log
+Gemfile.lock
+vendor/bundle/
+.bundle/
+
+# Maestro E2E test reports
+maestro/reports/

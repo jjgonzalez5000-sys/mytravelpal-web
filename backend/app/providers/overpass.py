@@ -229,7 +229,7 @@ out center {_MAX_FEATURES};
                     detour_minutes=round(detour_minutes, 1),
                     kid_friendly=_yes(tags.get("family_friendly")) or bool(tags.get("rooms:family")),
                     pet_friendly=_yes(tags.get("dog")) or _yes(tags.get("pets")),
-                    has_parking=tags.get("parking") not in {None, "no"},
+                    has_parking=tags.get("parking") != "no",
                     attributes=_curate_tags(tags, _HOTEL_TAG_WHITELIST),
                 )
             )

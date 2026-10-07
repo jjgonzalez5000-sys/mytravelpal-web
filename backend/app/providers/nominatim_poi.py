@@ -139,7 +139,14 @@ def _corridor_viewboxes(
     a small buffer past its endpoints) so POIs near a chunk boundary
     aren't missed.
     """
-    dense = route.geometry or (route.origin, route.destination)
+    # Use geometry when available; fall back to waypoints (great-circle
+    # interpolation) so sparse routes don't collapse to just 2 points.
+    if route.geometry:
+        dense = route.geometry
+    elif route.waypoints:
+        dense = (route.origin, *route.waypoints, route.destination)
+    else:
+        dense = (route.origin, route.destination)
     if len(dense) < 2:
         return [_route_viewbox(route)]
     if route.distance_km <= _CORRIDOR_CHUNK_KM:
@@ -393,12 +400,13 @@ class NominatimHotelsProvider:
                     price_band=PriceBand.from_price_eur(price),
                     distance_from_route_km=round(distance_km, 2),
                     detour_minutes=round(detour_minutes, 1),
+                    detour_km=round(distance_km * 2, 2),
                     kid_friendly=_yes(_extratag(it, "family_friendly")),
                     pet_friendly=(
                         _yes(_extratag(it, "dog"))
                         or _yes(_extratag(it, "pets"))
                     ),
-                    has_parking=_extratag(it, "parking") not in (None, "no"),
+                    has_parking=_extratag(it, "parking") != "no",
                     attributes=tuple(
                         (k, str(v))
                         for k, v in (it.get("extratags") or {}).items()
@@ -455,12 +463,13 @@ class NominatimHotelsProvider:
                     price_band=PriceBand.from_price_eur(price),
                     distance_from_route_km=round(distance_km, 2),
                     detour_minutes=round(detour_minutes, 1),
+                    detour_km=round(distance_km * 2, 2),
                     kid_friendly=_yes(_extratag(it, "family_friendly")),
                     pet_friendly=(
                         _yes(_extratag(it, "dog"))
                         or _yes(_extratag(it, "pets"))
                     ),
-                    has_parking=_extratag(it, "parking") not in (None, "no"),
+                    has_parking=_extratag(it, "parking") != "no",
                     attributes=tuple(
                         (k, str(v))
                         for k, v in (it.get("extratags") or {}).items()
@@ -533,6 +542,7 @@ class NominatimRestaurantsProvider:
                     price_band=_classify_meal_price(price),
                     distance_from_route_km=round(distance_km, 2),
                     detour_minutes=round(detour_minutes, 1),
+                    detour_km=round(distance_km * 2, 2),
                     kid_friendly=_yes(_extratag(it, "family_friendly")),
                     pet_friendly=_yes(_extratag(it, "dog")),
                     attributes=tuple(
@@ -601,6 +611,7 @@ class NominatimRestaurantsProvider:
                     price_band=_classify_meal_price(price),
                     distance_from_route_km=round(distance_km, 2),
                     detour_minutes=round(detour_minutes, 1),
+                    detour_km=round(distance_km * 2, 2),
                     kid_friendly=_yes(_extratag(it, "family_friendly")),
                     pet_friendly=_yes(_extratag(it, "dog")),
                     attributes=tuple(
@@ -624,37 +635,55 @@ class NominatimFuelProvider:
         self._client = http_client or _new_client()
 
     async def prices_along(self, route: Route) -> tuple[FuelPrice, ...]:
-        vb = _route_viewbox(route)
+        # Use corridor sub-viewboxes (same pattern as hotels/restaurants)
+        # so long cross-European routes (CH→RO, DE→GR) get coverage
+        # along the actual road instead of one giant bbox that Nominatim
+        # returns random results for.
+        boxes = _corridor_viewboxes(route)
         reference = _route_reference_points(route)
-        items = await _search(self._client, "[amenity=fuel]", vb)
+        seen: set[tuple[int, int]] = set()
         prices: list[FuelPrice] = []
-        for it in items:
-            coord = _extract_coord(it)
-            if coord is None:
-                continue
-            distance_km = _distance_to_points(coord, reference)
-            if distance_km > _MAX_OFF_CORRIDOR_KM:
-                continue
-            country = _country_of(coord, route)
-            anchor = COUNTRIES.get(country.value)
-            base = anchor.fuel_petrol_anchor_eur if anchor else 1.75
-            prices.append(
-                FuelPrice(
-                    station_name=(
-                        _extratag(it, "brand") or _display_name(it)
-                    ),
-                    country=country,
-                    price_eur_per_l=round(base, 3),
-                    distance_from_origin_km=round(
-                        _haversine_km(route.origin, coord), 1,
-                    ),
-                    coordinate=coord,
-                    attributes=tuple(
-                        (k, str(v))
-                        for k, v in (it.get("extratags") or {}).items()
-                        if v not in (None, "")
-                    )[:12],
+
+        has_real_geometry = bool(route.geometry) and len(route.geometry) > 15
+        max_off_corridor = _MAX_OFF_CORRIDOR_KM if has_real_geometry else 50.0
+
+        for vb in boxes:
+            try:
+                items = await _search(self._client, "[amenity=fuel]", vb)
+            except _NominatimRateLimited:
+                break
+            for it in items:
+                coord = _extract_coord(it)
+                if coord is None:
+                    continue
+                cell = (round(coord.lat * 10000), round(coord.lon * 10000))
+                if cell in seen:
+                    continue
+                distance_km = _distance_to_points(coord, reference)
+                if distance_km > max_off_corridor:
+                    continue
+                seen.add(cell)
+                country = _country_of(coord, route)
+                anchor = COUNTRIES.get(country.value)
+                base = anchor.fuel_petrol_anchor_eur if anchor else 1.75
+                prices.append(
+                    FuelPrice(
+                        station_name=(
+                            _extratag(it, "brand") or _display_name(it)
+                        ),
+                        country=country,
+                        price_eur_per_l=round(base, 3),
+                        distance_from_origin_km=round(
+                            _haversine_km(route.origin, coord), 1,
+                        ),
+                        coordinate=coord,
+                        attributes=tuple(
+                            (k, str(v))
+                            for k, v in (it.get("extratags") or {}).items()
+                            if v not in (None, "")
+                        )[:12],
+                    )
                 )
-            )
+
         prices.sort(key=lambda p: p.distance_from_origin_km)
-        return tuple(prices[:20])
+        return tuple(prices[:60])

@@ -16,4 +16,5 @@
 -->
 <automotiveApp>
     <uses name="template"/>
+    <uses name="poi"/>
 </automotiveApp>

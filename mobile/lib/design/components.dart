@@ -30,6 +30,16 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Left accent bar aligned with the title block
+          Container(
+            width: 3,
+            height: 30,
+            margin: const EdgeInsets.only(right: Tokens.space12, top: 1),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

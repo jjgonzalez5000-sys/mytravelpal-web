@@ -1,265 +1,740 @@
 {
-    "@@locale": "ca",
-
-    "appName": "MyTravelPal",
-    "appTagline": "Planifica el viatge, no només el destí",
-
-    "tabPlan": "Planificar",
-    "tabCompanion": "Acompanyant",
-    "tabMyTrips": "Els meus viatges",
-
-    "planEyebrow": "EL PLANIFICADOR",
-    "planHero": "On anem\navui?",
-    "planHeroPersonal": "On anem,\n{name}?",
-    "@planHeroPersonal": {"placeholders": {"name": {"type": "String"}}},
-    "planIntro": "Tria dos punts i una hora. De la resta ens n'encarreguem nosaltres.",
-    "planFrom": "Des de",
-    "planTo": "Fins a",
-    "planTooltipSaved": "Viatges desats",
-    "planTooltipDashboard": "Panell",
-    "planTooltipReport": "Informar d'un esdeveniment",
-    "planTooltipFavorites": "Preferits",
-    "planTooltipSettings": "Configuració",
-    "planPremiumBadge": "Premium",
-
-    "leaveNowTitle": "Sortir ja amb acompanyant",
-    "leaveNowSubtitle": "Tria destinació i arrenca — et seguim i et guiem.",
-    "leaveNowSheetTitle": "On vas?",
-    "leaveNowPremiumTitle": "Funció Premium",
-    "leaveNowPremiumBody": "'Sortir ja' combina el pla complet amb l'acompanyant durant la conducció. Disponible amb MyTravelPal Premium.",
-    "leaveNowPremiumDismiss": "Més tard",
-    "leaveNowPremiumCta": "Prova 7 dies gratis",
-
-    "companionHeroTitle": "El teu acompanyant de viatge",
-    "companionHeroBody": "Marca les teves condicions i arrenca. L'app segueix la teva conducció i recomana quan parar, on menjar i on repostar.",
-    "companionConfigSection": "CONFIGURACIÓ",
-    "companionBreakInterval": "Suggerir descans cada",
-    "companionBreakHint": "Recomanar parada cada {hours} h de conducció",
-    "@companionBreakHint": {"placeholders": {"hours": {"type": "String"}}},
-    "companionAlerts": "Tipus d'avís",
-    "companionAlertWeather": "Meteo per endavant",
-    "companionAlertFuel": "Oportunitats de combustible",
-    "companionAlertBorder": "Avís en creuar fronteres",
-    "companionAlertToll": "Suggeriments per saltar peatges",
-    "companionAlertHotel": "Suggeriments d'hotel quan estiguis cansat",
-    "companionStart": "Iniciar acompanyant",
-    "companionComingSoon": "Mode acompanyant properament",
-    "companionDriveTitle": "Acompanyant actiu",
-    "companionForegroundBody": "MyTravelPal està seguint la teva conducció",
-    "companionLocationDenied": "Cal permís d'ubicació per a l'acompanyant.",
-    "companionDriving": "conduint",
-    "companionAllGood": "Sense avisos — bon viatge.",
-    "companionWeatherRowEmpty": "Sense avisos propers",
-    "companionEndTitle": "Acabar acompanyant?",
-    "companionEndBody": "El seguiment s'aturarà i els avisos actius es perdran.",
-    "companionEndKeep": "Continuar",
-    "companionEndConfirm": "Acabar sessió",
-
-    "emergencyContactsTitle": "Contactes d'emergència",
-    "emergencyContactsSubtitle": "Reben SMS si es detecta un impacte",
-    "emergencyContactsBody": "Fins a 3 persones reben un SMS amb la teva ubicació si l'acompanyant detecta un impacte.",
-    "emergencyContactsEmpty": "Encara no hi ha contactes.",
-    "emergencyContactsAdd": "Afegir contacte",
-    "emergencyContactAddTitle": "Afegir contacte d'emergència",
-    "emergencyContactName": "Nom",
-    "emergencyContactNameRequired": "Escriu un nom",
-    "emergencyContactPhone": "Telèfon (E.164)",
-    "emergencyContactPhoneRequired": "Escriu un telèfon",
-    "emergencyContactPhoneInvalid": "Format internacional: +34612345678",
-    "cancel": "Cancel·lar",
-    "save": "Desar",
-
-    "sosTitle": "Possible impacte detectat",
-    "sosBody": "Pic d'impacte {g}g · caiguda de velocitat {speed} km/h.",
-    "@sosBody": {"placeholders": {"g": {"type": "String"}, "speed": {"type": "String"}}},
-    "sosCountdown": "{seconds}s",
-    "@sosCountdown": {"placeholders": {"seconds": {"type": "int"}}},
-    "sosImOk": "Estic bé — cancel·lar",
-    "sosCall112": "Trucar 112",
-    "sosCancelled": "Alerta cancel·lada.",
-    "sosClose": "Tancar",
-    "sosNoContacts": "Cap contacte configurat. Afegeix-ne un a Configuració.",
-    "sosSmsDispatched": "SMS preparat per a {count} contacte(s).",
-    "@sosSmsDispatched": {"placeholders": {"count": {"type": "int"}}},
-    "sosSmsFailed": "No s'ha pogut obrir SMS. Truca manualment a baix.",
-    "sosSmsPrefix": "MyTravelPal — possible impacte detectat. La meva ubicació:",
-
-    "weatherSunny": "Assolellat",
-    "weatherPartlyCloudy": "Parcialment ennuvolat",
-    "weatherCloudy": "Ennuvolat",
-    "weatherFog": "Boira",
-    "weatherDrizzle": "Plugim",
-    "weatherRain": "Pluja",
-    "weatherHeavyRain": "Pluja intensa",
-    "weatherSnow": "Neu",
-    "weatherHeavySnow": "Nevada intensa",
-    "weatherThunderstorm": "Tempesta",
-    "weatherForecastTitle": "Previsió 7 dies",
-    "weatherToday": "Avui",
-
-    "shareCardOption": "Compartir com a imatge",
-    "shareCardOptionSub": "Perfecte per a Instagram Stories, WhatsApp, X",
-    "shareLinkOption": "Compartir com a enllaç",
-    "shareLinkOptionSub": "Resum en text + enllaç per reobrir el pla",
-    "shareLiveHeadline": "Conduint per {city}",
-    "@shareLiveHeadline": {"placeholders": {"city": {"type": "String"}}},
-    "shareLiveCaption": "Conduint per {city} amb MyTravelPal 🚗",
-    "@shareLiveCaption": {"placeholders": {"city": {"type": "String"}}},
-
-    "profileTitle": "Perfil del viatge",
-    "settingsTitle": "Configuració",
-    "settingsLanguage": "Idioma",
-    "settingsDensityLabel": "Densitat",
-    "settingsDensityComfortable": "Còmoda",
-    "settingsDensityCompact": "Compacta",
-    "localeSystem": "Sistema",
-    "dashboardSignOut": "Tancar sessió",
-    "resultOptimalDeparture": "La teva hora de sortida és òptima",
-    "shortLastDayWarning": "Últim tram curt ({km} km) — podries arribar avui si avances més l'endemà.",
-    "@shortLastDayWarning": {
-      "placeholders": {
-        "km": {"type": "String"}
+  "@@locale": "ca",
+  "appName": "MyTravelPal",
+  "appTagline": "Planifica el viatge, no només el destí",
+  "tabPlan": "Planificar",
+  "tabCompanion": "Acompanyant",
+  "tabMyTrips": "Els meus viatges",
+  "planEyebrow": "EL PLANIFICADOR",
+  "planHero": "On anem\navui?",
+  "planHeroPersonal": "On anem,\n{name}?",
+  "@planHeroPersonal": {
+    "placeholders": {
+      "name": {
+        "type": "String"
       }
-    },
-    "prepareDepartureNow": "Sortir ara",
-    "replanNewDepartureTitle": "Recalculant amb la nova hora de sortida…",
-    "planStopReorderHint": "Manté premuda la nansa per reordenar",
-    "planSwapOriginDestination": "Invertir",
-    "planStopMoveUp": "Mou amunt",
-    "planStopMoveDown": "Mou avall",
-    "recentTripsTitle": "Viatges recents",
-    "recentTripsSubtitle": "{count} desats — toca per reutilitzar",
-    "@recentTripsSubtitle": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "onRouteTitle": "A la ruta",
-    "onRouteEmpty": "Toca per triar opcions",
-    "exportShareTitle": "Compartir ruta",
-    "exportOpenInMaps": "Obrir a Google Maps",
-    "exportCopyLink": "Copiar enllaç",
-    "exportLinkCopied": "Enllaç copiat al porta-retalls",
-    "exportShareOs": "Compartir…",
-    "exportShareSubject": "La meva ruta a MyTravelPal",
-    "importFromMaps": "Importar de Maps",
-    "importFromMapsTitle": "Importar ruta de Google Maps",
-    "importFromMapsHint": "Enganxa aquí l'enllaç de Google Maps",
-    "importFromMapsPaste": "Enganxar",
-    "importFromMapsImport": "Importar",
-    "importFromMapsError": "URL no reconeguda",
-    "importFromMapsErrorMalformed": "URL no vàlida — revisa l'enllaç i torna-ho a provar",
-    "importFromMapsErrorShortlink": "No s'ha pogut expandir l'enllaç curt — obre'l a Maps i copia la URL completa",
-    "importFromMapsErrorGeocode": "No s'han pogut localitzar els llocs — prova amb una ruta més curta o escriu-los a mà",
-    "importFromMapsLoading": "Analitzant l'enllaç…",
-    "adverseEventsBannerCount": "{count} alerta/es a la teva ruta",
-    "@adverseEventsBannerCount": {
-      "placeholders": {
-        "count": {"type": "int"}
+    }
+  },
+  "planIntro": "Tria dos punts i una hora. De la resta ens n'encarreguem nosaltres.",
+  "planFrom": "Des de",
+  "planTo": "Fins a",
+  "planTooltipSaved": "Viatges desats",
+  "planTooltipDashboard": "Panell",
+  "planTooltipReport": "Informar d'un esdeveniment",
+  "planTooltipFavorites": "Preferits",
+  "planTooltipSettings": "Configuració",
+  "planPremiumBadge": "Premium",
+  "leaveNowTitle": "Sortir ja amb acompanyant",
+  "leaveNowSubtitle": "Tria destinació i arrenca — et seguim i et guiem.",
+  "leaveNowSheetTitle": "On vas?",
+  "leaveNowPremiumTitle": "Funció Premium",
+  "leaveNowPremiumBody": "'Sortir ja' combina el pla complet amb l'acompanyant durant la conducció. Disponible amb MyTravelPal Premium.",
+  "leaveNowPremiumDismiss": "Més tard",
+  "leaveNowPremiumCta": "Prova 7 dies gratis",
+  "companionHeroTitle": "El teu acompanyant de viatge",
+  "companionHeroBody": "Marca les teves condicions i arrenca. L'app segueix la teva conducció i recomana quan parar, on menjar i on repostar.",
+  "companionConfigSection": "CONFIGURACIÓ",
+  "companionBreakInterval": "Suggerir descans cada",
+  "companionBreakHint": "Recomanar parada cada {hours} h de conducció",
+  "@companionBreakHint": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
       }
-    },
-    "pricePerMeal": "{price} €/àpat",
-    "@pricePerMeal": {
-      "placeholders": { "price": {"type": "String"} }
-    },
-    "kmFromOrigin": "{km} km des de l'origen",
-    "@kmFromOrigin": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "planStopDwellHours": "{n} hores",
-    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
-    "dayArrivalMarker": "Arribes al destí cap a les {time}",
-    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
-    "dayStartsAt": "Surt a les {time}",
-    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
-    "dayMealStopAt": "🍽 {time} · {name}",
-    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
-    "dayRestStopAt": "☕ {time} · {label}",
-    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
-    "restStopFilterAll": "Tots",
-    "restStopFilterKidFriendly": "Familiar",
-    "restStopFilterPetFriendly": "Amb mascota",
-    "restStopFilterRvFriendly": "Autocaravana",
-
-    "resultStartCompanion": "Iniciar mode Companion",
-    "companionPreflightTitle": "Ajustos abans de conduir",
-    "companionPreflightMealWindows": "Horaris dels àpats",
-    "companionPreflightDetourTolerance": "Desviament màxim",
-    "companionPreflightMealBudget": "Pressupost per àpat",
-    "companionPreflightHotelBudget": "Pressupost per nit",
-    "companionPreflightSaveToProfile": "Desar al meu perfil",
-    "companionPreflightStart": "Comença a conduir",
-    "companionPreflightBreakfast": "Esmorzar",
-    "companionPreflightLunch": "Dinar",
-    "companionPreflightDinner": "Sopar",
-
-    "eventTypeEarthquake": "Terratrèmol",
-    "eventTypeLandslide": "Esllavissada",
-    "eventTypeAvalanche": "Allau",
-    "eventTypeClosure": "Carretera tallada",
-    "eventTypeHeatwave": "Onada de calor",
-    "eventTypeHeavyRain": "Pluja forta",
-    "eventTypeHail": "Calamarsa",
-    "eventTypeThunderstorm": "Tempesta elèctrica",
-    "eventTypeHighWind": "Vent fort",
-    "eventTypeDenseFog": "Boira densa",
-    "eventTypeFreezingRain": "Pluja gelada",
-    "profileVehicleModel": "Model",
-    "profileVehicleModelHint": "Tria el teu model",
-    "profileVehicleModelClear": "Treu el model",
-    "profileTankLevel": "Dipòsit actual",
-    "vehiclePickerSearchHint": "Cerca marca o model",
-    "vehiclePickerEmpty": "Cap model coincideix",
-    "vehiclePickerLoadError": "No s'ha pogut carregar la llista. Torna-ho a provar.",
-    "refuelWindowComfortable": "Reposta abans del km {km} (còmode)",
-    "@refuelWindowComfortable": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "refuelWindowCritical": "Reposta abans del km {km} (crític)",
-    "@refuelWindowCritical": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "refuelSuggestionTitle": "Reposta aquí per estalviar",
-    "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
-    "@refuelSuggestionBody": {
-      "placeholders": {
-        "station": {"type": "String"},
-        "km": {"type": "String"},
-        "price": {"type": "String"}
+    }
+  },
+  "companionAlerts": "Tipus d'avís",
+  "companionAlertWeather": "Meteo per endavant",
+  "companionAlertFuel": "Oportunitats de combustible",
+  "companionAlertBorder": "Avís en creuar fronteres",
+  "companionAlertToll": "Suggeriments per saltar peatges",
+  "companionAlertHotel": "Suggeriments d'hotel quan estiguis cansat",
+  "companionStart": "Iniciar acompanyant",
+  "companionComingSoon": "Mode acompanyant properament",
+  "companionDriveTitle": "Acompanyant actiu",
+  "companionForegroundBody": "MyTravelPal està seguint la teva conducció",
+  "companionLocationDenied": "Cal permís d'ubicació per a l'acompanyant.",
+  "companionDriving": "conduint",
+  "companionAllGood": "Sense avisos — bon viatge.",
+  "companionWeatherRowEmpty": "Sense avisos propers",
+  "companionEndTitle": "Acabar acompanyant?",
+  "companionEndBody": "El seguiment s'aturarà i els avisos actius es perdran.",
+  "companionEndKeep": "Continuar",
+  "companionEndConfirm": "Acabar sessió",
+  "emergencyContactsTitle": "Contactes d'emergència",
+  "emergencyContactsSubtitle": "Reben SMS si es detecta un impacte",
+  "emergencyContactsBody": "Fins a 3 persones reben un SMS amb la teva ubicació si l'acompanyant detecta un impacte.",
+  "emergencyContactsEmpty": "Encara no hi ha contactes.",
+  "emergencyContactsAdd": "Afegir contacte",
+  "emergencyContactAddTitle": "Afegir contacte d'emergència",
+  "emergencyContactName": "Nom",
+  "emergencyContactNameRequired": "Escriu un nom",
+  "emergencyContactPhone": "Telèfon (E.164)",
+  "emergencyContactPhoneRequired": "Escriu un telèfon",
+  "emergencyContactPhoneInvalid": "Format internacional: +34612345678",
+  "cancel": "Cancel·lar",
+  "save": "Desar",
+  "sosTitle": "Possible impacte detectat",
+  "sosBody": "Pic d'impacte {g}g · caiguda de velocitat {speed} km/h.",
+  "@sosBody": {
+    "placeholders": {
+      "g": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
       }
-    },
-    "refuelSuggestionSavings": "T'estalvies {eur} €",
-    "@refuelSuggestionSavings": {
-      "placeholders": { "eur": {"type": "String"} }
-    },
-    "savingsFuelRow": "Combustible: {eur} €",
-    "@savingsFuelRow": {
-      "placeholders": { "eur": {"type": "String"} }
-    },
-    "garageTitle": "El meu garatge",
-    "garageEmpty": "Encara no hi ha vehicles — afegeix el primer",
-    "garageAdd": "Afegir vehicle",
-    "garageEdit": "Editar vehicle",
-    "garageDelete": "Eliminar",
-    "garageCancel": "Cancel·lar",
-    "garageSave": "Desar",
-    "garageDefaultName": "El meu cotxe",
-    "garageNameHint": "Posa-li un nom (p. ex. El meu Golf)",
-    "garageDefaultTankLabel": "Nivell de dipòsit per defecte",
-    "garageAddError": "No s'ha pogut desar. Torna-ho a intentar.",
-    "garageDeleteTitle": "Eliminar el vehicle?",
-    "garageDeleteBody": "\"{name}\" s'esborrarà del teu garatge.",
-    "@garageDeleteBody": {
-      "placeholders": { "name": {"type": "String"} }
-    },
-    "garageSettingsRow": "El meu garatge ({count})",
-    "@garageSettingsRow": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "planScreenGarageChip": "Cotxe: {name} · {pct} %",
-    "@planScreenGarageChip": {
-      "placeholders": {
-        "name": {"type": "String"},
-        "pct": {"type": "int"}
+    }
+  },
+  "sosCountdown": "{seconds}s",
+  "@sosCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
       }
-    },
-    "planScreenGarageChooseVehicle": "Trieu un vehicle per a aquest viatge"
+    }
+  },
+  "sosImOk": "Estic bé — cancel·lar",
+  "sosCall112": "Trucar 112",
+  "sosCancelled": "Alerta cancel·lada.",
+  "sosClose": "Tancar",
+  "sosNoContacts": "Cap contacte configurat. Afegeix-ne un a Configuració.",
+  "sosSmsDispatched": "SMS preparat per a {count} contacte(s).",
+  "@sosSmsDispatched": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sosSmsFailed": "No s'ha pogut obrir SMS. Truca manualment a baix.",
+  "sosSmsPrefix": "MyTravelPal — possible impacte detectat. La meva ubicació:",
+  "weatherSunny": "Assolellat",
+  "weatherPartlyCloudy": "Parcialment ennuvolat",
+  "weatherCloudy": "Ennuvolat",
+  "weatherFog": "Boira",
+  "weatherDrizzle": "Plugim",
+  "weatherRain": "Pluja",
+  "weatherHeavyRain": "Pluja intensa",
+  "weatherSnow": "Neu",
+  "weatherHeavySnow": "Nevada intensa",
+  "weatherThunderstorm": "Tempesta",
+  "weatherForecastTitle": "Previsió 7 dies",
+  "weatherToday": "Avui",
+  "shareCardOption": "Compartir com a imatge",
+  "shareCardOptionSub": "Perfecte per a Instagram Stories, WhatsApp, X",
+  "shareLinkOption": "Compartir com a enllaç",
+  "shareLinkOptionSub": "Resum en text + enllaç per reobrir el pla",
+  "shareLiveHeadline": "Conduint per {city}",
+  "@shareLiveHeadline": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "shareLiveCaption": "Conduint per {city} amb MyTravelPal 🚗",
+  "@shareLiveCaption": {
+    "placeholders": {
+      "city": {
+        "type": "String"
+      }
+    }
+  },
+  "profileTitle": "Perfil del viatge",
+  "settingsTitle": "Configuració",
+  "settingsLanguage": "Idioma",
+  "settingsDensityLabel": "Densitat",
+  "settingsDensityComfortable": "Còmoda",
+  "settingsDensityCompact": "Compacta",
+  "localeSystem": "Sistema",
+  "dashboardSignOut": "Tancar sessió",
+  "dashboardSaved": "estalviat",
+  "historySavedCount": "{count, plural, one{1 desat} other{{count} desats}}",
+  "@historySavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resultOptimalDeparture": "La teva hora de sortida és òptima",
+  "shortLastDayWarning": "Últim tram curt ({km} km) — podries arribar avui si avances més l'endemà.",
+  "@shortLastDayWarning": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "prepareDepartureNow": "Sortir ara",
+  "replanNewDepartureTitle": "Recalculant amb la nova hora de sortida…",
+  "planStopReorderHint": "Manté premuda la nansa per reordenar",
+  "planSwapOriginDestination": "Invertir",
+  "planStopMoveUp": "Mou amunt",
+  "planStopMoveDown": "Mou avall",
+  "recentTripsTitle": "Viatges recents",
+  "recentTripsSubtitle": "{count} desats — toca per reutilitzar",
+  "@recentTripsSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentTripsSeeAll": "Veure els {n} viatges restants a Els meus viatges",
+  "@recentTripsSeeAll": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onRouteTitle": "A la ruta",
+  "onRouteEmpty": "Toca per triar opcions",
+  "exportShareTitle": "Compartir ruta",
+  "exportOpenInMaps": "Obrir a Google Maps",
+  "exportCopyLink": "Copiar enllaç",
+  "exportLinkCopied": "Enllaç copiat al porta-retalls",
+  "exportShareOs": "Compartir…",
+  "exportShareSubject": "La meva ruta a MyTravelPal",
+  "importFromMaps": "Importar de Maps",
+  "importFromMapsTitle": "Importar ruta de Google Maps",
+  "importFromMapsHint": "Enganxa aquí l'enllaç de Google Maps",
+  "importFromMapsPaste": "Enganxar",
+  "importFromMapsImport": "Importar",
+  "importFromMapsError": "URL no reconeguda",
+  "importFromMapsErrorMalformed": "URL no vàlida — revisa l'enllaç i torna-ho a provar",
+  "importFromMapsErrorShortlink": "No s'ha pogut expandir l'enllaç curt — obre'l a Maps i copia la URL completa",
+  "importFromMapsErrorGeocode": "No s'han pogut localitzar els llocs — prova amb una ruta més curta o escriu-los a mà",
+  "importFromMapsLoading": "Analitzant l'enllaç…",
+  "adverseEventsBannerCount": "{count} alerta/es a la teva ruta",
+  "@adverseEventsBannerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pricePerMeal": "{price} €/àpat",
+  "@pricePerMeal": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "kmFromOrigin": "{km} km des de l'origen",
+  "@kmFromOrigin": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "planStopDwellHours": "{n} hores",
+  "@planStopDwellHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "dayArrivalMarker": "Arribes al destí cap a les {time}",
+  "@dayArrivalMarker": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayStartsAt": "Surt a les {time}",
+  "@dayStartsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayMealStopAt": "🍽 {time} · {name}",
+  "@dayMealStopAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dayRestStopAt": "☕ {time} · {label}",
+  "@dayRestStopAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopFilterAll": "Tots",
+  "restStopFilterKidFriendly": "Familiar",
+  "restStopFilterPetFriendly": "Amb mascota",
+  "restStopFilterRvFriendly": "Autocaravana",
+  "resultStartCompanion": "Iniciar Asistente de conducción (Premium)",
+  "companionPreflightTitle": "Ajustos abans de conduir",
+  "companionPreflightMealWindows": "Horaris dels àpats",
+  "companionPreflightDetourTolerance": "Desviament màxim",
+  "companionPreflightMealBudget": "Pressupost per àpat",
+  "companionPreflightHotelBudget": "Pressupost per nit",
+  "companionPreflightSaveToProfile": "Desar al meu perfil",
+  "companionPreflightStart": "Comença a conduir",
+  "companionPreflightBreakfast": "Esmorzar",
+  "companionPreflightLunch": "Dinar",
+  "companionPreflightDinner": "Sopar",
+  "eventTypeEarthquake": "Terratrèmol",
+  "eventTypeLandslide": "Esllavissada",
+  "eventTypeAvalanche": "Allau",
+  "eventTypeClosure": "Carretera tallada",
+  "eventTypeHeatwave": "Onada de calor",
+  "eventTypeHeavyRain": "Pluja forta",
+  "eventTypeHail": "Calamarsa",
+  "eventTypeThunderstorm": "Tempesta elèctrica",
+  "eventTypeHighWind": "Vent fort",
+  "eventTypeDenseFog": "Boira densa",
+  "eventTypeFreezingRain": "Pluja gelada",
+  "profileVehicleModel": "Model",
+  "profileVehicleModelHint": "Tria el teu model",
+  "profileVehicleModelClear": "Treu el model",
+  "profileTankLevel": "Dipòsit actual",
+  "vehiclePickerSearchHint": "Cerca marca o model",
+  "vehiclePickerEmpty": "Cap model coincideix",
+  "vehiclePickerLoadError": "No s'ha pogut carregar la llista. Torna-ho a provar.",
+  "vehiclePickerCustomOption": "Vehicle personalitzat",
+  "vehiclePickerCustomOptionSubtitle": "Introdueix el dipòsit i el consum manualment",
+  "vehicleCustomTitle": "Vehicle personalitzat",
+  "vehicleCustomName": "Nom del vehicle (opcional)",
+  "vehicleCustomNameHint": "p. ex. El meu SUV",
+  "vehicleCustomTank": "Dipòsit (L)",
+  "vehicleCustomTankEv": "Bateria (kWh)",
+  "vehicleCustomConsumption": "Consum (L/100 km)",
+  "vehicleCustomConsumptionEv": "Consum (kWh/100 km)",
+  "vehicleCustomSave": "Usar personalitzat",
+  "refuelWindowComfortable": "Reposta abans del km {km} (còmode)",
+  "@refuelWindowComfortable": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelWindowCritical": "Reposta abans del km {km} (crític)",
+  "@refuelWindowCritical": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelSuggestionTitle": "Reposta aquí per estalviar",
+  "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
+  "@refuelSuggestionBody": {
+    "placeholders": {
+      "station": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelSuggestionSavings": "T'estalvies {eur} €",
+  "@refuelSuggestionSavings": {
+    "placeholders": {
+      "eur": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsFuelRow": "Combustible: {eur} €",
+  "@savingsFuelRow": {
+    "placeholders": {
+      "eur": {
+        "type": "String"
+      }
+    }
+  },
+  "garageTitle": "El meu garatge",
+  "garageEmpty": "Encara no hi ha vehicles — afegeix el primer",
+  "garageAdd": "Afegir vehicle",
+  "garageEdit": "Editar vehicle",
+  "garageDelete": "Eliminar",
+  "garageCancel": "Cancel·lar",
+  "garageSave": "Desar",
+  "garageDefaultName": "El meu cotxe",
+  "garageNameHint": "Posa-li un nom (p. ex. El meu Golf)",
+  "garageDefaultTankLabel": "Nivell de dipòsit per defecte",
+  "garageDefaultChargeLevelLabel": "Nivell de càrrega inicial",
+  "garageAddError": "No s'ha pogut desar. Torna-ho a intentar.",
+  "garageDeleteTitle": "Eliminar el vehicle?",
+  "garageDeleteBody": "\"{name}\" s'esborrarà del teu garatge.",
+  "@garageDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "garageSettingsRow": "El meu garatge ({count})",
+  "@garageSettingsRow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planScreenGarageChip": "Cotxe: {name} · {pct} %",
+  "@planScreenGarageChip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "planScreenGarageChooseVehicle": "Trieu un vehicle per a aquest viatge",
+  "poiAttr_dog": "Animals de companyia benvinguts",
+  "poiAttr_brand": "Marca",
+  "poiAttr_city": "Ciutat",
+  "poiAttr_street": "Carrer",
+  "poiAttr_address": "Adreça",
+  "poiAttr_openingHours": "Horari d'obertura",
+  "poiAttr_name": "Nom",
+  "poiAttr_phone": "Telèfon",
+  "poiAttr_stars": "Estrelles",
+  "poiAttr_website": "Lloc web",
+  "poiPickerChoose": "Trieu",
+  "poiPickerSelected": "Seleccionat",
+  "poiPickerHotels": "Veure alternatives",
+  "poiPickerRestaurants": "Veure restaurants propers",
+  "resultFuelStationsOnRoute": "Benzineres a la ruta",
+  "@resultFuelStationsOnRoute": {},
+  "resultFuelSavingsAccordionTitle": "Estalvi en combustible",
+  "resultTimeSavingsOptimal": "La teva hora de sortida és òptima",
+  "@resultTimeSavingsOptimal": {},
+  "hotelMapFullscreenTitle": "Hotels a la zona",
+  "@hotelMapFullscreenTitle": {},
+  "restaurantMapFullscreenTitle": "Restaurants a la zona",
+  "@restaurantMapFullscreenTitle": {},
+  "tollSummaryTitle": "Peatges del trajecte",
+  "@tollSummaryTitle": {},
+  "tollSummaryMapButton": "Veure al mapa",
+  "@tollSummaryMapButton": {},
+  "activitiesCtaTitle": "Què fer a {city}",
+  "@activitiesCtaTitle": {
+    "placeholders": {
+      "city": {}
+    }
+  },
+  "activitiesCtaSubtitle": "Activitats i experiències locals",
+  "@activitiesCtaSubtitle": {},
+  "planIncludeActivities": "Activitats a la destinació",
+  "@planIncludeActivities": {},
+  "planIncludeActivitiesHint": "Suggeriments GetYourGuide a cada ciutat",
+  "@planIncludeActivitiesHint": {},
+  "aiPrefScenicRoutes": "Prefereixo rutes panoràmiques",
+  "@aiPrefScenicRoutes": {},
+  "aiPrefScenicRoutesSub": "Recomanar desviaments per miradors i ports de muntanya",
+  "@aiPrefScenicRoutesSub": {},
+  "aiPrefEcoConscious": "Conducció eco",
+  "@aiPrefEcoConscious": {},
+  "aiPrefEcoConsciousSub": "Preferir VE, evitar autopistes quan sigui possible",
+  "@aiPrefEcoConsciousSub": {},
+  "aiPrefLocalFood": "Menjar local primer",
+  "@aiPrefLocalFood": {},
+  "aiPrefLocalFoodSub": "Prioritzar restaurants locals davant cadenes",
+  "@aiPrefLocalFoodSub": {},
+  "aiPrefDepartureHour": "Hora habitual de sortida",
+  "@aiPrefDepartureHour": {},
+  "aiPrefDietary": "RESTRICCIONS ALIMENTÀRIES",
+  "@aiPrefDietary": {},
+  "aiPrefInterests": "INTERESSOS",
+  "@aiPrefInterests": {},
+  "aiDietVegetarian": "Vegetarià",
+  "@aiDietVegetarian": {},
+  "aiDietVegan": "Vegà",
+  "@aiDietVegan": {},
+  "aiDietGlutenFree": "Sense gluten",
+  "@aiDietGlutenFree": {},
+  "aiDietHalal": "Halal",
+  "@aiDietHalal": {},
+  "aiInterestCulture": "Cultura",
+  "@aiInterestCulture": {},
+  "aiInterestNature": "Natura",
+  "@aiInterestNature": {},
+  "aiInterestGastronomy": "Gastronomia",
+  "@aiInterestGastronomy": {},
+  "aiInterestShopping": "Compres",
+  "@aiInterestShopping": {},
+  "aiInterestAdventure": "Aventura",
+  "@aiInterestAdventure": {},
+  "settingsSectionVehicle": "Vehicle i ruta",
+  "settingsSectionAI": "Personalització IA",
+  "notifSoundTitle": "So d'alertes",
+  "@notifSoundTitle": {},
+  "notifSoundDefault": "So predeterminat",
+  "@notifSoundDefault": {},
+  "notifSoundDefaultSub": "Usa el so de notificació del sistema",
+  "@notifSoundDefaultSub": {},
+  "notifSoundSilent": "Silenci",
+  "@notifSoundSilent": {},
+  "notifSoundSilentSub": "Sense so per a les alertes",
+  "@notifSoundSilentSub": {},
+  "settingsSectionSafety": "Contactes i seguretat",
+  "settingsSectionAccount": "Compte",
+  "wizardSkip": "Omitir",
+  "@wizardSkip": {},
+  "wizardStart": "Empezar",
+  "@wizardStart": {},
+  "wizardBack": "Atrás",
+  "@wizardBack": {},
+  "wizardNext": "Siguiente",
+  "@wizardNext": {},
+  "wizardTakesSeconds": "Solo 30 segundos",
+  "@wizardTakesSeconds": {},
+  "wizardWelcomeTitle": "Bienvenido a MyTravelPal",
+  "@wizardWelcomeTitle": {},
+  "wizardWelcomeBody": "Cuéntanos un poco sobre tus viajes y personalizaremos todo desde el primer momento.",
+  "@wizardWelcomeBody": {},
+  "wizardWhoTitle": "¿Con quién viajas?",
+  "@wizardWhoTitle": {},
+  "wizardWhoSubtitle": "Selecciona todo lo que aplique. Puedes cambiarlo después.",
+  "@wizardWhoSubtitle": {},
+  "wizardWhoKids": "Viajo con niños",
+  "@wizardWhoKids": {},
+  "wizardWhoPets": "Viajo con mascotas",
+  "@wizardWhoPets": {},
+  "wizardWhoCamper": "Viajo en autocaravana",
+  "@wizardWhoCamper": {},
+  "wizardVehicleTitle": "Tu vehículo",
+  "@wizardVehicleTitle": {},
+  "wizardVehicleSubtitle": "Usaremos esto para calcular el combustible y sugerir rutas.",
+  "@wizardVehicleSubtitle": {},
+  "wizardVehicleType": "Tipo de vehículo",
+  "@wizardVehicleType": {},
+  "wizardFuelType": "Combustible",
+  "@wizardFuelType": {},
+  "wizardRhythmTitle": "Tu ritmo de viaje",
+  "@wizardRhythmTitle": {},
+  "wizardRhythmSubtitle": "Son valores orientativos — puedes cambiarlos viaje a viaje.",
+  "@wizardRhythmSubtitle": {},
+  "wizardWakeHour": "Salgo a las {h}",
+  "@wizardWakeHour": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wizardBreakEvery": "Paro cada {n}h",
+  "@wizardBreakEvery": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "wizardBedtime": "Llego al hotel a las {h}",
+  "@wizardBedtime": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wizardHotelBudget": "Presupuesto hotel / noche",
+  "@wizardHotelBudget": {},
+  "wizardMealBudget": "Presupuesto comida / menú",
+  "@wizardMealBudget": {},
+  "wizardDoneTitle": "¡Todo listo!",
+  "@wizardDoneTitle": {},
+  "wizardDoneSubtitle": "Tu primera ruta ya estará personalizada para ti.",
+  "@wizardDoneSubtitle": {},
+  "wizardTeaserTitle": "Cuando quieras, en Ajustes también puedes configurar:",
+  "@wizardTeaserTitle": {},
+  "wizardTeaserVehicleModel": "Modelo exacto de vehículo (consumo real)",
+  "@wizardTeaserVehicleModel": {},
+  "wizardTeaserRoute": "Ruta preferida: autopista o panorámica",
+  "@wizardTeaserRoute": {},
+  "wizardTeaserEmergency": "Contactos de emergencia",
+  "@wizardTeaserEmergency": {},
+  "wizardTeaserAlertSound": "Sonido de alertas del Companion",
+  "@wizardTeaserAlertSound": {},
+  "wizardTeaserStars": "Categoría mínima de hotel",
+  "@wizardTeaserStars": {},
+  "wizardPlanFirstTrip": "Planificar mi primer viaje",
+  "@wizardPlanFirstTrip": {},
+  "priceBandBudget": "Económico",
+  "@priceBandBudget": {},
+  "priceBandMid": "Estándar",
+  "@priceBandMid": {},
+  "priceBandLux": "Superior",
+  "@priceBandLux": {},
+  "wizardModelTitle": "Tu modelo de vehículo",
+  "@wizardModelTitle": {},
+  "wizardModelSubtitle": "Con datos reales calculamos cuándo y dónde repostar para ahorrarte dinero.",
+  "@wizardModelSubtitle": {},
+  "wizardModelSearch": "Buscar marca o modelo...",
+  "@wizardModelSearch": {},
+  "wizardModelGeneric": "Usar valores genéricos",
+  "@wizardModelGeneric": {},
+  "wizardModelGenericSub": "Estimación estándar por tipo de vehículo",
+  "@wizardModelGenericSub": {},
+  "wizardTollTitle": "¿Evitamos peajes?",
+  "@wizardTollTitle": {},
+  "wizardTollSubtitle": "Analizamos miles de rutas para saber cuándo el desvío vale la pena.",
+  "@wizardTollSubtitle": {},
+  "wizardTollAvoid": "Evitar cuando sea posible",
+  "@wizardTollAvoid": {},
+  "wizardTollAvoidSub": "Que me propongan alternativas por defecto",
+  "@wizardTollAvoidSub": {},
+  "wizardTollPay": "Preferir autopista siempre",
+  "@wizardTollPay": {},
+  "wizardTollPaySub": "Prefiero ir siempre por autopista salvo que ahorros sean muy claros",
+  "@wizardTollPaySub": {},
+  "wizardTollNote": "Puedes cambiar esto para cada viaje desde la pantalla de planificación",
+  "@wizardTollNote": {},
+  "wizardDrivingNow": "Conducir ahora con el asistente",
+  "@wizardDrivingNow": {},
+  "companionModeLabel": "Asistente de conducción",
+  "@companionModeLabel": {},
+  "companionModeDesc": "Co-pilot IA · Recomana alternatives de peatge, restaurants segons els teus gustos i benzineres barates en temps real · Premium",
+  "@companionModeDesc": {},
+  "aiLearningTitle": "El asistente te conoce al",
+  "@aiLearningTitle": {},
+  "aiScoreExcellent": "Excelente · Las recomendaciones son muy precisas",
+  "@aiScoreExcellent": {},
+  "aiScoreGood": "Bien · Aún puedes mejorar la personalización",
+  "@aiScoreGood": {},
+  "aiScoreBasic": "Básico · Completa tu perfil para mejores resultados",
+  "@aiScoreBasic": {},
+  "aiFactorVehicleModel": "Modelo de vehículo",
+  "@aiFactorVehicleModel": {},
+  "aiFactorVehicleModelHint": "Configura tu modelo para cálculos de combustible exactos",
+  "@aiFactorVehicleModelHint": {},
+  "aiFactorTrips": "{count} viajes realizados",
+  "@aiFactorTrips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiFactorTripsHint": "Cuantos más viajes, mejor entiende tus rutas habituales",
+  "@aiFactorTripsHint": {},
+  "aiFactorHotelPrefs": "Preferencias de hotel",
+  "@aiFactorHotelPrefs": {},
+  "aiFactorHotelPrefsHint": "Añade estrellas, parking o wifi para filtrar mejor",
+  "@aiFactorHotelPrefsHint": {},
+  "aiFactorRestPrefs": "Preferencias de restaurante",
+  "@aiFactorRestPrefs": {},
+  "aiFactorRestPrefsHint": "Añade tipos de cocina para sugerencias más acertadas",
+  "@aiFactorRestPrefsHint": {},
+  "aiFactorNick": "Nick y país configurados",
+  "@aiFactorNick": {},
+  "aiFactorNickHint": "Completa tu nombre y país en Ajustes",
+  "@aiFactorNickHint": {},
+  "aiFactorEmergency": "Contactos de emergencia",
+  "@aiFactorEmergency": {},
+  "aiFactorEmergencyHint": "Añade un contacto para el sistema de seguridad",
+  "@aiFactorEmergencyHint": {},
+  "aiFactorProfile": "Perfil de viaje básico",
+  "@aiFactorProfile": {},
+  "aiFactorProfileHint": "Configura tus horarios de conducción en Ajustes",
+  "@aiFactorProfileHint": {},
+  "tripQualityTitle": "Calidad del viaje",
+  "@tripQualityTitle": {},
+  "tripQualityExcellent": "Excelente",
+  "@tripQualityExcellent": {},
+  "tripQualityGood": "Bueno",
+  "@tripQualityGood": {},
+  "tripQualityFair": "Aceptable",
+  "@tripQualityFair": {},
+  "tripQualityPoor": "Limitado",
+  "@tripQualityPoor": {},
+  "tripQualityFactorRoute": "Ruta",
+  "@tripQualityFactorRoute": {},
+  "tripQualityFactorFuel": "Gasolineras",
+  "@tripQualityFactorFuel": {},
+  "tripQualityFactorHotels": "Hoteles",
+  "@tripQualityFactorHotels": {},
+  "tripQualityFactorWeather": "Clima",
+  "@tripQualityFactorWeather": {},
+  "tripQualityFactorAlerts": "Alertas",
+  "@tripQualityFactorAlerts": {},
+  "tripQualityFactorTolls": "Peajes",
+  "@tripQualityFactorTolls": {},
+  "tripQualityFactorStops": "Paradas",
+  "@tripQualityFactorStops": {},
+  "onboardEyebrowDriving": "COPILOTO IA · PREMIUM",
+  "onboardBodyDriving": "Conoce tu ruta, tu depósito y los precios siguientes. Responde en segundos. Funciona con Android Auto. (Premium)",
+  "partialTollSkipsTitle": "Peaje a peaje · Optimización Premium",
+  "wizardModelConsumption": "Consumo",
+  "@wizardModelConsumption": {},
+  "wizardModelTank": "Depósito",
+  "@wizardModelTank": {},
+  "wizardRhythmNote": "Ajusta cualquier día directamente en el resultado del viaje, pulsando el icono ⚙ de cada etapa.",
+  "@wizardRhythmNote": {},
+  "wizardTollHowTitle": "CÓMO FUNCIONA",
+  "@wizardTollHowTitle": {},
+  "wizardTollHowBody": "En cada viaje analizamos peaje por peaje: si el desvío te ahorra dinero real y el tiempo extra es mínimo, te lo proponemos en la pantalla de resultado. Tú decides aceptarlo o no, y puedes ajustar exactamente cuánto tiempo extra estás dispuesto a asumir.",
+  "@wizardTollHowBody": {},
+  "wizardTollPreference": "¿Cuál es tu punto de partida?",
+  "@wizardTollPreference": {},
+  "resultStartCompanionNow": "¡Salir ahora! · Modo Acompañante",
+  "@resultStartCompanionNow": {},
+  "resultCompanionFarFromOrigin": "Acércate al punto de salida para activar el modo conducción",
+  "@resultCompanionFarFromOrigin": {},
+  "resultReplanWithChanges": "Recalcular con los cambios aplicados",
+  "@resultReplanWithChanges": {},
+  "replanTipRoute": "Optimizando las etapas del día...",
+  "@replanTipRoute": {},
+  "replanTipFuel": "Buscando las mejores gasolineras en ruta...",
+  "@replanTipFuel": {},
+  "replanTipStops": "Ajustando paradas y tiempos de llegada...",
+  "@replanTipStops": {},
+  "dayExtendKmKeep": "Mantener ruta actual",
+  "dayExtendKmAdjust": "Extender el día (+{extraKm} km)",
+  "dayExtendKmTitle": "Tienes más tiempo disponible",
+  "@dayExtendKmTitle": {},
+  "dayExtendKmBody": "Con este horario podrías recorrer +{extraKm} km más. ¿Quieres extender el día o mantener la ruta actual?",
+  "@dayExtendKmBody": {
+    "placeholders": {
+      "extraKm": {
+        "type": "String"
+      }
+    }
+  },
+  "@dayExtendKmKeep": {},
+  "@dayExtendKmAdjust": {
+    "placeholders": {
+      "extraKm": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDayBarsTitle": "Distribució per etapes",
+  "@tripDayBarsTitle": {},
+  "styleSectionTitle": "Ritmo de conducción",
+  "styleSectionEyebrow": "Cómo organizas tus jornadas",
+  "historyReplanNetworkError": "La connexió s'ha tallat durant el recàlcul. Comprova el senyal i torna a intentar-ho.",
+  "@historyReplanNetworkError": {},
+  "retryLabel": "Torna-ho a intentar",
+  "@retryLabel": {}
 }

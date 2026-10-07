@@ -1,1235 +1,2547 @@
 {
-    "@@locale": "es",
-
-    "appName": "MyTravelPal",
-    "appTagline": "Planifica el viaje, no solo el destino",
-
-    "onboardEyebrowKiller": "LA FUNCIÓN QUE FALTABA",
-    "onboardTitleKiller": "Sal a la hora justa",
-    "onboardBodyKiller": "Analizamos el tráfico histórico alrededor de tu hora deseada y te enseñamos la ventana óptima — a veces salir 30 minutos antes te ahorra 90.",
-    "onboardEyebrowHonest": "PLANIFICACIÓN HONESTA",
-    "onboardTitleHonest": "Todos los costes, por adelantado",
-    "onboardBodyHonest": "Totales de peajes, gasolina y carga eléctrica más baratas en tu ruta, paradas sugeridas y hoteles o restaurantes al detour que te puedas permitir.",
-    "onboardEyebrowAlerts": "MANTENTE INFORMADO",
-    "onboardTitleAlerts": "Alertas que importan",
-    "onboardBodyAlerts": "Incendios, inundaciones, temporal grave, terremotos — solo eventos que suponen peligro real, y solo cuando afectan a tu ruta.",
-    "onboardSkip": "Saltar",
-    "onboardContinue": "Continuar",
-    "onboardGetStarted": "Comenzar",
-    "onboardFooter": "Empezar gratis · Premium desbloquea el resumen IA del viaje",
-
-    "loginContinueApple": "Continuar con Apple",
-    "loginContinueGoogle": "Continuar con Google",
-    "loginContinueFacebook": "Continuar con Facebook",
-    "loginContinueDemo": "Continuar como demo",
-    "loginContinueDemo": "Continuar como demo",
-    "loginDivider": "o",
-    "loginTerms": "Al continuar aceptas nuestros términos y política de privacidad.",
-    "loginBusy": "Iniciando sesión…",
-
-    "planTitle": "Planifica un viaje",
-    "planEyebrow": "EL PLANIFICADOR",
-    "planHero": "¿A dónde vamos\nhoy?",
-    "planHeroPersonal": "Hola {name}, ¿a dónde vamos?",
-    "@planHeroPersonal": {"placeholders": {"name": {"type": "String"}}},
-    "planIntro": "Elige dos puntos y una hora. Del resto nos ocupamos nosotros.",
-    "planFrom": "Desde",
-    "planTo": "Hasta",
-    "planDesiredDeparture": "Hora deseada de salida",
-    "planCta": "Planificar viaje",
-    "planCtaBusy": "Planificando tu viaje…",
-    "planCountriesNote": "Los países se detectan automáticamente desde tu ruta.",
-    "planSectionOptional": "En la ruta",
-    "planMoreOptions": "Más opciones",
-    "planLessOptions": "Menos opciones",
-    "planRoundTripChip": "Ida y vuelta",
-    "planLeaveNowFabTitle": "Salir ya",
-    "leaveNowConfirmTitle": "Salir ya hacia",
-    "leaveNowConfirmBody": "¿Vamos a {name}?",
-    "@leaveNowConfirmBody": {"placeholders": {"name": {}}},
-    "leaveNowConfirmCta": "Vamos",
-    "leaveNowConfirmChange": "Cambiar destino",
-    "settingsBiometric": "Desbloqueo biométrico",
-    "settingsBiometricSub": "Usa huella o cara para abrir la app",
-    "settingsBiometricUnavailable": "No disponible en este dispositivo",
-    "settingsReplayTutorial": "Repetir tutorial",
-    "settingsReplayTutorialSub": "Vuelve a mostrar los coach-marks guiados",
-    "settingsReplayTutorialToast": "Tutorial reiniciado. Vuelve a Planificar para verlo.",
-    "settingsColorPreset": "Paleta de color",
-    "settingsPresetForest": "Bosque",
-    "settingsPresetSunset": "Atardecer",
-    "settingsPresetOcean": "Océano",
-    "settingsDynamicColor": "Material You (dinámico)",
-    "settingsDynamicColorSub": "Adapta los colores a tu fondo de pantalla (Android 12+)",
-    "settingsOled": "Negro puro (OLED)",
-    "settingsOledSub": "Negros más profundos en modo oscuro, ahorra batería en pantallas OLED",
-    "parkingSearchTitle": "Buscar parking",
-    "parkingSearchLabel": "¿Dónde vas?",
-    "parkingSearchHint": "Elige un destino y verás los parkings cercanos.",
-    "parkingRadiusLabel": "Radio",
-    "parkingNoResults": "No hay parkings en este radio.",
-    "parkingPriceUnknown": "Precio ?",
-    "parkingCovered": "Cubierto",
-    "parkingFilterKids": "Niños",
-    "parkingFilterDogs": "Perros",
-    "parkingFilterToilets": "Aseos",
-    "parkingFilterFood": "Comida",
-    "parkingFilterShowers": "Duchas",
-    "parkingFilterEv": "Cargador EV",
-    "parkingFilterFuel": "Gasolinera",
-    "parkingFilterWheelchair": "Accesible",
-    "parkingFilterRv": "Autocaravana",
-    "parkingFilterTruck": "Camión",
-    "planFindParkingCta": "Buscar parking",
-    "poiFindParking": "Parking",
-    "parkingPrefTitle": "Parking",
-    "parkingPrefSub": "Muestra parkings cerca del destino.",
-    "parkingResultTitle": "Parkings cerca del destino",
-    "inspireTitle": "Inspiración de viaje",
-    "inspireHero": "Describe tu viaje soñado",
-    "inspireSub": "La IA propone un itinerario multi-día que puedes convertir en un plan real con un toque.",
-    "inspireHint": "ej. Escapada romántica de 4 días por los lagos italianos",
-    "inspireGenerate": "Inspírame",
-    "inspireGenerating": "Preparando tu ruta…",
-    "inspireError": "La musa está fuera de servicio. Prueba otro texto o inténtalo de nuevo.",
-    "inspireResultTitle": "Itinerario propuesto",
-    "inspireDayLabel": "Día {n}",
-    "@inspireDayLabel": {"placeholders": {"n": {}}},
-    "inspireBudgetLabel": "Presupuesto estimado",
-    "inspireConvertToPlan": "Convertir en plan real",
-    "inspireSave": "Guardar",
-    "inspireSavedToast": "Idea guardada. La encontrarás en tus inspiraciones guardadas.",
-    "inspireRecentTitle": "Recientes",
-    "inspireHistoryTitle": "Mis planes IA",
-    "inspireHistoryEmpty": "Aún no hay planes IA. Genera uno desde la pestaña Planificar.",
-    "inspireHistoryDelete": "Borrar",
-    "settingsMyAiPlans": "Mis planes IA",
-    "settingsMyAiPlansSub": "Historial de Trip Inspiration",
-    "inspireChatTitle": "Ajusta el itinerario",
-    "inspireChatHint": "Pide un cambio: \"quita Cremona\", \"salgo viernes por la tarde\"…",
-    "inspireExamplesTitle": "O parte de una idea",
-    "inspireExample1": "Fin de semana de castillos por el valle del Loira",
-    "inspireExample2": "Ruta costera de Barcelona a Marsella",
-    "inspireExample3": "5 días por los Alpes desde Milán",
-    "inspireExample4": "Norte de España con niños, sin autopistas",
-    "planOverrideForTrip": "Sobrescribir para este viaje",
-    "planOverrideActive": "Sobrescribiendo para este viaje",
-    "planOverrideClear": "Quitar",
-    "planTooltipDashboard": "Panel",
-    "planTooltipReport": "Reportar un evento",
-    "planTooltipSaved": "Viajes guardados",
-    "tabPlan": "Planear",
-    "tabCompanion": "Acompañante",
-    "tabMyTrips": "Mis viajes",
-    "companionHeroTitle": "Tu acompañante de viaje",
-    "companionHeroBody": "Marca tus condiciones y arranca. La app sigue tu conducción y te recomienda cuándo parar, dónde comer y dónde repostar.",
-    "companionConfigSection": "CONFIGURACIÓN",
-    "companionBreakInterval": "Sugerencias de descanso",
-    "companionSuggestBreak": "Sugerir descanso según tiempo de conducción",
-    "companionBreakHint": "Recomendar parada cada {hours} h de conducción",
-    "@companionBreakHint": {"placeholders": {"hours": {"type": "String"}}},
-    "companionFatigueStopExperimental": "Sugerir parar por cansancio (experimental)",
-    "companionFatigueStopHint": "Hoy sólo por temporizador — se dispara con micro-pausas cortas.",
-    "companionAlerts": "Tipos de aviso",
-    "companionAlertCriticalAdverse": "Incidentes críticos (incendios, riadas, terremotos)",
-    "companionAlertCriticalAdverseHint": "Recomendado. Algo grave pasando cerca — no es meteo simple.",
-    "companionAlertWeather": "Meteo por delante",
-    "companionAlertFuel": "Gasolineras más baratas en ruta",
-    "companionAlertBorder": "Aviso al cruzar fronteras",
-    "companionAlertToll": "Sugerencias para saltar peajes",
-    "companionAlertHotel": "Hotel al pasar tu hora + 5 h de conducción",
-    "companionStart": "Iniciar acompañante",
-    "companionComingSoon": "Modo acompañante próximamente",
-    "companionDriveTitle": "Acompañante activo",
-    "companionForegroundBody": "MyTravelPal está siguiendo tu conducción",
-    "companionLocationDenied": "Se necesita permiso de ubicación para el acompañante.",
-    "companionDriving": "conduciendo",
-    "companionAllGood": "Sin avisos — disfruta el viaje.",
-    "companionWeatherRowEmpty": "Sin alertas próximas",
-    "companionEndTitle": "¿Terminar acompañante?",
-    "companionEndBody": "El seguimiento se detendrá y los avisos activos se perderán.",
-    "companionEndKeep": "Seguir conduciendo",
-    "companionEndConfirm": "Terminar sesión",
-    "emergencyContactsTitle": "Contactos de emergencia",
-    "emergencyContactsSubtitle": "Reciben SMS si se detecta un impacto",
-    "emergencyContactsBody": "Hasta 3 personas reciben un SMS con tu ubicación si el acompañante detecta un impacto.",
-    "emergencyContactsEmpty": "Aún no hay contactos.",
-    "emergencyContactsAdd": "Añadir contacto",
-    "emergencyContactsPickFromDevice": "Elegir de contactos",
-    "emergencyContactsPickSearch": "Buscar contactos",
-    "emergencyContactsPermDenied": "Permiso denegado. Puedes añadir manualmente.",
-    "emergencyContactsNoDevice": "No hay contactos con teléfono en el dispositivo.",
-    "emergencyContactAddTitle": "Añadir contacto de emergencia",
-    "emergencyContactName": "Nombre",
-    "emergencyContactNameRequired": "Escribe un nombre",
-    "emergencyContactPhone": "Teléfono (E.164)",
-    "emergencyContactPhoneRequired": "Escribe un teléfono",
-    "emergencyContactPhoneInvalid": "Formato internacional: +34612345678",
-    "cancel": "Cancelar",
-    "save": "Guardar",
-    "sosTitle": "Posible impacto detectado",
-    "sosBody": "Pico de impacto {g}g · caída de velocidad {speed} km/h.",
-    "@sosBody": {"placeholders": {"g": {"type": "String"}, "speed": {"type": "String"}}},
-    "sosCountdown": "{seconds}s",
-    "@sosCountdown": {"placeholders": {"seconds": {"type": "int"}}},
-    "sosImOk": "Estoy bien — cancelar",
-    "sosCall112": "Llamar 112",
-    "sosCancelled": "Alerta cancelada.",
-    "sosClose": "Cerrar",
-    "sosNoContacts": "No hay contactos configurados. Añade uno en Ajustes.",
-    "sosSmsDispatched": "SMS preparado para {count} contacto(s).",
-    "@sosSmsDispatched": {"placeholders": {"count": {"type": "int"}}},
-    "sosSmsFailed": "No se pudo abrir SMS. Llama manualmente abajo.",
-    "sosSmsPrefix": "MyTravelPal — posible impacto detectado. Mi ubicación:",
-    "weatherForecastTitle": "Previsión 7 días",
-    "weatherToday": "Hoy",
-    "leaveNowTitle": "Salir ya con acompañante",
-    "leaveNowSubtitle": "Elige destino y arranca — te seguimos y te guiamos.",
-    "leaveNowSheetTitle": "¿A dónde vas?",
-    "leaveNowPremiumTitle": "Función Premium",
-    "leaveNowPremiumBody": "'Salir ya' combina el plan completo con el acompañante durante la conducción. Disponible con MyTravelPal Premium.",
-    "leaveNowPremiumDismiss": "Más tarde",
-    "leaveNowPremiumCta": "Probar 7 días gratis",
-    "shareCardOption": "Compartir como imagen",
-    "shareCardOptionSub": "Perfecto para Instagram Stories, WhatsApp, X",
-    "shareLinkOption": "Compartir como enlace",
-    "shareLinkOptionSub": "Resumen en texto + link para reabrir el plan",
-    "shareLiveHeadline": "Conduciendo por {city}",
-    "@shareLiveHeadline": {"placeholders": {"city": {"type": "String"}}},
-    "shareLiveCaption": "Conduciendo por {city} con MyTravelPal 🚗",
-    "@shareLiveCaption": {"placeholders": {"city": {"type": "String"}}},
-    "planAddStop": "Añadir parada",
-    "planStopDwellPassThrough": "Solo paso",
-    "planStopDwellOneNight": "1 noche",
-    "planStopDwellNights": "{n} noches",
-    "@planStopDwellNights": {"placeholders": {"n": {"type": "int"}}},
-    "planStopDwellHours": "{n} horas",
-    "@planStopDwellHours": {"placeholders": {"n": {"type": "int"}}},
-    "planStopDwellTitle": "¿Cuánto tiempo en {name}?",
-    "@planStopDwellTitle": {"placeholders": {"name": {}}},
-    "planAddStopTitle": "Nueva parada",
-    "planStopLabel": "Parada {n}",
-    "@planStopLabel": {"placeholders": {"n": {"type": "int"}}},
-    "planStopRemove": "Quitar parada",
-    "settingsCurrency": "Moneda",
-    "tabPlan": "Planificar",
-    "tabCompanion": "Acompañar",
-    "tabMyTrips": "Mis viajes",
-    "companionHeroTitle": "Tu compañero de viaje",
-    "companionHeroBody": "Configura tus condiciones y arranca. La app te acompaña mientras conduces y te recomienda paradas, comida y repostaje.",
-    "companionConfigSection": "CONFIGURACIÓN",
-    "_dedupCompanionBlock": "duplicate block from an old merge — kept as historical no-op; live values live in the earlier block.",
-    "companionStart": "Iniciar acompañamiento",
-    "companionComingSoon": "Modo acompañamiento disponible pronto!",
-    "planErrorPickEndpoints": "Elige un origen y un destino.",
-
-    "resultBestTimeToLeave": "MEJOR HORA PARA SALIR",
-    "resultTripSavings": "TUS AHORROS EN ESTE VIAJE",
-    "resultSavingsSuggestionsTitle": "Sugerencias para ahorrar más",
-    "resultSavingsClaimedHint": "Ahorro reflejado tras aplicar la ventana óptima.",
-    "resultTimeSavedLabel": "tiempo ahorrado",
-    "resultExtraTimeLabel": "tiempo extra",
-    "resultMoneySavedLabel": "dinero ahorrado",
-    "resultDepartureWindowTitle": "Ventana de salida",
-    "resultDepartureWindowDesc": "Minutos totales en cada hora candidata de salida.",
-    "resultCompareVariantsTitle": "Compara tus opciones",
-    "resultCompareVariantsEyebrow": "Variantes de ruta",
-    "resultAlertsTitle": "Alertas en tu ruta",
-    "resultRestStopsTitle": "Paradas de descanso",
-    "resultHotelsTitle": "Hoteles",
-    "resultRestaurantsTitle": "Restaurantes",
-    "resultFuelTitle": "Combustible",
-    "resultTollAlternativeEyebrow": "ALTERNATIVA SIN PEAJES",
-    "resultTollAlternativeWorthIt": "Merece la pena",
-    "resultTollAlternativeMarginal": "Marginal",
-    "resultShareTooltip": "Compartir este viaje",
-    "resultExplainTooltip": "Explícame el viaje (Premium)",
-    "resultSaveTooltip": "Guardar viaje",
-    "resultSaveChangesTooltip": "Guardar cambios",
-    "resultSavedTooltip": "Guardado",
-    "resultTripSaved": "Viaje guardado",
-
-    "dashboardTitle": "Panel",
-    "dashboardGreeting": "Hola, {name}",
-    "@dashboardGreeting": {"placeholders": {"name": {"type": "String"}}},
-    "dashboardTravelSoFar": "Tus viajes hasta ahora",
-    "dashboardTrips": "Viajes",
-    "dashboardDistance": "Distancia",
-    "dashboardHours": "Horas",
-    "dashboardTimeSaved": "TIEMPO AHORRADO",
-    "dashboardMoneySaved": "DINERO AHORRADO",
-    "dashboardFuelBudget": "PRESUPUESTO DE COMBUSTIBLE",
-    "dashboardTopSavers": "Mejores ahorros",
-    "dashboardCountries": "Países",
-    "dashboardSignOut": "Cerrar sesión",
-
-    "profileTitle": "Perfil del viaje",
-    "profileOverrideTitle": "Sobrescribir para este viaje",
-    "profileSave": "Guardar",
-    "profileUse": "Usar",
-    "profileWhoTravelling": "Quién viaja",
-    "profileTravellers": "Viajeros",
-    "profileHasKids": "Viajando con niños",
-    "profileHasPets": "Viajando con mascotas",
-    "profileVehicle": "Vehículo",
-    "profileMealTimes": "Horario de comidas",
-    "profileReminders": "Recordatorios",
-    "profilePremiumSection": "Premium (demo)",
-    "profileClearProfile": "Borrar perfil",
-
-    "commonRetry": "Reintentar",
-    "commonCancel": "Cancelar",
-    "commonClear": "Borrar",
-    "commonShowNMore": "Ver {n} más",
-    "@commonShowNMore": {"placeholders": {"n": {"type": "int"}}},
-    "commonShowLess": "Ver menos",
-    "planLoadingElapsed": "{seconds}s transcurridos",
-    "@planLoadingElapsed": {"placeholders": {"seconds": {"type": "int"}}},
-    "planLoadingLongCrossingCountries": "Cruzando peajes en todos los países que vas a atravesar…",
-    "planLoadingLongScanningFuel": "Escaneando precios de combustible europeos a lo largo de tu ruta…",
-    "planLoadingLongBigTrip": "Los viajes largos tardan un poco más — cargando datos extra de hoteles y descansos.",
-    "planLoadingLongAlmostDone": "Ya casi está — últimos retoques al itinerario.",
-    "commonSave": "Guardar",
-    "commonRemove": "Quitar",
-
-    "searchPlaceholderLegacy": "Buscar una ciudad…",
-    "searchNoMatches": "Sin resultados.",
-    "searchStartTyping": "Escribe al menos 2 caracteres.",
-    "searchRecent": "RECIENTES",
-    "searchUseMyLocation": "Usar mi ubicación",
-
-    "locationServiceOff": "La ubicación está desactivada en este dispositivo.",
-    "locationPermissionDenied": "Permiso de ubicación denegado.",
-    "locationUnavailable": "No pudimos determinar tu ubicación.",
-
-    "favoritesTitle": "Favoritos",
-    "favoritesEmptyHotels": "Aún no tienes hoteles favoritos. Toca la estrella en cualquier hotel para guardarlo.",
-    "favoritesEmptyRestaurants": "Aún no tienes restaurantes favoritos. Toca la estrella en cualquier restaurante para guardarlo.",
-    "favoritesTabHotels": "Hoteles",
-    "favoritesTabRestaurants": "Restaurantes",
-    "favoritesTooltipAdd": "Añadir a favoritos",
-    "favoritesTooltipRemove": "Quitar de favoritos",
-    "planTooltipFavorites": "Favoritos",
-
-    "resultBackToPlan": "Volver al plan",
-    "alertsAlongYourRoute": "Alertas en tu ruta",
-    "alertsAlongYourRouteDesc": "Incendios, inundaciones, temporal grave, nieve, terremotos, corrimientos — ordenados por severidad.",
-    "restStopsHint": "Recomendadas cada 2 h de conducción. Los descansos cortos te mantienen despierto en trayectos largos.",
-    "fuelAlongTheRoute": "Combustible en la ruta",
-    "hotelsNearYourRoute": "Hoteles cerca de tu ruta",
-    "restaurantsNearYourRoute": "Restaurantes cerca de tu ruta",
-    "narrativeTitle": "Resumen del viaje",
-    "narrativeGenerating": "Escribiendo tu resumen…",
-    "narrativeFailed": "No pudimos generar el resumen. Vuelve a intentarlo en un momento.",
-    "narrativeFooter": "Generado por Claude — puede no reflejar cambios en tiempo real.",
-    "narrativePremiumBadge": "Premium",
-    "shareTripSubject": "Mi viaje con MyTravelPal",
-    "shareFormatTitle": "Compartir como…",
-    "shareFormatStory": "Story · 9:16",
-    "shareFormatStorySub": "Instagram / TikTok / WhatsApp Stories",
-    "shareFormatFeed": "Cuadrado · 1:1",
-    "shareFormatFeedSub": "Feed de Instagram, Facebook, LinkedIn",
-    "shareTitle": "MyTravelPal — plan de viaje",
-    "shareRouteLine": "{km} km · {hours} h flujo libre · peajes {tolls} €",
-    "@shareRouteLine": {"placeholders": {"km": {"type": "String"}, "hours": {"type": "String"}, "tolls": {"type": "String"}}},
-    "shareBestTime": "Mejor hora para salir: {when} ({minutes} min totales)",
-    "@shareBestTime": {"placeholders": {"when": {"type": "String"}, "minutes": {"type": "String"}}},
-    "shareTollFreeAlt": "Alternativa sin peajes: ahorra {savings} € por +{minutes} min",
-    "@shareTollFreeAlt": {"placeholders": {"savings": {"type": "String"}, "minutes": {"type": "String"}}},
-    "shareRefuelHint": "Reposta en {cheap} (~{price}€/L) antes de {pricey} — ahorra ~{savings}€/depósito",
-    "@shareRefuelHint": {"placeholders": {"cheap": {"type": "String"}, "price": {"type": "String"}, "pricey": {"type": "String"}, "savings": {"type": "String"}}},
-    "shareHotelsHeader": "Mejores hoteles considerados:",
-    "shareRestaurantsHeader": "Mejores restaurantes considerados:",
-    "shareHotelLine": "{name} — {price} €/noche · {km} km de la ruta",
-    "@shareHotelLine": {"placeholders": {"name": {"type": "String"}, "price": {"type": "String"}, "km": {"type": "String"}}},
-    "shareRestaurantLine": "{name} — {price} €/comida · {km} km de la ruta",
-    "@shareRestaurantLine": {"placeholders": {"name": {"type": "String"}, "price": {"type": "String"}, "km": {"type": "String"}}},
-    "shareOpenInApp": "Ábrelo en MyTravelPal:",
-
-    "eventReport": "Reportar un evento",
-    "eventDescription": "Descripción",
-    "eventType": "Tipo",
-    "eventSeverity": "Severidad",
-    "eventLocation": "Ubicación",
-    "eventSubmit": "Enviar",
-    "eventSubmitted": "Reportado.",
-
-    "resultStatDistance": "Distancia",
-    "resultStatFreeFlow": "Sin tráfico",
-    "resultStatTolls": "Peajes",
-    "resultEyebrowNearRoute": "Cerca de tu ruta",
-    "resultEyebrowAlongRoute": "En la ruta",
-    "resultAlerts": "Alertas",
-    "resultRestStops": "Paradas recomendadas",
-    "resultHotels": "Hoteles",
-    "resultRestaurants": "Restaurantes",
-    "resultFuel": "Combustible",
-    "resultOptimizedFuelBudget": "Presupuesto estimado de combustible",
-    "resultCompareTitle": "Compara tus opciones",
-    "resultCompareStraightApprox": "Aprox. línea recta.",
-    "resultSleepAt": "Dormir · {when}",
-    "@resultSleepAt": {"placeholders": {"when": {"type": "String"}}},
-    "resultHourlyTollEyebrow": "VEREDICTO DE PEAJES POR HORA",
-    "resultSkipLabel": "Saltar",
-    "resultKeepLabel": "Mantener",
-    "resultSaveExactly": "Ahorra ",
-
-    "notificationsLeaveSoonTitle": "Toca salir pronto",
-
-    "localeSystem": "Sistema",
-    "localeMenuTooltip": "Idioma",
-
-    "dashboardCountry": "País",
-    "dashboardNoTripsYet": "Aún no hay viajes guardados. Planifica y guarda uno para ver estadísticas.",
-    "dashboardStatCards": "RESUMEN",
-    "profileVehicleType": "Tipo de vehículo",
-    "profileFuelType": "Tipo de combustible",
-    "profileConsumption": "Consumo",
-    "profileEvRange": "Autonomía eléctrica",
-    "profileFuelTank": "Depósito",
-    "profileBreakfast": "Desayuno",
-    "profileLunch": "Comida",
-    "profileDinner": "Cena",
-    "profileStopMinutes": "Duración típica de parada",
-    "profileReminderMinutes": "Aviso antes de salir",
-    "profilePremiumHint": "Activa para previsualizar funciones Premium en local.",
-    "profileNoProfile": "Aún no has guardado ningún perfil.",
-
-    "eventPlaceholderDescription": "Breve descripción de lo que has visto",
-    "eventCurrentLocation": "Ubicación actual",
-    "eventPickOnMap": "Elegir en el mapa",
-    "eventLocationCoords": "Seleccionado: {lat}, {lon}",
-    "@eventLocationCoords": {"placeholders": {"lat": {"type": "String"}, "lon": {"type": "String"}}},
-
-    "narrativeRegenerate": "Regenerar",
-    "narrativeUpgrade": "Desbloquea el resumen IA con Premium.",
-
-    "compareVariantsRecommended": "Recomendado",
-    "compareVariantsFastest": "Más rápido",
-    "compareVariantsCheapest": "Más barato",
-    "compareVariantsScenic": "Paisajístico",
-    "compareVariantsAvoidTolls": "Sin peajes",
-    "compareVariantsAvoidMotorways": "Sin autopistas",
-
-    "hourlyBestHours": "Mejores horas para saltar peajes",
-    "hourlyWorstHours": "Peores horas para saltar peajes",
-    "partialTollSkipsTitle": "Peaje a peaje",
-    "partialTollSkipsEyebrow": "Detalle",
-
-    "sleepEyebrow": "PARA DORMIR",
-    "sleepNoHotelSuggestion": "Ningún hotel elegido — mira la sección de Hoteles.",
-    "lunchEyebrow": "PARADA DE COMIDA",
-    "dinnerEyebrow": "PARADA DE CENA",
-    "breakfastEyebrow": "PARADA DE DESAYUNO",
-
-    "resultCompareEyebrow": "Variantes de ruta",
-    "resultCompareDescription": "Mismo origen y destino — prioridades distintas. Los tiempos son sin tráfico.",
-    "resultVariantDashed": "Discontinua en el mapa de arriba",
-    "dayTollsHeader": "Peajes de este día · {amount} € ({count})",
-    "@dayTollsHeader": {"placeholders": {"amount": {}, "count": {"type": "int"}}},
-    "dayTollsSavedSummary": "Ahorras {amount} € saltando {count}.",
-    "@dayTollsSavedSummary": {"placeholders": {"amount": {}, "count": {"type": "int"}}},
-    "tollHourGoodToSkip": "Buena hora para saltar ({hh}:00)",
-    "@tollHourGoodToSkip": {"placeholders": {"hh": {}}},
-    "tollHourAvoidSkip": "No lo saltes — hora pico {hh}:00",
-    "@tollHourAvoidSkip": {"placeholders": {"hh": {}}},
-    "partialTollsPerDayHint": "También puedes marcarlos por tramo en el resumen del viaje ↓",
-    "resultCityHint": "Cerca de {city}",
-    "@resultCityHint": {"placeholders": {"city": {}}},
-    "resultSavingsShiftAndSkip": "Cambiando la hora de salida y saltando peajes.",
-    "resultSavingsShift": "Cambiando la salida a la ventana recomendada.",
-    "resultSavingsSkip": "Cogiendo la alternativa sin peajes.",
-    "resultSavingsNone": "Sin ahorros identificados para esta ruta todavía.",
-    "resultBypassSavingsPrefix": "Podrías ahorrar hasta",
-    "resultBypassSavingsSuffix": "con +{minutes} min extra",
-    "@resultBypassSavingsSuffix": {
-        "placeholders": {
-            "minutes": {"type": "String"}
-        }
-    },
-    "resultArrival": "LLEGADA",
-    "resultShift": "CAMBIO",
-    "resultTraffic": "TRÁFICO",
-    "resultTotal": "TOTAL",
-    "resultRestStopNoRestaurant": "Parada en el km {km} — sin restaurante compatible.",
-    "@resultRestStopNoRestaurant": {"placeholders": {"km": {"type": "String"}}},
-    "resultNoHotelHere": "Buena parada aquí (~{km} km). Sin hotel compatible.",
-    "@resultNoHotelHere": {"placeholders": {"km": {"type": "String"}}},
-    "resultMealFallback": "Comida",
-    "resultHourlyExplainer": "Común en Francia e Italia: salir antes de un peaje caro, coger una carretera paralela un tramo y volver a entrar — suele añadir 15-40 min pero ahorra 5-15 €.",
-
-    "profileSaved": "Perfil guardado",
-    "profileWhoEyebrow": "Personas",
-    "profileKidsSubtitle": "Prioriza restaurantes y hoteles amigables con niños.",
-    "profilePetsSubtitle": "Prioriza lugares que admiten mascotas y con aparcamiento.",
-    "profileVehicleEyebrow": "Para coste y aparcamiento",
-    "profileMealsEyebrow": "Para casar con paradas de restaurante",
-    "profileRemindersEyebrow": "Notificaciones locales",
-    "profileNotifyBefore": "Avisar antes de la salida",
-    "profileNotifyOff": "Desactivado — no se programará recordatorio.",
-    "profileNotifyMinutesBefore": "{minutes} minutos antes",
-    "@profileNotifyMinutesBefore": {"placeholders": {"minutes": {"type": "int"}}},
-    "profilePremiumEyebrow": "Toggle local · sin pago real",
-    "profilePremiumBody": "El gating real con StoreKit / Play Billing viene después. De momento este toggle activa Premium en local para que puedas previsualizar esas funciones.",
-    "profileSimulatePremium": "Simular Premium",
-    "profileSimulatePremiumSubtitle": "Desbloquea el resumen IA y el análisis de peajes por hora.",
-    "profileOverrideHeroDesc": "Cambia tu perfil solo para este viaje — otro vehículo, otros viajeros u otras horas de comida sin tocar tu perfil guardado.",
-    "profileGlobalHeroDesc": "Configúralo una vez. Cada plan lo usa para ordenar hoteles y restaurantes, estimar combustible y ajustar las paradas de comida.",
-
-    "eventPickPlace": "Elige un lugar y describe lo que has visto.",
-    "eventThankYou": "Reporte enviado — ¡gracias!",
-    "eventCouldNotSubmit": "No se pudo enviar: {reason}",
-    "@eventCouldNotSubmit": {"placeholders": {"reason": {"type": "String"}}},
-    "eventIntro": "Ayuda a otros conductores a saber lo que has visto. Los reportes expiran a las 24 horas por defecto.",
-    "eventWhatHappened": "Qué ha pasado",
-    "eventWhatHappenedEyebrow": "Tipo",
-    "eventSeverityInfo": "Info",
-    "eventSeverityWarning": "Aviso",
-    "eventSeverityCritical": "Crítico",
-    "eventWhere": "Dónde",
-    "eventWhereEyebrow": "Ciudad más cercana",
-    "eventDescribeTitle": "Descríbelo",
-    "eventDescribeEyebrow": "Corto y útil",
-    "eventDescribeHint": "p.ej. Árboles caídos en A6 sur, 2 carriles cortados",
-    "eventSubmitting": "Enviando…",
-    "eventSubmitReport": "Enviar reporte",
-
-    "narrativeBusy": "Componiendo tu resumen de viaje…",
-    "narrativeErrorTitle": "No pudimos obtener el resumen",
-    "narrativeGeneratedAt": "Generado {when}",
-    "@narrativeGeneratedAt": {"placeholders": {"when": {"type": "String"}}},
-    "narrativeReadAloud": "Leer en voz alta",
-    "narrativeStop": "Parar",
-
-    "historyTitle": "Viajes guardados",
-    "historyEmptyTitle": "Aún no hay viajes guardados",
-    "historyEmptyBody": "Planifica un viaje y toca el marcador para guardarlo aquí.",
-    "historyPlanCta": "Planificar un viaje",
-    "historyDeleted": "Borrado {trip}",
-    "@historyDeleted": {"placeholders": {"trip": {"type": "String"}}},
-    "historyReplanFailed": "Falló el replan: {status}",
-    "@historyReplanFailed": {"placeholders": {"status": {"type": "int"}}},
-    "historyDeleteTooltip": "Borrar",
-    "historyReopenCta": "Ver plan",
-    "historyRepeatCta": "Repetir",
-    "resultFuelCollapsedHint": "Mostrar las {count} gasolineras más baratas de la ruta",
-    "@resultFuelCollapsedHint": {"placeholders": {"count": {"type": "int"}}},
-    "resultBestTimeVsFreeFlow": "{delta} min vs flujo libre",
-    "@resultBestTimeVsFreeFlow": {"placeholders": {"delta": {"type": "String"}}},
-    "resultBestTimeEarlier": "{minutes} min antes de tu hora deseada",
-    "@resultBestTimeEarlier": {"placeholders": {"minutes": {"type": "int"}}},
-    "resultBestTimeLater": "{minutes} min después de tu hora deseada",
-    "@resultBestTimeLater": {"placeholders": {"minutes": {"type": "int"}}},
-    "resultHeroSavedBadge": "{magnitude} ahorrados",
-    "@resultHeroSavedBadge": {"placeholders": {"magnitude": {"type": "String"}}},
-    "consistencyNeedsReview": "Revisa tu plan de viaje",
-    "consistencyNeedsReviewErrors": "Revisa tu plan de viaje · {errors} errores",
-    "@consistencyNeedsReviewErrors": {"placeholders": {"errors": {"type": "int"}}},
-    "consistencyNeedsReviewMixed": "Revisa tu plan de viaje · {errors} error(es), {warnings} aviso(s)",
-    "@consistencyNeedsReviewMixed": {"placeholders": {"errors": {"type": "int"}, "warnings": {"type": "int"}}},
-    "consistencyFuelNoStations": "El viaje son {km} km, pero de momento no vemos gasolineras a lo largo de la ruta. Los precios y las paradas sugeridas no están disponibles para este tramo.",
-    "@consistencyFuelNoStations": {"placeholders": {"km": {"type": "String"}}},
-    "consistencyFuelNoStationsHint": "Puede que los datos aún estén cargando. Prueba a refrescar en unos minutos, o añade tu propia parada tocando el mapa.",
-    "consistencyFuelRangeExceeded": "Tu vehículo no cubre la ruta con un solo depósito o carga. Vas a necesitar repostar o cargar durante el viaje.",
-    "consistencyMealBeforeDeparture": "Se ha programado {slot} en el km {km} antes de la salida del viaje. Ajusta el horario de la parada o la hora de salida.",
-    "@consistencyMealBeforeDeparture": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}}},
-    "consistencyMealAfterArrival": "Se ha programado {slot} en el km {km} después de la llegada. Ajusta el horario de la parada o el ritmo del viaje.",
-    "@consistencyMealAfterArrival": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}}},
-    "consistencyMealImpossibleSpeed": "Para llegar a {slot} en el km {km} desde la salida haría falta ~{kmh} km/h — no es posible. Revisa la parada.",
-    "@consistencyMealImpossibleSpeed": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "consistencyMealSuspiciousSpeed": "Para llegar a {slot} en el km {km} desde la salida se necesitan ~{kmh} km/h. Comprueba si el ritmo es realista.",
-    "@consistencyMealSuspiciousSpeed": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "consistencyMealTooCloseToArrival": "{slot} en el km {km} está muy cerca de la llegada ({mins} min antes). Igual conviene comer ya en el destino.",
-    "@consistencyMealTooCloseToArrival": {"placeholders": {"slot": {"type": "String"}, "km": {"type": "String"}, "mins": {"type": "String"}}},
-    "consistencySleepBeforeDeparture": "El descanso nocturno se ha programado antes de la salida (km {km}). Revisa la hora.",
-    "@consistencySleepBeforeDeparture": {"placeholders": {"km": {"type": "String"}}},
-    "consistencySleepAfterArrival": "El descanso nocturno se ha programado después de la llegada (km {km}). Es posible que sobre.",
-    "@consistencySleepAfterArrival": {"placeholders": {"km": {"type": "String"}}},
-    "consistencySleepImpossibleSpeed": "Llegar al descanso en el km {km} requiere ~{kmh} km/h — imposible. Revisa el tramo.",
-    "@consistencySleepImpossibleSpeed": {"placeholders": {"km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "consistencySleepSuspiciousSpeed": "El descanso en el km {km} implica ~{kmh} km/h de media. Comprueba si el ritmo es realista.",
-    "@consistencySleepSuspiciousSpeed": {"placeholders": {"km": {"type": "String"}, "kmh": {"type": "String"}}},
-    "mealSlotBreakfastCap": "Desayuno",
-    "mealSlotLunchCap": "Comida",
-    "mealSlotDinnerCap": "Cena",
-    "consistencyHeadsUp": "Aviso sobre tu plan de viaje",
-    "consistencyHeadsUpWarnings": "Aviso sobre tu plan de viaje · {warnings} avisos",
-    "@consistencyHeadsUpWarnings": {"placeholders": {"warnings": {"type": "int"}}},
-    "consistencyMoreCount": "+{count} más",
-    "@consistencyMoreCount": {"placeholders": {"count": {"type": "int"}}},
-    "planProfileClearOverride": "Deshacer ajuste",
-    "weatherSunny": "Soleado",
-    "weatherPartlyCloudy": "Parcialmente nublado",
-    "weatherCloudy": "Nublado",
-    "weatherFog": "Niebla",
-    "weatherDrizzle": "Llovizna",
-    "weatherRain": "Lluvia",
-    "weatherHeavyRain": "Lluvia intensa",
-    "weatherSnow": "Nieve",
-    "weatherHeavySnow": "Nevada intensa",
-    "weatherThunderstorm": "Tormenta",
-    "historyBestAt": "Óptima {when}",
-    "@historyBestAt": {"placeholders": {"when": {"type": "String"}}},
-    "historyWantedAt": "Deseada {when}",
-    "@historyWantedAt": {"placeholders": {"when": {"type": "String"}}},
-
-    "searchPlaceholder": "Buscar una ciudad, museo, lugar…",
-    "placesSectionTitle": "LUGARES GUARDADOS",
-    "placeSaveAsTooltip": "Guardar como lugar",
-    "placeSaveDialogTitle": "Guardar como…",
-    "placeCustomLabel": "Etiqueta",
-    "placeCustomHint": "Casa, trabajo, abuela…",
-    "placePresetHome": "Casa",
-    "placePresetWork": "Trabajo",
-    "placePresetSchool": "Colegio",
-    "placePresetGym": "Gimnasio",
-    "placeSavedAs": "Guardado como {label}",
-    "@placeSavedAs": {"placeholders": {"label": {"type": "String"}}},
-    "favoritesTabPlaces": "Lugares",
-    "favoritesEmptyPlaces": "Aún no hay lugares guardados. Toca la estrella en cualquier resultado de búsqueda para guardarlo.",
-
-    "settingsTitle": "Ajustes",
-    "settingsSectionAppearance": "Apariencia",
-    "settingsDensityLabel": "Densidad",
-    "settingsDensityComfortable": "Cómoda",
-    "settingsDensityCompact": "Compacta",
-    "settingsLanguage": "Idioma",
-    "settingsTheme": "Tema",
-    "settingsSectionUnits": "Unidades",
-    "settingsUnitSystem": "Sistema de unidades",
-    "settingsUnitsMetric": "Métrico",
-    "settingsUnitsImperial": "Imperial",
-    "settingsSectionTrip": "Viaje",
-    "settingsSectionAbout": "Acerca de",
-    "settingsSectionData": "Tus datos",
-    "settingsExportData": "Descargar mis datos",
-    "settingsExportDataSub": "Obtén un JSON con todo lo que MyTravelPal guarda sobre ti.",
-    "settingsExportError": "No se pudieron exportar los datos — revisa tu conexión.",
-    "settingsDeleteAccount": "Borrar mi cuenta",
-    "settingsDeleteAccountSub": "Elimina tu perfil, viajes guardados y preferencias de forma permanente.",
-    "settingsDeleteAccountConfirmTitle": "¿Borrar cuenta?",
-    "settingsDeleteAccountConfirmBody": "Esto borra tu perfil y todos los viajes guardados de nuestros servidores. No se puede deshacer.",
-    "settingsDeleteAccountCancel": "Cancelar",
-    "settingsDeleteAccountConfirm": "Borrar para siempre",
-    "settingsDeleteAccountPartial": "Sesión cerrada, pero el servidor puede aún tener datos. Reintenta con conexión estable.",
-    "settingsDeleteAccountDone": "Cuenta borrada. Sesión cerrada.",
-    "settingsDeleteAccountInProgress": "Borrando cuenta…",
-    "settingsSupport": "Soporte y contacto",
-    "settingsPrivacyPolicy": "Política de privacidad",
-    "settingsTerms": "Términos del servicio",
-    "settingsVersion": "Versión",
-    "planTooltipSettings": "Ajustes",
-
-    "styleSectionTitle": "Estilo de viaje",
-    "styleSectionEyebrow": "Cómo te gusta conducir",
-    "stylePresetDirect": "Directo",
-    "stylePresetBalanced": "Equilibrado",
-    "stylePresetSlow": "Tranquilo",
-    "stylePresetDirectHint": "Del tirón, paradas mínimas, sin dormir por el camino.",
-    "stylePresetBalancedHint": "Ritmo natural, descansos cuando tenga sentido.",
-    "stylePresetSlowHint": "Disfruta la conducción, paradas generosas, divide trayectos largos.",
-    "styleCustom": "Personalizado",
-    "styleAdvanced": "Avanzado",
-    "stylePaceLabel": "Ritmo",
-    "stylePacePush": "Del tirón",
-    "stylePaceSteady": "Normal",
-    "stylePaceSavour": "Con calma",
-    "styleOvernightLabel": "Paradas para dormir",
-    "styleOvernightNever": "Nunca",
-    "styleOvernightIfNeeded": "Si hace falta",
-    "styleOvernightAlwaysIfLong": "Dividir trayectos largos",
-    "styleDailyCapLabel": "Máx. horas al volante por día",
-    "styleBedtimeLabel": "Hora de dormir",
-    "styleWakeLabel": "Hora de despertarse",
-    "styleDrivingStartLabel": "Hora preferida para empezar a conducir",
-    "dayEditSheetTitle": "Ajustar día {day}",
-    "@dayEditSheetTitle": {"placeholders": {"day": {"type": "int"}}},
-    "dayEditStartHour": "Hora de empezar a conducir",
-    "dayEditMaxDriving": "Máximo horas al volante: {hours} h (incluye descansos)",
-    "@dayEditMaxDriving": {"placeholders": {"hours": {"type": "int"}}},
-    "dayEditSave": "Aplicar",
-    "dayEditCancel": "Cancelar",
-    "dayEditReset": "Restablecer",
-    "resultReplanning": "Recalculando...",
-    "styleBreakLabel": "Estilo de parada",
-    "styleBreakMinimal": "Mínimo",
-    "styleBreakScenic": "Paisajístico",
-    "styleBreakFoodie": "Gastronómico",
-
-    "planStyleChip": "{preset} · {hours}h/día",
-    "@planStyleChip": {"placeholders": {"preset": {"type": "String"}, "hours": {"type": "int"}}},
-    "planStyleChipCustom": "Personalizado · {hours}h/día",
-    "@planStyleChipCustom": {"placeholders": {"hours": {"type": "int"}}},
-    "planStyleOverrideTitle": "Estilo para este viaje",
-    "planStyleOverrideSubtitle": "Sobrescribe tu perfil guardado solo para este plan.",
-    "planStyleUseSavedProfile": "Usar mi perfil guardado",
-
-    "arrivalHintTitle": "Llegarías a las {hour}:00",
-    "@arrivalHintTitle": {"placeholders": {"hour": {"type": "String"}}},
-    "arrivalHintBody": "Más tarde que tu hora de dormir ({bedtime}:00). Considera parar a dormir — los hoteles están abajo.",
-    "@arrivalHintBody": {"placeholders": {"bedtime": {"type": "String"}}},
-    "arrivalHintCta": "Ver hoteles",
-
-    "vehicleTypeCar": "Coche",
-    "vehicleTypeMotorbike": "Moto",
-    "vehicleTypeVan": "Furgoneta",
-    "vehicleTypeCamper": "Autocaravana",
-    "fuelTypePetrol": "Gasolina",
-    "fuelTypeDiesel": "Diésel",
-    "fuelTypeHybrid": "Híbrido",
-    "fuelTypeElectric": "Eléctrico",
-    "fuelTypeLpg": "GLP",
-
-    "routeVariantFastest": "Más rápida",
-    "routeVariantTollFree": "Sin peajes",
-    "routeVariantScenic": "Escénica",
-
-    "eventTypeFire": "Incendio",
-    "eventTypeStrike": "Huelga",
-    "eventTypeWeather": "Meteorología adversa",
-    "eventTypeAccident": "Accidente",
-    "eventTypeRoadwork": "Obras",
-    "eventTypeFlood": "Inundación",
-    "eventTypeSnow": "Nieve",
-    "eventTypeProtest": "Manifestación",
-    "eventTypeEarthquake": "Terremoto",
-    "eventTypeLandslide": "Deslizamiento",
-    "eventTypeAvalanche": "Avalancha",
-    "eventTypeClosure": "Vía cortada",
-    "eventTypeHeatwave": "Ola de calor",
-    "eventTypeHeavyRain": "Lluvia fuerte",
-    "eventTypeHail": "Granizo",
-    "eventTypeThunderstorm": "Tormenta eléctrica",
-    "eventTypeHighWind": "Viento fuerte",
-    "eventTypeDenseFog": "Niebla densa",
-    "eventTypeFreezingRain": "Lluvia helada",
-    "eventTypeOther": "Otros",
-    "eventSeverityCritical": "Crítica",
-    "eventSeverityWarning": "Aviso",
-    "eventSeverityInfo": "Información",
-
-    "tollStretchLabel": "Tramo con peaje {index} / {total}",
-    "@tollStretchLabel": {"placeholders": {"index": {"type": "int"}, "total": {"type": "int"}}},
-    "tollBoothLabel": "Peaje {index}",
-    "@tollBoothLabel": {"placeholders": {"index": {"type": "int"}}},
-
-    "addToRouteTooltip": "Añadir a la ruta",
-    "addedToRouteLabel": "AÑADIDO",
-    "replanWithStops": "Recalcular ruta con paradas",
-    "removeFromRouteTooltip": "Quitar de la ruta",
-    "addedStopsChip": "{count, plural, =1{1 parada añadida · +{minutes} min} other{{count} paradas añadidas · +{minutes} min}}",
-    "@addedStopsChip": {"placeholders": {"count": {"type": "int"}, "minutes": {"type": "String"}}},
-    "addedStopsClear": "Limpiar",
-
-    "settingsLicensesAndData": "Licencias y fuentes de datos",
-    "settingsLicensesAndDataSub": "Atribución de datos abiertos y librerías",
-    "attributionsTitle": "Licencias y datos",
-    "attributionsIntro": "MyTravelPal se apoya en fuentes de datos abiertas y librerías open-source. Esta pantalla acredita cada fuente, enlaza con sus licencias y cubre nuestras obligaciones legales de atribución.",
-    "attributionsSectionMap": "Mapa y geodatos",
-    "attributionsSectionFuel": "Precios de combustible",
-    "attributionsSectionHazards": "Eventos adversos",
-    "attributionsSectionWeather": "Meteorología",
-    "attributionsSectionSoftware": "Librerías de software",
-    "attributionsShowLicenses": "Ver licencias de paquetes",
-    "attributionsFailed": "No se pudieron cargar las atribuciones. Inténtalo de nuevo.",
-
-    "fuelPriceUnavailable": "Precio no disponible",
-    "fuelPriceUnavailableHint": "No hay feed público de precios en este país todavía",
-
-    "planSectionOptionalEyebrow": "Opcional",
-    "planOptAlertsTitle": "Avisarme de eventos críticos en la ruta",
-    "planOptAlertsSub": "Incendios, inundaciones, temporal grave y peligros serios a menos de 25 km de la ruta.",
-    "planOptTollFreeTitle": "Mostrar alternativa sin peajes",
-    "planOptTollFreeSub": "Compara una ruta que evita peajes — dinero ahorrado vs. minutos añadidos.",
-    "planOptHourlyTollTitle": "Análisis de peajes por hora",
-    "planOptHourlyTollSub": "A qué horas del día evitar peajes realmente compensa (según el tráfico).",
-    "planOptRouteVariantsTitle": "Comparar variantes de ruta",
-    "planOptRouteVariantsSub": "Más rápida vs. sin peajes vs. escénica — las tres en paralelo en los resultados.",
-    "planOptAvoidMotorwaysTitle": "Evitar autopistas",
-    "planOptAvoidMotorwaysSub": "Más lento y más largo, pero sin peajes y más tranquilo.",
-    "planOptPreferScenicTitle": "Preferir escénica",
-    "planOptPreferScenicSub": "Prioriza carreteras más interesantes. Algo más lento.",
-    "planPremiumBadge": "Premium",
-
-    "planProfileTravellers": "{count, plural, =1{1 viajero} other{{count} viajeros}}",
-    "@planProfileTravellers": {"placeholders": {"count": {"type": "int"}}},
-    "planProfileWithKids": "niños",
-    "planProfileWithPets": "mascotas",
-    "planProfileOverrideActive": "SUSTITUCIÓN ACTIVA",
-    "planProfileOverride": "Sustituir para este viaje",
-    "planProfileOverriding": "Sustituyendo para este viaje",
-    "profilePromptSetup": "Configura tu perfil de viaje",
-
-    "hotelPrefTitle": "Buscar hoteles cerca de las paradas",
-    "hotelPrefSubOn": "Muestra opciones de alojamiento cerca de cada punto de pernocta",
-    "hotelPrefSubOff": "Desactivado",
-    "restaurantPrefTitle": "Añadir restaurantes en la ruta",
-    "restaurantPrefSubEnabled": "Hasta {minutes} min de desvío · {band}",
-    "@restaurantPrefSubEnabled": {"placeholders": {"minutes": {"type": "int"}, "band": {"type": "String"}}},
-    "restaurantPrefSubOff": "Desactivado. Actívalo para ver restaurantes cerca de la ruta.",
-    "prefMaxDetour": "Desvío máx: {minutes} min",
-    "@prefMaxDetour": {"placeholders": {"minutes": {"type": "int"}}},
-    "prefBandBudget": "Económico",
-    "prefBandMid": "Medio",
-    "prefBandLuxury": "Lujo",
-    "prefBandAny": "Cualquiera",
-
-    "mealSlotBreakfast": "Sugeridos para desayuno",
-    "mealSlotLunch": "Sugeridos para comida",
-    "mealSlotDinner": "Sugeridos para cena",
-    "mealSlotOther": "Otros restaurantes",
-    "poiDistanceKm": "{km} km · +{minutes} min de desvío",
-    "@poiDistanceKm": {"placeholders": {"km": {"type": "String"}, "minutes": {"type": "String"}}},
-
-    "fuelSavingsChipCheap": "-{amount}€/L vs media país",
-    "@fuelSavingsChipCheap": {"placeholders": {"amount": {"type": "String"}}},
-    "fuelSavingsChipDear": "+{amount}€/L vs media país",
-    "@fuelSavingsChipDear": {"placeholders": {"amount": {"type": "String"}}},
-
-    "fuelArbitrageTitle": "Reposta con cabeza en esta ruta",
-    "fuelArbitrageBody": "El combustible en {cheap} está a ~{cheapPrice}€/L. En {dear} sube a ~{dearPrice}€/L. Llenar el depósito en {cheap} antes de cruzar ahorra ~{savings}€.",
-    "@fuelArbitrageBody": {"placeholders": {"cheap": {"type": "String"}, "cheapPrice": {"type": "String"}, "dear": {"type": "String"}, "dearPrice": {"type": "String"}, "savings": {"type": "String"}}},
-
-    "dayTabLabel": "Día {index}",
-    "@dayTabLabel": {"placeholders": {"index": {"type": "int"}}},
-    "dayHeaderRange": "Día {index} · km {fromKm} → {toKm}",
-    "@dayHeaderRange": {"placeholders": {"index": {"type": "int"}, "fromKm": {"type": "String"}, "toKm": {"type": "String"}}},
-    "dayHeaderCity": "Día {index} · {from} → {to}",
-    "@dayHeaderCity": {"placeholders": {"index": {"type": "int"}, "from": {"type": "String"}, "to": {"type": "String"}}},
-    "dayArrivalMarker": "Llegas a tu destino hacia las {time}",
-    "@dayArrivalMarker": {"placeholders": {"time": {"type": "String"}}},
-    "daySleepMarker": "Terminas de conducir hacia las {time}",
-    "@daySleepMarker": {"placeholders": {"time": {"type": "String"}}},
-    "dayStartsAt": "Sale a las {time}",
-    "@dayStartsAt": {"placeholders": {"time": {"type": "String"}}},
-    "dayDriveWindow": "{start} → {end}",
-    "@dayDriveWindow": {"placeholders": {"start": {"type": "String"}, "end": {"type": "String"}}},
-    "restStopWhyTitle": "¿Por qué esta parada?",
-    "restStopWhyKidFriendly": "Área de servicio marcada como apta para niños",
-    "restStopWhyPetFriendly": "Zona para perros / mascotas cerca",
-    "restStopWhyRvFriendly": "Compatible con autocaravana (sanitario / vaciado)",
-    "restStopWhySafety": "Recomendado por seguridad vial: llevas {hours}h conduciendo. La normativa EU 561/2006 sugiere una pausa de al menos 45 min tras 4h30 al volante.",
-    "@restStopWhySafety": {"placeholders": {"hours": {"type": "String"}}},
-    "restStopWhyClose": "Entendido",
-    "dayMealStopAt": "🍽 {time} · {name}",
-    "@dayMealStopAt": {"placeholders": {"time": {"type": "String"}, "name": {"type": "String"}}},
-    "dayRestStopAt": "☕ {time} · {label}",
-    "@dayRestStopAt": {"placeholders": {"time": {"type": "String"}, "label": {"type": "String"}}},
-    "restStopFilterAll": "Todos",
-    "restStopFilterKidFriendly": "Familiar",
-    "restStopFilterPetFriendly": "Con mascota",
-    "restStopFilterRvFriendly": "Autocaravana",
-    "dayHeaderDwell": "Día {index} · {place}",
-    "@dayHeaderDwell": {"placeholders": {"index": {"type": "int"}, "place": {"type": "String"}}},
-    "daySleepStay": "Estancia en {place}",
-    "@daySleepStay": {"placeholders": {"place": {"type": "String"}}},
-
-    "nextStopHeroLabel": "Próxima parada sugerida",
-    "nextStopHeroBody": "{slot} en {name} · hacia las {time}",
-    "@nextStopHeroBody": {"placeholders": {"slot": {"type": "String"}, "name": {"type": "String"}, "time": {"type": "String"}}},
-
-    "daySleepHotelsLabel": "Hoteles cerca del punto de pernocta",
-    "hotelDistFromStop": "{km} km de la parada",
-    "@hotelDistFromStop": {"placeholders": {"km": {"type": "String"}}},
-    "hotelDistFromDestination": "{km} km del destino",
-    "@hotelDistFromDestination": {"placeholders": {"km": {"type": "String"}}},
-    "daySleepHotelsLabelDestination": "Hoteles cerca del destino",
-    "daySleepHotelsEmpty": "Activa hoteles en las preferencias del plan para ver opciones de pernocta.",
-    "daySleepHotelsNotFound": "No encontramos hoteles cerca de esta ruta. Prueba a ampliar la desviación máxima en Preferencias.",
-    "daySleepHotelsSearching": "Buscando hoteles cerca de tu parada...",
-    "enrichmentLoadingTitle": "Cargando datos extra",
-    "enrichmentChipHotels": "Hoteles",
-    "enrichmentChipRestaurants": "Restaurantes",
-    "enrichmentChipFuel": "Gasolineras",
-    "enrichmentChipWeather": "Meteo",
-    "enrichmentChipAdverse": "Alertas",
-    "enrichPulseHeader": "Ahora mismo…",
-    "enrichPulseHotels": "Buscando hoteles con mejor precio/estrellas",
-    "enrichPulseRestaurants": "Filtrando restaurantes según tus preferencias",
-    "enrichPulseFuel": "Localizando las gasolineras más baratas del corredor",
-    "enrichPulseTolls": "Detectando peajes evitables sin desviarte",
-    "enrichPulseWindows": "Comparando horarios por tráfico esperado",
-    "enrichPulseWeather": "Previsión hora a hora en 5 tramos de la ruta",
-    "enrichPulseAdverse": "Cruzando incendios y sismos activos con tu ruta",
-    "enrichPulseKids": "Paradas con zona infantil o parque cerca",
-    "enrichPulsePets": "Localizando pipicanes y áreas pet-friendly",
-    "enrichPulseCamper": "Buscando áreas para camper con vaciado y sanitarios",
-    "enrichPulseVehicle": "Ajustando repostaje a tu {vehicle} ({tank} L)",
-    "@enrichPulseVehicle": {"placeholders": {"vehicle": {"type": "String"}, "tank": {"type": "String"}}},
-    "restStopsWidenedHint": "Sin paradas con el filtro; mostramos las mejores del tramo.",
-    "windowsSheetTitle": "Ventanas de salida",
-    "windowsSheetHint": "Toca una tarjeta para replanificar con esa salida.",
-    "windowsSheetOpen": "Ver detalle por hora",
-    "windowsBadgeCurrent": "Actual",
-    "windowsBadgeRecommended": "Recomendada",
-    "windowsMetaDuration": "Duración",
-    "windowsMetaArrival": "Llegada",
-    "windowsMetaTraffic": "Tráfico",
-    "trafficLight": "Ligero",
-    "trafficMedium": "Moderado",
-    "trafficDense": "Denso",
-    "todEarlyMorning": "Madrugada",
-    "todMorning": "Mañana",
-    "todNoon": "Mediodía",
-    "todAfternoon": "Tarde",
-    "todNight": "Noche",
-
-    "restaurantPrefCuisinesLabel": "Tipo de cocina",
-    "cuisineItalian": "Italiana",
-    "cuisineSpanish": "Española",
-    "cuisineTapas": "Tapas",
-    "cuisineFrench": "Francesa",
-    "cuisineMediterranean": "Mediterránea",
-    "cuisineAsian": "Asiática",
-    "cuisineIndian": "India",
-    "cuisineBurger": "Hamburguesas",
-    "cuisineSeafood": "Pescado / mariscos",
-    "cuisineVegetarian": "Vegetariana",
-    "cuisineBbq": "Parrilla / BBQ",
-    "cuisineRegional": "Regional",
-
-    "timeWindowSpanLabel": "Mostrar ±{hours}h",
-    "@timeWindowSpanLabel": {"placeholders": {"hours": {"type": "int"}}},
-    "timeWindowSpanHelper": "Arrastra para ampliar la ventana y ver si salir antes o después ahorra más tiempo.",
-    "timeWindowTapHint": "Toca una barra para recalcular con esa hora de salida.",
-
-    "planLoadingTitle": "Preparando tu viaje",
-    "planLoadingStepRouting": "Calculando la ruta más rápida…",
-    "planLoadingStepTraffic": "Muestreando tráfico para elegir la mejor hora de salida…",
-    "planLoadingStepFuel": "Obteniendo precios reales de combustible del corredor…",
-    "planLoadingStepHotels": "Buscando hoteles cerca de las paradas para pernoctar…",
-    "planLoadingStepRestaurants": "Ordenando restaurantes por horario y tipo de cocina…",
-    "planLoadingStepAlerts": "Escaneando incendios, inundaciones, temporal grave y peligros…",
-    "planLoadingStepTolls": "Comparando rutas con peaje y alternativas sin peaje…",
-    "planLoadingStepAlmost": "Casi listo — juntando todo para ti…",
-    "planLoadingHelper": "Puede tardar hasta varios minutos. Puedes guardar el móvil un momento.",
-    "timeWindowApplyLabel": "Aplicar · salida a las {time}",
-    "@timeWindowApplyLabel": {"placeholders": {"time": {"type": "String"}}},
-    "planErrorAuth": "Sesión caducada. Vuelve a entrar y prueba de nuevo.",
-    "planErrorPremium": "Esta ruta necesita Premium. Actívalo para incluir el análisis de peajes por hora.",
-    "planErrorRateLimit": "Demasiadas peticiones en poco tiempo. Espera unos segundos y reintenta.",
-    "planErrorGeneric": "Algo fue mal al planificar (código {code}). Reintenta o cámbianos los datos.",
-    "@planErrorGeneric": {
-      "placeholders": {"code": {"type": "int"}}
-    },
-    "planErrorNetwork": "No pudimos conectar con el servidor. Comprueba tu conexión y reintenta.",
-    "planErrorRetry": "Reintentar",
-    "emptyAlertsTitle": "Sin peligros graves detectados",
-    "emptyAlertsBody": "No detectamos incendios, inundaciones ni peligros graves en tu corredor. Buen viaje.",
-    "emptyHotelsTitle": "Sin hoteles cerca de la ruta",
-    "emptyHotelsBody": "Prueba a ampliar el desvío máximo o cambia la banda de precio para ver más opciones.",
-    "emptyRestaurantsTitle": "Sin restaurantes que encajen",
-    "emptyRestaurantsBody": "Amplía el desvío máximo o quita filtros de cocina para ver más opciones.",
-    "emptyRestaurantsNotFoundTitle": "Sin restaurantes cerca de la ruta",
-    "emptyRestaurantsNotFoundBody": "El buscador no encontró opciones. Prueba a ampliar la desviación máxima en Preferencias.",
-    "emptyFuelNotFoundTitle": "Sin datos de gasolina en esta zona",
-    "emptyFuelNotFoundBody": "Los proveedores no cubren esta ruta. Los precios reales aparecerán en zonas con datos oficiales.",
-    "onboardEyebrowFuel": "PRECIOS REALES",
-    "onboardTitleFuel": "Ahorra en cada repostaje",
-    "onboardBodyFuel": "Precios por estación a lo largo de tu ruta en toda Europa. Marcas premium mezcladas con las más baratas.",
-    "onboardEyebrowDriving": "EN LA CARRETERA",
-    "onboardTitleDriving": "Tu copiloto inteligente",
-    "onboardBodyDriving": "Dashboard en vivo con próxima parada, ETA dinámico y alertas nuevas. Compatible con Android Auto.",
-    "onboardEyebrowProfile": "PERSONALIZADO",
-    "onboardTitleProfile": "Rellena tu perfil",
-    "onboardBodyProfile": "Sin perfil optimizamos solo tiempo. Con perfil calculamos fuel real, hoteles y comidas ajustadas a ti.",
-    "multiDaySleepLabel": "Dormirás en",
-    "multiDaySleepNoHotel": "Punto de pernocta sin hotel disponible",
-    "resumeTripTitle": "¿Retomamos tu viaje?",
-    "resumeTripBody": "Detectamos un viaje {origin} → {destination} en marcha. ¿Continuamos donde lo dejaste?",
-    "@resumeTripBody": {
-      "placeholders": {
-        "origin": {"type": "String"},
-        "destination": {"type": "String"}
+  "@@locale": "es",
+  "appName": "MyTravelPal",
+  "appTagline": "Planifica el viaje, no solo el destino",
+  "onboardEyebrowKiller": "EL COSTE REAL",
+  "onboardTitleKiller": "Tu GPS te lleva.\nNosotros te decimos cuánto.",
+  "onboardBodyKiller": "Peajes, gasolina, hoteles y comidas calculados antes de salir. Sin sorpresas.",
+  "onboardEyebrowHonest": "TU PERFIL, TU VIAJE",
+  "onboardTitleHonest": "2 adultos, 1 niño, perro.\nParking. 3 estrellas máx €€.",
+  "onboardBodyHonest": "Hoteles y restaurantes filtrados por tus preferencias reales. No una lista genérica — la tuya.",
+  "onboardEyebrowAlerts": "ALERTAS EN TIEMPO REAL",
+  "onboardTitleAlerts": "Incendio a 14 km\nde tu ruta.",
+  "onboardBodyAlerts": "Incendios, tormentas, terremotos, cierres de carretera. Solo los eventos que afectan a tu ruta concreta, antes de llegar.",
+  "onboardSkip": "Saltar",
+  "onboardContinue": "Continuar",
+  "onboardGetStarted": "Comenzar",
+  "onboardFooter": "Empezar gratis · Premium desbloquea el resumen IA del viaje",
+  "loginContinueApple": "Continuar con Apple",
+  "loginContinueGoogle": "Continuar con Google",
+  "loginContinueFacebook": "Continuar con Facebook",
+  "loginContinueDemo": "Continuar como demo",
+  "loginDivider": "o",
+  "loginTerms": "Al continuar aceptas nuestros términos y política de privacidad.",
+  "loginBusy": "Iniciando sesión…",
+  "planTitle": "Planifica un viaje",
+  "planEyebrow": "EL PLANIFICADOR",
+  "planHero": "¿A dónde vamos\nhoy?",
+  "planHeroPersonal": "Hola {name}, ¿a dónde vamos?",
+  "@planHeroPersonal": {
+    "placeholders": {
+      "name": {
+        "type": "String"
       }
-    },
-    "resumeTripResume": "Retomar",
-    "resumeTripDismiss": "Descartar",
-    "hotelPrefStarsLabel": "Estrellas",
-    "hotelPrefDestRadiusLabel": "Radio desde el destino",
-    "biometricPromptReason": "Verifica tu identidad para abrir MyTravelPal",
-    "biometricPromptSettings": "Confirma para activar el desbloqueo biométrico",
-    "planDepartureLabel": "Salida preferida",
-    "hotelPrefStarsAny": "Todas",
-    "hotelPrefParkingTitle": "Con parking",
-    "hotelPrefParkingSub": "Solo hoteles con parking indicado. Los que no tienen la etiqueta también pasan.",
-    "hotelFilterParking": "Parking",
-    "hotelFilterWifi": "WiFi gratis",
-    "hotelFilterAccessible": "Accesible",
-    "hotelFilterOtherTypes": "Apartamentos, casas y más",
-    "restaurantFilterVegetarian": "Vegetariano",
-    "restaurantFilterVegan": "Vegano",
-    "restaurantFilterGlutenFree": "Sin gluten",
-    "restaurantFilterHalal": "Halal",
-    "restaurantFilterKosher": "Kosher",
-    "restaurantDietaryLabel": "Dieta",
-    "tollSkipSelectAll": "Seleccionar todos",
-    "mapShowLabel": "Mostrar mapa",
-    "mapHideLabel": "Ocultar mapa",
-    "tripCostTitle": "COSTE TOTAL DEL VIAJE",
-    "tripCostFuel": "Combustible",
-    "tripCostTolls": "Peajes",
-    "tripCostMeals": "Comidas",
-    "tripCostHotel": "Hotel",
-    "tripCostTotal": "Total estimado",
-    "tripCostPerPerson": "{amount} / persona",
-    "@tripCostPerPerson": {"placeholders": {"amount": {"type": "String"}}},
-    "tripCostPerDay": "{amount} / día",
-    "@tripCostPerDay": {"placeholders": {"amount": {"type": "String"}}},
-    "poiSpotlightRating": "valoración",
-    "poiSpotlightStars": "estrellas",
-    "poiSpotlightReviews": "{count} reseñas",
-    "@poiSpotlightReviews": {"placeholders": {"count": {"type": "String"}}},
-    "poiSpotlightPricePerNight": "por noche",
-    "poiSpotlightPricePerMeal": "por comida",
-    "poiSpotlightPricePerL": "por litro",
-    "poiFeaturesHeading": "Servicios",
-    "poiMoreInfoLabel": "Más info",
-    "poiMoreInfoHide": "Ocultar",
-    "addToRouteLabel": "Añadir a la ruta",
-    "biometricSetupTitle": "¿Activar acceso biométrico?",
-    "biometricSetupBody": "Usa tu huella o cara para desbloquear MyTravelPal.",
-    "biometricSetupEnable": "Activar",
-    "biometricSetupSkip": "Ahora no",
-    "weatherAlongRouteTitle": "CLIMA EN TU RUTA",
-    "fuelNotificationTitle": "¡Reposta antes de la frontera!",
-    "fuelNotificationBody": "Combustible en {cheap} (~{price}€/L) antes de cruzar a {pricey} — ahorra ~{savings}€ por depósito",
-    "@fuelNotificationBody": {"placeholders": {"cheap": {"type": "String"}, "price": {"type": "String"}, "pricey": {"type": "String"}, "savings": {"type": "String"}}},
-    "tutorialSkip": "Saltar",
-    "tutorialOriginTitle": "¿Desde dónde sales?",
-    "tutorialOriginBody": "Toca aquí para buscar una ciudad o usa el botón de ubicación para salir desde donde estás.",
-    "tutorialDestinationTitle": "¿A dónde vas?",
-    "tutorialDestinationBody": "Busca tu destino. Planificaremos la ruta completa con paradas, hoteles y peajes.",
-    "tutorialPrefsTitle": "Personaliza tu viaje",
-    "tutorialPrefsBody": "Activa hoteles, restaurantes y alertas. Configura preferencias dietéticas, estrellas y más.",
-    "tutorialTimeWindowTitle": "Elige la mejor hora de salida",
-    "tutorialTimeWindowBody": "Toca cualquier franja para replanificar con esa hora. El gráfico muestra el impacto del tráfico en cada hora.",
-    "tutorialTollTitle": "Gestiona los peajes",
-    "tutorialTollBody": "Activa o desactiva tramos de peaje individualmente. El ahorro total se actualiza en tiempo real. La barra de colores muestra las mejores horas para saltar.",
-    "styleDailyCapRecommendedHint": "Para este ritmo recomendamos {hours} h/día.",
-    "@styleDailyCapRecommendedHint": {
-      "placeholders": {"hours": {"type": "int"}}
-    },
-    "aaCoachTitle": "Cómo verla en Android Auto",
-    "aaCoachStep1": "Conecta el móvil al coche por USB (o wireless si tu head unit lo soporta).",
-    "aaCoachStep2": "En el launcher del coche, cambia a la categoría 'Point of Interest' o 'Apps'. NO aparece junto a Google Maps.",
-    "aaCoachStep3": "Toca MyTravelPal. Se abre el companion con próxima parada, gasolina más barata y ETA.",
-    "aaCoachHint": "La primera vez tarda unos segundos. Aparca con vista al cielo para tener GPS antes de arrancar.",
-    "aaCoachDontShowAgain": "No mostrar de nuevo",
-    "aaCoachDone": "Entendido",
-    "batteryWhitelistTitle": "Evita que Android nos cierre",
-    "batteryWhitelistBody": "Xiaomi/MIUI y otras marcas cierran apps en segundo plano tras unos minutos. Si estás navegando con Google Maps y MyTravelPal muere, pierdes las alertas en vivo.",
-    "batteryWhitelistSteps": "Ajustes → Aplicaciones → MyTravelPal → Batería → Sin restricciones\n(o 'No optimizar' según tu modelo)",
-    "batteryWhitelistDontShowAgain": "No mostrar de nuevo",
-    "batteryWhitelistLater": "Ahora no",
-    "batteryWhitelistOpen": "Abrir ayuda",
-    "planRoundTripTitle": "Ida y vuelta",
-    "planRoundTripSubtitle": "Planificamos el viaje de vuelta a la vez con las mismas preferencias.",
-    "roundTripLegOutbound": "IDA",
-    "roundTripLegReturn": "VUELTA",
-    "roundTripSwapTo": "Ver {leg}",
-    "@roundTripSwapTo": {
-      "placeholders": {"leg": {"type": "String"}}
-    },
-
-    "resultStartTrip": "Iniciar viaje",
-    "resultStartCompanion": "Iniciar modo Companion",
-    "companionPreflightTitle": "Ajustes antes de conducir",
-    "companionPreflightMealWindows": "Horarios de comida",
-    "companionPreflightDetourTolerance": "Desvío máximo",
-    "companionPreflightMealBudget": "Presupuesto por comida",
-    "companionPreflightHotelBudget": "Presupuesto por noche",
-    "companionPreflightSaveToProfile": "Guardar en mi perfil",
-    "companionPreflightStart": "Empezar a conducir",
-    "companionPreflightBreakfast": "Desayuno",
-    "companionPreflightLunch": "Almuerzo",
-    "companionPreflightDinner": "Cena",
-    "navPickerTitle": "Continuar en…",
-    "tripDashboardTitle": "En ruta",
-    "tripDashboardCenterOnMe": "Centrar en mi posición",
-    "tripDashboardOpenNav": "Abrir navegación",
-    "tripDashboardNextStopLabel": "PRÓXIMA {slot}",
-    "@tripDashboardNextStopLabel": {
-      "placeholders": {"slot": {"type": "String"}}
-    },
-    "tripDashboardInMinutes": "en {n} min",
-    "@tripDashboardInMinutes": {
-      "placeholders": {"n": {"type": "int"}}
-    },
-    "tripDashboardPermissionDenied": "Ubicación denegada. Activa el permiso para ver tu posición en la ruta.",
-    "tripDashboardServiceDisabled": "GPS desactivado. Enciéndelo para seguir tu progreso en la ruta.",
-
-    "tripDashboardProgressLine": "{done} / {total} km",
-    "@tripDashboardProgressLine": {
-      "placeholders": {
-        "done": {"type": "String"},
-        "total": {"type": "String"}
+    }
+  },
+  "planIntro": "Elige dos puntos y una hora. Del resto nos ocupamos nosotros.",
+  "planFrom": "Desde",
+  "planTo": "Hasta",
+  "planDesiredDeparture": "Hora deseada de salida",
+  "planCta": "Planificar viaje",
+  "planCtaBusy": "Planificando tu viaje…",
+  "planCountriesNote": "Los países se detectan automáticamente desde tu ruta.",
+  "planSectionOptional": "En la ruta",
+  "planMoreOptions": "Más opciones",
+  "planLessOptions": "Menos opciones",
+  "planRoundTripChip": "Ida y vuelta",
+  "planLeaveNowFabTitle": "Salir ya",
+  "leaveNowConfirmTitle": "Salir ya hacia",
+  "leaveNowConfirmBody": "¿Vamos a {name}?",
+  "@leaveNowConfirmBody": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "leaveNowConfirmCta": "Vamos",
+  "leaveNowConfirmChange": "Cambiar destino",
+  "settingsBiometric": "Desbloqueo biométrico",
+  "settingsBiometricSub": "Usa huella o cara para abrir la app",
+  "settingsBiometricUnavailable": "No disponible en este dispositivo",
+  "settingsReplayTutorial": "Repetir tutorial",
+  "settingsReplayTutorialSub": "Vuelve a mostrar los coach-marks guiados",
+  "settingsReplayTutorialToast": "Tutorial reiniciado. Vuelve a Planificar para verlo.",
+  "settingsColorPreset": "Paleta de color",
+  "settingsPresetForest": "Bosque",
+  "settingsPresetSunset": "Atardecer",
+  "settingsPresetOcean": "Océano",
+  "settingsDynamicColor": "Material You (dinámico)",
+  "settingsDynamicColorSub": "Adapta los colores a tu fondo de pantalla (Android 12+)",
+  "settingsOled": "Negro puro (OLED)",
+  "settingsOledSub": "Negros más profundos en modo oscuro, ahorra batería en pantallas OLED",
+  "parkingSearchTitle": "Buscar parking",
+  "parkingSearchLabel": "¿Dónde vas?",
+  "parkingSearchHint": "Elige un destino y verás los parkings cercanos.",
+  "parkingRadiusLabel": "Radio",
+  "parkingNoResults": "No hay parkings en este radio.",
+  "parkingPriceUnknown": "Precio ?",
+  "parkingCovered": "Cubierto",
+  "parkingFilterKids": "Niños",
+  "parkingFilterDogs": "Perros",
+  "parkingFilterToilets": "Aseos",
+  "parkingFilterFood": "Comida",
+  "parkingFilterShowers": "Duchas",
+  "parkingFilterEv": "Cargador EV",
+  "parkingFilterFuel": "Gasolinera",
+  "parkingFilterWheelchair": "Accesible",
+  "parkingFilterRv": "Autocaravana",
+  "parkingFilterTruck": "Camión",
+  "planFindParkingCta": "Buscar parking",
+  "poiFindParking": "Parking",
+  "parkingPrefTitle": "Parking",
+  "parkingPrefSub": "Muestra parkings cerca del destino.",
+  "parkingResultTitle": "Parkings cerca del destino",
+  "inspireTitle": "Inspiración de viaje",
+  "inspireHero": "Describe tu viaje soñado",
+  "inspireSub": "La IA propone un itinerario multi-día que puedes convertir en un plan real con un toque.",
+  "inspireHint": "ej. Escapada romántica de 4 días por los lagos italianos",
+  "inspireGenerate": "Inspírame",
+  "inspireGenerating": "Preparando tu ruta…",
+  "inspireError": "La musa está fuera de servicio. Prueba otro texto o inténtalo de nuevo.",
+  "inspireResultTitle": "Itinerario propuesto",
+  "inspireDayLabel": "Día {n}",
+  "@inspireDayLabel": {
+    "placeholders": {
+      "n": {}
+    }
+  },
+  "inspireBudgetLabel": "Presupuesto estimado",
+  "inspireConvertToPlan": "Convertir en plan real",
+  "inspireSave": "Guardar",
+  "inspireSavedToast": "Idea guardada. La encontrarás en tus inspiraciones guardadas.",
+  "inspireRecentTitle": "Recientes",
+  "inspireHistoryTitle": "Mis planes IA",
+  "inspireHistoryEmpty": "Aún no hay planes IA. Genera uno desde la pestaña Planificar.",
+  "inspireHistoryDelete": "Borrar",
+  "settingsMyAiPlans": "Mis planes IA",
+  "settingsMyAiPlansSub": "Historial de Trip Inspiration",
+  "inspireChatTitle": "Ajusta el itinerario",
+  "inspireChatHint": "Pide un cambio: \"quita Cremona\", \"salgo viernes por la tarde\"…",
+  "inspireExamplesTitle": "O parte de una idea",
+  "inspireExample1": "Fin de semana de castillos por el valle del Loira",
+  "inspireExample2": "Ruta costera de Barcelona a Marsella",
+  "inspireExample3": "5 días por los Alpes desde Milán",
+  "inspireExample4": "Norte de España con niños, sin autopistas",
+  "planOverrideForTrip": "Sobrescribir para este viaje",
+  "planOverrideActive": "Sobrescribiendo para este viaje",
+  "planOverrideClear": "Quitar",
+  "planTooltipDashboard": "Panel",
+  "planTooltipReport": "Reportar un evento",
+  "planTooltipSaved": "Viajes guardados",
+  "tabPlan": "Planificar",
+  "tabCompanion": "Acompañar",
+  "tabMyTrips": "Mis viajes",
+  "companionHeroTitle": "Tu compañero de viaje",
+  "companionHeroBody": "Configura tus condiciones y arranca. La app te acompaña mientras conduces y te recomienda paradas, comida y repostaje.",
+  "companionConfigSection": "CONFIGURACIÓN",
+  "companionBreakInterval": "Sugerencias de descanso",
+  "companionSuggestBreak": "Sugerir descanso según tiempo de conducción",
+  "companionBreakHint": "Recomendar parada cada {hours} h de conducción",
+  "@companionBreakHint": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
       }
-    },
-    "tripDashboardEta": "ETA {time}",
-    "@tripDashboardEta": {
-      "placeholders": {"time": {"type": "String"}}
-    },
-    "tripDashboardActiveNotifTitle": "Viaje activo",
-    "tripDashboardActiveNotifBody": "MyTravelPal sigue tu ruta en segundo plano.",
-    "tripDashboardForegroundBodyBare": "{done} / {total} km recorridos",
-    "@tripDashboardForegroundBodyBare": {
-      "placeholders": {
-        "done": {"type": "String"},
-        "total": {"type": "String"}
+    }
+  },
+  "companionFatigueStopExperimental": "Sugerir parar por cansancio (experimental)",
+  "companionFatigueStopHint": "Hoy sólo por temporizador — se dispara con micro-pausas cortas.",
+  "companionAlerts": "Tipos de aviso",
+  "companionAlertCriticalAdverse": "Incidentes críticos (incendios, riadas, tormentas)",
+  "companionAlertCriticalAdverseHint": "Recomendado. Algo grave pasando cerca — no es meteo simple.",
+  "companionAlertWeather": "Meteo por delante",
+  "companionAlertFuel": "Gasolineras más baratas en ruta",
+  "companionAlertBorder": "Aviso al cruzar fronteras",
+  "companionAlertToll": "Sugerencias para saltar peajes",
+  "companionAlertHotel": "Hotel al pasar tu hora + 5 h de conducción",
+  "companionStart": "Iniciar acompañamiento",
+  "companionComingSoon": "Modo acompañamiento disponible pronto!",
+  "companionDriveTitle": "Acompañante activo",
+  "companionForegroundBody": "MyTravelPal está siguiendo tu conducción",
+  "companionLocationDenied": "Se necesita permiso de ubicación para el acompañante.",
+  "companionDriving": "conduciendo",
+  "companionAllGood": "Sin avisos — disfruta el viaje.",
+  "companionWeatherRowEmpty": "Sin alertas próximas",
+  "companionEndTitle": "¿Terminar acompañante?",
+  "companionEndBody": "El seguimiento se detendrá y los avisos activos se perderán.",
+  "companionEndKeep": "Seguir conduciendo",
+  "companionEndConfirm": "Terminar sesión",
+  "emergencyContactsTitle": "Contactos de emergencia",
+  "emergencyContactsSubtitle": "Reciben SMS si se detecta un impacto",
+  "emergencyContactsBody": "Hasta 3 personas reciben un SMS con tu ubicación si el acompañante detecta un impacto.",
+  "emergencyContactsEmpty": "Aún no hay contactos.",
+  "emergencyContactsAdd": "Añadir contacto",
+  "emergencyContactsPickFromDevice": "Elegir de contactos",
+  "emergencyContactsPickSearch": "Buscar contactos",
+  "emergencyContactsPermDenied": "Permiso denegado. Puedes añadir manualmente.",
+  "emergencyContactsNoDevice": "No hay contactos con teléfono en el dispositivo.",
+  "emergencyContactAddTitle": "Añadir contacto de emergencia",
+  "emergencyContactName": "Nombre",
+  "emergencyContactNameRequired": "Escribe un nombre",
+  "emergencyContactPhone": "Teléfono (E.164)",
+  "emergencyContactPhoneRequired": "Escribe un teléfono",
+  "emergencyContactPhoneInvalid": "Formato internacional: +34612345678",
+  "cancel": "Cancelar",
+  "save": "Guardar",
+  "sosTitle": "Posible impacto detectado",
+  "sosBody": "Pico de impacto {g}g · caída de velocidad {speed} km/h.",
+  "@sosBody": {
+    "placeholders": {
+      "g": {
+        "type": "String"
+      },
+      "speed": {
+        "type": "String"
       }
-    },
-    "tripDashboardForegroundBodyWithStop": "{done} / {total} km · próxima parada: {name}",
-    "@tripDashboardForegroundBodyWithStop": {
-      "placeholders": {
-        "done": {"type": "String"},
-        "total": {"type": "String"},
-        "name": {"type": "String"}
+    }
+  },
+  "sosCountdown": "{seconds}s",
+  "@sosCountdown": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
       }
-    },
-    "tripDashboardSleepStopLabel": "hotel",
-    "alertApproachingStopTitle": "Parada cerca",
-    "alertApproachingStopBody": "{slot} en {name} en unos {mins} min. Prepara la salida.",
-    "@alertApproachingStopBody": {
-      "placeholders": {
-        "slot": {"type": "String"},
-        "name": {"type": "String"},
-        "mins": {"type": "int"}
+    }
+  },
+  "sosImOk": "Estoy bien — cancelar",
+  "sosCall112": "Llamar 112",
+  "sosCancelled": "Alerta cancelada.",
+  "sosClose": "Cerrar",
+  "sosNoContacts": "No hay contactos configurados. Añade uno en Ajustes.",
+  "sosSmsDispatched": "SMS preparado para {count} contacto(s).",
+  "@sosSmsDispatched": {
+    "placeholders": {
+      "count": {
+        "type": "int"
       }
-    },
-    "alertNewAdverseAheadTitle": "Nueva alerta en la ruta",
-    "alertNewAdverseAheadBody": "{type} detectado a {km} km por delante.",
-    "@alertNewAdverseAheadBody": {
-      "placeholders": {
-        "type": {"type": "String"},
-        "km": {"type": "String"}
+    }
+  },
+  "sosSmsFailed": "No se pudo abrir SMS. Llama manualmente abajo.",
+  "sosSmsPrefix": "MyTravelPal — posible impacto detectado. Mi ubicación:",
+  "weatherForecastTitle": "Previsión 7 días",
+  "weatherToday": "Hoy",
+  "leaveNowTitle": "Salir ya con acompañante",
+  "leaveNowSubtitle": "Elige destino y arranca — te seguimos y te guiamos.",
+  "leaveNowSheetTitle": "¿A dónde vas?",
+  "leaveNowPremiumTitle": "Función Premium",
+  "leaveNowPremiumBody": "'Salir ya' combina el plan completo con el acompañante durante la conducción. Disponible con MyTravelPal Premium.",
+  "leaveNowPremiumDismiss": "Más tarde",
+  "leaveNowPremiumCta": "Probar 7 días gratis",
+  "shareCardOption": "Compartir como imagen",
+  "shareCardOptionSub": "Perfecto para Instagram Stories, WhatsApp, X",
+  "shareLinkOption": "Compartir como enlace",
+  "shareLinkOptionSub": "Resumen en texto + link para reabrir el plan",
+  "shareToSocial": "Compartir en redes",
+  "sharePlanTitle": "Compartir enlace del viaje",
+  "sharePlanSubtitle": "Código QR + enlace para reabrir este plan",
+  "sharePlanCopy": "Copiar enlace",
+  "sharePlanCopied": "Enlace copiado",
+  "shareLiveHeadline": "Conduciendo por {city}",
+  "@shareLiveHeadline": {
+    "placeholders": {
+      "city": {
+        "type": "String"
       }
-    },
-    "alertDriftDetectedTitle": "Te desviaste de la ruta",
-    "alertDriftDetectedBody": "Estás a {off} m del trazado planificado. ¿Recalcular?",
-    "@alertDriftDetectedBody": {
-      "placeholders": {"off": {"type": "String"}}
-    },
-    "alertBehindScheduleTitle": "Vas con retraso",
-    "alertBehindScheduleBody": "Llegarás {mins} min más tarde de lo previsto.",
-    "@alertBehindScheduleBody": {
-      "placeholders": {"mins": {"type": "int"}}
-    },
-    "tripDashboardCheaperFuel": "{brand} en {km} km · ahorras {cts} ct/L",
-    "@tripDashboardCheaperFuel": {
-      "placeholders": {
-        "brand": {"type": "String"},
-        "km": {"type": "String"},
-        "cts": {"type": "String"}
+    }
+  },
+  "shareLiveCaption": "Conduciendo por {city} con MyTravelPal 🚗",
+  "@shareLiveCaption": {
+    "placeholders": {
+      "city": {
+        "type": "String"
       }
-    },
-    "resultOptimalDeparture": "Tu hora de salida es óptima",
-    "shortLastDayWarning": "Último tramo corto ({km} km) — podrías llegar hoy si avanzas más el día anterior.",
-    "@shortLastDayWarning": {
-      "placeholders": {
-        "km": {"type": "String"}
+    }
+  },
+  "planAddStop": "Añadir parada",
+  "planStopDwellPassThrough": "Solo paso",
+  "planStopDwellOneNight": "1 noche",
+  "planStopDwellNights": "{n} noches",
+  "@planStopDwellNights": {
+    "placeholders": {
+      "n": {
+        "type": "int"
       }
-    },
-    "prepareDepartureNow": "Salir ahora",
-    "replanNewDepartureTitle": "Calculando con nueva hora de salida…",
-    "planStopReorderHint": "Mantén pulsado el asa para reordenar",
-    "planSwapOriginDestination": "Invertir",
-    "planStopMoveUp": "Mover arriba",
-    "planStopMoveDown": "Mover abajo",
-    "recentTripsTitle": "Viajes recientes",
-    "recentTripsSubtitle": "{count} guardados — toca para reutilizar",
-    "@recentTripsSubtitle": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "onRouteTitle": "En la ruta",
-    "onRouteEmpty": "Toca para elegir opciones",
-    "exportShareTitle": "Compartir ruta",
-    "exportOpenInMaps": "Abrir en Google Maps",
-    "exportOpenInMapsSub": "Con paradas y desvíos añadidos",
-    "exportCopyLink": "Copiar enlace",
-    "exportLinkCopied": "Enlace copiado al portapapeles",
-    "exportShareOs": "Compartir…",
-    "exportShareSubject": "Mi ruta en MyTravelPal",
-    "importFromMaps": "Importar de Maps",
-    "importFromMapsTitle": "Importar ruta de Google Maps",
-    "importFromMapsHint": "Pega aquí el enlace de Google Maps",
-    "importFromMapsPaste": "Pegar",
-    "importFromMapsImport": "Importar",
-    "importFromMapsErrorMalformed": "URL no válida — revisa el enlace e inténtalo de nuevo",
-    "importFromMapsErrorShortlink": "No se pudo expandir el enlace corto — ábrelo en Maps y copia la URL completa",
-    "importFromMapsErrorGeocode": "No se pudieron localizar los lugares en el mapa — prueba con una ruta más corta o escríbelos a mano",
-    "importFromMapsError": "URL no reconocida",
-    "importFromMapsLoading": "Analizando enlace…",
-    "adverseEventsBannerCount": "{count} alerta(s) en tu ruta",
-    "@adverseEventsBannerCount": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "pricePerMeal": "{price} €/comida",
-    "@pricePerMeal": {
-      "placeholders": { "price": {"type": "String"} }
-    },
-    "kmFromOrigin": "{km} km desde el origen",
-    "@kmFromOrigin": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "profileVehicleModel": "Modelo",
-    "profileVehicleModelHint": "Elige tu modelo",
-    "profileVehicleModelClear": "Quitar modelo",
-    "profileTankLevel": "Depósito actual",
-    "vehiclePickerSearchHint": "Buscar marca o modelo",
-    "vehiclePickerEmpty": "Ningún modelo coincide con la búsqueda",
-    "vehiclePickerLoadError": "No se pudo cargar el listado. Inténtalo más tarde.",
-    "refuelWindowComfortable": "Reposta antes del km {km} (cómodo)",
-    "@refuelWindowComfortable": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "refuelWindowCritical": "Reposta antes del km {km} (crítico)",
-    "@refuelWindowCritical": {
-      "placeholders": { "km": {"type": "String"} }
-    },
-    "refuelSuggestionTitle": "Reposta aquí para ahorrar",
-    "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
-    "@refuelSuggestionBody": {
-      "placeholders": {
-        "station": {"type": "String"},
-        "km": {"type": "String"},
-        "price": {"type": "String"}
+    }
+  },
+  "planStopDwellHours": "{n} horas",
+  "@planStopDwellHours": {
+    "placeholders": {
+      "n": {
+        "type": "int"
       }
-    },
-    "refuelSuggestionSavings": "Te ahorras {eur} €",
-    "@refuelSuggestionSavings": {
-      "placeholders": { "eur": {"type": "String"} }
-    },
-    "savingsFuelRow": "Combustible: {eur} €",
-    "@savingsFuelRow": {
-      "placeholders": { "eur": {"type": "String"} }
-    },
-    "garageTitle": "Mi garaje",
-    "garageEmpty": "Aún no hay coches — añade el primero",
-    "garageAdd": "Añadir coche",
-    "garageEdit": "Editar coche",
-    "garageDelete": "Eliminar",
-    "garageCancel": "Cancelar",
-    "garageSave": "Guardar",
-    "garageDefaultName": "Mi coche",
-    "garageNameHint": "Ponle nombre (ej. Mi Golf)",
-    "garageDefaultTankLabel": "Nivel de depósito por defecto",
-    "garageAddError": "No se pudo guardar. Inténtalo otra vez.",
-    "garageDeleteTitle": "¿Eliminar coche?",
-    "garageDeleteBody": "\"{name}\" se borrará de tu garaje.",
-    "@garageDeleteBody": {
-      "placeholders": { "name": {"type": "String"} }
-    },
-    "garageSettingsRow": "Mi garaje ({count})",
-    "@garageSettingsRow": {
-      "placeholders": { "count": {"type": "int"} }
-    },
-    "planScreenGarageChip": "Coche: {name} · {pct} %",
-    "@planScreenGarageChip": {
-      "placeholders": {
-        "name": {"type": "String"},
-        "pct": {"type": "int"}
+    }
+  },
+  "planStopDwellTitle": "¿Cuánto tiempo en {name}?",
+  "@planStopDwellTitle": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "planAddStopTitle": "Nueva parada",
+  "planStopLabel": "Parada {n}",
+  "@planStopLabel": {
+    "placeholders": {
+      "n": {
+        "type": "int"
       }
-    },
-    "planScreenGarageChooseVehicle": "Elige un coche para este viaje"
+    }
+  },
+  "planStopRemove": "Quitar parada",
+  "settingsCurrency": "Moneda",
+  "_dedupCompanionBlock": "duplicate block from an old merge — kept as historical no-op; live values live in the earlier block.",
+  "planErrorPickEndpoints": "Elige un origen y un destino.",
+  "resultBestTimeToLeave": "MEJOR HORA PARA SALIR",
+  "resultTripSavings": "TUS AHORROS EN ESTE VIAJE",
+  "resultSavingsDetected": "Ahorros detectados",
+  "resultTollSaving": "Peaje alternativo",
+  "resultFuelSaving": "Combustible",
+  "resultTimeSaving": "Salida óptima",
+  "resultTotalSaving": "AHORRO TOTAL",
+  "resultSavingPct": "{pct}% menos",
+  "@resultSavingPct": {
+    "placeholders": {
+      "pct": {
+        "type": "String"
+      }
+    }
+  },
+  "resultSavingsSuggestionsTitle": "Sugerencias para ahorrar tiempo",
+  "resultSavingsClaimedHint": "Ahorro reflejado tras aplicar la ventana óptima.",
+  "resultTimeSavedLabel": "tiempo ahorrado",
+  "resultExtraTimeLabel": "tiempo extra",
+  "resultMoneySavedLabel": "dinero ahorrado",
+  "resultDepartureWindowTitle": "Ventana de salida",
+  "resultDepartureWindowDesc": "Minutos totales en cada hora candidata de salida.",
+  "resultCompareVariantsTitle": "Compara tus opciones",
+  "resultCompareVariantsEyebrow": "Variantes de ruta",
+  "resultAlertsTitle": "Alertas en tu ruta",
+  "resultRestStopsTitle": "Paradas de descanso",
+  "resultHotelsTitle": "Hoteles",
+  "resultRestaurantsTitle": "Restaurantes",
+  "resultFuelTitle": "Combustible",
+  "resultTollAlternativeEyebrow": "ALTERNATIVA SIN PEAJES",
+  "resultTollAlternativeWorthIt": "Merece la pena",
+  "resultTollAlternativeMarginal": "Marginal",
+  "resultShareTooltip": "Compartir este viaje",
+  "resultExplainTooltip": "Explícame el viaje (Premium)",
+  "resultSaveTooltip": "Guardar viaje",
+  "resultSaveChangesTooltip": "Guardar cambios",
+  "resultSavedTooltip": "Guardado",
+  "resultTripSaved": "Viaje guardado",
+  "dashboardTitle": "Panel",
+  "dashboardGreeting": "Hola, {name}",
+  "@dashboardGreeting": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dashboardTravelSoFar": "Tus viajes hasta ahora",
+  "dashboardTrips": "Viajes",
+  "dashboardDistance": "Distancia",
+  "dashboardHours": "Horas",
+  "dashboardTimeSaved": "TIEMPO AHORRADO",
+  "dashboardMoneySaved": "DINERO AHORRADO",
+  "dashboardFuelBudget": "PRESUPUESTO DE COMBUSTIBLE",
+  "dashboardTopSavers": "Mejores ahorros",
+  "dashboardSaved": "ahorrado",
+  "dashboardCountries": "Países",
+  "dashboardSignOut": "Cerrar sesión",
+  "profileTitle": "Perfil del viaje",
+  "profileOverrideTitle": "Sobrescribir para este viaje",
+  "profileSave": "Guardar",
+  "profileUse": "Usar",
+  "profileWhoTravelling": "Quién viaja",
+  "profileTravellers": "Viajeros",
+  "profileHasKids": "Viajando con niños",
+  "profileHasPets": "Viajando con mascotas",
+  "profileVehicle": "Vehículo",
+  "profileMealTimes": "Horario de comidas",
+  "profileReminders": "Recordatorios",
+  "profilePremiumSection": "Premium (demo)",
+  "profileClearProfile": "Borrar perfil",
+  "commonRetry": "Reintentar",
+  "commonCancel": "Cancelar",
+  "commonClear": "Borrar",
+  "commonShowNMore": "Ver {n} más",
+  "@commonShowNMore": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "commonShowLess": "Ver menos",
+  "planLoadingElapsed": "{seconds}s transcurridos",
+  "@planLoadingElapsed": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "planLoadingLongCrossingCountries": "Cruzando peajes en todos los países que vas a atravesar…",
+  "planLoadingLongScanningFuel": "Escaneando precios de combustible europeos a lo largo de tu ruta…",
+  "planLoadingLongBigTrip": "Los viajes largos tardan un poco más — cargando datos extra de hoteles y descansos.",
+  "planLoadingLongAlmostDone": "Ya casi está — últimos retoques al itinerario.",
+  "commonSave": "Guardar",
+  "commonRemove": "Quitar",
+  "searchPlaceholderLegacy": "Buscar una ciudad…",
+  "searchNoMatches": "Sin resultados.",
+  "searchStartTyping": "Escribe al menos 2 caracteres.",
+  "searchRecent": "RECIENTES",
+  "searchUseMyLocation": "Usar mi ubicación",
+  "locationServiceOff": "La ubicación está desactivada en este dispositivo.",
+  "locationPermissionDenied": "Permiso de ubicación denegado.",
+  "locationUnavailable": "No pudimos determinar tu ubicación.",
+  "favoritesTitle": "Favoritos",
+  "favoritesEmptyHotels": "Aún no tienes hoteles favoritos. Toca la estrella en cualquier hotel para guardarlo.",
+  "favoritesEmptyRestaurants": "Aún no tienes restaurantes favoritos. Toca la estrella en cualquier restaurante para guardarlo.",
+  "favoritesTabHotels": "Hoteles",
+  "favoritesTabRestaurants": "Restaurantes",
+  "favoritesTooltipAdd": "Añadir a favoritos",
+  "favoritesTooltipRemove": "Quitar de favoritos",
+  "planTooltipFavorites": "Favoritos",
+  "resultBackToPlan": "Volver al plan",
+  "alertsAlongYourRoute": "Alertas en tu ruta",
+  "alertsAlongYourRouteDesc": "Incendios, inundaciones, temporal grave, nieve, terremotos, corrimientos — ordenados por severidad.",
+  "restStopsHint": "Recomendadas cada 2 h de conducción. Los descansos cortos te mantienen despierto en trayectos largos.",
+  "fuelAlongTheRoute": "Combustible en la ruta",
+  "hotelsNearYourRoute": "Hoteles cerca de tu ruta",
+  "restaurantsNearYourRoute": "Restaurantes cerca de tu ruta",
+  "narrativeTitle": "Resumen del viaje",
+  "narrativeGenerating": "Escribiendo tu resumen…",
+  "narrativeFailed": "No pudimos generar el resumen. Vuelve a intentarlo en un momento.",
+  "narrativeFooter": "Generado por Claude — puede no reflejar cambios en tiempo real.",
+  "narrativePremiumBadge": "Premium",
+  "shareTripSubject": "Mi viaje con MyTravelPal",
+  "shareFormatTitle": "Compartir como…",
+  "shareFormatStory": "Story · 9:16",
+  "shareFormatStorySub": "Instagram / TikTok / WhatsApp Stories",
+  "shareFormatFeed": "Cuadrado · 1:1",
+  "shareFormatFeedSub": "Feed de Instagram, Facebook, LinkedIn",
+  "shareTitle": "MyTravelPal — plan de viaje",
+  "shareRouteLine": "{km} km · {hours} h flujo libre · peajes {tolls} €",
+  "@shareRouteLine": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "String"
+      },
+      "tolls": {
+        "type": "String"
+      }
+    }
+  },
+  "shareBestTime": "Mejor hora para salir: {when} ({minutes} min totales)",
+  "@shareBestTime": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "shareTollFreeAlt": "Alternativa sin peajes: ahorra {savings} € por +{minutes} min",
+  "@shareTollFreeAlt": {
+    "placeholders": {
+      "savings": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRefuelHint": "Reposta en {cheap} (~{price}€/L) antes de {pricey} — ahorra ~{savings}€/depósito",
+  "@shareRefuelHint": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "pricey": {
+        "type": "String"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "shareHotelsHeader": "Mejores hoteles considerados:",
+  "shareRestaurantsHeader": "Mejores restaurantes considerados:",
+  "shareHotelLine": "{name} — {price} €/noche · {km} km de la ruta",
+  "@shareHotelLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "shareRestaurantLine": "{name} — {price} €/comida · {km} km de la ruta",
+  "@shareRestaurantLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "shareOpenInApp": "Ábrelo en MyTravelPal:",
+  "eventReport": "Reportar un evento",
+  "eventDescription": "Descripción",
+  "eventType": "Tipo",
+  "eventSeverity": "Severidad",
+  "eventLocation": "Ubicación",
+  "eventSubmit": "Enviar",
+  "eventSubmitted": "Reportado.",
+  "resultStatDistance": "Distancia",
+  "resultStatFreeFlow": "Sin tráfico",
+  "resultStatTolls": "Peajes",
+  "resultEyebrowNearRoute": "Cerca de tu ruta",
+  "resultEyebrowAlongRoute": "En la ruta",
+  "resultAlerts": "Alertas",
+  "resultRestStops": "Paradas recomendadas",
+  "resultHotels": "Hoteles",
+  "resultRestaurants": "Restaurantes",
+  "resultFuel": "Combustible",
+  "resultOptimizedFuelBudget": "Presupuesto estimado de combustible",
+  "resultCompareTitle": "Compara tus opciones",
+  "resultCompareStraightApprox": "Aprox. línea recta.",
+  "resultSleepAt": "Dormir · {when}",
+  "@resultSleepAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "resultHourlyTollEyebrow": "VEREDICTO DE PEAJES POR HORA",
+  "resultSkipLabel": "Saltar",
+  "resultKeepLabel": "Mantener",
+  "resultSaveExactly": "Ahorra ",
+  "notificationsLeaveSoonTitle": "Toca salir pronto",
+  "localeSystem": "Sistema",
+  "localeMenuTooltip": "Idioma",
+  "dashboardCountry": "País",
+  "dashboardNoTripsYet": "Aún no hay viajes guardados. Planifica y guarda uno para ver estadísticas.",
+  "dashboardStatCards": "RESUMEN",
+  "profileVehicleType": "Tipo de vehículo",
+  "profileFuelType": "Tipo de combustible",
+  "profileConsumption": "Consumo",
+  "profileEvRange": "Autonomía eléctrica",
+  "profileFuelTank": "Depósito",
+  "profileBreakfast": "Desayuno",
+  "profileLunch": "Comida",
+  "profileDinner": "Cena",
+  "mealSlotBreak": "Descanso",
+  "profileStopMinutes": "Duración típica de parada",
+  "profileReminderMinutes": "Aviso antes de salir",
+  "profilePremiumHint": "Activa para previsualizar funciones Premium en local.",
+  "profileNoProfile": "Aún no has guardado ningún perfil.",
+  "eventPlaceholderDescription": "Breve descripción de lo que has visto",
+  "eventCurrentLocation": "Ubicación actual",
+  "eventPickOnMap": "Elegir en el mapa",
+  "eventLocationCoords": "Seleccionado: {lat}, {lon}",
+  "@eventLocationCoords": {
+    "placeholders": {
+      "lat": {
+        "type": "String"
+      },
+      "lon": {
+        "type": "String"
+      }
+    }
+  },
+  "narrativeRegenerate": "Regenerar",
+  "narrativeUpgrade": "Desbloquea el resumen IA con Premium.",
+  "compareVariantsRecommended": "Recomendado",
+  "compareVariantsFastest": "Más rápido",
+  "compareVariantsCheapest": "Más barato",
+  "compareVariantsScenic": "Paisajístico",
+  "compareVariantsAvoidTolls": "Sin peajes",
+  "compareVariantsAvoidMotorways": "Sin autopistas",
+  "hourlyBestHours": "Mejores horas para saltar peajes",
+  "hourlyWorstHours": "Peores horas para saltar peajes",
+  "partialTollSkipsTitle": "Peaje a peaje · Optimización Premium",
+  "partialTollSkipsEyebrow": "Detalle",
+  "sleepEyebrow": "PARA DORMIR",
+  "sleepNoHotelSuggestion": "Ningún hotel elegido — mira la sección de Hoteles.",
+  "lunchEyebrow": "PARADA DE COMIDA",
+  "dinnerEyebrow": "PARADA DE CENA",
+  "breakfastEyebrow": "PARADA DE DESAYUNO",
+  "resultCompareEyebrow": "Variantes de ruta",
+  "resultCompareDescription": "Mismo origen y destino — prioridades distintas. Los tiempos son sin tráfico.",
+  "resultVariantDashed": "Discontinua en el mapa de arriba",
+  "dayTollsHeader": "Peajes de este día · {amount} € ({count})",
+  "@dayTollsHeader": {
+    "placeholders": {
+      "amount": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "dayTollsSavedSummary": "Ahorras {amount} € saltando {count}.",
+  "@dayTollsSavedSummary": {
+    "placeholders": {
+      "amount": {},
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "tollHourGoodToSkip": "Buena hora para saltar ({hh}:00)",
+  "@tollHourGoodToSkip": {
+    "placeholders": {
+      "hh": {}
+    }
+  },
+  "tollHourAvoidSkip": "No lo saltes — hora pico {hh}:00",
+  "@tollHourAvoidSkip": {
+    "placeholders": {
+      "hh": {}
+    }
+  },
+  "partialTollsPerDayHint": "También puedes marcarlos por tramo en el resumen del viaje ↓",
+  "resultCityHint": "Cerca de {city}",
+  "@resultCityHint": {
+    "placeholders": {
+      "city": {}
+    }
+  },
+  "resultSavingsShiftAndSkip": "Cambiando la hora de salida y saltando peajes.",
+  "resultSavingsShift": "Cambiando la salida a la ventana recomendada.",
+  "resultSavingsSkip": "Cogiendo la alternativa sin peajes.",
+  "resultSavingsNone": "Sin ahorros identificados para esta ruta todavía.",
+  "resultBypassSavingsPrefix": "Podrías ahorrar hasta",
+  "resultBypassSavingsSuffix": "con +{minutes} min extra",
+  "@resultBypassSavingsSuffix": {
+    "placeholders": {
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "resultArrival": "LLEGADA",
+  "resultShift": "CAMBIO",
+  "resultTraffic": "TRÁFICO",
+  "resultTotal": "TOTAL",
+  "resultRestStopNoRestaurant": "Parada en el km {km} — sin restaurante compatible.",
+  "@resultRestStopNoRestaurant": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "resultNoHotelHere": "Buena parada aquí (~{km} km). Sin hotel compatible.",
+  "@resultNoHotelHere": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "resultMealFallback": "Comida",
+  "resultHourlyExplainer": "Común en Francia e Italia: salir antes de un peaje caro, coger una carretera paralela un tramo y volver a entrar — suele añadir 15-40 min pero ahorra 5-15 €.",
+  "profileSaved": "Perfil guardado",
+  "profileWhoEyebrow": "Personas",
+  "profileKidsSubtitle": "Prioriza restaurantes y hoteles amigables con niños.",
+  "profilePetsSubtitle": "Prioriza lugares que admiten mascotas y con aparcamiento.",
+  "profileVehicleEyebrow": "Para coste y aparcamiento",
+  "profileMealsEyebrow": "Para casar con paradas de restaurante",
+  "profileRemindersEyebrow": "Notificaciones locales",
+  "profileNotifyBefore": "Avisar antes de la salida",
+  "profileNotifyOff": "Desactivado — no se programará recordatorio.",
+  "profileNotifyMinutesBefore": "{minutes} minutos antes",
+  "@profileNotifyMinutesBefore": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "profilePremiumEyebrow": "Toggle local · sin pago real",
+  "profilePremiumBody": "El gating real con StoreKit / Play Billing viene después. De momento este toggle activa Premium en local para que puedas previsualizar esas funciones.",
+  "profileSimulatePremium": "Simular Premium",
+  "profileSimulatePremiumSubtitle": "Desbloquea el resumen IA y el análisis de peajes por hora.",
+  "profileOverrideHeroDesc": "Cambia tu perfil solo para este viaje — otro vehículo, otros viajeros u otras horas de comida sin tocar tu perfil guardado.",
+  "profileGlobalHeroDesc": "Configúralo una vez. Cada plan lo usa para ordenar hoteles y restaurantes, estimar combustible y ajustar las paradas de comida.",
+  "eventPickPlace": "Elige un lugar y describe lo que has visto.",
+  "eventThankYou": "Reporte enviado — ¡gracias!",
+  "eventCouldNotSubmit": "No se pudo enviar: {reason}",
+  "@eventCouldNotSubmit": {
+    "placeholders": {
+      "reason": {
+        "type": "String"
+      }
+    }
+  },
+  "eventIntro": "Ayuda a otros conductores a saber lo que has visto. Los reportes expiran a las 24 horas por defecto.",
+  "eventWhatHappened": "Qué ha pasado",
+  "eventWhatHappenedEyebrow": "Tipo",
+  "eventSeverityInfo": "Información",
+  "eventSeverityWarning": "Aviso",
+  "eventSeverityCritical": "Crítica",
+  "eventWhere": "Dónde",
+  "eventWhereEyebrow": "Ciudad más cercana",
+  "eventDescribeTitle": "Descríbelo",
+  "eventDescribeEyebrow": "Corto y útil",
+  "eventDescribeHint": "p.ej. Árboles caídos en A6 sur, 2 carriles cortados",
+  "eventSubmitting": "Enviando…",
+  "eventSubmitReport": "Enviar reporte",
+  "narrativeBusy": "Componiendo tu resumen de viaje…",
+  "narrativeErrorTitle": "No pudimos obtener el resumen",
+  "narrativeGeneratedAt": "Generado {when}",
+  "@narrativeGeneratedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "narrativeReadAloud": "Leer en voz alta",
+  "narrativeStop": "Parar",
+  "historyTitle": "Viajes guardados",
+  "historyEmptyTitle": "Aún no hay viajes guardados",
+  "historyEmptyBody": "Planifica un viaje y toca el marcador para guardarlo aquí.",
+  "historyPlanCta": "Planificar un viaje",
+  "historyDeleted": "Borrado {trip}",
+  "@historyDeleted": {
+    "placeholders": {
+      "trip": {
+        "type": "String"
+      }
+    }
+  },
+  "historyReplanFailed": "Falló el replan: {status}",
+  "@historyReplanFailed": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "historyReplanNetworkError": "La conexión se cortó durante el recálculo. Comprueba tu señal e inténtalo de nuevo.",
+  "@historyReplanNetworkError": {},
+  "retryLabel": "Reintentar",
+  "@retryLabel": {},
+  "historyDeleteTooltip": "Borrar",
+  "historyReopenCta": "Ver plan",
+  "historyRepeatCta": "Repetir",
+  "historySavedCount": "{count, plural, one{1 guardado} other{{count} guardados}}",
+  "@historySavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resultFuelCollapsedHint": "Mostrar las {count} gasolineras más baratas de la ruta",
+  "@resultFuelCollapsedHint": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "resultBestTimeVsFreeFlow": "{delta} min vs flujo libre",
+  "@resultBestTimeVsFreeFlow": {
+    "placeholders": {
+      "delta": {
+        "type": "String"
+      }
+    }
+  },
+  "resultBestTimeEarlier": "{minutes} min antes de tu hora deseada",
+  "@resultBestTimeEarlier": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "resultBestTimeLater": "{minutes} min después de tu hora deseada",
+  "@resultBestTimeLater": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "resultHeroSavedBadge": "{magnitude} ahorrados",
+  "@resultHeroSavedBadge": {
+    "placeholders": {
+      "magnitude": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyNeedsReview": "Revisa tu plan de viaje",
+  "consistencyNeedsReviewErrors": "Revisa tu plan de viaje · {errors} errores",
+  "@consistencyNeedsReviewErrors": {
+    "placeholders": {
+      "errors": {
+        "type": "int"
+      }
+    }
+  },
+  "consistencyNeedsReviewMixed": "Revisa tu plan de viaje · {errors} error(es), {warnings} aviso(s)",
+  "@consistencyNeedsReviewMixed": {
+    "placeholders": {
+      "errors": {
+        "type": "int"
+      },
+      "warnings": {
+        "type": "int"
+      }
+    }
+  },
+  "consistencyFuelNoStations": "El viaje son {km} km, pero de momento no vemos gasolineras a lo largo de la ruta. Los precios y las paradas sugeridas no están disponibles para este tramo.",
+  "@consistencyFuelNoStations": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyFuelNoStationsHint": "Puede que los datos aún estén cargando. Prueba a refrescar en unos minutos, o añade tu propia parada tocando el mapa.",
+  "consistencyFuelRangeExceeded": "Tu vehículo no cubre la ruta con un solo depósito o carga. Vas a necesitar repostar o cargar durante el viaje.",
+  "consistencyMealBeforeDeparture": "Se ha programado {slot} en el km {km} antes de la salida del viaje. Ajusta el horario de la parada o la hora de salida.",
+  "@consistencyMealBeforeDeparture": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealAfterArrival": "Se ha programado {slot} en el km {km} después de la llegada. Ajusta el horario de la parada o el ritmo del viaje.",
+  "@consistencyMealAfterArrival": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealImpossibleSpeed": "Para llegar a {slot} en el km {km} desde la salida haría falta ~{kmh} km/h — no es posible. Revisa la parada.",
+  "@consistencyMealImpossibleSpeed": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealSuspiciousSpeed": "Para llegar a {slot} en el km {km} desde la salida se necesitan ~{kmh} km/h. Comprueba si el ritmo es realista.",
+  "@consistencyMealSuspiciousSpeed": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencyMealTooCloseToArrival": "{slot} en el km {km} está muy cerca de la llegada ({mins} min antes). Igual conviene comer ya en el destino.",
+  "@consistencyMealTooCloseToArrival": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "mins": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepBeforeDeparture": "El descanso nocturno se ha programado antes de la salida (km {km}). Revisa la hora.",
+  "@consistencySleepBeforeDeparture": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepAfterArrival": "El descanso nocturno se ha programado después de la llegada (km {km}). Es posible que sobre.",
+  "@consistencySleepAfterArrival": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepImpossibleSpeed": "Llegar al descanso en el km {km} requiere ~{kmh} km/h — imposible. Revisa el tramo.",
+  "@consistencySleepImpossibleSpeed": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "consistencySleepSuspiciousSpeed": "El descanso en el km {km} implica ~{kmh} km/h de media. Comprueba si el ritmo es realista.",
+  "@consistencySleepSuspiciousSpeed": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "kmh": {
+        "type": "String"
+      }
+    }
+  },
+  "mealSlotBreakfastCap": "Desayuno",
+  "mealSlotLunchCap": "Comida",
+  "mealSlotDinnerCap": "Cena",
+  "consistencyHeadsUp": "Aviso sobre tu plan de viaje",
+  "consistencyHeadsUpWarnings": "Aviso sobre tu plan de viaje · {warnings} avisos",
+  "@consistencyHeadsUpWarnings": {
+    "placeholders": {
+      "warnings": {
+        "type": "int"
+      }
+    }
+  },
+  "consistencyMoreCount": "+{count} más",
+  "@consistencyMoreCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planProfileClearOverride": "Deshacer ajuste",
+  "weatherSunny": "Soleado",
+  "weatherPartlyCloudy": "Parcialmente nublado",
+  "weatherCloudy": "Nublado",
+  "weatherFog": "Niebla",
+  "weatherDrizzle": "Llovizna",
+  "weatherRain": "Lluvia",
+  "weatherHeavyRain": "Lluvia intensa",
+  "weatherSnow": "Nieve",
+  "weatherHeavySnow": "Nevada intensa",
+  "weatherThunderstorm": "Tormenta",
+  "historyBestAt": "Óptima {when}",
+  "@historyBestAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "historyWantedAt": "Deseada {when}",
+  "@historyWantedAt": {
+    "placeholders": {
+      "when": {
+        "type": "String"
+      }
+    }
+  },
+  "searchPlaceholder": "Buscar una ciudad, museo, lugar…",
+  "placesSectionTitle": "LUGARES GUARDADOS",
+  "placeSaveAsTooltip": "Guardar como lugar",
+  "placeSaveDialogTitle": "Guardar como…",
+  "placeCustomLabel": "Etiqueta",
+  "placeCustomHint": "Casa, trabajo, abuela…",
+  "placePresetHome": "Casa",
+  "placePresetWork": "Trabajo",
+  "placePresetSchool": "Colegio",
+  "placePresetGym": "Gimnasio",
+  "placeSavedAs": "Guardado como {label}",
+  "@placeSavedAs": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "favoritesTabPlaces": "Lugares",
+  "favoritesEmptyPlaces": "Aún no hay lugares guardados. Toca la estrella en cualquier resultado de búsqueda para guardarlo.",
+  "settingsTitle": "Ajustes",
+  "settingsSectionVehicle": "Vehículo y ruta",
+  "settingsSectionAppearance": "Apariencia",
+  "settingsSectionAI": "Personalización IA",
+  "notifSoundTitle": "Sonido de alertas",
+  "@notifSoundTitle": {},
+  "notifSoundDefault": "Sonido predeterminado",
+  "@notifSoundDefault": {},
+  "notifSoundDefaultSub": "Usa el sonido de notificación del sistema",
+  "@notifSoundDefaultSub": {},
+  "notifSoundSilent": "Silencio",
+  "@notifSoundSilent": {},
+  "notifSoundSilentSub": "Sin sonido al llegar alertas",
+  "@notifSoundSilentSub": {},
+  "settingsSectionSafety": "Contactos y seguridad",
+  "settingsSectionAccount": "Cuenta",
+  "settingsDensityLabel": "Densidad",
+  "settingsDensityComfortable": "Cómoda",
+  "settingsDensityCompact": "Compacta",
+  "settingsLanguage": "Idioma",
+  "settingsTheme": "Tema",
+  "settingsSectionUnits": "Unidades",
+  "settingsUnitSystem": "Sistema de unidades",
+  "settingsUnitsMetric": "Métrico",
+  "settingsUnitsImperial": "Imperial",
+  "settingsSectionTrip": "Viaje",
+  "settingsRadarAlerts": "Alertas de radar",
+  "settingsRadarAlertsSubtitle": "Vibración y banner cuando hay un radar a menos de 400 m (Essential+).",
+  "settingsSectionAbout": "Acerca de",
+  "settingsSectionData": "Tus datos",
+  "settingsExportData": "Descargar mis datos",
+  "settingsExportDataSub": "Obtén un JSON con todo lo que MyTravelPal guarda sobre ti.",
+  "settingsExportError": "No se pudieron exportar los datos — revisa tu conexión.",
+  "settingsDeleteAccount": "Borrar mi cuenta",
+  "settingsDeleteAccountSub": "Elimina tu perfil, viajes guardados y preferencias de forma permanente.",
+  "settingsDeleteAccountConfirmTitle": "¿Borrar cuenta?",
+  "settingsDeleteAccountConfirmBody": "Esto borra tu perfil y todos los viajes guardados de nuestros servidores. No se puede deshacer.",
+  "settingsDeleteAccountCancel": "Cancelar",
+  "settingsDeleteAccountConfirm": "Borrar para siempre",
+  "settingsDeleteAccountPartial": "Sesión cerrada, pero el servidor puede aún tener datos. Reintenta con conexión estable.",
+  "settingsDeleteAccountDone": "Cuenta borrada. Sesión cerrada.",
+  "settingsDeleteAccountInProgress": "Borrando cuenta…",
+  "settingsSupport": "Soporte y contacto",
+  "settingsPrivacyPolicy": "Política de privacidad",
+  "settingsTerms": "Términos del servicio",
+  "settingsVersion": "Versión",
+  "planTooltipSettings": "Ajustes",
+  "styleSectionTitle": "Ritmo de conducción",
+  "styleSectionEyebrow": "Cómo organizas tus jornadas",
+  "stylePresetDirect": "Directo",
+  "stylePresetBalanced": "Equilibrado",
+  "stylePresetSlow": "Tranquilo",
+  "stylePresetDirectHint": "Del tirón, paradas mínimas, sin dormir por el camino.",
+  "stylePresetBalancedHint": "Ritmo natural, descansos cuando tenga sentido.",
+  "stylePresetSlowHint": "Disfruta la conducción, paradas generosas, divide trayectos largos.",
+  "styleCustom": "Personalizado",
+  "styleAdvanced": "Avanzado",
+  "stylePaceLabel": "Ritmo",
+  "stylePacePush": "Del tirón",
+  "stylePaceSteady": "Normal",
+  "stylePaceSavour": "Con calma",
+  "styleOvernightLabel": "Paradas para dormir",
+  "styleOvernightNever": "Nunca",
+  "styleOvernightIfNeeded": "Si hace falta",
+  "styleOvernightAlwaysIfLong": "Dividir trayectos largos",
+  "styleDailyCapLabel": "Máx. horas al volante por día",
+  "styleBedtimeLabel": "Hora de dormir",
+  "styleWakeLabel": "Hora de despertarse",
+  "styleDrivingStartLabel": "Hora preferida para empezar a conducir",
+  "dayEditSheetTitle": "Ajustar día {day}",
+  "@dayEditSheetTitle": {
+    "placeholders": {
+      "day": {
+        "type": "int"
+      }
+    }
+  },
+  "dayEditStartHour": "Hora de empezar a conducir",
+  "dayEditMaxDriving": "Máximo horas al volante: {hours} h (incluye descansos)",
+  "@dayEditMaxDriving": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "dayExtendKmTitle": "Tienes más tiempo disponible",
+  "@dayExtendKmTitle": {},
+  "dayExtendKmBody": "Con este horario podrías recorrer +{extraKm} km más. ¿Quieres extender el día o mantener la ruta actual?",
+  "@dayExtendKmBody": {
+    "placeholders": {
+      "extraKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayExtendKmKeep": "Mantener ruta actual",
+  "@dayExtendKmKeep": {},
+  "dayExtendKmAdjust": "Extender el día (+{extraKm} km)",
+  "@dayExtendKmAdjust": {
+    "placeholders": {
+      "extraKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayEditEndHour": "Terminarás de conducir a las {time}",
+  "@dayEditEndHour": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayEditPickTime": "Elegir hora",
+  "@dayEditPickTime": {},
+  "dayEditEndTimePicker": "¿A qué hora quieres terminar de conducir?",
+  "@dayEditEndTimePicker": {},
+  "dayEditSave": "Aplicar",
+  "dayEditCancel": "Cancelar",
+  "dayEditReset": "Restablecer",
+  "resultReplanning": "Recalculando...",
+  "styleBreakLabel": "Estilo de parada",
+  "styleBreakMinimal": "Mínimo",
+  "styleBreakScenic": "Paisajístico",
+  "styleBreakFoodie": "Gastronómico",
+  "planStyleChip": "{preset} · {hours}h/día",
+  "@planStyleChip": {
+    "placeholders": {
+      "preset": {
+        "type": "String"
+      },
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "planStyleChipCustom": "Personalizado · {hours}h/día",
+  "@planStyleChipCustom": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "planStyleOverrideTitle": "Estilo para este viaje",
+  "planStyleOverrideSubtitle": "Sobrescribe tu perfil guardado solo para este plan.",
+  "planStyleUseSavedProfile": "Usar mi perfil guardado",
+  "arrivalHintTitle": "Llegarías a las {hour}:00",
+  "@arrivalHintTitle": {
+    "placeholders": {
+      "hour": {
+        "type": "String"
+      }
+    }
+  },
+  "arrivalHintBody": "Más tarde que tu hora de dormir ({bedtime}:00). Considera parar a dormir — los hoteles están abajo.",
+  "@arrivalHintBody": {
+    "placeholders": {
+      "bedtime": {
+        "type": "String"
+      }
+    }
+  },
+  "arrivalHintCta": "Ver hoteles",
+  "vehicleTypeCar": "Coche",
+  "vehicleTypeMotorbike": "Moto",
+  "vehicleTypeVan": "Furgoneta",
+  "vehicleTypeCamper": "Autocaravana",
+  "fuelTypePetrol": "Gasolina",
+  "fuelTypeDiesel": "Diésel",
+  "fuelTypeHybrid": "Híbrido",
+  "fuelTypeElectric": "Eléctrico",
+  "fuelTypeLpg": "GLP",
+  "routeVariantFastest": "Más rápida",
+  "routeVariantTollFree": "Sin peajes",
+  "routeVariantScenic": "Escénica",
+  "eventTypeFire": "Incendio",
+  "eventTypeStrike": "Huelga",
+  "eventTypeWeather": "Meteorología adversa",
+  "eventTypeAccident": "Accidente",
+  "eventTypeRoadwork": "Obras",
+  "eventTypeFlood": "Inundación",
+  "eventTypeSnow": "Nieve",
+  "eventTypeProtest": "Manifestación",
+  "eventTypeEarthquake": "Terremoto",
+  "eventTypeLandslide": "Deslizamiento",
+  "eventTypeAvalanche": "Avalancha",
+  "eventTypeClosure": "Vía cortada",
+  "eventTypeHeatwave": "Ola de calor",
+  "eventTypeHeavyRain": "Lluvia fuerte",
+  "eventTypeHail": "Granizo",
+  "eventTypeThunderstorm": "Tormenta eléctrica",
+  "eventTypeHighWind": "Viento fuerte",
+  "eventTypeDenseFog": "Niebla densa",
+  "eventTypeFreezingRain": "Lluvia helada",
+  "eventTypeOther": "Otros",
+  "tollStretchLabel": "Tramo con peaje {index} / {total}",
+  "@tollStretchLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "tollBoothLabel": "Peaje {index}",
+  "@tollBoothLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "addToRouteTooltip": "Añadir a la ruta",
+  "addedToRouteLabel": "AÑADIDO",
+  "replanWithStops": "Recalcular ruta con paradas",
+  "removeFromRouteTooltip": "Quitar de la ruta",
+  "addedStopsChip": "{count, plural, =1{1 parada añadida · +{minutes} min} other{{count} paradas añadidas · +{minutes} min}}",
+  "@addedStopsChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "addedStopsClear": "Limpiar",
+  "settingsLicensesAndData": "Licencias y fuentes de datos",
+  "settingsLicensesAndDataSub": "Atribución de datos abiertos y librerías",
+  "attributionsTitle": "Licencias y datos",
+  "attributionsIntro": "MyTravelPal se apoya en fuentes de datos abiertas y librerías open-source. Esta pantalla acredita cada fuente, enlaza con sus licencias y cubre nuestras obligaciones legales de atribución.",
+  "attributionsSectionMap": "Mapa y geodatos",
+  "attributionsSectionFuel": "Precios de combustible",
+  "attributionsSectionHazards": "Eventos adversos",
+  "attributionsSectionWeather": "Meteorología",
+  "attributionsSectionSoftware": "Librerías de software",
+  "attributionsShowLicenses": "Ver licencias de paquetes",
+  "attributionsFailed": "No se pudieron cargar las atribuciones. Inténtalo de nuevo.",
+  "fuelPriceUnavailable": "Precio no disponible",
+  "fuelPriceUnavailableHint": "No hay feed público de precios en este país todavía",
+  "planSectionOptionalEyebrow": "Opcional",
+  "planOptAlertsTitle": "Avisarme de eventos críticos en la ruta",
+  "planOptAlertsSub": "Incendios, inundaciones, temporal grave y peligros serios a menos de 25 km de la ruta.",
+  "planOptTollFreeTitle": "Mostrar alternativa sin peajes",
+  "planOptTollFreeSub": "Compara una ruta que evita peajes — dinero ahorrado vs. minutos añadidos.",
+  "planOptHourlyTollTitle": "Análisis de peajes por hora",
+  "planOptHourlyTollSub": "A qué horas del día evitar peajes realmente compensa (según el tráfico).",
+  "planOptRouteVariantsTitle": "Comparar variantes de ruta",
+  "planOptRouteVariantsSub": "Más rápida vs. sin peajes vs. escénica — las tres en paralelo en los resultados.",
+  "planOptAvoidMotorwaysTitle": "Evitar autopistas",
+  "planOptAvoidMotorwaysSub": "Más lento y más largo, pero sin peajes y más tranquilo.",
+  "planOptPreferScenicTitle": "Preferir escénica",
+  "planOptPreferScenicSub": "Prioriza carreteras más interesantes. Algo más lento.",
+  "planPremiumBadge": "Premium",
+  "planProfileTravellers": "{count, plural, =1{1 viajero} other{{count} viajeros}}",
+  "@planProfileTravellers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planProfileWithKids": "niños",
+  "planProfileWithPets": "mascotas",
+  "planProfileOverrideActive": "SUSTITUCIÓN ACTIVA",
+  "planProfileOverride": "Sustituir para este viaje",
+  "planProfileOverriding": "Sustituyendo para este viaje",
+  "profilePromptSetup": "Configura tu perfil de viaje",
+  "hotelPrefTitle": "Buscar hoteles cerca de las paradas",
+  "hotelPrefSubOn": "Muestra opciones de alojamiento cerca de cada punto de pernocta",
+  "hotelPrefSubOff": "Desactivado",
+  "restaurantPrefTitle": "Añadir restaurantes en la ruta",
+  "restaurantPrefSubEnabled": "Hasta {minutes} min de desvío · {band}",
+  "@restaurantPrefSubEnabled": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      },
+      "band": {
+        "type": "String"
+      }
+    }
+  },
+  "restaurantPrefSubOff": "Desactivado. Actívalo para ver restaurantes cerca de la ruta.",
+  "prefMaxDetour": "Desvío máx: {minutes} min",
+  "@prefMaxDetour": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "prefBandBudget": "Económico",
+  "prefBandMid": "Medio",
+  "prefBandLuxury": "Lujo",
+  "prefBandAny": "Cualquiera",
+  "mealSlotBreakfast": "Sugeridos para desayuno",
+  "mealSlotLunch": "Sugeridos para comida",
+  "mealSlotDinner": "Sugeridos para cena",
+  "mealSlotOther": "Otros restaurantes",
+  "poiDistanceKm": "{km} km · +{minutes} min de desvío",
+  "@poiDistanceKm": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      },
+      "minutes": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelSavingsChipCheap": "-{amount}€/L vs media país",
+  "@fuelSavingsChipCheap": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelSavingsChipDear": "+{amount}€/L vs media país",
+  "@fuelSavingsChipDear": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "fuelArbitrageTitle": "Reposta con cabeza en esta ruta",
+  "fuelArbitrageBody": "El combustible en {cheap} está a ~{cheapPrice}€/L. En {dear} sube a ~{dearPrice}€/L. Llenar el depósito en {cheap} antes de cruzar ahorra ~{savings}€.",
+  "@fuelArbitrageBody": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "cheapPrice": {
+        "type": "String"
+      },
+      "dear": {
+        "type": "String"
+      },
+      "dearPrice": {
+        "type": "String"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "dayTabLabel": "Día {index}",
+  "@dayTabLabel": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      }
+    }
+  },
+  "dayHeaderRange": "Día {index} · km {fromKm} → {toKm}",
+  "@dayHeaderRange": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "fromKm": {
+        "type": "String"
+      },
+      "toKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayHeaderCity": "Día {index} · {from} → {to}",
+  "@dayHeaderCity": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "dayArrivalMarker": "Llegas a tu destino hacia las {time}",
+  "@dayArrivalMarker": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepMarker": "Terminas de conducir hacia las {time}",
+  "@daySleepMarker": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayStartsAt": "Sale a las {time}",
+  "@dayStartsAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "dayDriveWindow": "{start} → {end}",
+  "@dayDriveWindow": {
+    "placeholders": {
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopWhyTitle": "¿Por qué esta parada?",
+  "restStopWhyKidFriendly": "Área de servicio marcada como apta para niños",
+  "restStopWhyPetFriendly": "Zona para perros / mascotas cerca",
+  "restStopWhyRvFriendly": "Compatible con autocaravana (sanitario / vaciado)",
+  "restStopWhySafety": "Recomendado por seguridad vial: llevas {hours}h conduciendo. La normativa EU 561/2006 sugiere una pausa de al menos 45 min tras 4h30 al volante.",
+  "@restStopWhySafety": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopWhyClose": "Entendido",
+  "dayMealStopAt": "🍽 {time} · {name}",
+  "@dayMealStopAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "dayRestStopAt": "☕ {time} · {label}",
+  "@dayRestStopAt": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      },
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopFilterAll": "Todos",
+  "restStopFilterKidFriendly": "Familiar",
+  "restStopFilterPetFriendly": "Con mascota",
+  "restStopFilterRvFriendly": "Autocaravana",
+  "dayHeaderDwell": "Día {index} · {place}",
+  "@dayHeaderDwell": {
+    "placeholders": {
+      "index": {
+        "type": "int"
+      },
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepStay": "Estancia en {place}",
+  "@daySleepStay": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      }
+    }
+  },
+  "nextStopHeroLabel": "Próxima parada sugerida",
+  "nextStopHeroBody": "{slot} en {name} · hacia las {time}",
+  "@nextStopHeroBody": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepHotelsLabel": "Hoteles cerca del punto de pernocta",
+  "hotelDistFromStop": "{km} km de la parada",
+  "@hotelDistFromStop": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "hotelDistFromDestination": "{km} km del destino",
+  "@hotelDistFromDestination": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "daySleepHotelsLabelDestination": "Hoteles cerca del destino",
+  "daySleepHotelsEmpty": "Activa hoteles en las preferencias del plan para ver opciones de pernocta.",
+  "daySleepHotelsNotFound": "No encontramos hoteles cerca de esta ruta con tus preferencias actuales.",
+  "noHotelsAdjustPrefs": "Ajustar preferencias",
+  "noRestaurantsAdjustPrefs": "No encontramos restaurantes con tus preferencias actuales.",
+  "companionAssistantTitle": "Asistente companion",
+  "settingsAiPersonalisation": "Personalización IA",
+  "companionAskHint": "Pregúntame algo…",
+  "companionSend": "Enviar",
+  "companionGroupJoin": "Unirme como pasajero",
+  "companionJoin": "Unirme",
+  "resultFuelSavingsTitle": "Combustible barato en tu ruta",
+  "daySleepHotelsSearching": "Buscando hoteles cerca de tu parada...",
+  "enrichmentLoadingTitle": "Cargando datos extra",
+  "enrichmentChipHotels": "Hoteles",
+  "enrichmentChipRestaurants": "Restaurantes",
+  "enrichmentChipFuel": "Gasolineras",
+  "enrichmentChipWeather": "Meteo",
+  "enrichmentChipAdverse": "Alertas",
+  "enrichPulseHeader": "Ahora mismo…",
+  "enrichPulseHotels": "Buscando hoteles con mejor precio/estrellas",
+  "enrichPulseRestaurants": "Filtrando restaurantes según tus preferencias",
+  "enrichPulseFuel": "Localizando las gasolineras más baratas del corredor",
+  "enrichPulseTolls": "Detectando peajes evitables sin desviarte",
+  "enrichPulseWindows": "Comparando horarios por tráfico esperado",
+  "enrichPulseWeather": "Previsión hora a hora en 5 tramos de la ruta",
+  "enrichPulseAdverse": "Cruzando incendios y otros peligros graves con tu ruta",
+  "enrichPulseKids": "Paradas con zona infantil o parque cerca",
+  "enrichPulsePets": "Localizando pipicanes y áreas pet-friendly",
+  "enrichPulseCamper": "Buscando áreas para camper con vaciado y sanitarios",
+  "enrichPulseVehicleEv": "Planificando carga de tu {vehicle} ({tank} kWh)",
+  "@enrichPulseVehicleEv": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "tank": {
+        "type": "String"
+      }
+    }
+  },
+  "enrichPulseVehicle": "Ajustando repostaje a tu {vehicle} ({tank} L)",
+  "@enrichPulseVehicle": {
+    "placeholders": {
+      "vehicle": {
+        "type": "String"
+      },
+      "tank": {
+        "type": "String"
+      }
+    }
+  },
+  "restStopsWidenedHint": "Sin paradas con el filtro; mostramos las mejores del tramo.",
+  "windowsSheetTitle": "Ventanas de salida",
+  "windowsSheetHint": "Toca una tarjeta para replanificar con esa salida.",
+  "windowsSheetOpen": "Ver detalle por hora",
+  "windowsBadgeCurrent": "Tu hora",
+  "windowsBadgeRecommended": "Recomendada",
+  "windowsMetaDuration": "Duración",
+  "windowsMetaArrival": "Llegada",
+  "windowsMetaTraffic": "Tráfico",
+  "trafficLight": "Ligero",
+  "trafficMedium": "Moderado",
+  "trafficDense": "Denso",
+  "todEarlyMorning": "Madrugada",
+  "todMorning": "Mañana",
+  "todNoon": "Mediodía",
+  "todAfternoon": "Tarde",
+  "todNight": "Noche",
+  "restaurantPrefCuisinesLabel": "Tipo de cocina",
+  "cuisineItalian": "Italiana",
+  "cuisineSpanish": "Española",
+  "cuisineTapas": "Tapas",
+  "cuisineFrench": "Francesa",
+  "cuisineMediterranean": "Mediterránea",
+  "cuisineAsian": "Asiática",
+  "cuisineIndian": "India",
+  "cuisineBurger": "Hamburguesas",
+  "cuisineSeafood": "Pescado / mariscos",
+  "cuisineVegetarian": "Vegetariana",
+  "cuisineBbq": "Parrilla / BBQ",
+  "cuisineRegional": "Regional",
+  "timeWindowSpanLabel": "Mostrar ±{hours}h",
+  "@timeWindowSpanLabel": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "timeWindowSpanHelper": "Arrastra para ampliar la ventana y ver si salir antes o después ahorra más tiempo.",
+  "timeWindowTapHint": "Toca una barra para recalcular con esa hora de salida.",
+  "planLoadingRecalculating": "Recalculando con tus ajustes...",
+  "@planLoadingRecalculating": {},
+  "planLoadingTitle": "Preparando tu viaje",
+  "planLoadingStepRouting": "Calculando la ruta más rápida…",
+  "planLoadingStepTraffic": "Muestreando tráfico para elegir la mejor hora de salida…",
+  "planLoadingStepFuel": "Obteniendo precios reales de combustible del corredor…",
+  "planLoadingStepHotels": "Buscando hoteles cerca de las paradas para pernoctar…",
+  "planLoadingStepRestaurants": "Ordenando restaurantes por horario y tipo de cocina…",
+  "planLoadingStepAlerts": "Escaneando incendios, inundaciones, temporal grave y peligros…",
+  "planLoadingStepTolls": "Comparando rutas con peaje y alternativas sin peaje…",
+  "planLoadingStepAlmost": "Casi listo — juntando todo para ti…",
+  "planLoadingHelper": "Puede tardar hasta varios minutos. Puedes guardar el móvil un momento.",
+  "timeWindowApplyLabel": "Aplicar · salida a las {time}",
+  "@timeWindowApplyLabel": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "planErrorAuth": "Sesión caducada. Vuelve a entrar y prueba de nuevo.",
+  "planErrorPremium": "Esta ruta necesita Premium. Actívalo para incluir el análisis de peajes por hora.",
+  "planErrorRateLimit": "Demasiadas peticiones en poco tiempo. Espera unos segundos y reintenta.",
+  "planErrorGeneric": "Algo fue mal al planificar (código {code}). Reintenta o cámbianos los datos.",
+  "@planErrorGeneric": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "planErrorNetwork": "No pudimos conectar con el servidor. Comprueba tu conexión y reintenta.",
+  "planErrorRetry": "Reintentar",
+  "emptyAlertsTitle": "Sin peligros graves detectados",
+  "emptyAlertsBody": "No detectamos incendios, inundaciones ni peligros graves en tu corredor. Buen viaje.",
+  "emptyHotelsTitle": "Sin hoteles cerca de la ruta",
+  "emptyHotelsBody": "Prueba a ampliar el desvío máximo o cambia la banda de precio para ver más opciones.",
+  "emptyRestaurantsTitle": "Sin restaurantes que encajen",
+  "emptyRestaurantsBody": "Amplía el desvío máximo o quita filtros de cocina para ver más opciones.",
+  "emptyRestaurantsNotFoundTitle": "Sin restaurantes cerca de la ruta",
+  "emptyRestaurantsNotFoundBody": "El buscador no encontró opciones. Prueba a ampliar la desviación máxima en Preferencias.",
+  "emptyFuelNotFoundTitle": "Sin datos de gasolina en esta zona",
+  "emptyFuelNotFoundBody": "Los proveedores no cubren esta ruta. Los precios reales aparecerán en zonas con datos oficiales.",
+  "onboardEyebrowFuel": "PEAJES Y COMBUSTIBLE",
+  "onboardTitleFuel": "¿Salto este peaje?\n¿Reposto antes de Francia?",
+  "onboardBodyFuel": "Te decimos qué peajes vale la pena saltar según la hora, y qué gasolinera de tu ruta tiene el mejor precio ahora mismo.",
+  "onboardEyebrowDriving": "COPILOTO IA · PREMIUM",
+  "onboardTitleDriving": "\"¿Paro a repostar\naquí o espero?\"",
+  "onboardBodyDriving": "Conoce tu ruta, tu depósito y los precios siguientes. Responde en segundos. Funciona con Android Auto. (Premium)",
+  "onboardEyebrowProfile": "PERSONALIZADO",
+  "onboardTitleProfile": "Rellena tu perfil",
+  "onboardBodyProfile": "Sin perfil optimizamos solo tiempo. Con perfil calculamos fuel real, hoteles y comidas ajustadas a ti.",
+  "multiDaySleepLabel": "Dormirás en",
+  "multiDaySleepNoHotel": "Punto de pernocta sin hotel disponible",
+  "resumeTripTitle": "¿Retomamos tu viaje?",
+  "resumeTripBody": "Detectamos un viaje {origin} → {destination} en marcha. ¿Continuamos donde lo dejaste?",
+  "@resumeTripBody": {
+    "placeholders": {
+      "origin": {
+        "type": "String"
+      },
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "resumeTripResume": "Retomar",
+  "resumeTripDismiss": "Descartar",
+  "hotelPrefStarsLabel": "Estrellas",
+  "hotelPrefDestRadiusLabel": "Radio desde el destino",
+  "biometricPromptReason": "Verifica tu identidad para abrir MyTravelPal",
+  "biometricPromptSettings": "Confirma para activar el desbloqueo biométrico",
+  "planDepartureLabel": "Salida preferida",
+  "hotelPrefStarsAny": "Todas",
+  "hotelPrefParkingTitle": "Con parking",
+  "hotelPrefParkingSub": "Solo hoteles con parking indicado. Los que no tienen la etiqueta también pasan.",
+  "hotelFilterParking": "Parking",
+  "hotelFilterWifi": "WiFi gratis",
+  "hotelFilterAccessible": "Accesible",
+  "hotelFilterOtherTypes": "Apartamentos, casas y más",
+  "restaurantFilterVegetarian": "Vegetariano",
+  "restaurantFilterVegan": "Vegano",
+  "restaurantFilterGlutenFree": "Sin gluten",
+  "restaurantFilterHalal": "Halal",
+  "restaurantFilterKosher": "Kosher",
+  "restaurantDietaryLabel": "Dieta",
+  "tollSkipSelectAll": "Seleccionar todos",
+  "mapShowLabel": "Mostrar mapa",
+  "mapHideLabel": "Ocultar mapa",
+  "tripCostTitle": "COSTE TOTAL DEL VIAJE",
+  "tripCostFuel": "Combustible",
+  "tripCostTolls": "Peajes",
+  "tripCostMeals": "Comidas",
+  "tripCostHotel": "Hotel",
+  "tripCostTotal": "Total estimado",
+  "tripCostPerPerson": "{amount} / persona",
+  "@tripCostPerPerson": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "tripCostPerDay": "{amount} / día",
+  "@tripCostPerDay": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "poiSpotlightRating": "valoración",
+  "poiSpotlightStars": "estrellas",
+  "poiSpotlightReviews": "{count} reseñas",
+  "@poiSpotlightReviews": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "poiSpotlightPricePerNight": "por noche",
+  "poiSpotlightPricePerMeal": "por comida",
+  "poiSpotlightPricePerL": "por litro",
+  "poiFeaturesHeading": "Servicios",
+  "poiMoreInfoLabel": "Más info",
+  "poiMoreInfoHide": "Ocultar",
+  "poiNoExtraInfo": "Sin información adicional de OSM.",
+  "poiOpenError": "No se pudo abrir {url}",
+  "@poiOpenError": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "poiCtaGoogleMaps": "Google Maps",
+  "poiCtaTheFork": "TheFork",
+  "poiCtaBooking": "Booking",
+  "poiCtaAirbnb": "Airbnb",
+  "poiCtaCall": "Llamar",
+  "poiCtaWebsite": "Web",
+  "poiContactAddress": "Dirección",
+  "poiContactPhone": "Teléfono",
+  "poiContactWebsite": "Web",
+  "poiContactHours": "Horario",
+  "poiContactCheckin": "Entrada",
+  "poiContactCheckout": "Salida",
+  "poiAttr_wifi": "WiFi",
+  "poiAttr_parking": "Parking",
+  "poiAttr_pool": "Piscina",
+  "poiAttr_airConditioning": "Aire acondicionado",
+  "poiAttr_breakfast": "Desayuno incluido",
+  "poiAttr_petFriendly": "Mascotas admitidas",
+  "poiAttr_childFriendly": "Apto niños",
+  "poiAttr_wheelchairAccess": "Accesible silla de ruedas",
+  "poiAttr_toilets": "Aseos",
+  "poiAttr_restaurant": "Restaurante",
+  "poiAttr_bar": "Bar",
+  "poiAttr_shop": "Tienda",
+  "poiAttr_outdoorSeating": "Terraza",
+  "poiAttr_takeaway": "Para llevar",
+  "poiAttr_delivery": "Reparto a domicilio",
+  "poiAttr_creditCards": "Tarjetas aceptadas",
+  "poiAttr_carWash": "Lavado de coches",
+  "poiAttr_smoking": "Zona de fumadores",
+  "poiAttr_nonSmoking": "Sin humos",
+  "poiAttr_elevator": "Ascensor",
+  "poiAttr_checkIn": "Check-in",
+  "poiAttr_checkOut": "Check-out",
+  "poiAttr_dietVegetarian": "Vegetariano",
+  "poiAttr_dietVegan": "Vegano",
+  "poiAttr_dietHalal": "Halal",
+  "poiAttr_dietKosher": "Kosher",
+  "poiAttr_dietGlutenFree": "Sin gluten",
+  "poiAttr_dog": "Mascotas bienvenidas",
+  "poiAttr_brand": "Marca",
+  "poiAttr_city": "Ciudad",
+  "poiAttr_street": "Calle",
+  "poiAttr_address": "Dirección",
+  "poiAttr_openingHours": "Horario",
+  "poiAttr_name": "Nombre",
+  "poiAttr_phone": "Teléfono",
+  "poiAttr_stars": "Estrellas",
+  "poiAttr_website": "Sitio web",
+  "poiPickerChoose": "Elegir",
+  "poiPickerSelected": "Seleccionado",
+  "poiPickerHotels": "Ver alternativas",
+  "poiPickerRestaurants": "Ver restaurantes cercanos",
+  "addToRouteLabel": "Añadir a la ruta",
+  "biometricSetupTitle": "¿Activar acceso biométrico?",
+  "biometricSetupBody": "Usa tu huella o cara para desbloquear MyTravelPal.",
+  "biometricSetupEnable": "Activar",
+  "biometricSetupSkip": "Ahora no",
+  "weatherAlongRouteTitle": "CLIMA EN TU RUTA",
+  "fuelNotificationTitle": "¡Reposta antes de la frontera!",
+  "fuelNotificationBody": "Combustible en {cheap} (~{price}€/L) antes de cruzar a {pricey} — ahorra ~{savings}€ por depósito",
+  "@fuelNotificationBody": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      },
+      "pricey": {
+        "type": "String"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "tutorialSkip": "Saltar",
+  "tutorialOriginTitle": "¿Desde dónde sales?",
+  "tutorialOriginBody": "Toca aquí para buscar una ciudad o usa el botón de ubicación para salir desde donde estás.",
+  "tutorialDestinationTitle": "¿A dónde vas?",
+  "tutorialDestinationBody": "Busca tu destino. Planificaremos la ruta completa con paradas, hoteles y peajes.",
+  "tutorialPrefsTitle": "Personaliza tu viaje",
+  "tutorialPrefsBody": "Activa hoteles, restaurantes y alertas. Configura preferencias dietéticas, estrellas y más.",
+  "tutorialTimeWindowTitle": "Elige la mejor hora de salida",
+  "tutorialTimeWindowBody": "Toca cualquier franja para replanificar con esa hora. El gráfico muestra el impacto del tráfico en cada hora.",
+  "tutorialTollTitle": "Gestiona los peajes",
+  "tutorialTollBody": "Activa o desactiva tramos de peaje individualmente. El ahorro total se actualiza en tiempo real. La barra de colores muestra las mejores horas para saltar.",
+  "styleDailyCapRecommendedHint": "Para este ritmo recomendamos {hours} h/día.",
+  "@styleDailyCapRecommendedHint": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "aaCoachTitle": "Cómo verla en Android Auto",
+  "aaCoachStep1": "Conecta el móvil al coche por USB (o wireless si tu head unit lo soporta).",
+  "aaCoachStep2": "En el launcher del coche, cambia a la categoría 'Point of Interest' o 'Apps'. NO aparece junto a Google Maps.",
+  "aaCoachStep3": "Toca MyTravelPal. Se abre el companion con próxima parada, gasolina más barata y ETA.",
+  "aaCoachHint": "La primera vez tarda unos segundos. Aparca con vista al cielo para tener GPS antes de arrancar.",
+  "aaCoachDontShowAgain": "No mostrar de nuevo",
+  "aaCoachDone": "Entendido",
+  "batteryWhitelistTitle": "Evita que Android nos cierre",
+  "batteryWhitelistBody": "Xiaomi/MIUI y otras marcas cierran apps en segundo plano tras unos minutos. Si estás navegando con Google Maps y MyTravelPal muere, pierdes las alertas en vivo.",
+  "batteryWhitelistSteps": "Ajustes → Aplicaciones → MyTravelPal → Batería → Sin restricciones\n(o 'No optimizar' según tu modelo)",
+  "batteryWhitelistDontShowAgain": "No mostrar de nuevo",
+  "batteryWhitelistLater": "Ahora no",
+  "batteryWhitelistOpen": "Abrir ayuda",
+  "planRoundTripTitle": "Ida y vuelta",
+  "planRoundTripSubtitle": "Planificamos el viaje de vuelta a la vez con las mismas preferencias.",
+  "roundTripLegOutbound": "IDA",
+  "roundTripLegReturn": "VUELTA",
+  "roundTripSwapTo": "Ver {leg}",
+  "@roundTripSwapTo": {
+    "placeholders": {
+      "leg": {
+        "type": "String"
+      }
+    }
+  },
+  "resultStartTrip": "Iniciar viaje",
+  "resultStartCompanion": "Iniciar Asistente de conducción (Premium)",
+  "companionPreflightTitle": "Ajustes antes de conducir",
+  "companionPreflightMealWindows": "Horarios de comida",
+  "companionPreflightDetourTolerance": "Desvío máximo",
+  "companionPreflightMealBudget": "Presupuesto por comida",
+  "companionPreflightHotelBudget": "Presupuesto por noche",
+  "companionPreflightSaveToProfile": "Guardar en mi perfil",
+  "companionPreflightStart": "Empezar a conducir",
+  "companionPreflightBreakfast": "Desayuno",
+  "companionPreflightLunch": "Almuerzo",
+  "companionPreflightDinner": "Cena",
+  "navPickerTitle": "Continuar en…",
+  "tripDashboardTitle": "En ruta",
+  "tripDashboardCenterOnMe": "Centrar en mi posición",
+  "tripDashboardOpenNav": "Abrir navegación",
+  "tripDashboardNextStopLabel": "PRÓXIMA {slot}",
+  "@tripDashboardNextStopLabel": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardInMinutes": "en {n} min",
+  "@tripDashboardInMinutes": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "tripDashboardPermissionDenied": "Ubicación denegada. Activa el permiso para ver tu posición en la ruta.",
+  "tripDashboardServiceDisabled": "GPS desactivado. Enciéndelo para seguir tu progreso en la ruta.",
+  "tripDashboardProgressLine": "{done} / {total} km",
+  "@tripDashboardProgressLine": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardEta": "ETA {time}",
+  "@tripDashboardEta": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardActiveNotifTitle": "Viaje activo",
+  "tripDashboardActiveNotifBody": "MyTravelPal sigue tu ruta en segundo plano.",
+  "tripDashboardForegroundBodyBare": "{done} / {total} km recorridos",
+  "@tripDashboardForegroundBodyBare": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardForegroundBodyWithStop": "{done} / {total} km · próxima parada: {name}",
+  "@tripDashboardForegroundBodyWithStop": {
+    "placeholders": {
+      "done": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "tripDashboardSleepStopLabel": "hotel",
+  "alertApproachingStopTitle": "Parada cerca",
+  "alertApproachingStopBody": "{slot} en {name} en unos {mins} min. Prepara la salida.",
+  "@alertApproachingStopBody": {
+    "placeholders": {
+      "slot": {
+        "type": "String"
+      },
+      "name": {
+        "type": "String"
+      },
+      "mins": {
+        "type": "int"
+      }
+    }
+  },
+  "alertNewAdverseAheadTitle": "Nueva alerta en la ruta",
+  "alertNewAdverseAheadBody": "{type} detectado a {km} km por delante.",
+  "@alertNewAdverseAheadBody": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "alertDriftDetectedTitle": "Te desviaste de la ruta",
+  "alertDriftDetectedBody": "Estás a {off} m del trazado planificado. ¿Recalcular?",
+  "@alertDriftDetectedBody": {
+    "placeholders": {
+      "off": {
+        "type": "String"
+      }
+    }
+  },
+  "alertBehindScheduleTitle": "Vas con retraso",
+  "alertBehindScheduleBody": "Llegarás {mins} min más tarde de lo previsto.",
+  "@alertBehindScheduleBody": {
+    "placeholders": {
+      "mins": {
+        "type": "int"
+      }
+    }
+  },
+  "tripDashboardCheaperFuel": "{brand} en {km} km · ahorras {cts} ct/L",
+  "@tripDashboardCheaperFuel": {
+    "placeholders": {
+      "brand": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "cts": {
+        "type": "String"
+      }
+    }
+  },
+  "resultOptimalDeparture": "Tu hora de salida es óptima",
+  "shortLastDayWarning": "Último tramo corto ({km} km) — podrías llegar hoy si avanzas más el día anterior.",
+  "@shortLastDayWarning": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "prepareDepartureNow": "Salir ahora",
+  "replanNewDepartureTitle": "Calculando con nueva hora de salida…",
+  "planStopReorderHint": "Mantén pulsado el asa para reordenar",
+  "planSwapOriginDestination": "Invertir",
+  "planStopMoveUp": "Mover arriba",
+  "planStopMoveDown": "Mover abajo",
+  "recentTripsTitle": "Viajes recientes",
+  "recentTripsSubtitle": "{count} guardados — toca para reutilizar",
+  "@recentTripsSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recentTripsSeeAll": "Ver los {n} viajes restantes en Mis viajes",
+  "@recentTripsSeeAll": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "onRouteTitle": "En la ruta",
+  "onRouteEmpty": "Toca para elegir opciones",
+  "exportShareTitle": "Compartir ruta",
+  "exportOpenInMaps": "Abrir en Google Maps",
+  "exportOpenInMapsSub": "Con paradas y desvíos añadidos",
+  "exportCopyLink": "Copiar enlace",
+  "exportLinkCopied": "Enlace copiado al portapapeles",
+  "exportShareOs": "Compartir…",
+  "exportShareSubject": "Mi ruta en MyTravelPal",
+  "importFromMaps": "Importar de Maps",
+  "importFromMapsTitle": "Importar ruta de Google Maps",
+  "importFromMapsHint": "Pega aquí el enlace de Google Maps",
+  "importFromMapsPaste": "Pegar",
+  "importFromMapsImport": "Importar",
+  "importFromMapsErrorMalformed": "URL no válida — revisa el enlace e inténtalo de nuevo",
+  "importFromMapsErrorShortlink": "No se pudo expandir el enlace corto — ábrelo en Maps y copia la URL completa",
+  "importFromMapsErrorGeocode": "No se pudieron localizar los lugares en el mapa — prueba con una ruta más corta o escríbelos a mano",
+  "importFromMapsError": "URL no reconocida",
+  "importFromMapsLoading": "Analizando enlace…",
+  "adverseEventsBannerCount": "{count} alerta(s) en tu ruta",
+  "@adverseEventsBannerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pricePerMeal": "{price} €/comida",
+  "@pricePerMeal": {
+    "placeholders": {
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "kmFromOrigin": "{km} km desde el origen",
+  "@kmFromOrigin": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "profileVehicleModel": "Modelo",
+  "profileVehicleModelHint": "Elige tu modelo",
+  "profileVehicleModelClear": "Quitar modelo",
+  "profileTankLevel": "Depósito actual",
+  "vehiclePickerSearchHint": "Buscar marca o modelo",
+  "vehiclePickerEmpty": "Ningún modelo coincide con la búsqueda",
+  "vehiclePickerLoadError": "No se pudo cargar el listado. Inténtalo más tarde.",
+  "vehiclePickerCustomOption": "Vehículo personalizado",
+  "vehiclePickerCustomOptionSubtitle": "Introduce el depósito y consumo manualmente",
+  "vehicleCustomTitle": "Vehículo personalizado",
+  "vehicleCustomName": "Nombre del vehículo (opcional)",
+  "vehicleCustomNameHint": "ej. Mi SUV",
+  "vehicleCustomTank": "Depósito (L)",
+  "vehicleCustomTankEv": "Batería (kWh)",
+  "vehicleCustomConsumption": "Consumo (L/100 km)",
+  "vehicleCustomConsumptionEv": "Consumo (kWh/100 km)",
+  "vehicleCustomSave": "Usar personalizado",
+  "refuelWindowComfortable": "Reposta antes del km {km} (cómodo)",
+  "@refuelWindowComfortable": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelWindowCritical": "Reposta antes del km {km} (crítico)",
+  "@refuelWindowCritical": {
+    "placeholders": {
+      "km": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelSuggestionTitle": "Reposta aquí para ahorrar",
+  "refuelSuggestionBody": "{station} · km {km} · €{price}/L",
+  "@refuelSuggestionBody": {
+    "placeholders": {
+      "station": {
+        "type": "String"
+      },
+      "km": {
+        "type": "String"
+      },
+      "price": {
+        "type": "String"
+      }
+    }
+  },
+  "refuelSuggestionSavings": "Te ahorras {eur} €",
+  "@refuelSuggestionSavings": {
+    "placeholders": {
+      "eur": {
+        "type": "String"
+      }
+    }
+  },
+  "savingsFuelRow": "Combustible: {eur} €",
+  "@savingsFuelRow": {
+    "placeholders": {
+      "eur": {
+        "type": "String"
+      }
+    }
+  },
+  "garageTitle": "Mi garaje",
+  "garageEmpty": "Aún no hay coches — añade el primero",
+  "garageAdd": "Añadir coche",
+  "garageEdit": "Editar coche",
+  "garageDelete": "Eliminar",
+  "garageCancel": "Cancelar",
+  "garageSave": "Guardar",
+  "garageDefaultName": "Mi coche",
+  "garageNameHint": "Ponle nombre (ej. Mi Golf)",
+  "garageDefaultTankLabel": "Nivel de depósito por defecto",
+  "garageDefaultChargeLevelLabel": "Nivel de carga inicial",
+  "garageAddError": "No se pudo guardar. Inténtalo otra vez.",
+  "garageDeleteTitle": "¿Eliminar coche?",
+  "garageDeleteBody": "\"{name}\" se borrará de tu garaje.",
+  "@garageDeleteBody": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "garageSettingsRow": "Mi garaje ({count})",
+  "@garageSettingsRow": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planScreenGarageChip": "Coche: {name} · {pct} %",
+  "@planScreenGarageChip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "int"
+      }
+    }
+  },
+  "planScreenGarageChooseVehicle": "Elige un coche para este viaje",
+  "hotelArbitrageTitle": "Hoteles más baratos al lado",
+  "hotelArbitrageBody": "Esta noche cae en {dear}, ~{dearPrice}€/noche. En {cheap} son ~{cheapPrice}€ ({pct}% menos). Mueve {nights, plural, one{una noche} other{{nights} noches}} y ahorras ~{savings}€.",
+  "@hotelArbitrageBody": {
+    "placeholders": {
+      "cheap": {
+        "type": "String"
+      },
+      "cheapPrice": {
+        "type": "String"
+      },
+      "dear": {
+        "type": "String"
+      },
+      "dearPrice": {
+        "type": "String"
+      },
+      "pct": {
+        "type": "String"
+      },
+      "nights": {
+        "type": "int",
+        "format": "compact"
+      },
+      "savings": {
+        "type": "String"
+      }
+    }
+  },
+  "hotelArbitrageMiniHint": "Mismo ahorro si mueves esta noche también al sur",
+  "whatsNewSheetTitle": "Novedades",
+  "whatsNewSheetDismiss": "Entendido",
+  "profileChipChangeVehicle": "Cambiar vehículo",
+  "profileChipEditProfile": "Editar perfil del viaje",
+  "whatsNewSheetSuggest": "Sugerir algo",
+  "feedbackSheetTitle": "Sugerencias",
+  "feedbackSheetSubtitle": "Cuéntanos qué haría MyTravelPal mejor para ti. Leemos cada mensaje.",
+  "feedbackBodyHint": "¿Qué cambiarías o añadirías?",
+  "feedbackWantReply": "Quiero respuesta",
+  "feedbackEmailHint": "Tu email (opcional)",
+  "feedbackSendButton": "Enviar",
+  "feedbackThanks": "¡Gracias! Lo tenemos.",
+  "feedbackErrorEmpty": "Cuéntanos un poco más (mín. 3 caracteres)",
+  "feedbackErrorEmail": "Ese email no parece válido",
+  "feedbackErrorSend": "No pudimos enviarlo. Reintenta en un momento.",
+  "settingsSendFeedback": "Enviar una sugerencia",
+  "settingsSendFeedbackSubtitle": "Cuéntanos qué construir",
+  "enrichPulseRestStops": "Buscando áreas de descanso a lo largo de la ruta",
+  "exitAppTitle": "¿Salir de MyTravelPal?",
+  "exitAppBody": "¿Seguro que quieres cerrar la app?",
+  "exitAppBodyCompanionActive": "El modo Companion está activo. Si sales ahora, la sesión de conducción sigue en segundo plano. Detenla desde la pestaña Companion si quieres cerrarla limpiamente.",
+  "exitAppStay": "Quedarme",
+  "exitAppLeave": "Salir",
+  "enrichPulseChargers": "Localizando electrolineras a lo largo de la ruta",
+  "advEventLabelSource": "Fuente",
+  "advEventLabelReported": "Detectado",
+  "advEventLabelExpires": "Válido hasta",
+  "advEventLabelDuration": "Duración estimada",
+  "advEventSourceWeather": "Previsión meteorológica (Open-Meteo)",
+  "advEventSourceOfficial": "Feed oficial",
+  "advEventSourceEffis": "Monitor de incendios EFFIS",
+  "advEventSourceUsgs": "Feed sísmico USGS",
+  "advEventSourceUser": "Aviso comunidad",
+  "advEventSourceMock": "Simulado (dev)",
+  "advEventDurationHours": "{h} h",
+  "advEventDurationDays": "{d} d {h} h",
+  "advEventDurationOngoing": "En curso",
+  "@advEventDurationHours": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "@advEventDurationDays": {
+    "placeholders": {
+      "d": {
+        "type": "String"
+      },
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "exportShareMtp": "Compartir con usuarios de MyTravelPal",
+  "exportShareMtpSubtitle": "Abre directamente en la app — ellos eligen sus preferencias",
+  "exportShareMtpSubject": "{origin} → {destination} | MyTravelPal",
+  "@exportShareMtpSubject": {
+    "placeholders": {
+      "origin": {
+        "type": "String"
+      },
+      "destination": {
+        "type": "String"
+      }
+    }
+  },
+  "resultFuelStationsOnRoute": "Gasolineras en ruta",
+  "@resultFuelStationsOnRoute": {},
+  "resultFuelSavingsAccordionTitle": "Ahorro en combustible",
+  "resultTimeSavingsOptimal": "Tu hora de salida es óptima",
+  "@resultTimeSavingsOptimal": {},
+  "hotelMapFullscreenTitle": "Hoteles en la zona",
+  "@hotelMapFullscreenTitle": {},
+  "restaurantMapFullscreenTitle": "Restaurantes en la zona",
+  "@restaurantMapFullscreenTitle": {},
+  "tollSummaryTitle": "Peajes del trayecto",
+  "@tollSummaryTitle": {},
+  "tollSummaryMapButton": "Ver en mapa",
+  "@tollSummaryMapButton": {},
+  "activitiesCtaTitle": "Qué hacer en {city}",
+  "@activitiesCtaTitle": {
+    "placeholders": {
+      "city": {}
+    }
+  },
+  "activitiesCtaSubtitle": "Actividades y experiencias locales",
+  "@activitiesCtaSubtitle": {},
+  "planIncludeActivities": "Actividades en el destino",
+  "@planIncludeActivities": {},
+  "planIncludeActivitiesHint": "Sugerencias de GetYourGuide en cada ciudad",
+  "@planIncludeActivitiesHint": {},
+  "aiPrefScenicRoutes": "Prefiero rutas panorámicas",
+  "@aiPrefScenicRoutes": {},
+  "aiPrefScenicRoutesSub": "Recomendar desvíos por miradores y puertos",
+  "@aiPrefScenicRoutesSub": {},
+  "aiPrefEcoConscious": "Conducción eco",
+  "@aiPrefEcoConscious": {},
+  "aiPrefEcoConsciousSub": "Preferir EVs, evitar autopistas cuando sea posible",
+  "@aiPrefEcoConsciousSub": {},
+  "aiPrefLocalFood": "Comida local primero",
+  "@aiPrefLocalFood": {},
+  "aiPrefLocalFoodSub": "Priorizar restaurantes locales sobre cadenas",
+  "@aiPrefLocalFoodSub": {},
+  "aiPrefDepartureHour": "Hora habitual de salida",
+  "@aiPrefDepartureHour": {},
+  "aiPrefDietary": "RESTRICCIONES DIETÉTICAS",
+  "@aiPrefDietary": {},
+  "aiPrefInterests": "INTERESES",
+  "@aiPrefInterests": {},
+  "aiDietVegetarian": "Vegetariano",
+  "@aiDietVegetarian": {},
+  "aiDietVegan": "Vegano",
+  "@aiDietVegan": {},
+  "aiDietGlutenFree": "Sin gluten",
+  "@aiDietGlutenFree": {},
+  "aiDietHalal": "Halal",
+  "@aiDietHalal": {},
+  "aiInterestCulture": "Cultura",
+  "@aiInterestCulture": {},
+  "aiInterestNature": "Naturaleza",
+  "@aiInterestNature": {},
+  "aiInterestGastronomy": "Gastronomía",
+  "@aiInterestGastronomy": {},
+  "aiInterestShopping": "Compras",
+  "@aiInterestShopping": {},
+  "aiInterestAdventure": "Aventura",
+  "@aiInterestAdventure": {},
+  "wizardSkip": "Omitir",
+  "@wizardSkip": {},
+  "wizardStart": "Empezar",
+  "@wizardStart": {},
+  "wizardBack": "Atrás",
+  "@wizardBack": {},
+  "wizardNext": "Siguiente",
+  "@wizardNext": {},
+  "wizardTakesSeconds": "Solo 30 segundos",
+  "@wizardTakesSeconds": {},
+  "wizardWelcomeTitle": "Bienvenido a MyTravelPal",
+  "@wizardWelcomeTitle": {},
+  "wizardWelcomeBody": "Cuéntanos un poco sobre tus viajes y personalizaremos todo desde el primer momento.",
+  "@wizardWelcomeBody": {},
+  "wizardWhoTitle": "¿Con quién viajas?",
+  "@wizardWhoTitle": {},
+  "wizardWhoSubtitle": "Selecciona todo lo que aplique. Puedes cambiarlo después.",
+  "@wizardWhoSubtitle": {},
+  "wizardWhoKids": "Viajo con niños",
+  "@wizardWhoKids": {},
+  "wizardWhoPets": "Viajo con mascotas",
+  "@wizardWhoPets": {},
+  "wizardWhoCamper": "Viajo en autocaravana",
+  "@wizardWhoCamper": {},
+  "wizardVehicleTitle": "Tu vehículo",
+  "@wizardVehicleTitle": {},
+  "wizardVehicleSubtitle": "Usaremos esto para calcular el combustible y sugerir rutas.",
+  "@wizardVehicleSubtitle": {},
+  "wizardVehicleType": "Tipo de vehículo",
+  "@wizardVehicleType": {},
+  "wizardFuelType": "Combustible",
+  "@wizardFuelType": {},
+  "wizardRhythmTitle": "Tu ritmo de viaje",
+  "@wizardRhythmTitle": {},
+  "wizardRhythmSubtitle": "Son valores orientativos — puedes cambiarlos viaje a viaje.",
+  "@wizardRhythmSubtitle": {},
+  "wizardWakeHour": "Salgo a las {h}",
+  "@wizardWakeHour": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wizardBreakEvery": "Paro cada {n}h",
+  "@wizardBreakEvery": {
+    "placeholders": {
+      "n": {
+        "type": "int"
+      }
+    }
+  },
+  "wizardBedtime": "Llego al hotel a las {h}",
+  "@wizardBedtime": {
+    "placeholders": {
+      "h": {
+        "type": "String"
+      }
+    }
+  },
+  "wizardHotelBudget": "Presupuesto hotel / noche",
+  "@wizardHotelBudget": {},
+  "wizardMealBudget": "Presupuesto comida / menú",
+  "@wizardMealBudget": {},
+  "wizardDoneTitle": "¡Todo listo!",
+  "@wizardDoneTitle": {},
+  "wizardDoneSubtitle": "Tu primera ruta ya estará personalizada para ti.",
+  "@wizardDoneSubtitle": {},
+  "wizardTeaserTitle": "Cuando quieras, en Ajustes también puedes configurar:",
+  "@wizardTeaserTitle": {},
+  "wizardTeaserVehicleModel": "Modelo exacto de vehículo (consumo real)",
+  "@wizardTeaserVehicleModel": {},
+  "wizardTeaserRoute": "Ruta preferida: autopista o panorámica",
+  "@wizardTeaserRoute": {},
+  "wizardTeaserEmergency": "Contactos de emergencia",
+  "@wizardTeaserEmergency": {},
+  "wizardTeaserAlertSound": "Sonido de alertas del Companion",
+  "@wizardTeaserAlertSound": {},
+  "wizardTeaserStars": "Categoría mínima de hotel",
+  "@wizardTeaserStars": {},
+  "wizardPlanFirstTrip": "Planificar mi primer viaje",
+  "@wizardPlanFirstTrip": {},
+  "priceBandBudget": "Económico",
+  "@priceBandBudget": {},
+  "priceBandMid": "Estándar",
+  "@priceBandMid": {},
+  "priceBandLux": "Superior",
+  "@priceBandLux": {},
+  "wizardModelTitle": "Tu modelo de vehículo",
+  "@wizardModelTitle": {},
+  "wizardModelSubtitle": "Con datos reales calculamos cuándo y dónde repostar para ahorrarte dinero.",
+  "@wizardModelSubtitle": {},
+  "wizardModelSearch": "Buscar marca o modelo...",
+  "@wizardModelSearch": {},
+  "wizardModelGeneric": "Usar valores genéricos",
+  "@wizardModelGeneric": {},
+  "wizardModelGenericSub": "Estimación estándar por tipo de vehículo",
+  "@wizardModelGenericSub": {},
+  "wizardTollTitle": "¿Evitamos peajes?",
+  "@wizardTollTitle": {},
+  "wizardTollSubtitle": "Analizamos miles de rutas para saber cuándo el desvío vale la pena.",
+  "@wizardTollSubtitle": {},
+  "wizardTollAvoid": "Evitar cuando sea posible",
+  "@wizardTollAvoid": {},
+  "wizardTollAvoidSub": "Que me propongan alternativas por defecto",
+  "@wizardTollAvoidSub": {},
+  "wizardTollPay": "Preferir autopista siempre",
+  "@wizardTollPay": {},
+  "wizardTollPaySub": "Prefiero ir siempre por autopista salvo que ahorros sean muy claros",
+  "@wizardTollPaySub": {},
+  "wizardTollNote": "Puedes cambiar esto para cada viaje desde la pantalla de planificación",
+  "@wizardTollNote": {},
+  "wizardDrivingNow": "Conducir ahora con el asistente",
+  "@wizardDrivingNow": {},
+  "companionModeLabel": "Asistente de conducción",
+  "@companionModeLabel": {},
+  "companionModeDesc": "Copiloto IA · Recomienda peajes alternativos, restaurantes según tus gustos y gasolineras baratas en tiempo real · Premium",
+  "@companionModeDesc": {},
+  "aiLearningTitle": "El asistente te conoce al",
+  "@aiLearningTitle": {},
+  "aiScoreExcellent": "Excelente · Las recomendaciones son muy precisas",
+  "@aiScoreExcellent": {},
+  "aiScoreGood": "Bien · Aún puedes mejorar la personalización",
+  "@aiScoreGood": {},
+  "aiScoreBasic": "Básico · Completa tu perfil para mejores resultados",
+  "@aiScoreBasic": {},
+  "aiFactorVehicleModel": "Modelo de vehículo",
+  "@aiFactorVehicleModel": {},
+  "aiFactorVehicleModelHint": "Configura tu modelo para cálculos de combustible exactos",
+  "@aiFactorVehicleModelHint": {},
+  "aiFactorTrips": "{count} viajes realizados",
+  "@aiFactorTrips": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "aiFactorTripsHint": "Cuantos más viajes, mejor entiende tus rutas habituales",
+  "@aiFactorTripsHint": {},
+  "aiFactorHotelPrefs": "Preferencias de hotel",
+  "@aiFactorHotelPrefs": {},
+  "aiFactorHotelPrefsHint": "Añade estrellas, parking o wifi para filtrar mejor",
+  "@aiFactorHotelPrefsHint": {},
+  "aiFactorRestPrefs": "Preferencias de restaurante",
+  "@aiFactorRestPrefs": {},
+  "aiFactorRestPrefsHint": "Añade tipos de cocina para sugerencias más acertadas",
+  "@aiFactorRestPrefsHint": {},
+  "aiFactorNick": "Nick y país configurados",
+  "@aiFactorNick": {},
+  "aiFactorNickHint": "Completa tu nombre y país en Ajustes",
+  "@aiFactorNickHint": {},
+  "aiFactorEmergency": "Contactos de emergencia",
+  "@aiFactorEmergency": {},
+  "aiFactorEmergencyHint": "Añade un contacto para el sistema de seguridad",
+  "@aiFactorEmergencyHint": {},
+  "aiFactorProfile": "Perfil de viaje básico",
+  "@aiFactorProfile": {},
+  "aiFactorProfileHint": "Configura tus horarios de conducción en Ajustes",
+  "@aiFactorProfileHint": {},
+  "tripQualityTitle": "Calidad del viaje",
+  "@tripQualityTitle": {},
+  "tripQualityExcellent": "Excelente",
+  "@tripQualityExcellent": {},
+  "tripQualityGood": "Bueno",
+  "@tripQualityGood": {},
+  "tripQualityFair": "Aceptable",
+  "@tripQualityFair": {},
+  "tripQualityPoor": "Limitado",
+  "@tripQualityPoor": {},
+  "tripQualityFactorRoute": "Ruta",
+  "@tripQualityFactorRoute": {},
+  "tripQualityFactorFuel": "Gasolineras",
+  "@tripQualityFactorFuel": {},
+  "tripQualityFactorHotels": "Hoteles",
+  "@tripQualityFactorHotels": {},
+  "tripQualityFactorWeather": "Clima",
+  "@tripQualityFactorWeather": {},
+  "tripQualityFactorAlerts": "Alertas",
+  "@tripQualityFactorAlerts": {},
+  "tripQualityFactorTolls": "Peajes",
+  "@tripQualityFactorTolls": {},
+  "tripQualityFactorStops": "Paradas",
+  "@tripQualityFactorStops": {},
+  "wizardModelConsumption": "Consumo",
+  "@wizardModelConsumption": {},
+  "wizardModelTank": "Depósito",
+  "@wizardModelTank": {},
+  "wizardRhythmNote": "Ajusta cualquier día directamente en el resultado del viaje, pulsando el icono ⚙ de cada etapa.",
+  "@wizardRhythmNote": {},
+  "wizardTollHowTitle": "CÓMO FUNCIONA",
+  "@wizardTollHowTitle": {},
+  "wizardTollHowBody": "En cada viaje analizamos peaje por peaje: si el desvío te ahorra dinero real y el tiempo extra es mínimo, te lo proponemos en la pantalla de resultado. Tú decides aceptarlo o no, y puedes ajustar exactamente cuánto tiempo extra estás dispuesto a asumir.",
+  "@wizardTollHowBody": {},
+  "wizardTollPreference": "¿Cuál es tu punto de partida?",
+  "@wizardTollPreference": {},
+  "resultStartCompanionNow": "¡Salir ahora! · Modo Acompañante",
+  "@resultStartCompanionNow": {},
+  "resultCompanionFarFromOrigin": "Acércate al punto de salida para activar el modo conducción",
+  "@resultCompanionFarFromOrigin": {},
+  "resultReplanWithChanges": "Recalcular con los cambios aplicados",
+  "@resultReplanWithChanges": {},
+  "replanTipRoute": "Optimizando las etapas del día...",
+  "@replanTipRoute": {},
+  "replanTipFuel": "Buscando las mejores gasolineras en ruta...",
+  "@replanTipFuel": {},
+  "replanTipStops": "Ajustando paradas y tiempos de llegada...",
+  "@replanTipStops": {},
+  "tripDayBarsTitle": "Distribución por etapas",
+  "@tripDayBarsTitle": {}
 }

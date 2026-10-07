@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import time
+import unicodedata
+
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 from pydantic import BaseModel
 
@@ -8,6 +11,37 @@ from app.providers import get_providers
 from app.providers.factory import Providers
 
 router = APIRouter(prefix="/geocode", tags=["geocode"])
+
+# Cache autocomplete answers so a keystroke burst on the same query
+# doesn't repeatedly hit Nominatim (whose per-IP rate limit is ~1 rps).
+# Key = (normalised q, limit, lang). TTL 1h — city names don't move.
+_CACHE_TTL_S = 3600.0
+_CACHE_MAX_ENTRIES = 2048
+_geocode_cache: dict[tuple[str, int, str], tuple[float, "GeocodeResponse"]] = {}
+
+
+def _cache_key(q: str, limit: int, lang: str | None) -> tuple[str, int, str]:
+    norm = unicodedata.normalize("NFKD", q).casefold().strip()
+    return (norm, limit, (lang or "").lower())
+
+
+def _cache_get(key: tuple[str, int, str]) -> "GeocodeResponse | None":
+    entry = _geocode_cache.get(key)
+    if entry is None:
+        return None
+    expires_at, value = entry
+    if expires_at < time.monotonic():
+        _geocode_cache.pop(key, None)
+        return None
+    return value
+
+
+def _cache_put(key: tuple[str, int, str], value: "GeocodeResponse") -> None:
+    if len(_geocode_cache) >= _CACHE_MAX_ENTRIES:
+        # Cheap FIFO-ish sweep: drop oldest 25% by iteration order.
+        for k in list(_geocode_cache.keys())[: _CACHE_MAX_ENTRIES // 4]:
+            _geocode_cache.pop(k, None)
+    _geocode_cache[key] = (time.monotonic() + _CACHE_TTL_S, value)
 
 
 def _resolve_lang(
@@ -65,10 +99,15 @@ async def geocode(
     accept_language: str | None = Header(default=None, alias="Accept-Language"),
     providers: Providers = Depends(_providers),
 ) -> GeocodeResponse:
+    resolved_lang = _resolve_lang(lang, accept_language)
+    key = _cache_key(q, limit, resolved_lang)
+    cached = _cache_get(key)
+    if cached is not None:
+        return cached
     results = await providers.geocoding.search(
-        q, limit=limit, lang=_resolve_lang(lang, accept_language),
+        q, limit=limit, lang=resolved_lang,
     )
-    return GeocodeResponse(
+    response = GeocodeResponse(
         results=[
             GeocodeResultOut(
                 display_name=r.display_name,
@@ -80,6 +119,9 @@ async def geocode(
             for r in results
         ],
     )
+    if response.results:
+        _cache_put(key, response)
+    return response
 
 
 @router.get("/reverse", response_model=GeocodeResultOut)

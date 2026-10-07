@@ -6,6 +6,12 @@ import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 
+/// Sentinel returned by [VehiclePickerScreen] when the user chooses
+/// "Custom vehicle". Callers that receive this value should show their
+/// own form to collect tank size and consumption rather than resolving
+/// the string against the catalogue.
+const String kCustomVehicleId = '__custom__';
+
 /// Full-screen model picker.
 ///
 /// Fetches the catalogue via [vehicleCatalogueProvider] and renders it
@@ -13,6 +19,7 @@ import '../providers.dart';
 /// models by substring match (case-insensitive). Tapping a model pops
 /// the route with the [VehicleModel.id] as the result — callers should
 /// treat a null pop as "cancel" and leave the current selection alone.
+/// Tapping the "Custom vehicle" tile at the top pops [kCustomVehicleId].
 class VehiclePickerScreen extends ConsumerStatefulWidget {
   const VehiclePickerScreen({super.key, this.currentId});
 
@@ -93,6 +100,7 @@ class _VehiclePickerScreenState extends ConsumerState<VehiclePickerScreen> {
   }
 
   Widget _buildList(ThemeData theme, List<VehicleModel> models) {
+    final l = AppLocalizations.of(context);
     final filtered = _query.isEmpty
         ? models
         : models.where((m) {
@@ -100,26 +108,57 @@ class _VehiclePickerScreenState extends ConsumerState<VehiclePickerScreen> {
             return m.make.toLowerCase().contains(q) ||
                 m.model.toLowerCase().contains(q);
           }).toList();
-    if (filtered.isEmpty) {
-      return Center(
-        child: Text(
-          AppLocalizations.of(context).vehiclePickerEmpty,
-          style: theme.textTheme.bodyMedium,
-        ),
-      );
-    }
 
     // Group by make preserving catalogue insertion order.
     final byMake = <String, List<VehicleModel>>{};
     for (final m in filtered) {
       byMake.putIfAbsent(m.make, () => []).add(m);
     }
-
     final makes = byMake.keys.toList();
+
+    // Custom vehicle tile is always shown at the top (regardless of query).
+    final scheme = theme.colorScheme;
+    final customTile = ListTile(
+      leading: CircleAvatar(
+        backgroundColor: scheme.secondaryContainer,
+        child: Icon(Icons.tune, color: scheme.onSecondaryContainer),
+      ),
+      title: Text(
+        l.vehiclePickerCustomOption,
+        style: theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(l.vehiclePickerCustomOptionSubtitle),
+      selected: widget.currentId == kCustomVehicleId,
+      trailing: widget.currentId == kCustomVehicleId
+          ? const Icon(Icons.check)
+          : const Icon(Icons.chevron_right),
+      onTap: () => Navigator.of(context).pop(kCustomVehicleId),
+    );
+
+    if (filtered.isEmpty) {
+      return Column(
+        children: [
+          customTile,
+          const Divider(),
+          Expanded(
+            child: Center(
+              child: Text(
+                l.vehiclePickerEmpty,
+                style: theme.textTheme.bodyMedium,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return ListView.builder(
-      itemCount: makes.length,
+      itemCount: makes.length + 1, // +1 for the custom tile
       itemBuilder: (context, i) {
-        final make = makes[i];
+        if (i == 0) return customTile;
+        final make = makes[i - 1];
         final variants = byMake[make]!;
         return ExpansionTile(
           initiallyExpanded: _query.isNotEmpty ||

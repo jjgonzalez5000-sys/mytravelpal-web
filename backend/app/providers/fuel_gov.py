@@ -548,17 +548,215 @@ def _iter_csv(text: str, *, header_lines: int, sep: str):
 
 
 # --------------------------------------------------------------------
+# Country: Portugal (DGEG — Direção-Geral de Energia e Geologia)
+# --------------------------------------------------------------------
+
+_DGEG_URL = "https://precoscombustiveis.dgeg.gov.pt/api/PrecoComb/PesquisarPostos"
+# The DGEG API hard-caps results at 50 per page. With ~14 000 records
+# (all fuel types combined, one row per station×fuel) we fetch all
+# pages in parallel under a semaphore. A 12h TTL means this happens at
+# most twice a day — acceptable for a government endpoint.
+_DGEG_PAGE_SIZE = 50
+# Maximum concurrent DGEG page requests. 10 keeps the VM IO-budget
+# under control while still pulling all 280+ pages in under 30 s.
+_DGEG_MAX_CONCURRENCY = 10
+
+_DGEG_FUEL_NAMES: dict[str, str] = {
+    "Gasóleo simples": "diesel",
+    "Gasóleo especial": "diesel",          # premium diesel → same key, lower gets kept
+    "Gasóleo colorido e marcado": None,    # agricultural/industrial, skip
+    "Gasolina simples 95": "sp95",
+    "Gasolina especial 95": "sp95",
+    "Gasolina 98": "sp98",
+    "Gasolina especial 98": "sp98",
+    "GPL Auto": "lpg",
+    "GNV": "cng",
+    "Adblue": None,                        # additive, not a fuel
+}
+
+
+def _parse_pt_price(raw: str) -> float | None:
+    """Parse DGEG price strings like '1,549 €' to float."""
+    if not raw:
+        return None
+    raw = raw.replace("\xa0", " ").replace("€", "").replace(",", ".").strip()
+    try:
+        v = float(raw)
+        return v if v > 0 else None
+    except ValueError:
+        return None
+
+
+async def _dgeg_fetch_all_pages(client: httpx.AsyncClient) -> list[dict]:
+    """Fetch the full DGEG dataset by paging through all records.
+
+    First request probes the total count, then all remaining pages are
+    fetched concurrently under a semaphore. Returns the raw JSON
+    record list (one entry per station×fuel).
+    """
+    params_page1 = {"qtd": _DGEG_PAGE_SIZE, "pagina": 1}
+    try:
+        r = await client.get(_DGEG_URL, params=params_page1)
+        r.raise_for_status()
+        body = r.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        _log.warning("DGEG Portugal: first-page fetch failed: %r", exc)
+        return []
+
+    records: list[dict] = list(body.get("resultado") or [])
+    if not records:
+        return records
+
+    total: int = records[0].get("Quantidade", 0)
+    if total <= _DGEG_PAGE_SIZE:
+        return records
+
+    n_pages = (total + _DGEG_PAGE_SIZE - 1) // _DGEG_PAGE_SIZE
+    sem = asyncio.Semaphore(_DGEG_MAX_CONCURRENCY)
+
+    async def _fetch_page(page: int) -> list[dict]:
+        async with sem:
+            try:
+                resp = await client.get(
+                    _DGEG_URL, params={"qtd": _DGEG_PAGE_SIZE, "pagina": page},
+                )
+                resp.raise_for_status()
+                return list(resp.json().get("resultado") or [])
+            except (httpx.HTTPError, ValueError) as exc:
+                _log.debug("DGEG Portugal: page %d fetch failed: %r", page, exc)
+                return []
+
+    pages = await asyncio.gather(*[_fetch_page(p) for p in range(2, n_pages + 1)])
+    for page_records in pages:
+        records.extend(page_records)
+    return records
+
+
+def _parse_portugal(raw_records: list[dict]) -> list[_Station]:
+    """Build _Station objects from the raw DGEG record list.
+
+    Multiple rows per station (one per fuel type) are merged into a
+    single _Station with a `prices` dict. When the same fuel key
+    appears twice (e.g. 'Gasóleo simples' and 'Gasóleo especial' both
+    map to 'diesel'), we keep the lower price — which is what the
+    driver actually cares about.
+    """
+    by_id: dict[int, dict] = {}  # station_id → {coord, name, brand, prices}
+
+    for entry in raw_records:
+        station_id = entry.get("Id")
+        if station_id is None:
+            continue
+        lat = entry.get("Latitude")
+        lon = entry.get("Longitude")
+        if lat is None or lon is None:
+            continue
+        try:
+            lat = float(lat)
+            lon = float(lon)
+            coord = Coordinate(lat=lat, lon=lon)
+        except (ValueError, TypeError):
+            continue
+
+        raw_price = entry.get("Preco") or ""
+        price_val = _parse_pt_price(raw_price)
+        if price_val is None:
+            continue
+
+        combustivel = entry.get("Combustivel") or ""
+        fuel_key = _DGEG_FUEL_NAMES.get(combustivel)
+        if fuel_key is None:
+            continue
+
+        if station_id not in by_id:
+            name = (entry.get("Nome") or "").strip().title() or "Posto"
+            brand = (entry.get("Marca") or "").strip().title() or None
+            by_id[station_id] = {
+                "coord": coord,
+                "name": name,
+                "brand": brand,
+                "prices": {},
+            }
+        # Keep the lower price when the same key appears twice
+        existing = by_id[station_id]["prices"].get(fuel_key)
+        if existing is None or price_val < existing:
+            by_id[station_id]["prices"][fuel_key] = price_val
+
+    stations: list[_Station] = []
+    for info in by_id.values():
+        if not info["prices"]:
+            continue
+        stations.append(_Station(
+            info["coord"], info["name"], info["brand"], info["prices"],
+        ))
+    return stations
+
+
+class PortugalDGEGFuelDataset:
+    """12 h in-process cache of Portugal's DGEG fuel dataset.
+
+    The DGEG API (precoscombustiveis.dgeg.gov.pt) is a public
+    government service — no API key required — that publishes current
+    pump prices for every licensed station in Portugal. Records update
+    when stations report new prices (typically daily).
+    """
+
+    def __init__(self, http_client: httpx.AsyncClient | None = None) -> None:
+        self._client = http_client or _new_client()
+        self._stations: tuple[_Station, ...] = ()
+        self._loaded_at: float = 0.0
+        self._failed_at: float = 0.0
+        self._lock = asyncio.Lock()
+
+    async def stations(self) -> tuple[_Station, ...]:
+        if self._stations and time.monotonic() - self._loaded_at < _TTL_S:
+            return self._stations
+        if (
+            self._failed_at
+            and time.monotonic() - self._failed_at < _FAILURE_BACKOFF_S
+        ):
+            return self._stations
+        async with self._lock:
+            if self._stations and time.monotonic() - self._loaded_at < _TTL_S:
+                return self._stations
+            try:
+                raw_records = await _dgeg_fetch_all_pages(self._client)
+            except Exception as exc:
+                _log.warning("Portugal DGEG fuel dataset fetch failed: %r", exc)
+                self._failed_at = time.monotonic()
+                return self._stations
+            if not raw_records:
+                _log.warning("Portugal DGEG fuel dataset: empty response")
+                self._failed_at = time.monotonic()
+                return self._stations
+            try:
+                stations = await asyncio.to_thread(_parse_portugal, raw_records)
+            except Exception as exc:
+                _log.warning("Portugal DGEG fuel dataset parse failed: %r", exc)
+                self._failed_at = time.monotonic()
+                return self._stations
+            self._stations = tuple(stations)
+            self._loaded_at = time.monotonic()
+            _log.info(
+                "Portugal DGEG fuel dataset loaded: %d stations",
+                len(self._stations),
+            )
+            return self._stations
+
+
+# --------------------------------------------------------------------
 # Composite: dispatch by country detected on the route
 # --------------------------------------------------------------------
 
 _SPAIN = SpainMinisterioFuelDataset()
 _FRANCE = FranceRoulezEcoFuelDataset()
 _ITALY = ItalyMimitFuelDataset()
+_PORTUGAL = PortugalDGEGFuelDataset()
 
 # Countries for which we can quote real prices. Update whenever a new
 # per-country dataset lands (next expected: Germany via Tankerkönig).
 COVERED_COUNTRIES: frozenset[Country] = frozenset({
-    Country.ES, Country.FR, Country.IT,
+    Country.ES, Country.FR, Country.IT, Country.PT,
 })
 
 
@@ -576,7 +774,8 @@ class GovFuelProvider:
     ) -> tuple[FuelPrice, ...]:
         datasets: list[tuple[Country, SpainMinisterioFuelDataset
                               | FranceRoulezEcoFuelDataset
-                              | ItalyMimitFuelDataset]] = []
+                              | ItalyMimitFuelDataset
+                              | PortugalDGEGFuelDataset]] = []
         for c in route.countries_crossed or ():
             if c is Country.ES:
                 datasets.append((c, _SPAIN))
@@ -584,6 +783,8 @@ class GovFuelProvider:
                 datasets.append((c, _FRANCE))
             elif c is Country.IT:
                 datasets.append((c, _ITALY))
+            elif c is Country.PT:
+                datasets.append((c, _PORTUGAL))
         # No fallback here: previously we tried all three datasets when
         # `countries_crossed` was empty, which fired 3 concurrent 15 MB
         # downloads + CSV parses and OOM/CPU-starved the single-vCPU

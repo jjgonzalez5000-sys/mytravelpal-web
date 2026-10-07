@@ -7,6 +7,7 @@ import '../api/models.dart';
 import '../l10n/app_localizations.dart';
 import '../screens/parking_search_screen.dart';
 import 'osm_attribution.dart';
+import 'skeleton.dart';
 
 /// Kind of POI the sheet is describing. Governs which external CTAs
 /// appear (a hotel gets Booking + Google Maps; a restaurant gets
@@ -37,6 +38,7 @@ Future<void> showPoiDetailSheet(
   required Color accent,
   bool isAdded = false,
   VoidCallback? onAddToRoute,
+  String? photoUrl,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -49,6 +51,7 @@ Future<void> showPoiDetailSheet(
       icon: icon, accent: accent,
       isAdded: isAdded,
       onAddToRoute: onAddToRoute,
+      photoUrl: photoUrl,
     ),
   );
 }
@@ -61,6 +64,7 @@ class _PoiDetailSheet extends StatefulWidget {
     required this.routeGeometry, required this.attributes,
     required this.icon, required this.accent,
     this.isAdded = false,
+    this.photoUrl,
   });
 
   final PoiKind kind;
@@ -75,6 +79,7 @@ class _PoiDetailSheet extends StatefulWidget {
   final Color accent;
   final bool isAdded;
   final VoidCallback? onAddToRoute;
+  final String? photoUrl;
 
   @override
   State<_PoiDetailSheet> createState() => _PoiDetailSheetState();
@@ -122,6 +127,38 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (widget.photoUrl != null) ...[
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                  child: Image.network(
+                    widget.photoUrl!,
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    loadingBuilder: (_, child, progress) => progress == null
+                        ? child
+                        : const Skeleton(width: double.infinity, height: 200),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, right: 12),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      'Wikimedia Commons',
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .onSurfaceVariant,
+                          ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
               Row(
                 children: [
                   CircleAvatar(
@@ -140,12 +177,33 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
                           style: t.bodySmall
                               ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
+                        // HERE Places official name badge — shown when
+                        // the backend's HerePlacesEnricher resolved the
+                        // canonical chain name (e.g. "Ibis Budget" instead
+                        // of the OSM freeform tag).
+                        if (widget.attributes['here_name'] case final hereName?)
+                          Text(
+                            hereName,
+                            style: t.labelSmall?.copyWith(
+                              color: scheme.tertiary,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
                       ],
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 12),
+              // Structured contact info (address / phone / website /
+              // hours / check-in·out) between the header and the map.
+              // Reads from the raw attribute map so Geoapify top-level
+              // address fields are available.
+              _ContactInfoRow(
+                kind: kind,
+                attributes: widget.attributes,
+                poi: poi,
+              ),
               SizedBox(
                 height: 200,
                 child: ClipRRect(
@@ -233,7 +291,7 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
               if (attributes.isEmpty) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'No extra info from OSM for this place.',
+                  l.poiNoExtraInfo,
                   style: t.bodySmall
                       ?.copyWith(color: scheme.onSurfaceVariant),
                 ),
@@ -394,7 +452,120 @@ const Map<String, ({IconData icon, String label})> _featureCatalogue = {
   'fuel:e85': (icon: Icons.eco_outlined, label: 'E85'),
   'fuel:HGV_diesel':
       (icon: Icons.local_shipping_outlined, label: 'HGV diesel'),
+  // Hotel check-in / check-out
+  'check_in': (icon: Icons.login_outlined, label: 'Check-in'),
+  'check_out': (icon: Icons.logout_outlined, label: 'Check-out'),
+  // Dietary restrictions (restaurant)
+  'diet:vegetarian': (icon: Icons.eco_outlined, label: 'Vegetarian'),
+  'diet:vegan': (icon: Icons.nature_outlined, label: 'Vegan'),
+  'diet:halal': (icon: Icons.star_half_outlined, label: 'Halal'),
+  'diet:kosher': (icon: Icons.verified_outlined, label: 'Kosher'),
+  'diet:gluten_free': (icon: Icons.no_meals_outlined, label: 'Gluten-free'),
 };
+
+/// Return the localized label for a feature catalogue key, falling back
+/// to the English string stored in `_featureCatalogue` for any key not
+/// yet covered by translations.
+String _featureLabelL10n(String key, AppLocalizations l) {
+  switch (key) {
+    case 'wifi':
+    case 'internet_access':
+      return l.poiAttr_wifi;
+    case 'parking':
+      return l.poiAttr_parking;
+    case 'pool':
+    case 'swimming_pool':
+      return l.poiAttr_pool;
+    case 'air_conditioning':
+      return l.poiAttr_airConditioning;
+    case 'breakfast':
+      return l.poiAttr_breakfast;
+    case 'pets':
+    case 'dog':
+    case 'pet_friendly':
+      return l.poiAttr_petFriendly;
+    case 'child_friendly':
+    case 'kid_friendly':
+      return l.poiAttr_childFriendly;
+    case 'family_rooms':
+      return l.poiAttr_childFriendly;
+    case 'wheelchair':
+      return l.poiAttr_wheelchairAccess;
+    case 'toilets':
+      return l.poiAttr_toilets;
+    case 'restaurant':
+      return l.poiAttr_restaurant;
+    case 'bar':
+      return l.poiAttr_bar;
+    case 'shop':
+      return l.poiAttr_shop;
+    case 'outdoor_seating':
+      return l.poiAttr_outdoorSeating;
+    case 'takeaway':
+      return l.poiAttr_takeaway;
+    case 'delivery':
+      return l.poiAttr_delivery;
+    case 'credit_cards':
+    case 'payment:credit_cards':
+    case 'contactless':
+    case 'payment:contactless':
+      return l.poiAttr_creditCards;
+    case 'car_wash':
+      return l.poiAttr_carWash;
+    case 'smoking':
+      return l.poiAttr_smoking;
+    case 'non_smoking':
+      return l.poiAttr_nonSmoking;
+    case 'elevator':
+    case 'lift':
+      return l.poiAttr_elevator;
+    case 'check_in':
+      return l.poiAttr_checkIn;
+    case 'check_out':
+      return l.poiAttr_checkOut;
+    case 'diet:vegetarian':
+      return l.poiAttr_dietVegetarian;
+    case 'diet:vegan':
+      return l.poiAttr_dietVegan;
+    case 'diet:halal':
+      return l.poiAttr_dietHalal;
+    case 'diet:kosher':
+      return l.poiAttr_dietKosher;
+    case 'diet:gluten_free':
+      return l.poiAttr_dietGlutenFree;
+    case 'brand':
+    case 'operator':
+      return l.poiAttr_brand;
+    case 'city':
+    case 'addr:city':
+    case 'here_city':
+      return l.poiAttr_city;
+    case 'street':
+    case 'addr:street':
+      return l.poiAttr_street;
+    case 'address':
+    case 'here_address':
+    case 'addr:full':
+      return l.poiAttr_address;
+    case 'opening_hours':
+      return l.poiAttr_openingHours;
+    case 'name':
+      return l.poiAttr_name;
+    case 'phone':
+    case 'contact:phone':
+      return l.poiAttr_phone;
+    case 'stars':
+    case 'hotel_stars':
+      return l.poiAttr_stars;
+    case 'website':
+    case 'contact:website':
+    case 'url':
+      return l.poiAttr_website;
+    default:
+      // Fall back to the English label already stored in the catalogue.
+      return _featureCatalogue[key]?.label ?? _prettyKey(key);
+  }
+}
 
 /// Turn an OSM tag key like `outdoor_seating` or `payment:contactless`
 /// into a title-cased human label ("Outdoor seating", "Payment
@@ -642,7 +813,7 @@ class _FeatureTiles extends StatelessWidget {
       if (_tagIsOff(entry.value)) continue;
       final valueLine = _tagIsOn(entry.value) ? null : entry.value;
       entries.add(
-        (def.icon, def.label, valueLine, _tintForFeature(entry.key, scheme)),
+        (def.icon, _featureLabelL10n(entry.key, l), valueLine, _tintForFeature(entry.key, scheme)),
       );
     }
     // Cuisine gets special treatment for restaurants — always show
@@ -703,7 +874,8 @@ class _FeatureTiles extends StatelessWidget {
 Color _tintForFeature(String key, ColorScheme scheme) {
   const wellness = {'pool', 'swimming_pool', 'sauna', 'spa', 'gym'};
   const food = {'breakfast', 'restaurant', 'bar', 'cuisine', 'outdoor_seating',
-    'takeaway', 'delivery', 'drive_through'};
+    'takeaway', 'delivery', 'drive_through',
+    'diet:vegetarian', 'diet:vegan', 'diet:halal', 'diet:kosher', 'diet:gluten_free'};
   const connectivity = {'wifi', 'internet_access'};
   const transport = {'parking', 'car_wash', 'bicycle_rental', 'elevator',
     'lift'};
@@ -857,8 +1029,8 @@ class _MoreInfoSection extends StatefulWidget {
 class _MoreInfoSectionState extends State<_MoreInfoSection> {
   bool _open = false;
 
-  // Keys already visible in the spotlight or feature tiles — no
-  // need to duplicate them under "más info".
+  // Keys already visible in the spotlight, contact-info row or feature
+  // tiles — no need to duplicate them under "más info".
   static const Set<String> _promoted = {
     'stars',
     'rating',
@@ -870,6 +1042,11 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
     'contact:phone',
     'website',
     'contact:website',
+    'opening_hours',
+    'address_line1',
+    'addr:street',
+    'addr:housenumber',
+    'addr:city',
     ..._featureCatalogueKeys,
   };
 
@@ -897,6 +1074,9 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
     'car_wash',
     'fuel:diesel', 'fuel:octane_95', 'fuel:octane_98',
     'fuel:lpg', 'fuel:e10', 'fuel:e85', 'fuel:HGV_diesel',
+    // check_in / check_out are shown by _ContactInfoRow so keep them
+    // out of _FeatureTiles to avoid duplication. 2026-09-30 review.
+    'diet:vegetarian', 'diet:vegan', 'diet:halal', 'diet:kosher', 'diet:gluten_free',
   };
 
   @override
@@ -962,7 +1142,7 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
                 if (_guessIconForKey(entry.key) != null)
                   _FeatureItem(
                     icon: _guessIconForKey(entry.key)!,
-                    label: _prettyKey(entry.key),
+                    label: _featureLabelL10n(entry.key, AppLocalizations.of(context)),
                     valueLine: _tagIsOn(entry.value) ? null : entry.value,
                     tint: _tintForFeature(entry.key, scheme),
                   ),
@@ -1103,6 +1283,198 @@ class _AttrChip extends StatelessWidget {
   }
 }
 
+/// Structured contact-info section shown between the POI header and the
+/// mini-map. Renders any of: address, phone, website, opening hours,
+/// check-in / check-out (hotels only). Each row is tappable where it
+/// makes sense (phone → tel: URI, website → browser, address → Maps).
+///
+/// Receives the RAW attributes map so address / contact fields are
+/// available even before `_userVisibleAttrs` filtering.
+class _ContactInfoRow extends StatelessWidget {
+  const _ContactInfoRow({
+    required this.kind,
+    required this.attributes,
+    required this.poi,
+  });
+
+  final PoiKind kind;
+  final Map<String, String> attributes;
+  final LatLon poi;
+
+  Future<void> _open(BuildContext context, Uri uri) async {
+    var ok = false;
+    try {
+      ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      ok = false;
+    }
+    if (!ok) {
+      try {
+        ok = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      } catch (_) {
+        ok = false;
+      }
+    }
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppLocalizations.of(context).poiOpenError(uri.toString()))),
+      );
+    }
+  }
+
+  /// Build the full address string from available fields, preferring
+  /// address_line1 (Geoapify) over the OSM addr:* components.
+  String? _buildAddress() {
+    // Prefer the HERE-enriched canonical address when present — it's
+    // the official formatted string from Google/HERE and is more
+    // complete than ad-hoc OSM addr:* tags.
+    final hereAddr = attributes['here_address'];
+    if (hereAddr != null && hereAddr.isNotEmpty) return hereAddr;
+    final a1 = attributes['address_line1'];
+    if (a1 != null && a1.isNotEmpty) return a1;
+    final street = attributes['addr:street'];
+    final number = attributes['addr:housenumber'];
+    final city = attributes['addr:city'];
+    if (street != null && street.isNotEmpty) {
+      final parts = <String>[
+        if (number != null && number.isNotEmpty) '$street $number' else street,
+        if (city != null && city.isNotEmpty) city,
+      ];
+      return parts.join(', ');
+    }
+    return null;
+  }
+
+  Uri _mapsForAddress(String address) =>
+      Uri.parse('https://maps.google.com/?q=${poi.lat},${poi.lon}&z=17');
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+
+    final address = _buildAddress();
+    final phone = attributes['phone'] ?? attributes['contact:phone'];
+    final website = attributes['website'] ?? attributes['contact:website'];
+    final hours = attributes['opening_hours'];
+    final checkIn = kind == PoiKind.hotel ? attributes['check_in'] : null;
+    final checkOut = kind == PoiKind.hotel ? attributes['check_out'] : null;
+
+    if (address == null && phone == null && website == null &&
+        hours == null && checkIn == null && checkOut == null) {
+      return const SizedBox.shrink();
+    }
+
+    Widget infoRow({
+      required IconData icon,
+      required String label,
+      required String value,
+      VoidCallback? onTap,
+    }) {
+      return InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 5),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: t.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
+                        height: 1.1,
+                      ),
+                    ),
+                    Text(
+                      value,
+                      style: t.bodyMedium?.copyWith(
+                        color: onTap != null
+                            ? scheme.primary
+                            : scheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                        height: 1.3,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (onTap != null)
+                Icon(Icons.chevron_right, size: 16, color: scheme.onSurfaceVariant),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          if (address != null)
+            infoRow(
+              icon: Icons.place_outlined,
+              label: l.poiContactAddress,
+              value: address,
+              onTap: () => _open(context, _mapsForAddress(address)),
+            ),
+          if (phone != null)
+            infoRow(
+              icon: Icons.phone_outlined,
+              label: l.poiContactPhone,
+              value: phone,
+              onTap: () => _open(context, Uri.parse('tel:${phone.replaceAll(' ', '')}')),
+            ),
+          if (website != null)
+            infoRow(
+              icon: Icons.language,
+              label: l.poiContactWebsite,
+              value: website.replaceAll(RegExp(r'^https?://'), ''),
+              onTap: () => _open(
+                context,
+                website.startsWith('http')
+                    ? Uri.parse(website)
+                    : Uri.parse('https://$website'),
+              ),
+            ),
+          if (hours != null)
+            infoRow(
+              icon: Icons.schedule,
+              label: l.poiContactHours,
+              value: hours,
+            ),
+          if (checkIn != null)
+            infoRow(
+              icon: Icons.login_outlined,
+              label: l.poiContactCheckin,
+              value: checkIn,
+            ),
+          if (checkOut != null)
+            infoRow(
+              icon: Icons.logout_outlined,
+              label: l.poiContactCheckout,
+              value: checkOut,
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 /// Row of external-service CTAs. Ratings from Google/TheFork/Booking
 /// are behind paid APIs; instead we open a search on their platforms
 /// pre-filled with the place name + coordinates so the user gets to
@@ -1144,7 +1516,7 @@ class _ExternalCtaRow extends StatelessWidget {
     }
     if (!ok && context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open $uri')),
+        SnackBar(content: Text(AppLocalizations.of(context).poiOpenError(uri.toString()))),
       );
     }
   }
@@ -1168,18 +1540,12 @@ class _ExternalCtaRow extends StatelessWidget {
     );
   }
 
+  // maps.google.com/?q=lat,lon drops a pin at the EXACT coordinates
+  // without any address geocoding. The /maps/search/ endpoint
+  // resolves coords to the nearest known address (can be 10-50 m off);
+  // the direct ?q= format pins the raw coordinate every time.
   Uri _googleMapsHttpsFallback() =>
-      Uri.https('www.google.com', '/maps/search/', {
-        'api': '1',
-        // Coordinates in the query text land the pin exactly;
-        // the `center`/`zoom` pair tightens the map viewport so
-        // when Maps' web UI decides to render a text search
-        // panel, results are bounded around the point instead
-        // of matching a same-named business elsewhere.
-        'query': '${poi.lat},${poi.lon}',
-        'center': '${poi.lat},${poi.lon}',
-        'zoom': '17',
-      });
+      Uri.parse('https://maps.google.com/?q=${poi.lat},${poi.lon}&z=17');
 
   /// Deterministic Google Maps URL when the POI carries a
   /// `google_maps_url` attribute (fed in by the backend's Google
@@ -1195,51 +1561,85 @@ class _ExternalCtaRow extends StatelessWidget {
     return u;
   }
 
+  /// True when the visible name is a synthesized "km N" fallback
+  /// rather than a real POI label. Backend emits these when Overpass
+  /// didn't match a named place within the search radius; passing
+  /// "km 184" as a Google Maps search query resolves to garbage
+  /// ("kilometer 184" as a text search).
+  bool get _isFallbackName {
+    final trimmed = name.trim();
+    return trimmed.isEmpty ||
+        trimmed == '—' ||
+        RegExp(r'^km\s+\d+', caseSensitive: false).hasMatch(trimmed);
+  }
+
+  /// Google Maps search URL biased to the POI coord — Maps performs a
+  /// name lookup within the map viewport so it lands on the ACTUAL
+  /// business card (not a bare lat/lon pin the user has to close +
+  /// zoom + tap again to reach). Tester 2026-09-30: geo: URIs opened
+  /// an unnamed pin; users had to deselect and hunt for the POI on
+  /// the map. This format resolves the POI directly.
+  ///
+  /// When the label is a "km N" fallback (backend couldn't name the
+  /// POI), fall back to coord-only query — Maps drops a pin at the
+  /// right coord instead of searching for the literal string "km 184"
+  /// which resolves to nothing useful.
+  Uri _mapsSearchUri() {
+    if (_isFallbackName) {
+      return Uri.https('www.google.com', '/maps/search/', {
+        'api': '1',
+        'query': '${poi.lat},${poi.lon}',
+      });
+    }
+    final label = name.replaceAll(RegExp(r'\s+'), ' ').trim();
+    return Uri.https('www.google.com', '/maps/search/', {
+      'api': '1',
+      // "<name> <lat>,<lon>" as a single query — Google Maps interprets
+      // this as "search NAME near LAT,LON" and picks the closest match.
+      'query': '$label ${poi.lat},${poi.lon}',
+    });
+  }
+
   Future<void> _openInMaps(BuildContext context) async {
     var ok = false;
-    // Preferred path: Places-enriched URL that resolves to the
-    // exact Google Place. This eliminates the "wrong hotel across
-    // Europe" bug when Google's name search overrode the coord
-    // hint. Restaurants already carry this attribute; hotels get
-    // it once we extend enrichment to them.
+    // 1. Places-enriched URL: resolves to the exact Google Place card.
     final place = _placeUrl();
     if (place != null) {
       try {
-        ok = await launchUrl(
-          place, mode: LaunchMode.externalApplication,
-        );
+        ok = await launchUrl(place, mode: LaunchMode.externalApplication);
       } catch (_) {
         ok = false;
       }
       if (ok) return;
     }
-    // Fallback: geo pin at the exact coord with the POI's name as
-    // the pin label. No name search happens here — Maps just
-    // drops a marker at the given lat/lon. Reliable across every
-    // POI kind (hotels, restaurants, fuel, viewpoints).
-    try {
-      ok = await launchUrl(_geoUri(),
-          mode: LaunchMode.externalApplication);
-    } catch (_) {
-      ok = false;
-    }
-    if (!ok) {
-      if (!context.mounted) return;
-      await _launch(context, _googleMapsHttpsFallback());
-    }
+    // 2. Coord-only Maps URL: query=lat,lon drops an exact pin with no
+    //    text search. geo: URIs look correct but Google Maps treats the
+    //    q= parameter as a text search query, showing global results
+    //    instead of pinning the location. HTTPS + externalApplication
+    //    opens the Maps app directly on Android.
+    if (!context.mounted) return;
+    await _launch(context, _googleMapsHttpsFallback());
   }
 
   // Booking.com Affiliate tracking ID. Register at
   // affiliate.booking.com to get your own `aid`.
   static const _bookingAid = '2418471';
+  static const _hotelsCamref = '1110lR637';
+  static const _hotelsCreativeref = '1011l66481';
+  static const _hotelsAdref = 'PZ3qdnq8sf';
 
   // TheFork / TripAdvisor affiliate ref tag.
   static const _theForkRef = 'mytravelpal';
 
   Uri _theFork() {
-    return Uri.https('www.google.com', '/search', {
-      'q': '$name site:thefork.com ref=$_theForkRef',
-    });
+    final encoded = Uri.encodeComponent(
+      name.replaceAll(RegExp(r'\s+'), ' ').trim(),
+    );
+    return Uri.parse(
+      'https://www.thefork.com/search'
+      '#cityId=0&query=$encoded'
+      '&lat=${poi.lat}&lng=${poi.lon}&radius=10',
+    );
   }
 
   Uri _booking() => Uri.https('www.booking.com', '/searchresults.html', {
@@ -1247,6 +1647,18 @@ class _ExternalCtaRow extends StatelessWidget {
         'aid': _bookingAid,
         'label': 'mytravelpal-hotel-deeplink',
       });
+
+  Uri _hotelsCom() {
+    final searchUrl = Uri.https('www.hotels.com', '/search.do', {
+      'destination': name,
+    }).toString();
+    return Uri.https('www.hotels.com', '/affiliate', {
+      'landingPage': searchUrl,
+      'camref': _hotelsCamref,
+      'creativeref': _hotelsCreativeref,
+      'adref': _hotelsAdref,
+    });
+  }
 
   /// Deep-link to Airbnb searching short-term rentals in a small
   /// bounding box around this hotel's coordinates. Airbnb has no
@@ -1281,30 +1693,36 @@ class _ExternalCtaRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasWebsite = (attributes['website'] ?? attributes['contact:website']) != null;
     final hasPhone = (attributes['phone'] ?? attributes['contact:phone']) != null;
+    final l = AppLocalizations.of(context);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
         _CtaButton(
           icon: Icons.map_outlined,
-          label: 'Google Maps',
+          label: l.poiCtaGoogleMaps,
           onPressed: () => _openInMaps(context),
         ),
         if (kind == PoiKind.restaurant)
           _CtaButton(
             icon: Icons.restaurant_menu,
-            label: 'TheFork',
+            label: l.poiCtaTheFork,
             onPressed: () => _launch(context, _theFork()),
           ),
         if (kind == PoiKind.hotel) ...[
           _CtaButton(
             icon: Icons.hotel_outlined,
-            label: 'Booking',
+            label: l.poiCtaBooking,
             onPressed: () => _launch(context, _booking()),
           ),
           _CtaButton(
+            icon: Icons.hotel_outlined,
+            label: 'Hotels.com',
+            onPressed: () => _launch(context, _hotelsCom()),
+          ),
+          _CtaButton(
             icon: Icons.home_work_outlined,
-            label: 'Airbnb',
+            label: l.poiCtaAirbnb,
             onPressed: () => _launch(context, _airbnb()),
           ),
         ],
@@ -1316,7 +1734,7 @@ class _ExternalCtaRow extends StatelessWidget {
         if (kind == PoiKind.hotel || kind == PoiKind.restaurant)
           _CtaButton(
             icon: Icons.local_parking_outlined,
-            label: AppLocalizations.of(context).poiFindParking,
+            label: l.poiFindParking,
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => ParkingSearchScreen(
@@ -1332,13 +1750,13 @@ class _ExternalCtaRow extends StatelessWidget {
         if (hasPhone)
           _CtaButton(
             icon: Icons.phone,
-            label: 'Call',
+            label: l.poiCtaCall,
             onPressed: () => _launch(context, _tel()),
           ),
         if (hasWebsite)
           _CtaButton(
             icon: Icons.language,
-            label: 'Website',
+            label: l.poiCtaWebsite,
             onPressed: () => _launch(context, _officialWebsite()),
           ),
       ],

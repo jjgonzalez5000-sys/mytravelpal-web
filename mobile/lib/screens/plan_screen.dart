@@ -12,6 +12,7 @@ import '../design/components.dart';
 import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
+import '../domain/garage_vehicle.dart';
 import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
@@ -27,15 +28,17 @@ import '../widgets/travel_style_chip.dart';
 import '../widgets/weather_chip.dart';
 import 'dashboard_screen.dart';
 import 'favorites_screen.dart';
+import 'history_screen.dart';
 import 'garage_screen.dart';
 import 'mark_event_screen.dart';
 import 'settings_screen.dart';
 import 'inspire_screen.dart';
-import 'parking_search_screen.dart';
 import 'pick_location_screen.dart';
 import 'profile_screen.dart';
 import 'result_screen.dart';
 import '../services/app_tutorial.dart';
+import '../services/billing_service.dart';
+import '../services/user_learning_tracker.dart';
 
 // Time-of-day gradient anchors. Each anchor sits at the midpoint of
 // a named window (dawn / morning / midday / dusk / evening / night)
@@ -95,11 +98,17 @@ class PlanScreen extends ConsumerStatefulWidget {
     super.key,
     this.initialShared,
     this.initialStops = const [],
+    this.initialProfile,
   });
 
   /// When arriving via a shared trip link, prefill the form with the
   /// origin / destination / departure so the user just taps Plan.
   final SharedTrip? initialShared;
+
+  /// TripProfile snapshot to restore when repeating a saved trip.
+  /// Becomes _overrideProfile so the re-plan uses the original
+  /// overnight policy, vehicle, daily cap, etc.
+  final TripProfile? initialProfile;
 
   /// Intermediate stops to seed the plan form with. Currently
   /// used by the Trip Inspiration hand-off (`InspireScreen`) to
@@ -166,6 +175,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   // still ships in the result when premium/enabled.
   bool get _hourlyTollEnabled => _tollAlternativeEnabled;
   bool _routeComparisonEnabled = false;
+  bool _activitiesEnabled = false;
   // Kept as fields (not consts) so the request builder keeps its
   // shape; a future iteration will re-expose the toggles or wire them
   // to the trip profile. Init default: don't alter routing.
@@ -185,11 +195,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
   DateTime _defaultReturnDeparture() =>
       _departure.add(const Duration(days: 3));
-
-  static DateTime _defaultDeparture() {
-    final now = DateTime.now();
-    return DateTime(now.year, now.month, now.day + 1, 8);
-  }
 
   /// Same-as-default but respects the profile's preferred driving
   /// start hour (or wake_hour fallback). Called from `initState` +
@@ -229,10 +234,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final prefs = ref.read(appPrefsProvider);
     _hotelPrefs = prefs.hotelPrefs;
     _restaurantPrefs = prefs.restaurantPrefs;
+    _tollAlternativeEnabled = prefs.tollAlternativeDefault;
     // Default the departure clock to the profile's preferred driving
     // start hour so a driver who set 10:00 doesn't see 08:00 pre-
     // filled every plan.
     _departure = _defaultDepartureFromProfile();
+    if (widget.initialProfile != null) {
+      _overrideProfile = widget.initialProfile;
+    }
     final incoming = widget.initialShared;
     if (incoming != null) {
       _origin = GeocodeResult(
@@ -344,7 +353,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
   String? _buildHotelConditions() {
     final parts = <String>[];
-    if (_hotelPrefs.requireParking) parts.add('fee');
+    // Parking is NOT sent as a Geoapify hard condition — the OSM tag
+    // coverage for parking=yes on hotels is extremely low so hard
+    // filtering empties the pool. The backend's `filter_hotels` already
+    // applies a soft ranking penalty for hotels without the tag.
+    // (Same rationale as dogs.yes — see pet_friendly comment below.)
     if (_hotelPrefs.requireWifi) parts.add('internet_access.free');
     if (_hotelPrefs.requireWheelchair) parts.add('wheelchair.yes');
     // Note: dogs.yes is NOT sent as a Geoapify condition — too few
@@ -361,27 +374,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   ///
   /// Free users get a paywall preview instead of the actual flow
   /// (per model C monetisation — this CTA is the primary funnel).
+  // ignore: unused_element
   Future<void> _leaveNowQuickPlan() async {
     final l = AppLocalizations.of(context);
-    final isPremium = ref.read(premiumProvider);
-    if (!isPremium) {
-      await showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          title: Text(l.leaveNowPremiumTitle),
-          content: Text(l.leaveNowPremiumBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l.leaveNowPremiumDismiss),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(l.leaveNowPremiumCta),
-            ),
-          ],
-        ),
-      );
+    final isEssential = ref.read(isEssentialOrAboveProvider);
+    if (!isEssential) {
+      if (!mounted) return;
+      await BillingService.showPurchaseSheet(context, ref);
       return;
     }
     // If the form already has a destination filled in, ask the
@@ -569,7 +568,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     // driver stays on the same form, just filled in.
     setState(() {
       _origin = GeocodeResult(
-        displayName: trip!.originName ?? 'Origin',
+        displayName: trip.originName ?? 'Origin',
         coordinate: trip.origin,
         country: _guessCountry(trip.origin) ?? Country.fr,
       );
@@ -641,6 +640,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     // dialog route.
     final rootNav = Navigator.of(context, rootNavigator: true);
     var dialogOpen = false;
+    // Real progress (0.0–1.0) fed by SSE events from /plan/stream.
+    // Falls back to the time-based estimate when streaming is not
+    // used (round-trip return leg) or when the SSE endpoint errors.
+    final progressNotifier = ValueNotifier<double>(0.0);
     if (mounted) {
       dialogOpen = true;
       final steps = <PlanStep>[
@@ -657,7 +660,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         context: context,
         useRootNavigator: true,
         barrierDismissible: false,
-        builder: (_) => PlanLoadingDialog(steps: steps),
+        builder: (_) => PlanLoadingDialog(
+          steps: steps,
+          externalProgress: progressNotifier,
+        ),
       ));
     }
     try {
@@ -709,6 +715,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         includeAdverseEvents: _alertsEnabled,
         includeTollAlternative: _tollAlternativeEnabled,
         includeParking: _parkingEnabled,
+        includeActivities: _activitiesEnabled,
         includeRouteComparison: _routeComparisonEnabled,
         includeHourlyTollAnalysis: _hourlyTollEnabled,
         avoidMotorways: _avoidMotorways,
@@ -758,6 +765,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           includeAdverseEvents: _alertsEnabled,
           includeTollAlternative: _tollAlternativeEnabled,
           includeParking: _parkingEnabled,
+          includeActivities: _activitiesEnabled,
           includeRouteComparison: _routeComparisonEnabled,
           includeHourlyTollAnalysis: _hourlyTollEnabled,
           avoidMotorways: _avoidMotorways,
@@ -771,26 +779,31 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         // leg is only inspected later via the "swap leg" action, so
         // ripping the entire round-trip into core+enrich would add
         // complexity for no perceived-perf gain.
-        returnFuture = api.planTrip(returnRequest);
+        returnFuture = api.planTrip(returnRequest, locale: Localizations.localeOf(context).languageCode);
       }
-      // Two-phase progressive plan. Fire BOTH endpoints in parallel
-      // (backend shares a cache keyed on the request hash so the
-      // enrich call is a cheap POI fan-out — the /core compute
-      // ISN'T redone). We await ONLY core inside runInForeground so
-      // the loading dialog dismisses as soon as the route + hero +
-      // day cards are ready; enrich keeps running and is handed to
-      // ResultScreen as a Future the widget subscribes to.
-      final coreFuture = api.planTripCore(request);
-      final enrichFuture = api.planTripEnrich(request);
-      // Foreground-service wrap: pins the process (and the HTTP
-      // socket) while /plan runs, so backgrounding the app during
-      // the 5-15s wait doesn't cancel the request on aggressive
-      // OEM ROMs. Shows a persistent tray notification too, so the
-      // user sees the plan is still cooking. Round-trip: we await
-      // both legs' core inside the wrapper so the service stays up
-      // until the second /plan/core settles too.
+
+      // Two-phase progressive plan (core → enrich).
+      // Fire BOTH endpoints immediately in parallel — backend shares a
+      // cache keyed on the request hash, so enrich is a cheap fan-out
+      // after core. We await ONLY core inside runInForeground so the
+      // loading dialog dismisses as soon as route + hero + day cards
+      // are ready. Enrich (hotels, restaurants, fuel, weather) keeps
+      // running in the background and is handed to ResultScreen as a
+      // Future, giving the "map + structure appears first, details fill
+      // in" progressive experience.
       final planLabel =
           '${origin.displayName} → ${destination.displayName}';
+      final locale = Localizations.localeOf(context).languageCode;
+
+      TripPlanResponse response;
+      Future<TripPlanResponse>? enrichFuture;
+      // Fire BOTH endpoints in parallel — backend shares a cache keyed
+      // on the request hash so enrich is a cheap fan-out after core.
+      // We await ONLY core inside runInForeground so the dialog dismisses
+      // as soon as the route + hero + day cards are ready; enrich keeps
+      // running and is handed to ResultScreen as a Future.
+      final coreFuture = api.planTripCore(request, locale: locale);
+      final enrichFutureFallback = api.planTripEnrich(request, locale: locale);
       final legs = await runInForeground(
         context,
         planLabel,
@@ -800,8 +813,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           return (r, ret);
         },
       );
-      final response = legs.$1;
+      response = legs.$1;
       final returnResponse = legs.$2;
+      enrichFuture = enrichFutureFallback;
       if (!mounted) return;
       // Pop the loading dialog BEFORE pushing ResultScreen —
       // otherwise the dialog stays on top and blocks navigation.
@@ -823,6 +837,29 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               desiredDepartureAt: _returnDeparture,
             )
           : null;
+      // Free tier: multi-day trips with hotel suggestions require Essential.
+      // Gate here (after the API call) because multi-day is only known
+      // from the response, not from the form inputs.
+      if (response.days.length > 1 &&
+          _hotelPrefs.enabled &&
+          !ref.read(isEssentialOrAboveProvider)) {
+        if (!mounted) return;
+        await BillingService.showPurchaseSheet(context, ref);
+        return;
+      }
+
+      // Fire-and-forget learning tracker — records country + multi-day
+      // usage so the AI companion gains context over time.
+      unawaited(
+        UserLearningTracker.onTripPlanned(
+          country: response.route.countriesCrossed.isNotEmpty
+              ? response.route.countriesCrossed.first.code
+              : null,
+          isMultiDay: response.days.length > 1,
+          api: api,
+        ),
+      );
+
       rootNav.push(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
@@ -919,6 +956,17 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               scrolledUnderElevation: 0,
               expandedHeight: 40,
               titleSpacing: Tokens.space20,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF0A1628), Colors.transparent],
+                    ),
+                  ),
+                ),
+              ),
               title: Row(
                 children: [
                   Icon(Icons.explore_outlined, color: scheme.primary),
@@ -1075,7 +1123,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                         _destination = trip.destination;
                         _departure = departure;
                         _stops.clear();
-                        _overrideProfile = null;
+                        // Restore the trip profile snapshot so the re-plan
+                        // uses the same overnight policy, daily cap, etc.
+                        // Falls back to null (current profile) for trips
+                        // saved before profile snapshotting was added.
+                        _overrideProfile = trip.tripProfile;
                         _isRoundTrip = false;
                         _returnDeparture = _defaultReturnDeparture();
                         // Carry the saved user-selections blob through
@@ -1095,19 +1147,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     profile: _overrideProfile
                         ?? ref.watch(tripProfileProvider),
                     isOverride: _overrideProfile != null,
-                    onTap: () => Navigator.of(context).push(
+                    onPickVehicle: (id) => ref
+                        .read(selectedGarageVehicleIdProvider.notifier)
+                        .state = id,
+                    onEditProfile: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const ProfileScreen(),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: Tokens.space8),
-                  _GarageChip(
-                    onPicked: (id) {
-                      ref
-                          .read(selectedGarageVehicleIdProvider.notifier)
-                          .state = id;
-                    },
                   ),
                   const SizedBox(height: Tokens.space8),
                   Row(
@@ -1150,7 +1197,18 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   const SizedBox(height: Tokens.space16),
 
                   // Route card
+                  Text(
+                    'RUTA', // l10n pending
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.primary.withValues(alpha: 0.7),
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: Tokens.space8),
                   SoftCard(
+                    borderColor: const Color(0xFF2A3A5C),
                     padding: const EdgeInsets.all(Tokens.space16),
                     child: Column(
                       children: [
@@ -1286,11 +1344,11 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                               initial: _stops[i].place,
                                             ),
                                           ),
-                                          if (_stops[i].place != null) ...[
+                                          ...[
                                             const SizedBox(width: Tokens.space4),
                                             WeatherChip(
-                                              lat: _stops[i].place!.coordinate.lat,
-                                              lon: _stops[i].place!.coordinate.lon,
+                                              lat: _stops[i].place.coordinate.lat,
+                                              lon: _stops[i].place.coordinate.lon,
                                             ),
                                           ],
                                           IconButton(
@@ -1324,53 +1382,69 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                                     ],
                                   ),
                                 ),
-                        if (_stops.length < _maxStops) ...[
-                          const SizedBox(height: Tokens.space8),
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: TextButton.icon(
-                              icon: const Icon(Icons.add_location_alt_outlined),
-                              label: Text(l.planAddStop),
-                              onPressed: () async {
-                                final picked =
-                                    await _pickStop(context, _geocode);
-                                if (picked == null) return;
-                                // Fresh stop defaults to dwell=0
-                                // (pass-through). Driver taps the
-                                // dwell chip below the field to
-                                // upgrade to overnight if wanted.
-                                setState(() => _stops.add(
-                                      PlannedStop(place: picked),
-                                    ));
-                              },
+                        // "Añadir parada" + "Invertir" en la misma fila
+                        // (tester report 2026-09-30 — antes eran dos
+                        // Aligns apilados en columna que dejaban un
+                        // hueco vertical grande).
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            if (_stops.length < _maxStops)
+                              TextButton.icon(
+                                icon: const Icon(Icons.add_location_alt_outlined),
+                                label: Text(l.planAddStop),
+                                onPressed: () async {
+                                  final picked =
+                                      await _pickStop(context, _geocode);
+                                  if (picked == null) return;
+                                  setState(() => _stops.add(
+                                        PlannedStop(place: picked),
+                                      ));
+                                },
+                              )
+                            else
+                              const SizedBox.shrink(),
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: (_origin == null || _destination == null)
+                                      ? const [Color(0xFF1E2A40), Color(0xFF1E2A40)]
+                                      : const [Color(0xFF0F2044), Color(0xFF1A3A6A)],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: TextButton.icon(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: (_origin == null || _destination == null)
+                                      ? Colors.white38
+                                      : Colors.white70,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 4,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                icon: const Icon(Icons.swap_vert, size: 18),
+                                label: Text(l.planSwapOriginDestination),
+                                onPressed: (_origin == null || _destination == null)
+                                    ? null
+                                    : () {
+                                        setState(() {
+                                          final tmp = _origin;
+                                          _origin = _destination;
+                                          _destination = tmp;
+                                          final reversed = _stops.reversed.toList();
+                                          _stops
+                                            ..clear()
+                                            ..addAll(reversed);
+                                        });
+                                      },
+                              ),
                             ),
-                          ),
-                        ],
-                        // Swap origin ↔ destination (Google-Maps-style).
-                        // Reverses intermediate stops too so A→P1→P2→B
-                        // becomes B→P2→P1→A. Disabled until both
-                        // endpoints are set — nothing to swap otherwise.
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            icon: const Icon(Icons.swap_vert, size: 18),
-                            label: Text(l.planSwapOriginDestination),
-                            onPressed: (_origin == null || _destination == null)
-                                ? null
-                                : () {
-                                    setState(() {
-                                      final tmp = _origin;
-                                      _origin = _destination;
-                                      _destination = tmp;
-                                      // Reverse intermediate stops so the
-                                      // full trip flips end-to-end.
-                                      final reversed = _stops.reversed.toList();
-                                      _stops
-                                        ..clear()
-                                        ..addAll(reversed);
-                                    });
-                                  },
-                          ),
+                          ],
                         ),
                         const SizedBox(height: Tokens.space4),
                         Row(
@@ -1442,6 +1516,16 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   // alerts, toll-free, route variants). Header summary
                   // reflects what's currently enabled so users know at
                   // a glance without expanding.
+                  Text(
+                    'EN RUTA', // l10n pending
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.primary.withValues(alpha: 0.7),
+                      letterSpacing: 1.5,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                  const SizedBox(height: Tokens.space8),
                   _OnRoutePicker(
                     key: _preferencesKey,
                     hotelPrefs: _hotelPrefs,
@@ -1468,6 +1552,9 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     routeComparisonEnabled: _routeComparisonEnabled,
                     onRouteComparisonChanged: (v) =>
                         setState(() => _routeComparisonEnabled = v),
+                    activitiesEnabled: _activitiesEnabled,
+                    onActivitiesChanged: (v) =>
+                        setState(() => _activitiesEnabled = v),
                   ).animate().fadeIn(delay: 120.ms, duration: Tokens.motionBase),
 
                   const SizedBox(height: Tokens.space24),
@@ -1514,7 +1601,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                       ),
                     ),
 
-                  PrimaryCta(
+                  _GradientButton(
                     label: _loading ? l.planCtaBusy : l.planCta,
                     icon: _loading ? null : Icons.arrow_forward,
                     loading: _loading,
@@ -1687,6 +1774,8 @@ class _OnRoutePicker extends StatefulWidget {
     required this.onTollAlternativeChanged,
     required this.routeComparisonEnabled,
     required this.onRouteComparisonChanged,
+    required this.activitiesEnabled,
+    required this.onActivitiesChanged,
   });
 
   final HotelPreferences hotelPrefs;
@@ -1701,6 +1790,8 @@ class _OnRoutePicker extends StatefulWidget {
   final ValueChanged<bool> onTollAlternativeChanged;
   final bool routeComparisonEnabled;
   final ValueChanged<bool> onRouteComparisonChanged;
+  final bool activitiesEnabled;
+  final ValueChanged<bool> onActivitiesChanged;
 
   @override
   State<_OnRoutePicker> createState() => _OnRoutePickerState();
@@ -1782,6 +1873,8 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
         _ActiveChip(Icons.alt_route_outlined, l.planOptTollFreeTitle),
       if (widget.routeComparisonEnabled)
         _ActiveChip(Icons.shuffle, l.planOptRouteVariantsTitle),
+      if (widget.activitiesEnabled)
+        _ActiveChip(Icons.local_activity_outlined, l.planIncludeActivities),
     ];
 
     final Widget subtitleWidget;
@@ -1909,6 +2002,13 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
               value: widget.parkingEnabled,
               onChanged: widget.onParkingChanged,
             ),
+            _CompactToggle(
+              icon: Icons.local_activity_outlined,
+              title: l.planIncludeActivities,
+              subtitle: l.planIncludeActivitiesHint,
+              value: widget.activitiesEnabled,
+              onChanged: widget.onActivitiesChanged,
+            ),
             InkWell(
               onTap: () => setState(
                 () => _advancedExpanded = !_advancedExpanded,
@@ -1986,6 +2086,7 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
 /// Return value of the "Leave now" confirmation dialog when the
 /// plan form already has a destination. `go` = use the current
 /// destination; `change` = open the picker to pick a different one.
+// ignore: unused_element
 enum _LeaveNowChoice { go, change }
 
 /// Intermediate stop with an optional dwell duration. Backed by a
@@ -2059,62 +2160,129 @@ Future<int?> _pickDwellNights(BuildContext context, PlannedStop stop) async {
   );
 }
 
-class _ProfileChip extends StatelessWidget {
+/// Unified profile + garage chip. Renders vehicle from the garage
+/// pick (make/model + real fuel type from catalogue + tank %) when
+/// one exists, otherwise falls back to the generic profile vehicle
+/// type + fuel. Also concatenates travellers / kids / pets flags.
+///
+/// Tap opens a bottomsheet with two actions: change the vehicle for
+/// this trip (garage picker) or edit the profile itself.
+class _ProfileChip extends ConsumerWidget {
   const _ProfileChip({
     required this.profile,
-    required this.onTap,
+    required this.onEditProfile,
+    required this.onPickVehicle,
     this.isOverride = false,
   });
 
   final TripProfile? profile;
-  final VoidCallback onTap;
+  final VoidCallback onEditProfile;
+  final ValueChanged<String?> onPickVehicle;
   final bool isOverride;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final hasProfile = profile != null;
-    final children = <Widget>[
-      Icon(
-        isOverride
-            ? Icons.tune
-            : (hasProfile ? Icons.person_outline : Icons.person_add_alt_1),
-        size: 18,
-        color: isOverride ? scheme.tertiary : scheme.onSurfaceVariant,
-      ),
-      const SizedBox(width: Tokens.space8),
-      Expanded(
-        child: hasProfile
-            ? _profileSummary(context, profile!, t, scheme, isOverride)
-            : Text(
-                AppLocalizations.of(context).profilePromptSetup,
-                style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-              ),
-      ),
-      Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-    ];
+    final garage = ref.watch(garageProvider);
+    final selectedGarageId = ref.watch(selectedGarageVehicleIdProvider);
+    final catalogueAsync = ref.watch(vehicleCatalogueProvider);
+
+    // Pick the garage entry showing (auto-preview first when nothing
+    // selected — mirrors the pre-merge _GarageChip default so a driver
+    // with a single car still gets its stats on the row).
+    GarageVehicle? garageVehicle;
+    if (garage.isNotEmpty) {
+      garageVehicle = selectedGarageId == null
+          ? garage.first
+          : garage.firstWhere(
+              (v) => v.id == selectedGarageId,
+              orElse: () => garage.first,
+            );
+    }
+
+    VehicleModel? catalogueEntry;
+    final catalogue = catalogueAsync.valueOrNull;
+    if (garageVehicle != null && catalogue != null) {
+      for (final m in catalogue) {
+        if (m.id == garageVehicle.modelId) {
+          catalogueEntry = m;
+          break;
+        }
+      }
+    }
+
     return SoftCard(
-      onTap: onTap,
+      onTap: () => _openActionSheet(context, ref, garage.isNotEmpty),
       borderColor: isOverride ? scheme.tertiary.withValues(alpha: 0.4) : null,
       padding: const EdgeInsets.symmetric(
         horizontal: Tokens.space16, vertical: Tokens.space12,
       ),
-      child: Row(children: children),
+      child: Row(
+        children: [
+          Icon(
+            isOverride
+                ? Icons.tune
+                : garageVehicle != null
+                    ? Icons.directions_car
+                    : (hasProfile ? Icons.person_outline : Icons.person_add_alt_1),
+            size: 18,
+            color: isOverride ? scheme.tertiary : scheme.primary,
+          ),
+          const SizedBox(width: Tokens.space8),
+          Expanded(
+            child: hasProfile
+                ? _summary(
+                    context, profile!, garageVehicle, catalogueEntry,
+                    t, scheme,
+                  )
+                : Text(
+                    AppLocalizations.of(context).profilePromptSetup,
+                    style: t.bodyMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+          ),
+          Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+        ],
+      ),
     );
   }
 
-  Widget _profileSummary(
+  Widget _summary(
     BuildContext context,
-    TripProfile p, TextTheme t, ColorScheme scheme, bool isOverride,
+    TripProfile p,
+    GarageVehicle? gv,
+    VehicleModel? cat,
+    TextTheme t,
+    ColorScheme scheme,
   ) {
     final l = AppLocalizations.of(context);
+    // Prefer the catalogue's make + model + fuel type when a garage
+    // vehicle is selected — the profile chip and the garage chip used
+    // to disagree ("Híbrido" profile + "C3 III" garage → petrol),
+    // which confused testers. Single source of truth wins.
+    final String vehicleLabel;
+    final FuelType effectiveFuel;
+    if (cat != null) {
+      vehicleLabel = '${cat.make} ${cat.model}';
+      effectiveFuel = cat.fuelType;
+    } else if (gv != null) {
+      vehicleLabel = gv.name;
+      effectiveFuel = p.vehicle.fuelType;
+    } else {
+      vehicleLabel = vehicleTypeLabel(context, p.vehicle.type);
+      effectiveFuel = p.vehicle.fuelType;
+    }
+
     final bits = <String>[
-      vehicleTypeLabel(context, p.vehicle.type),
-      fuelTypeLabel(context, p.vehicle.fuelType),
+      vehicleLabel,
+      fuelTypeLabel(context, effectiveFuel),
       if (p.travellers > 1) l.planProfileTravellers(p.travellers),
       if (p.hasKids) l.planProfileWithKids,
       if (p.hasPets) l.planProfileWithPets,
+      if (gv != null) '${gv.defaultTankPercent}%',
     ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2136,6 +2304,62 @@ class _ProfileChip extends StatelessWidget {
       ],
     );
   }
+
+  void _openActionSheet(BuildContext context, WidgetRef ref, bool hasGarage) {
+    final l = AppLocalizations.of(context);
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      showDragHandle: true,
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasGarage)
+              ListTile(
+                leading: const Icon(Icons.directions_car),
+                title: Text(l.profileChipChangeVehicle),
+                onTap: () async {
+                  Navigator.of(sheetCtx).pop();
+                  final garage = ref.read(garageProvider);
+                  final currentId =
+                      ref.read(selectedGarageVehicleIdProvider)
+                          ?? (garage.isNotEmpty ? garage.first.id : null);
+                  if (currentId == null) return;
+                  final picked = await _showGaragePicker(
+                    context: context,
+                    ref: ref,
+                    currentId: currentId,
+                  );
+                  if (picked != null) onPickVehicle(picked);
+                },
+              )
+            else
+              ListTile(
+                leading: const Icon(Icons.add),
+                title: Text(l.planScreenGarageChooseVehicle),
+                onTap: () {
+                  Navigator.of(sheetCtx).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const GarageScreen(),
+                    ),
+                  );
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.person_outline),
+              title: Text(l.profileChipEditProfile),
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                onEditProfile();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Compact per-trip vehicle picker. Tap → bottom sheet listing every
@@ -2144,6 +2368,7 @@ class _ProfileChip extends StatelessWidget {
 /// with a single car don't have to tap anything to keep the current
 /// behaviour. Empty garage → the chip becomes an "Añadir coche" CTA
 /// that jumps straight into the vehicle picker and adds the result.
+// ignore: unused_element
 class _GarageChip extends ConsumerWidget {
   const _GarageChip({required this.onPicked});
 
@@ -2357,7 +2582,9 @@ class _RecentTripsDropdownState extends ConsumerState<_RecentTripsDropdown> {
       builder: (context, snapshot) {
         final trips = snapshot.data ?? const <SavedTrip>[];
         if (trips.isEmpty) return const SizedBox.shrink();
+        final total = trips.length;
         final recent = trips.take(5).toList();
+        final hasMore = total > 5;
         return Container(
           decoration: BoxDecoration(
             border: Border.all(color: scheme.outlineVariant),
@@ -2374,7 +2601,7 @@ class _RecentTripsDropdownState extends ConsumerState<_RecentTripsDropdown> {
                 style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
-                l.recentTripsSubtitle(recent.length),
+                l.recentTripsSubtitle(total),
                 style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
               ),
               tilePadding: const EdgeInsets.symmetric(
@@ -2387,6 +2614,38 @@ class _RecentTripsDropdownState extends ConsumerState<_RecentTripsDropdown> {
                   _RecentTripRow(
                     trip: trip,
                     onTap: () => widget.onPick(trip),
+                  ),
+                if (hasMore)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Tokens.space16,
+                      vertical: Tokens.space8,
+                    ),
+                    child: GestureDetector(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const HistoryScreen(),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.list_alt,
+                              size: 16, color: scheme.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            l.recentTripsSeeAll(total - 5),
+                            style: t.bodySmall?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Icon(Icons.chevron_right,
+                              size: 16, color: scheme.primary),
+                        ],
+                      ),
+                    ),
                   ),
               ],
             ),
@@ -2453,4 +2712,76 @@ class _ActiveChip {
   final String label;
   final String detail;
   final List<IconData> featureIcons;
+}
+
+/// Gradient "Planificar" CTA. Matches the onboarding glass-card
+/// palette (navy -> violet) with a soft directional shadow.
+class _GradientButton extends StatelessWidget {
+  const _GradientButton({
+    required this.label,
+    required this.onPressed,
+    this.icon,
+    this.loading = false,
+  });
+  final String label;
+  final VoidCallback onPressed;
+  final IconData? icon;
+  final bool loading;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 52,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF1E40AF), Color(0xFF7C3AED)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF1E40AF).withValues(alpha: 0.4),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: loading ? null : onPressed,
+          borderRadius: BorderRadius.circular(28),
+          child: Center(
+            child: loading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      valueColor:
+                          AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      if (icon != null) ...[
+                        const SizedBox(width: 8),
+                        Icon(icon, color: Colors.white, size: 18),
+                      ],
+                    ],
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
 }

@@ -3,12 +3,16 @@ package com.mytravelpal.travel.car
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.text.SpannableString
+import android.text.Spanned
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.CarColor
 import androidx.car.app.model.CarIcon
 import androidx.car.app.model.CarLocation
+import androidx.car.app.model.Distance
+import androidx.car.app.model.DistanceSpan
 import androidx.car.app.model.ItemList
 import androidx.car.app.model.MessageTemplate
 import androidx.car.app.model.Metadata
@@ -69,21 +73,42 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         val active = prefs.getBoolean(KEY_ACTIVE_TRIP, false)
         if (!active) return idleTemplate()
 
+        // PlaceListMapTemplate requires ALL rows in an ItemList to be
+        // either ALL browsable or ALL non-browsable — mixing the two
+        // throws an IllegalArgumentException (AA crash tester 2026-09).
+        //
+        // Strategy: check whether there are navigable sub-lists (fuel /
+        // restaurants). If yes → use ONLY browsable rows; if no → use
+        // ONLY informational rows. This keeps the list type consistent.
+        val hasFuelList = !prefs.getString(KEY_FUEL_LIST_JSON, null).isNullOrBlank()
+                && prefs.getString(KEY_FUEL_LIST_JSON, null) != "[]"
+        val hasRestList = !prefs.getString(KEY_RESTAURANTS_LIST_JSON, null).isNullOrBlank()
+                && prefs.getString(KEY_RESTAURANTS_LIST_JSON, null) != "[]"
+        val hasBrowsable = hasFuelList || hasRestList
+
         val listBuilder = ItemList.Builder()
 
-        // Row 1: next stop with map marker in the primary tint.
-        addNextStopRow(listBuilder)
-        // Row 2: cheaper fuel hint with the secondary marker tint.
-        addCheaperFuelRow(listBuilder)
-        // Row 3: destination ETA (not clickable — informational only).
-        addEtaRow(listBuilder)
-        // Row 4: entry to the full fuel-station list — clickable, pushes.
-        addFuelListEntry(listBuilder)
-        // Row 5: entry to the full restaurants list — clickable, pushes.
-        addRestaurantsListEntry(listBuilder)
+        if (hasBrowsable) {
+            // Browsable mode: each major section is a tappable row that
+            // pushes into a detail screen.  Informational data (ETA,
+            // next-stop name) is embedded as addText() in each row.
+            addNextStopRowBrowsable(listBuilder)
+            addCheaperFuelRowBrowsable(listBuilder, hasFuelList)
+            addEtaRowBrowsable(listBuilder)
+            if (hasRestList) addRestaurantsListEntry(listBuilder)
+        } else {
+            // Informational-only mode: no sub-lists exist yet, keep all
+            // rows non-browsable so AA doesn't complain.
+            addNextStopRow(listBuilder)
+            addCheaperFuelRow(listBuilder)
+            addEtaRow(listBuilder)
+            addSpeedProgressRow(listBuilder)
+        }
 
         val itemList = listBuilder.build()
-        if (itemList.items.isEmpty()) return startingTemplate()
+        // No actionable data yet — PlaceListMapTemplate requires at least
+        // one row with a DistanceSpan or Place. Use MessageTemplate instead.
+        if (itemList.items.isEmpty()) return companionActiveTemplate()
 
         val builder = PlaceListMapTemplate.Builder()
             .setTitle(carContext.getString(R.string.aa_app_title))
@@ -96,7 +121,7 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         return builder.build()
     }
 
-    // ---- Row builders ---------------------------------------------------
+    // ---- Row builders (non-browsable) -----------------------------------
 
     private fun addNextStopRow(list: ItemList.Builder) {
         val name = prefs.getString(KEY_NEXT_STOP_NAME, null) ?: return
@@ -141,14 +166,20 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         val etaMs = prefs.getLong(KEY_DEST_ETA_MS, 0L)
         if (etaMs <= 0) return
         val remaining = prefs.getLong(KEY_REMAINING_KM, 0L).toInt()
+        // PlaceListMapTemplate requires a DistanceSpan on non-browsable rows
+        // that don't carry a Place marker — attach it to the text.
+        val bodyText = carContext.getString(
+            R.string.aa_eta_body, formatHhmm(etaMs), remaining,
+        )
+        val spannable = SpannableString(bodyText)
+        val distSpan = DistanceSpan.create(
+            Distance.create(remaining.toDouble(), Distance.UNIT_KILOMETERS),
+        )
+        spannable.setSpan(distSpan, 0, 1, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
         list.addItem(
             Row.Builder()
                 .setTitle(carContext.getString(R.string.aa_eta_title))
-                .addText(
-                    carContext.getString(
-                        R.string.aa_eta_body, formatHhmm(etaMs), remaining,
-                    ),
-                )
+                .addText(spannable)
                 .build(),
         )
     }
@@ -181,11 +212,108 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         )
     }
 
+    // ---- Row builders (browsable — used when sub-lists exist) ----------
+
+    private fun addNextStopRowBrowsable(list: ItemList.Builder) {
+        val name = prefs.getString(KEY_NEXT_STOP_NAME, null) ?: return
+        val etaMs = prefs.getLong(KEY_NEXT_STOP_ETA_MS, 0L)
+        if (etaMs <= 0) return
+        val minsAway = ((etaMs - System.currentTimeMillis()) / 60_000L)
+            .coerceAtLeast(0L)
+        val row = Row.Builder()
+            .setTitle(carContext.getString(R.string.aa_next_stop_title))
+            .addText(
+                carContext.getString(
+                    R.string.aa_next_stop_body,
+                    name, formatHhmm(etaMs), minsAway,
+                ),
+            )
+            .setBrowsable(true)
+            .setOnClickListener { /* informational tap — no sub-screen */ }
+        placeWithMarker(
+            KEY_NEXT_STOP_LAT, KEY_NEXT_STOP_LON, CarColor.PRIMARY, "🍽",
+        )?.let { row.setMetadata(Metadata.Builder().setPlace(it).build()) }
+        list.addItem(row.build())
+    }
+
+    private fun addCheaperFuelRowBrowsable(list: ItemList.Builder, hasFuelList: Boolean) {
+        val brand = prefs.getString(KEY_CHEAPER_FUEL_BRAND, null) ?: return
+        val km = prefs.getLong(KEY_CHEAPER_FUEL_KM, 0L).toInt()
+        val cts = prefs.getLong(KEY_CHEAPER_FUEL_CENTS, 0L).toInt()
+        if (km <= 0) return
+        val row = Row.Builder()
+            .setTitle(carContext.getString(R.string.aa_cheaper_fuel_title))
+            .addText(
+                carContext.getString(
+                    R.string.aa_cheaper_fuel_body, brand, km, cts,
+                ),
+            )
+            .setBrowsable(hasFuelList)
+        if (hasFuelList) {
+            row.setOnClickListener { screenManager.push(FuelListScreen(carContext)) }
+        }
+        placeWithMarker(
+            KEY_CHEAPER_FUEL_LAT, KEY_CHEAPER_FUEL_LON,
+            CarColor.SECONDARY, "⛽",
+        )?.let { row.setMetadata(Metadata.Builder().setPlace(it).build()) }
+        list.addItem(row.build())
+    }
+
+    private fun addSpeedProgressRow(list: ItemList.Builder) {
+        val speedKmh = prefs.getLong(KEY_SPEED_KMH, -1L).toInt()
+        val progressKm = prefs.getLong(KEY_PROGRESS_KM, 0L).toInt()
+        val totalKm = prefs.getLong(KEY_TOTAL_KM, 0L).toInt()
+        if (speedKmh < 0 && totalKm == 0) return
+        val speedStr = if (speedKmh >= 0) "${speedKmh} km/h" else "—"
+        val progressStr = if (totalKm > 0) "${progressKm} / ${totalKm} km" else ""
+        val body = if (progressStr.isNotEmpty()) "$speedStr  ·  $progressStr" else speedStr
+        val spannable = SpannableString(body)
+        val distSpan = DistanceSpan.create(
+            Distance.create(
+                if (totalKm > 0) (totalKm - progressKm).toDouble() else 1.0,
+                Distance.UNIT_KILOMETERS,
+            ),
+        )
+        spannable.setSpan(distSpan, 0, body.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        list.addItem(
+            Row.Builder()
+                .setTitle(carContext.getString(R.string.aa_speed_title))
+                .addText(spannable)
+                .build(),
+        )
+    }
+
+    private fun addEtaRowBrowsable(list: ItemList.Builder) {
+        val etaMs = prefs.getLong(KEY_DEST_ETA_MS, 0L)
+        if (etaMs <= 0) return
+        val remaining = prefs.getLong(KEY_REMAINING_KM, 0L).toInt()
+        list.addItem(
+            Row.Builder()
+                .setTitle(carContext.getString(R.string.aa_eta_title))
+                .addText(
+                    carContext.getString(
+                        R.string.aa_eta_body, formatHhmm(etaMs), remaining,
+                    ),
+                )
+                .setBrowsable(true)
+                .setOnClickListener { /* informational tap */ }
+                .build(),
+        )
+        // Browsable rows don't need DistanceSpan — the tap target is enough.
+    }
+
     // ---- Helpers --------------------------------------------------------
 
     private fun idleTemplate(): Template =
         MessageTemplate.Builder(carContext.getString(R.string.aa_idle_message))
             .setTitle(carContext.getString(R.string.aa_app_title))
+            .setIcon(appIcon())
+            .build()
+
+    /** Companion is active but no trip data yet (GPS acquiring or no plan). */
+    private fun companionActiveTemplate(): Template =
+        MessageTemplate.Builder(carContext.getString(R.string.aa_companion_monitoring))
+            .setTitle(carContext.getString(R.string.aa_companion_active))
             .setIcon(appIcon())
             .build()
 
@@ -196,19 +324,15 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
             .build()
 
     private fun anchorPlace(): Place? {
-        val meLat = prefs.getFloat(KEY_ME_LAT, Float.NaN)
-        val meLon = prefs.getFloat(KEY_ME_LON, Float.NaN)
+        val meLat = prefDouble(KEY_ME_LAT)
+        val meLon = prefDouble(KEY_ME_LON)
         if (!meLat.isNaN() && !meLon.isNaN()) {
-            return Place.Builder(
-                CarLocation.create(meLat.toDouble(), meLon.toDouble()),
-            ).build()
+            return Place.Builder(CarLocation.create(meLat, meLon)).build()
         }
-        val destLat = prefs.getFloat(KEY_DEST_LAT, Float.NaN)
-        val destLon = prefs.getFloat(KEY_DEST_LON, Float.NaN)
+        val destLat = prefDouble(KEY_DEST_LAT)
+        val destLon = prefDouble(KEY_DEST_LON)
         if (!destLat.isNaN() && !destLon.isNaN()) {
-            return Place.Builder(
-                CarLocation.create(destLat.toDouble(), destLon.toDouble()),
-            ).build()
+            return Place.Builder(CarLocation.create(destLat, destLon)).build()
         }
         return null
     }
@@ -216,16 +340,31 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
     private fun placeWithMarker(
         latKey: String, lonKey: String, color: CarColor, glyph: String,
     ): Place? {
-        val lat = prefs.getFloat(latKey, Float.NaN)
-        val lon = prefs.getFloat(lonKey, Float.NaN)
+        val lat = prefDouble(latKey)
+        val lon = prefDouble(lonKey)
         if (lat.isNaN() || lon.isNaN()) return null
         val marker = PlaceMarker.Builder()
             .setColor(color)
             .setLabel(glyph)
             .build()
-        return Place.Builder(CarLocation.create(lat.toDouble(), lon.toDouble()))
+        return Place.Builder(CarLocation.create(lat, lon))
             .setMarker(marker)
             .build()
+    }
+
+    /**
+     * Read a double stored by Flutter's shared_preferences_android 2.x.
+     * The plugin encodes doubles as putString(key, DOUBLE_PREFIX + value)
+     * rather than putFloat, so getFloat() always returns NaN.
+     */
+    private fun prefDouble(key: String): Double {
+        val raw = prefs.getString(key, null) ?: return Double.NaN
+        return if (raw.startsWith(FLUTTER_DOUBLE_PREFIX)) {
+            raw.removePrefix(FLUTTER_DOUBLE_PREFIX).toDoubleOrNull() ?: Double.NaN
+        } else {
+            // Fallback: try direct float (old plugin versions).
+            raw.toDoubleOrNull() ?: Double.NaN
+        }
     }
 
     private fun appIcon(): CarIcon = CarIcon.Builder(
@@ -250,6 +389,10 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         const val KEY_CHEAPER_FUEL_LON = "flutter.cheaperFuelLon"
         const val KEY_DEST_ETA_MS = "flutter.destinationEtaMs"
         const val KEY_REMAINING_KM = "flutter.remainingKm"
+        const val KEY_TOTAL_KM = "flutter.totalKm"
+        const val KEY_SPEED_KMH = "flutter.speedKmh"
+        const val KEY_PROGRESS_KM = "flutter.progressKm"
+        const val KEY_NOTIF_SOUND = "flutter.notificationSound"
         const val KEY_ME_LAT = "flutter.meLat"
         const val KEY_ME_LON = "flutter.meLon"
         const val KEY_DEST_LAT = "flutter.destLat"
@@ -258,6 +401,12 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         const val KEY_RESTAURANTS_LIST_JSON = "flutter.restaurantsListJson"
 
         const val REFRESH_INTERVAL_MS = 5_000L
+
+        // shared_preferences_android 2.x encodes doubles as
+        // putString(key, DOUBLE_PREFIX + value.toString()).
+        // Reading with getFloat() always returns NaN — use getString() instead.
+        const val FLUTTER_DOUBLE_PREFIX =
+            "VGhpcyBpcyB0aGUgcHJlZml4IGZvciBEb3VibGUu"
 
         fun formatHhmm(millis: Long): String {
             val fmt = java.time.format.DateTimeFormatter.ofPattern("HH:mm")

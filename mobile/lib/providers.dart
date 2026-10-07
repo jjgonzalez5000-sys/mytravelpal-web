@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'api/api_client.dart';
 import 'api/models.dart';
 import 'domain/auth_user.dart';
+import 'domain/emergency_contact.dart';
 import 'domain/favorite_place.dart';
 import 'domain/garage_vehicle.dart';
 import 'domain/trip_profile.dart';
@@ -190,6 +191,20 @@ final currencyCodeProvider =
   return CurrencyNotifier(ref.watch(appPrefsProvider));
 });
 
+class _NotifSoundNotifier extends StateNotifier<String> {
+  _NotifSoundNotifier(this._prefs) : super(_prefs.notificationSound);
+  final AppPrefs _prefs;
+  Future<void> set(String v) async {
+    state = v;
+    await _prefs.setNotificationSound(v);
+  }
+}
+
+final notifSoundProvider =
+    StateNotifierProvider<_NotifSoundNotifier, String>((ref) {
+  return _NotifSoundNotifier(ref.watch(appPrefsProvider));
+});
+
 /// Current [TripProfile], or null if the user hasn't set one yet.
 class TripProfileNotifier extends StateNotifier<TripProfile?> {
   TripProfileNotifier(this._prefs, {this.api, this.onAppSettingsApplied})
@@ -246,6 +261,19 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
           .toList();
     }
     profileJson['_app_settings'] = _prefs.appSettingsSnapshot();
+    final contacts = _prefs.emergencyContacts;
+    if (contacts.isNotEmpty) {
+      profileJson['_emergency_contacts'] =
+          contacts.map((c) => c.toJson()).toList();
+    }
+    final nick = _prefs.hallNick;
+    if (nick != null && nick.isNotEmpty) {
+      profileJson['_hall_nick'] = nick;
+    }
+    final country = _prefs.hallCountry;
+    if (country != null && country.isNotEmpty) {
+      profileJson['_hall_country'] = country;
+    }
     api!.saveProfile(profileJson);
   }
 
@@ -285,6 +313,26 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
           await _prefs.applyAppSettings(settings);
           onAppSettingsApplied?.call();
         } catch (_) {}
+      }
+      // Restore emergency contacts if the server has them.
+      final rawContacts = profileData['_emergency_contacts'];
+      if (rawContacts is List && rawContacts.isNotEmpty) {
+        try {
+          final contacts = rawContacts
+              .whereType<Map<String, dynamic>>()
+              .map(EmergencyContact.fromJson)
+              .toList();
+          await _prefs.setEmergencyContacts(contacts);
+        } catch (_) {}
+      }
+      // Restore Hall of Fame nick / country
+      final nick = profileData['_hall_nick'];
+      if (nick is String && nick.isNotEmpty) {
+        try { await _prefs.setHallNick(nick); } catch (_) {}
+      }
+      final hallCountry = profileData['_hall_country'];
+      if (hallCountry is String && hallCountry.isNotEmpty) {
+        try { await _prefs.setHallCountry(hallCountry); } catch (_) {}
       }
       if (recents is List && recents.isNotEmpty) {
         for (final r in recents) {
@@ -334,9 +382,41 @@ final tripProfileProvider =
   return notifier;
 });
 
-/// Whether the user is on the Premium tier. MVP: local toggle only —
-/// no real IAP verification. When we wire RevenueCat / StoreKit /
-/// Play Billing this notifier's value comes from a verified receipt.
+/// Subscription tier for the current session.
+///
+/// Values: "free" | "essential" | "premium"
+///
+/// Initialized to "free"; [BillingService.initialize] and
+/// [BillingService.restorePurchases] update this after verifying a
+/// receipt with the backend. The legacy [premiumProvider] below
+/// is an alias kept for backwards compatibility with all existing
+/// gate checks.
+// Closed beta: default to 'premium' so all testers have full access.
+// Revert to 'free' + enable Play Billing flow before open beta launch.
+// TODO(pre-open-beta): change default back to 'free'.
+final subscriptionTierProvider = StateProvider<String>((ref) => 'premium');
+
+/// True when the user has an Essential or Premium subscription.
+final isEssentialOrAboveProvider = Provider<bool>((ref) {
+  final tier = ref.watch(subscriptionTierProvider);
+  return tier == 'essential' || tier == 'premium';
+});
+
+/// True when the user has a Premium subscription.
+final isPremiumProvider = Provider<bool>((ref) {
+  return ref.watch(subscriptionTierProvider) == 'premium';
+});
+
+/// Whether the user is on the Premium tier.
+///
+/// Kept as a [StateNotifierProvider] alias so all existing
+/// [premiumProvider] gate checks continue to work without a
+/// mass-rename refactor. [BillingService] writes through
+/// [subscriptionTierProvider] AND calls [PremiumNotifier.set] so
+/// both stay in sync. The initial value still reads from
+/// [AppPrefs.isPremium] so dogfood builds where [AppPrefs.isPremium]
+/// was hard-coded to true remain unaffected until the value is
+/// explicitly changed by the purchase flow.
 class PremiumNotifier extends StateNotifier<bool> {
   PremiumNotifier(this._prefs) : super(_prefs.isPremium);
   final AppPrefs _prefs;
@@ -629,3 +709,7 @@ final garageProvider =
 /// saved vehicle as a preview (auto-pick) or "Añadir coche" when
 /// the garage is empty.
 final selectedGarageVehicleIdProvider = StateProvider<String?>((ref) => null);
+
+/// Whether speed camera proximity alerts are enabled in Companion
+/// drive mode. Default on; user can disable in Settings > Trip.
+final radarAlertsEnabledProvider = StateProvider<bool>((ref) => true);

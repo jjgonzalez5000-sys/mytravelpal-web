@@ -45,6 +45,7 @@ class EnrichmentProgress extends StatefulWidget {
     this.profileIsCamper = false,
     this.vehicleLabel,
     this.vehicleTankL,
+    this.vehicleIsEv = false,
   });
 
   /// True while the enrich future is still in flight. When false the
@@ -72,9 +73,11 @@ class EnrichmentProgress extends StatefulWidget {
   /// null, the vehicle pulse line is dropped.
   final String? vehicleLabel;
 
-  /// Tank size in litres — only used to render the vehicle pulse
-  /// line ("Ajustando repostaje a tu Yaris (50 L)").
+  /// Tank size in litres (or battery in kWh for EVs).
   final double? vehicleTankL;
+
+  /// True when the vehicle is electric — shows "kWh de batería" instead of "L".
+  final bool vehicleIsEv;
 
   @override
   State<EnrichmentProgress> createState() => _EnrichmentProgressState();
@@ -123,12 +126,11 @@ class _EnrichmentProgressState extends State<EnrichmentProgress> {
     final vehicle = widget.vehicleLabel;
     final tank = widget.vehicleTankL;
     if (vehicle != null && vehicle.isNotEmpty && tank != null) {
-      out.add(
-        _PulseMessage(
-          Icons.directions_car_outlined,
-          l.enrichPulseVehicle(vehicle, tank.round().toString()),
-        ),
-      );
+      final tankStr = tank.round().toString();
+      final label = widget.vehicleIsEv
+          ? l.enrichPulseVehicleEv(vehicle, tankStr)
+          : l.enrichPulseVehicle(vehicle, tankStr);
+      out.add(_PulseMessage(Icons.directions_car_outlined, label));
     }
     return out;
   }

@@ -219,6 +219,7 @@ def compute(
     profile: TripProfile,
     include_meal_stops: bool = True,
     day_overrides: dict[int, dict[str, int | None]] | None = None,
+    route_km: float = 0.0,
 ) -> Optimizations:
     """Bind rest stops to meals (and, when the drive rolls past bedtime,
     to a sleep hotel).
@@ -269,11 +270,9 @@ def compute(
     _day1_over = (day_overrides or {}).get(1) or {}
     _day1_start_hour = _day1_over.get("start_hour")
     if _day1_start_hour is not None:
-        shifted = day_start.replace(
+        day_start = day_start.replace(
             hour=_day1_start_hour, minute=0, second=0, microsecond=0,
         )
-        if shifted > day_start:
-            day_start = shifted
     driving_offset = 0.0  # cumulative driving hours before day_start
     remaining_driving = trip_duration_hours
     day_index = 0
@@ -288,6 +287,16 @@ def compute(
         this_day_cap = float(
             _override.get("daily_driving_cap_hours") or cap_hours
         )
+        # Per-day km cap: convert to hours using route avg speed and
+        # apply as a secondary ceiling (whichever is stricter wins).
+        _day_km_cap = _override.get("daily_km_cap") or getattr(
+            profile, "daily_km_cap", None
+        )
+        if _day_km_cap:
+            _avg_kmh = (
+                route_km / trip_duration_hours if trip_duration_hours > 0 else 90.0
+            )
+            this_day_cap = min(this_day_cap, _day_km_cap / max(_avg_kmh, 30.0))
         driving_this_day = min(this_day_cap, remaining_driving)
         # Wall-clock end of driving for this day (before any post-
         # driving meal/sleep). Includes pause overhead.
@@ -311,7 +320,7 @@ def compute(
                 pause_ratio=pause_ratio,
                 prefs=prefs,
                 driving_offset=driving_offset,
-                cap_hours=cap_hours,
+                cap_hours=this_day_cap,  # use the km-capped cap, not the raw hours cap
             )
             if day_sleep is not None:
                 all_sleeps.append(day_sleep)
@@ -467,6 +476,14 @@ def _extend_meals_for_day(
         )
         if meal_at > day_end:
             continue
+        # Skip if another meal on this day is within 1.5 h — prevents
+        # breakfast + lunch both snapping to the same sparse rest stop.
+        day_so_far = [m for m in out if day_start <= m.at <= day_end]
+        if any(
+            abs((m.at - meal_at).total_seconds()) < 5400  # 1.5 h
+            for m in day_so_far
+        ):
+            continue
         out.append(
             MealStop(
                 slot=slot,
@@ -475,6 +492,49 @@ def _extend_meals_for_day(
                 restaurant=restaurant,
             )
         )
+    # Fallback: if no named meal slot fired for this day but the day
+    # is long enough to warrant a stop (Toledo → Murcia 8:00-12:30
+    # style trips that skirt both breakfast and lunch), force a
+    # midway food-and-stretch break. Tighter threshold with kids or
+    # pets on board — they hit the wall on car time way before adults.
+    day_meals = [m for m in out if day_start <= m.at <= day_end]
+    if not day_meals:
+        day_hours = (day_end - day_start).total_seconds() / 3600.0
+        has_kids = getattr(profile, "has_kids", False)
+        has_pets = getattr(profile, "has_pets", False)
+        threshold_h = 3.0 if (has_kids or has_pets) else 4.0
+        if day_hours >= threshold_h:
+            mid_at = day_start + (day_end - day_start) / 2
+            rest = _nearest_rest_stop(
+                rest_stops, day_start, mid_at,
+                pause_ratio=pause_ratio,
+                driving_offset=driving_offset,
+            )
+            if rest is not None and rest.distance_from_origin_km >= 30.0:
+                # Prefer LUNCH pool for restaurant match (widest
+                # coverage in restaurants_by_slot) then fall back to
+                # DINNER / BREAKFAST. Any slot's pool is a superset of
+                # generic corridor restaurants after filter_restaurants.
+                pool: tuple = ()
+                for s in (
+                    MealSlot.LUNCH, MealSlot.DINNER, MealSlot.BREAKFAST,
+                ):
+                    pool = restaurants_by_slot.get(s, ()) or pool
+                    if pool:
+                        break
+                restaurant = _closest_restaurant(
+                    pool, rest, exclude_names=frozenset(used_names),
+                )
+                if restaurant is not None:
+                    used_names.add(restaurant.name)
+                out.append(
+                    MealStop(
+                        slot=MealSlot.BREAK,
+                        at=mid_at,
+                        rest_stop=rest,
+                        restaurant=restaurant,
+                    )
+                )
 
 
 def _select_sleep_stop(

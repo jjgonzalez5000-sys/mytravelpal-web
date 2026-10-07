@@ -12,8 +12,10 @@
 -->
 <resources>
     <string name="aa_app_title">MyTravelPal</string>
-    <string name="aa_idle_message">Plan a trip on your phone. Alerts, stops and fuel prices will show here while you drive.</string>
-    <string name="aa_starting_message">Preparing your trip…</string>
+    <string name="aa_idle_message">Start Companion mode in MyTravelPal to see fuel prices, alerts and stops while you drive.</string>
+    <string name="aa_starting_message">Companion active · Monitoring route…</string>
+    <string name="aa_companion_active">Companion active</string>
+    <string name="aa_companion_monitoring">Monitoring alerts and fuel prices on your route</string>
     <string name="aa_next_stop_title">Next stop</string>
     <!-- 1: restaurant / stop name, 2: hh:mm, 3: minutes away -->
     <string name="aa_next_stop_body">%1$s · %2$s · in %3$d min</string>
@@ -41,6 +43,7 @@
     <string name="aa_restaurant_row_body">%1$s · %2$.0f €/meal · +%3$d min</string>
 
     <!-- Notification channel labels (car-extended). -->
+    <string name="aa_speed_title">Speed</string>
     <string name="aa_notif_channel_alerts_name">Road trip alerts</string>
     <string name="aa_notif_channel_alerts_desc">Approaching stops, cheaper fuel ahead, new alerts on your route.</string>
 

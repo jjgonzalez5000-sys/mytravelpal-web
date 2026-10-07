@@ -36,26 +36,28 @@ _log = logging.getLogger(__name__)
 # https://open-meteo.com/en/docs (codes 45–99).
 _WMO_TO_EVENT: dict[int, tuple[AdverseEventType, AdverseEventSeverity, str]] = {
     # Fog
-    45: (AdverseEventType.WEATHER, AdverseEventSeverity.WARNING, "Fog"),
-    48: (AdverseEventType.WEATHER, AdverseEventSeverity.WARNING, "Depositing rime fog"),
+    45: (AdverseEventType.DENSE_FOG, AdverseEventSeverity.WARNING, "Dense fog — reduced visibility"),
+    48: (AdverseEventType.DENSE_FOG, AdverseEventSeverity.WARNING, "Freezing fog — ice risk on road"),
     # Heavy rain
-    65: (AdverseEventType.WEATHER, AdverseEventSeverity.WARNING, "Heavy rain"),
-    82: (AdverseEventType.WEATHER, AdverseEventSeverity.WARNING, "Violent rain showers"),
+    65: (AdverseEventType.HEAVY_RAIN, AdverseEventSeverity.WARNING, "Heavy rain — aquaplaning risk"),
+    82: (AdverseEventType.HEAVY_RAIN, AdverseEventSeverity.CRITICAL, "Violent rain showers — severe aquaplaning risk"),
     # Snow
-    73: (AdverseEventType.SNOW, AdverseEventSeverity.WARNING, "Heavy snowfall"),
-    75: (AdverseEventType.SNOW, AdverseEventSeverity.CRITICAL, "Heavy snowfall"),
-    77: (AdverseEventType.SNOW, AdverseEventSeverity.WARNING, "Snow grains"),
-    85: (AdverseEventType.SNOW, AdverseEventSeverity.WARNING, "Snow showers"),
-    86: (AdverseEventType.SNOW, AdverseEventSeverity.CRITICAL, "Heavy snow showers"),
+    73: (AdverseEventType.SNOW, AdverseEventSeverity.WARNING, "Heavy snowfall — chains may be required"),
+    75: (AdverseEventType.SNOW, AdverseEventSeverity.CRITICAL, "Very heavy snowfall — road closures possible"),
+    77: (AdverseEventType.SNOW, AdverseEventSeverity.WARNING, "Snow grains — slippery road surface"),
+    85: (AdverseEventType.SNOW, AdverseEventSeverity.WARNING, "Snow showers — intermittent slippery patches"),
+    86: (AdverseEventType.SNOW, AdverseEventSeverity.CRITICAL, "Heavy snow showers — significantly reduced visibility"),
     # Thunderstorms
-    95: (AdverseEventType.WEATHER, AdverseEventSeverity.CRITICAL, "Thunderstorm"),
-    96: (AdverseEventType.WEATHER, AdverseEventSeverity.CRITICAL, "Thunderstorm with hail"),
-    99: (AdverseEventType.WEATHER, AdverseEventSeverity.CRITICAL, "Severe thunderstorm with hail"),
+    95: (AdverseEventType.THUNDERSTORM, AdverseEventSeverity.CRITICAL, "Thunderstorm — strong wind gusts and heavy rain"),
+    96: (AdverseEventType.THUNDERSTORM, AdverseEventSeverity.CRITICAL, "Thunderstorm with hail — risk of vehicle damage"),
+    99: (AdverseEventType.THUNDERSTORM, AdverseEventSeverity.CRITICAL, "Severe thunderstorm with large hail"),
     # Freezing conditions
-    56: (AdverseEventType.WEATHER, AdverseEventSeverity.WARNING, "Light freezing drizzle"),
-    57: (AdverseEventType.WEATHER, AdverseEventSeverity.CRITICAL, "Freezing drizzle"),
-    66: (AdverseEventType.WEATHER, AdverseEventSeverity.WARNING, "Light freezing rain"),
-    67: (AdverseEventType.WEATHER, AdverseEventSeverity.CRITICAL, "Freezing rain"),
+    56: (AdverseEventType.FREEZING_RAIN, AdverseEventSeverity.WARNING, "Light freezing drizzle — black ice risk"),
+    57: (AdverseEventType.FREEZING_RAIN, AdverseEventSeverity.CRITICAL, "Freezing drizzle — dangerous black ice"),
+    66: (AdverseEventType.FREEZING_RAIN, AdverseEventSeverity.WARNING, "Light freezing rain — ice forming on road"),
+    67: (AdverseEventType.FREEZING_RAIN, AdverseEventSeverity.CRITICAL, "Freezing rain — severe icing, avoid driving if possible"),
+    # High winds (not in original but useful)
+    22: (AdverseEventType.HIGH_WIND, AdverseEventSeverity.WARNING, "Strong wind gusts — risk for high vehicles"),
 }
 
 _SAMPLE_POINTS = 5

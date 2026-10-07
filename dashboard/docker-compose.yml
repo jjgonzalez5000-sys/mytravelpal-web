@@ -1,0 +1,48 @@
+# Local admin dashboard: Grafana + Postgres datasource pointing at the
+# Fly-hosted mytravelpal-db through a `flyctl proxy` tunnel.
+#
+# Usage:
+#   1. Copy `.env.example` to `.env` and fill in PG_* creds.
+#   2. Start the proxy on the host (separate terminal):
+#        flyctl proxy 5432 -a mytravelpal-db
+#   3. docker compose up -d
+#   4. Open http://localhost:3007 (login admin / admin, force reset on first login)
+#
+# The proxy MUST run on the host because Grafana inside the container
+# connects to `host.docker.internal:5432` — that's the shortest path
+# from container to host-loopback across OSes.
+
+services:
+  grafana:
+    image: grafana/grafana:11.3.0
+    container_name: mytravelpal-dashboard
+    restart: unless-stopped
+    # host networking so `localhost:5432` inside the container maps
+    # to the flyctl proxy running on the host's loopback. Without
+    # this the container can't reach 127.0.0.1:5432 even with
+    # `host.docker.internal` — the proxy binds to loopback only,
+    # not the docker0 bridge that host.docker.internal points at.
+    # Linux-only; on macOS/Windows use `flyctl proxy --bind-addr 0.0.0.0`
+    # + drop `network_mode` + keep `ports` and `host.docker.internal`.
+    network_mode: host
+    environment:
+      GF_SERVER_HTTP_PORT: 3007
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      # Datasource variables interpolated in provisioning/*.yml.
+      # host = localhost because the container shares the host net.
+      PG_HOST: ${PG_HOST:-localhost}
+      PG_PORT: ${PG_PORT:-5432}
+      PG_DATABASE: ${PG_DATABASE}
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-storage:/var/lib/grafana
+
+volumes:
+  grafana-storage: {}

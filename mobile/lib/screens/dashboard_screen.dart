@@ -29,7 +29,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _trips = ref.read(tripStorageProvider).list();
+    _trips = _loadAndSync();
+  }
+
+  Future<List<SavedTrip>> _loadAndSync() async {
+    final storage = ref.read(tripStorageProvider);
+    await storage.syncFromServer();
+    return storage.list();
   }
 
   @override
@@ -437,6 +443,7 @@ class _TopSaverRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final origin = trip.origin.displayName.split(',').first;
     final destination = trip.destination.displayName.split(',').first;
     return Padding(
@@ -459,7 +466,7 @@ class _TopSaverRow extends StatelessWidget {
                 Text('$origin → $destination', style: t.titleSmall),
                 Text(
                   '${trip.savedMinutesVsDesired.toStringAsFixed(0)} min · '
-                  '€${trip.savedEurVsTolls.toStringAsFixed(0)} saved',
+                  '€${trip.savedEurVsTolls.toStringAsFixed(0)} ${l.dashboardSaved}',
                   style: t.bodySmall,
                 ),
               ],
@@ -469,6 +476,92 @@ class _TopSaverRow extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Returns the localized country name for the given language code.
+/// Falls back to the English `Country.displayName` for unrecognised locales.
+String _localizedCountryName(Country c, String languageCode) {
+  const Map<String, Map<Country, String>> names = {
+    'es': {
+      Country.ch: 'Suiza',        Country.fr: 'Francia',       Country.it: 'Italia',
+      Country.es: 'España',       Country.no: 'Noruega',       Country.se: 'Suecia',
+      Country.dk: 'Dinamarca',    Country.fi: 'Finlandia',     Country.is_: 'Islandia',
+      Country.de: 'Alemania',     Country.at: 'Austria',       Country.be: 'Bélgica',
+      Country.nl: 'Países Bajos', Country.lu: 'Luxemburgo',    Country.ie: 'Irlanda',
+      Country.gb: 'Reino Unido',  Country.pt: 'Portugal',      Country.gr: 'Grecia',
+      Country.mt: 'Malta',        Country.cy: 'Chipre',        Country.pl: 'Polonia',
+      Country.cz: 'Chequia',      Country.sk: 'Eslovaquia',    Country.hu: 'Hungría',
+      Country.si: 'Eslovenia',    Country.hr: 'Croacia',       Country.ro: 'Rumanía',
+      Country.bg: 'Bulgaria',     Country.ee: 'Estonia',       Country.lv: 'Letonia',
+      Country.lt: 'Lituania',
+    },
+    'fr': {
+      Country.ch: 'Suisse',       Country.fr: 'France',        Country.it: 'Italie',
+      Country.es: 'Espagne',      Country.no: 'Norvège',       Country.se: 'Suède',
+      Country.dk: 'Danemark',     Country.fi: 'Finlande',      Country.is_: 'Islande',
+      Country.de: 'Allemagne',    Country.at: 'Autriche',      Country.be: 'Belgique',
+      Country.nl: 'Pays-Bas',     Country.lu: 'Luxembourg',    Country.ie: 'Irlande',
+      Country.gb: 'Royaume-Uni',  Country.pt: 'Portugal',      Country.gr: 'Grèce',
+      Country.mt: 'Malte',        Country.cy: 'Chypre',        Country.pl: 'Pologne',
+      Country.cz: 'Tchéquie',     Country.sk: 'Slovaquie',     Country.hu: 'Hongrie',
+      Country.si: 'Slovénie',     Country.hr: 'Croatie',       Country.ro: 'Roumanie',
+      Country.bg: 'Bulgarie',     Country.ee: 'Estonie',       Country.lv: 'Lettonie',
+      Country.lt: 'Lituanie',
+    },
+    'de': {
+      Country.ch: 'Schweiz',      Country.fr: 'Frankreich',    Country.it: 'Italien',
+      Country.es: 'Spanien',      Country.no: 'Norwegen',      Country.se: 'Schweden',
+      Country.dk: 'Dänemark',     Country.fi: 'Finnland',      Country.is_: 'Island',
+      Country.de: 'Deutschland',  Country.at: 'Österreich',    Country.be: 'Belgien',
+      Country.nl: 'Niederlande',  Country.lu: 'Luxemburg',     Country.ie: 'Irland',
+      Country.gb: 'Vereinigtes Königreich', Country.pt: 'Portugal', Country.gr: 'Griechenland',
+      Country.mt: 'Malta',        Country.cy: 'Zypern',        Country.pl: 'Polen',
+      Country.cz: 'Tschechien',   Country.sk: 'Slowakei',      Country.hu: 'Ungarn',
+      Country.si: 'Slowenien',    Country.hr: 'Kroatien',      Country.ro: 'Rumänien',
+      Country.bg: 'Bulgarien',    Country.ee: 'Estland',       Country.lv: 'Lettland',
+      Country.lt: 'Litauen',
+    },
+    'it': {
+      Country.ch: 'Svizzera',     Country.fr: 'Francia',       Country.it: 'Italia',
+      Country.es: 'Spagna',       Country.no: 'Norvegia',      Country.se: 'Svezia',
+      Country.dk: 'Danimarca',    Country.fi: 'Finlandia',     Country.is_: 'Islanda',
+      Country.de: 'Germania',     Country.at: 'Austria',       Country.be: 'Belgio',
+      Country.nl: 'Paesi Bassi',  Country.lu: 'Lussemburgo',   Country.ie: 'Irlanda',
+      Country.gb: 'Regno Unito',  Country.pt: 'Portogallo',    Country.gr: 'Grecia',
+      Country.mt: 'Malta',        Country.cy: 'Cipro',         Country.pl: 'Polonia',
+      Country.cz: 'Repubblica Ceca', Country.sk: 'Slovacchia', Country.hu: 'Ungheria',
+      Country.si: 'Slovenia',     Country.hr: 'Croazia',       Country.ro: 'Romania',
+      Country.bg: 'Bulgaria',     Country.ee: 'Estonia',       Country.lv: 'Lettonia',
+      Country.lt: 'Lituania',
+    },
+    'pt': {
+      Country.ch: 'Suíça',        Country.fr: 'França',        Country.it: 'Itália',
+      Country.es: 'Espanha',      Country.no: 'Noruega',       Country.se: 'Suécia',
+      Country.dk: 'Dinamarca',    Country.fi: 'Finlândia',     Country.is_: 'Islândia',
+      Country.de: 'Alemanha',     Country.at: 'Áustria',       Country.be: 'Bélgica',
+      Country.nl: 'Países Baixos',Country.lu: 'Luxemburgo',    Country.ie: 'Irlanda',
+      Country.gb: 'Reino Unido',  Country.pt: 'Portugal',      Country.gr: 'Grécia',
+      Country.mt: 'Malta',        Country.cy: 'Chipre',        Country.pl: 'Polónia',
+      Country.cz: 'Chéquia',      Country.sk: 'Eslováquia',    Country.hu: 'Hungria',
+      Country.si: 'Eslovénia',    Country.hr: 'Croácia',       Country.ro: 'Roménia',
+      Country.bg: 'Bulgária',     Country.ee: 'Estónia',       Country.lv: 'Letónia',
+      Country.lt: 'Lituânia',
+    },
+    'ca': {
+      Country.ch: 'Suïssa',       Country.fr: 'França',        Country.it: 'Itàlia',
+      Country.es: 'Espanya',      Country.no: 'Noruega',       Country.se: 'Suècia',
+      Country.dk: 'Dinamarca',    Country.fi: 'Finlàndia',     Country.is_: 'Islàndia',
+      Country.de: 'Alemanya',     Country.at: 'Àustria',       Country.be: 'Bèlgica',
+      Country.nl: 'Països Baixos',Country.lu: 'Luxemburg',     Country.ie: 'Irlanda',
+      Country.gb: 'Regne Unit',   Country.pt: 'Portugal',      Country.gr: 'Grècia',
+      Country.mt: 'Malta',        Country.cy: 'Xipre',         Country.pl: 'Polònia',
+      Country.cz: 'Txèquia',      Country.sk: 'Eslovàquia',    Country.hu: 'Hongria',
+      Country.si: 'Eslovènia',    Country.hr: 'Croàcia',       Country.ro: 'Romania',
+      Country.bg: 'Bulgària',     Country.ee: 'Estònia',       Country.lv: 'Letònia',
+      Country.lt: 'Lituània',
+    },
+  };
+  return names[languageCode]?[c] ?? c.displayName;
 }
 
 class _CountryRow extends StatelessWidget {
@@ -486,13 +579,17 @@ class _CountryRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final fraction = total > 0 ? entry.value / total : 0.0;
+    final langCode = Localizations.localeOf(context).languageCode;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
       child: Row(
         children: [
           SizedBox(
             width: 130,
-            child: Text(entry.key.displayName, style: t.titleSmall),
+            child: Text(
+              _localizedCountryName(entry.key, langCode),
+              style: t.titleSmall,
+            ),
           ),
           Expanded(
             child: ClipRRect(

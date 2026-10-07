@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aa_app_title">MyTravelPal</string>
+    <string name="aa_idle_message">Démarrez le mode Companion dans MyTravelPal pour voir carburant, alertes et arrêts en route.</string>
+    <string name="aa_starting_message">Companion actif · Surveillance de la route…</string>
+    <string name="aa_companion_active">Companion actif</string>
+    <string name="aa_companion_monitoring">Surveillance des alertes et stations-service</string>
+    <string name="aa_next_stop_title">Prochain arrêt</string>
+    <string name="aa_next_stop_body">%1$s · %2$s · dans %3$d min</string>
+    <string name="aa_cheaper_fuel_title">Carburant moins cher</string>
+    <string name="aa_cheaper_fuel_body">%1$s dans %2$d km · économisez %3$d ct/L</string>
+    <string name="aa_eta_title">Arrivée estimée</string>
+    <string name="aa_eta_body">%1$s · %2$d km restants</string>
+    <string name="aa_fuel_list_row">Toutes les stations</string>
+    <string name="aa_restaurants_list_row">Tous les restaurants</string>
+    <string name="aa_fuel_list_title">Carburant sur la route</string>
+    <string name="aa_restaurants_list_title">Restaurants sur la route</string>
+    <string name="aa_list_empty">Rien à afficher.</string>
+    <string name="aa_fuel_row_price">%1$.3f €/L</string>
+    <string name="aa_fuel_row_no_price">Prix indisponible</string>
+    <string name="aa_km_from_origin">km %1$d</string>
+    <string name="aa_restaurant_row_body">%1$s · %2$.0f €/repas · +%3$d min</string>
+    <string name="aa_notif_channel_alerts_name">Alertes de voyage</string>
+    <string name="aa_notif_channel_alerts_desc">Arrêts proches, carburant moins cher, nouvelles alertes sur votre route.</string>
+    <string name="widget_description">Compte à rebours pour votre prochain voyage.</string>
+    <string name="widget_no_trip_title">Aucun voyage prévu</string>
+    <string name="widget_no_saved">Planifiez et sauvegardez un voyage pour le voir ici.</string>
+    <string name="widget_no_upcoming">%1$d voyage(s) sauvegardé(s) · aucun à venir</string>
+</resources>

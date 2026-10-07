@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="aa_app_title">MyTravelPal</string>
+    <string name="aa_idle_message">Inicia el modo Companion en MyTravelPal para ver gasolineras, alertas y paradas mientras conduces.</string>
+    <string name="aa_starting_message">Companion activo · Monitorizando ruta…</string>
+    <string name="aa_companion_active">Companion activo</string>
+    <string name="aa_companion_monitoring">Monitorizando alertas y gasolineras en ruta</string>
+    <string name="aa_next_stop_title">Próxima parada</string>
+    <string name="aa_next_stop_body">%1$s · %2$s · en %3$d min</string>
+    <string name="aa_cheaper_fuel_title">Gasolinera más barata</string>
+    <string name="aa_cheaper_fuel_body">%1$s en %2$d km · ahorra %3$d ct/L</string>
+    <string name="aa_eta_title">Llegada estimada</string>
+    <string name="aa_eta_body">%1$s · %2$d km restantes</string>
+    <string name="aa_fuel_list_row">Todas las gasolineras</string>
+    <string name="aa_restaurants_list_row">Todos los restaurantes</string>
+    <string name="aa_fuel_list_title">Combustible en ruta</string>
+    <string name="aa_restaurants_list_title">Restaurantes en ruta</string>
+    <string name="aa_list_empty">Sin datos aún.</string>
+    <string name="aa_fuel_row_price">%1$.3f €/L</string>
+    <string name="aa_fuel_row_no_price">Precio no disponible</string>
+    <string name="aa_km_from_origin">km %1$d</string>
+    <string name="aa_restaurant_row_body">%1$s · %2$.0f €/menú · +%3$d min</string>
+    <string name="aa_speed_title">Velocidad</string>
+    <string name="aa_notif_channel_alerts_name">Alertas de viaje</string>
+    <string name="aa_notif_channel_alerts_desc">Paradas próximas, combustible más barato, nuevas alertas en tu ruta.</string>
+    <string name="widget_description">Cuenta atrás para tu próximo viaje guardado.</string>
+    <string name="widget_no_trip_title">Sin próximo viaje</string>
+    <string name="widget_no_saved">Planifica y guarda un viaje para verlo aquí.</string>
+    <string name="widget_no_upcoming">%1$d viaje(s) guardado(s) · ninguno próximo</string>
+</resources>

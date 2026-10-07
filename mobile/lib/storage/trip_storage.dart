@@ -34,9 +34,22 @@ class TripStorage {
     final raw = _prefs.getString(_key);
     if (raw == null || raw.isEmpty) return const [];
     final decoded = jsonDecode(raw) as List<dynamic>;
-    return decoded
-        .map((e) => SavedTrip.fromJson(e as Map<String, dynamic>))
-        .toList(growable: false);
+    // Parse individually so a single malformed entry (e.g. an unknown
+    // country code from a future schema change) does not wipe the whole list.
+    final result = <SavedTrip>[];
+    for (final e in decoded) {
+      try {
+        result.add(SavedTrip.fromJson(e as Map<String, dynamic>));
+      } catch (_) {
+        // Skip this entry; log in debug mode to aid diagnosis.
+        assert(() {
+          // ignore: avoid_print
+          print('[TripStorage] Skipping unparseable trip entry: $e');
+          return true;
+        }());
+      }
+    }
+    return result;
   }
 
   Future<void> save(SavedTrip trip) async {
@@ -88,7 +101,11 @@ class TripStorage {
     if (merged.length > _maxEntries) {
       merged.removeRange(_maxEntries, merged.length);
     }
-    await _write(merged, skipServerPush: true);
+    // Push back to server if local had trips the server didn't know about
+    // (e.g. saves that failed to reach the server earlier). Skipping the
+    // push only makes sense when server and local are already in sync.
+    final needServerUpdate = merged.length > remote.length;
+    await _write(merged, skipServerPush: !needServerUpdate);
   }
 
   Future<void> _write(

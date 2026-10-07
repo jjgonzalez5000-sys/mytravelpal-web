@@ -19,6 +19,7 @@ class AddedStop {
     required this.subtitle,
     required this.coordinate,
     this.distanceFromOriginKm,
+    this.onRemove,
   });
 
   final AddedStopKind kind;
@@ -30,6 +31,10 @@ class AddedStop {
   /// [DayPlanSection] to slot this stop into the correct day card.
   /// Null when it can't be estimated (no geometry available).
   final double? distanceFromOriginKm;
+
+  /// Called when the user taps the X button on this stop.
+  /// Wired by result_screen.dart to remove the stop from _addedStops.
+  final VoidCallback? onRemove;
 
   IconData get icon => switch (kind) {
         AddedStopKind.hotel => Icons.hotel_outlined,
@@ -183,9 +188,14 @@ class _AddedStopsMapSheetState extends State<_AddedStopsMapSheet> {
             ),
             const SizedBox(height: Tokens.space12),
             if (_selected != null)
-              _StopCallout(stop: _selected!, onClose: () {
-                setState(() => _selected = null);
-              }),
+              _StopCallout(
+                stop: _selected!,
+                onClose: () => setState(() => _selected = null),
+                onRemove: () {
+                  _selected!.onRemove?.call();
+                  Navigator.of(context).pop();
+                },
+              ),
             const SizedBox(height: Tokens.space8),
             // Flat list of added stops as a legend / quick nav — tapping
             // one selects it on the map (centres callout).
@@ -256,10 +266,15 @@ class _AddedStopsMapSheetState extends State<_AddedStopsMapSheet> {
 }
 
 class _StopCallout extends StatelessWidget {
-  const _StopCallout({required this.stop, required this.onClose});
+  const _StopCallout({
+    required this.stop,
+    required this.onClose,
+    required this.onRemove,
+  });
 
   final AddedStop stop;
   final VoidCallback onClose;
+  final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -307,8 +322,9 @@ class _StopCallout extends StatelessWidget {
             },
           ),
           IconButton(
+            tooltip: 'Eliminar parada',
             icon: const Icon(Icons.close, size: 20),
-            onPressed: onClose,
+            onPressed: onRemove,
           ),
         ],
       ),

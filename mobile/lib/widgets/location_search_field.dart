@@ -134,14 +134,14 @@ class _LocationSearchFieldState extends ConsumerState<LocationSearchField> {
     if (_picked != null) return;
     final query = _controller.text.trim();
     _debounce?.cancel();
-    if (query.length < 2) {
+    if (query.length < 3) {
       setState(() {
         _results = const [];
         _loading = false;
       });
       return;
     }
-    _debounce = Timer(const Duration(milliseconds: 250), () async {
+    _debounce = Timer(const Duration(milliseconds: 450), () async {
       setState(() => _loading = true);
       try {
         final res = await widget.geocode(query);

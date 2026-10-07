@@ -7,14 +7,46 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import 'nav_deep_link.dart';
 
-/// Present a bottom sheet with the three export options: open in Google
-/// Maps, copy link, share via the OS share sheet. All three build the
-/// same URL — a Google Maps `dir?api=1` link with origin, waypoints,
-/// and destination pre-populated.
+/// Builds the shareable MyTravelPal "trip template" deep-link.
+///
+/// Format: https://mytravelpal.io/join?
+///   from=<originName>:<lat>,<lon>
+///   &to=<destName>:<lat>,<lon>
+///   &at=<ISO8601_departure>  (optional)
+///
+/// When tapped on Android with the app installed → deep link opens
+/// the plan form pre-filled. On other platforms → opens the web
+/// landing page with a QR to install the app.
+String buildMtpShareUrl({
+  required LatLon origin,
+  required LatLon destination,
+  required String originName,
+  required String destinationName,
+  DateTime? departureAt,
+}) {
+  final encodedFrom = Uri.encodeComponent(
+    '$originName:${origin.lat.toStringAsFixed(5)},${origin.lon.toStringAsFixed(5)}',
+  );
+  final encodedTo = Uri.encodeComponent(
+    '$destinationName:${destination.lat.toStringAsFixed(5)},${destination.lon.toStringAsFixed(5)}',
+  );
+  var url = 'https://www.mytravelpal.io/join?from=$encodedFrom&to=$encodedTo';
+  if (departureAt != null) {
+    url += '&at=${Uri.encodeComponent(departureAt.toUtc().toIso8601String())}';
+  }
+  return url;
+}
+
+/// Present a bottom sheet with export options: open in Google Maps,
+/// copy Maps link, share OS sheet, AND share with MyTravelPal users
+/// (deep link that pre-fills the plan form in the app).
 Future<void> showExportSheet(
   BuildContext context, {
   required LatLon origin,
   required LatLon destination,
+  String originName = '',
+  String destinationName = '',
+  DateTime? departureAt,
   List<LatLon> waypoints = const [],
   bool avoidTolls = false,
   bool avoidHighways = false,
@@ -91,6 +123,29 @@ Future<void> showExportSheet(
               onTap: () async {
                 Navigator.of(sheetCtx).pop();
                 await Share.share(url, subject: l.exportShareSubject);
+              },
+            ),
+            const Divider(height: Tokens.space16),
+            ListTile(
+              leading: const Icon(Icons.group_outlined),
+              title: Text(l.exportShareMtp),
+              subtitle: Text(l.exportShareMtpSubtitle),
+              onTap: () async {
+                Navigator.of(sheetCtx).pop();
+                final mtpUrl = buildMtpShareUrl(
+                  origin: origin,
+                  destination: destination,
+                  originName: originName,
+                  destinationName: destinationName,
+                  departureAt: departureAt,
+                );
+                await Share.share(
+                  mtpUrl,
+                  subject: l.exportShareMtpSubject(
+                    originName.isNotEmpty ? originName : 'origin',
+                    destinationName.isNotEmpty ? destinationName : 'destination',
+                  ),
+                );
               },
             ),
           ],

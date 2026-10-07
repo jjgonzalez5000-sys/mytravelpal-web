@@ -406,6 +406,15 @@ class TripWaypoint {
   final int dwellNights;
   final String? label;
 
+  factory TripWaypoint.fromJson(Map<String, dynamic> j) => TripWaypoint(
+        coordinate: LatLon(
+          lat: (j['lat'] as num).toDouble(),
+          lon: (j['lon'] as num).toDouble(),
+        ),
+        dwellNights: (j['dwell_nights'] as int?) ?? 0,
+        label: j['label'] as String?,
+      );
+
   Map<String, dynamic> toJson() => {
         'lat': coordinate.lat,
         'lon': coordinate.lon,
@@ -450,6 +459,7 @@ class TripPlanRequest {
     this.timeWindowTopN = 5,
     this.tripProfile,
     this.includeParking = false,
+    this.includeActivities = false,
     this.garageVehicleId,
     this.dayOverrides = const [],
   });
@@ -509,6 +519,10 @@ class TripPlanRequest {
   /// default so the plan endpoint stays fast for drivers who
   /// don't care about parking.
   final bool includeParking;
+
+  /// When true, show GetYourGuide activity CTAs for the destination
+  /// and each intermediate overnight city.
+  final bool includeActivities;
   final bool includeAdverseEvents;
 
   /// Max great-circle distance from the route for an adverse event to
@@ -557,6 +571,65 @@ class TripPlanRequest {
   /// own day only. Empty list = every day uses the profile defaults.
   final List<DayOverride> dayOverrides;
 
+  factory TripPlanRequest.fromJson(Map<String, dynamic> j) {
+    List<PriceBand>? parseBands(dynamic raw) {
+      if (raw == null) return null;
+      return (raw as List).map((c) => PriceBand.fromCode(c as String)).toList();
+    }
+
+    return TripPlanRequest(
+      origin: LatLon.fromJson(j['origin'] as Map<String, dynamic>),
+      destination: LatLon.fromJson(j['destination'] as Map<String, dynamic>),
+      desiredDepartureAt: DateTime.parse(j['desired_departure_at'] as String),
+      waypoints: (j['waypoints'] as List?)
+              ?.map((w) => TripWaypoint.fromJson(w as Map<String, dynamic>))
+              .toList() ??
+          [],
+      countries: (j['countries'] as List?)
+          ?.map((c) => Country.fromCode(c as String))
+          .toList(),
+      hotelMaxDetourMinutes: j['hotel_max_detour_minutes'] as int?,
+      hotelPriceBand: j['hotel_price_band'] != null
+          ? PriceBand.fromCode(j['hotel_price_band'] as String)
+          : null,
+      hotelPriceBands: parseBands(j['hotel_price_bands']),
+      hotelMinStars: j['hotel_min_stars'] as int?,
+      restaurantMaxDetourMinutes: j['restaurant_max_detour_minutes'] as int?,
+      restaurantPriceBand: j['restaurant_price_band'] != null
+          ? PriceBand.fromCode(j['restaurant_price_band'] as String)
+          : null,
+      restaurantPriceBands: parseBands(j['restaurant_price_bands']),
+      restaurantCuisines: (j['restaurant_cuisines'] as List?)
+          ?.map((c) => c as String)
+          .toList(),
+      hotelIncludeOther: (j['hotel_include_other'] as bool?) ?? false,
+      hotelDestinationRadiusKm: j['hotel_destination_radius_km'] as int?,
+      hotelConditions: j['hotel_conditions'] as String?,
+      restaurantConditions: j['restaurant_conditions'] as String?,
+      includeParking: (j['include_parking'] as bool?) ?? false,
+      includeActivities: (j['include_activities'] as bool?) ?? false,
+      includeAdverseEvents: (j['include_adverse_events'] as bool?) ?? false,
+      adverseEventsMaxDistanceKm:
+          ((j['adverse_events_max_distance_km'] as num?) ?? 25.0).toDouble(),
+      includeTollAlternative: (j['include_toll_alternative'] as bool?) ?? false,
+      includeRouteComparison: (j['include_route_comparison'] as bool?) ?? false,
+      includeHourlyTollAnalysis:
+          (j['include_hourly_toll_analysis'] as bool?) ?? false,
+      avoidMotorways: (j['avoid_motorways'] as bool?) ?? false,
+      preferScenic: (j['prefer_scenic'] as bool?) ?? false,
+      timeWindowSpanHours: (j['time_window_span_hours'] as int?) ?? 3,
+      timeWindowTopN: (j['time_window_top_n'] as int?) ?? 5,
+      tripProfile: j['trip_profile'] != null
+          ? TripProfile.fromJson(j['trip_profile'] as Map<String, dynamic>)
+          : null,
+      garageVehicleId: j['garage_vehicle_id'] as String?,
+      dayOverrides: (j['day_overrides'] as List?)
+              ?.map((o) => DayOverride.fromJson(o as Map<String, dynamic>))
+              .toList() ??
+          [],
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'origin': origin.toJson(),
         'destination': destination.toJson(),
@@ -591,6 +664,7 @@ class TripPlanRequest {
         if (restaurantConditions != null && restaurantConditions!.isNotEmpty)
           'restaurant_conditions': restaurantConditions,
         if (includeParking) 'include_parking': true,
+        if (includeActivities) 'include_activities': true,
         if (includeAdverseEvents) 'include_adverse_events': true,
         if (includeAdverseEvents)
           'adverse_events_max_distance_km': adverseEventsMaxDistanceKm,
@@ -613,6 +687,41 @@ class TripPlanRequest {
   /// [overrides] applied. Convenience for the ResultScreen re-plan
   /// flow — pass the mutated overrides map through the same request
   /// otherwise unchanged.
+  TripPlanRequest copyWith({TripProfile? tripProfile}) =>
+      TripPlanRequest(
+        origin: origin,
+        destination: destination,
+        desiredDepartureAt: desiredDepartureAt,
+        waypoints: waypoints,
+        countries: countries,
+        hotelMaxDetourMinutes: hotelMaxDetourMinutes,
+        hotelPriceBand: hotelPriceBand,
+        hotelPriceBands: hotelPriceBands,
+        hotelMinStars: hotelMinStars,
+        restaurantMaxDetourMinutes: restaurantMaxDetourMinutes,
+        restaurantPriceBand: restaurantPriceBand,
+        restaurantPriceBands: restaurantPriceBands,
+        restaurantCuisines: restaurantCuisines,
+        hotelIncludeOther: hotelIncludeOther,
+        hotelDestinationRadiusKm: hotelDestinationRadiusKm,
+        hotelConditions: hotelConditions,
+        restaurantConditions: restaurantConditions,
+        includeAdverseEvents: includeAdverseEvents,
+        adverseEventsMaxDistanceKm: adverseEventsMaxDistanceKm,
+        includeTollAlternative: includeTollAlternative,
+        includeRouteComparison: includeRouteComparison,
+        includeHourlyTollAnalysis: includeHourlyTollAnalysis,
+        avoidMotorways: avoidMotorways,
+        preferScenic: preferScenic,
+        timeWindowSpanHours: timeWindowSpanHours,
+        timeWindowTopN: timeWindowTopN,
+        tripProfile: tripProfile ?? this.tripProfile,
+        includeParking: includeParking,
+        includeActivities: includeActivities,
+        garageVehicleId: garageVehicleId,
+        dayOverrides: dayOverrides,
+      );
+
   TripPlanRequest withDayOverrides(List<DayOverride> overrides) =>
       TripPlanRequest(
         origin: origin,
@@ -643,6 +752,7 @@ class TripPlanRequest {
         timeWindowTopN: timeWindowTopN,
         tripProfile: tripProfile,
         includeParking: includeParking,
+        includeActivities: includeActivities,
         garageVehicleId: garageVehicleId,
         dayOverrides: overrides,
       );
@@ -658,24 +768,39 @@ class DayOverride {
     required this.dayIndex,
     this.startHour,
     this.dailyDrivingCapHours,
+    this.dailyKmCap,
   });
   final int dayIndex;
   final int? startHour;
   final int? dailyDrivingCapHours;
+  final int? dailyKmCap;
+
+  factory DayOverride.fromJson(Map<String, dynamic> j) => DayOverride(
+        dayIndex: j['day_index'] as int,
+        startHour: j['start_hour'] as int?,
+        dailyDrivingCapHours: j['daily_driving_cap_hours'] as int?,
+        dailyKmCap: j['daily_km_cap'] as int?,
+      );
 
   Map<String, dynamic> toJson() => {
         'day_index': dayIndex,
         if (startHour != null) 'start_hour': startHour,
         if (dailyDrivingCapHours != null)
           'daily_driving_cap_hours': dailyDrivingCapHours,
+        if (dailyKmCap != null) 'daily_km_cap': dailyKmCap,
       };
 
-  DayOverride copyWith({int? startHour, int? dailyDrivingCapHours}) =>
+  DayOverride copyWith({
+    int? startHour,
+    int? dailyDrivingCapHours,
+    int? dailyKmCap,
+  }) =>
       DayOverride(
         dayIndex: dayIndex,
         startHour: startHour ?? this.startHour,
         dailyDrivingCapHours:
             dailyDrivingCapHours ?? this.dailyDrivingCapHours,
+        dailyKmCap: dailyKmCap ?? this.dailyKmCap,
       );
 }
 
@@ -1027,6 +1152,37 @@ class TollAlternative {
 }
 
 @immutable
+class SpeedCamera {
+  const SpeedCamera({
+    required this.coordinate,
+    required this.distanceFromOriginKm,
+    this.maxSpeedKmh,
+    required this.cameraType,
+    this.direction,
+  });
+
+  final LatLon coordinate;
+  final double distanceFromOriginKm;
+  final int? maxSpeedKmh;
+
+  /// fixed, section_start, section_end, mobile_zone, traffic_light
+  final String cameraType;
+  final String? direction;
+
+  factory SpeedCamera.fromJson(Map<String, dynamic> j) => SpeedCamera(
+        coordinate: LatLon(
+          lat: (j['lat'] as num).toDouble(),
+          lon: (j['lon'] as num).toDouble(),
+        ),
+        distanceFromOriginKm:
+            (j['distance_from_origin_km'] as num).toDouble(),
+        maxSpeedKmh: j['max_speed_kmh'] as int?,
+        cameraType: j['camera_type'] as String? ?? 'fixed',
+        direction: j['direction'] as String?,
+      );
+}
+
+@immutable
 class TimeWindow {
   const TimeWindow({
     required this.departureAt,
@@ -1136,9 +1292,11 @@ class Hotel {
     required this.priceEurPerNight,
     required this.priceBand,
     required this.detourMinutes,
+    required this.detourKm,
     required this.distanceFromRouteKm,
     required this.coordinate,
     this.attributes = const {},
+    this.photoUrl,
   });
 
   final String name;
@@ -1146,6 +1304,7 @@ class Hotel {
   final double priceEurPerNight;
   final PriceBand priceBand;
   final double detourMinutes;
+  final double detourKm;
   final double distanceFromRouteKm;
   final LatLon coordinate;
 
@@ -1154,20 +1313,28 @@ class Hotel {
   /// brand. Empty for mock hotels.
   final Map<String, String> attributes;
 
-  factory Hotel.fromJson(Map<String, dynamic> json) => Hotel(
-        name: json['name'] as String,
-        country: Country.fromCode(json['country'] as String),
-        priceEurPerNight: (json['price_eur_per_night'] as num).toDouble(),
-        priceBand: PriceBand.fromCode(json['price_band'] as String),
-        detourMinutes: (json['detour_minutes'] as num).toDouble(),
-        distanceFromRouteKm:
-            (json['distance_from_route_km'] as num).toDouble(),
-        coordinate: LatLon(
-          lat: (json['lat'] as num).toDouble(),
-          lon: (json['lon'] as num).toDouble(),
-        ),
-        attributes: _readAttrs(json['attributes']),
-      );
+  /// Wikimedia Commons thumbnail URL, nullable. Populated by the
+  /// backend's photo enrichment step when an image is available.
+  final String? photoUrl;
+
+  factory Hotel.fromJson(Map<String, dynamic> json) {
+    final distKm = (json['distance_from_route_km'] as num).toDouble();
+    return Hotel(
+      name: json['name'] as String,
+      country: Country.fromCode(json['country'] as String),
+      priceEurPerNight: (json['price_eur_per_night'] as num).toDouble(),
+      priceBand: PriceBand.fromCode(json['price_band'] as String),
+      detourMinutes: (json['detour_minutes'] as num).toDouble(),
+      detourKm: (json['detour_km'] as num?)?.toDouble() ?? distKm * 2.0,
+      distanceFromRouteKm: distKm,
+      coordinate: LatLon(
+        lat: (json['lat'] as num).toDouble(),
+        lon: (json['lon'] as num).toDouble(),
+      ),
+      attributes: _readAttrs(json['attributes']),
+      photoUrl: json['photo_url'] as String?,
+    );
+  }
 
   /// Stable identifier used to dedupe favorites across sessions.
   /// Name + country + rounded coordinate is stable enough for our use.
@@ -1211,10 +1378,12 @@ class Restaurant {
     required this.priceEurPerMeal,
     required this.priceBand,
     required this.detourMinutes,
+    required this.detourKm,
     required this.distanceFromRouteKm,
     required this.coordinate,
     this.attributes = const {},
     this.openMealSlots = const [],
+    this.photoUrl,
   });
 
   final String name;
@@ -1222,6 +1391,7 @@ class Restaurant {
   final double priceEurPerMeal;
   final PriceBand priceBand;
   final double detourMinutes;
+  final double detourKm;
   final double distanceFromRouteKm;
   final LatLon coordinate;
 
@@ -1235,24 +1405,32 @@ class Restaurant {
   /// restaurants under "Suggested for lunch/dinner" sections.
   final List<MealSlot> openMealSlots;
 
-  factory Restaurant.fromJson(Map<String, dynamic> json) => Restaurant(
-        name: json['name'] as String,
-        country: Country.fromCode(json['country'] as String),
-        priceEurPerMeal: (json['price_eur_per_meal'] as num).toDouble(),
-        priceBand: PriceBand.fromCode(json['price_band'] as String),
-        detourMinutes: (json['detour_minutes'] as num).toDouble(),
-        distanceFromRouteKm:
-            (json['distance_from_route_km'] as num).toDouble(),
-        coordinate: LatLon(
-          lat: (json['lat'] as num).toDouble(),
-          lon: (json['lon'] as num).toDouble(),
-        ),
-        attributes: _readAttrs(json['attributes']),
-        openMealSlots: (json['open_meal_slots'] as List<dynamic>? ?? const [])
-            .map((s) => _mealSlotFromCode(s as String))
-            .whereType<MealSlot>()
-            .toList(growable: false),
-      );
+  /// Wikimedia Commons thumbnail URL, nullable. Populated by the
+  /// backend's photo enrichment step when an image is available.
+  final String? photoUrl;
+
+  factory Restaurant.fromJson(Map<String, dynamic> json) {
+    final distKm = (json['distance_from_route_km'] as num).toDouble();
+    return Restaurant(
+      name: json['name'] as String,
+      country: Country.fromCode(json['country'] as String),
+      priceEurPerMeal: (json['price_eur_per_meal'] as num).toDouble(),
+      priceBand: PriceBand.fromCode(json['price_band'] as String),
+      detourMinutes: (json['detour_minutes'] as num).toDouble(),
+      detourKm: (json['detour_km'] as num?)?.toDouble() ?? distKm * 2.0,
+      distanceFromRouteKm: distKm,
+      coordinate: LatLon(
+        lat: (json['lat'] as num).toDouble(),
+        lon: (json['lon'] as num).toDouble(),
+      ),
+      attributes: _readAttrs(json['attributes']),
+      openMealSlots: (json['open_meal_slots'] as List<dynamic>? ?? const [])
+          .map((s) => _mealSlotFromCode(s as String))
+          .whereType<MealSlot>()
+          .toList(growable: false),
+      photoUrl: json['photo_url'] as String?,
+    );
+  }
 
   String get favoriteId => 'restaurant:${country.code}:'
       '${coordinate.lat.toStringAsFixed(3)}:'
@@ -1751,6 +1929,7 @@ class TripPlanResponse {
     this.recommendationScope,
     this.consistencyIssues = const [],
     this.fuelArbitrage,
+    this.hotelArbitrage,
     this.days = const [],
     this.weatherSegments = const [],
     this.refuelWindow,
@@ -1785,6 +1964,7 @@ class TripPlanResponse {
   final RecommendationScope? recommendationScope;
   final List<ConsistencyIssue> consistencyIssues;
   final FuelArbitrage? fuelArbitrage;
+  final HotelArbitrage? hotelArbitrage;
   final List<DayPlan> days;
   final List<WeatherSegment> weatherSegments;
 
@@ -1866,6 +2046,11 @@ class TripPlanResponse {
             : FuelArbitrage.fromJson(
                 json['fuel_arbitrage'] as Map<String, dynamic>,
               ),
+        hotelArbitrage: json['hotel_arbitrage'] == null
+            ? null
+            : HotelArbitrage.fromJson(
+                json['hotel_arbitrage'] as Map<String, dynamic>,
+              ),
         days: (json['days'] as List<dynamic>? ?? const [])
             .map((d) => DayPlan.fromJson(d as Map<String, dynamic>))
             .toList(growable: false),
@@ -1914,7 +2099,18 @@ class TripPlanResponse {
         // ships full per-day rest_stops in the multi-day case).
         days: enrich.days.isNotEmpty ? enrich.days : core.days,
         savings: core.savings,
-        optimizations: core.optimizations,
+        // Prefer enrich's optimizations when it has densified the meal
+        // stops with real restaurant picks (name + coord). Core's
+        // meal_stops carry rest-stop coords with `restaurant=null`,
+        // so falling through to core here shows the "no restaurants
+        // found on your route" empty state for single-day trips.
+        // 2026-09-29 dogfood: Toledo→Murcia (~4h) returned 55 top-level
+        // restaurants + 1 lunch meal_stop but core.meal_stops[0]
+        // was still `restaurant=null`; enrich had done the attach.
+        optimizations: (enrich.optimizations != null &&
+                enrich.optimizations!.mealStops.isNotEmpty)
+            ? enrich.optimizations
+            : core.optimizations,
         recommendationScope: core.recommendationScope,
         routeVariants: core.routeVariants,
         consistencyIssues: core.consistencyIssues,
@@ -1931,6 +2127,7 @@ class TripPlanResponse {
         intraSectionSkips: enrich.intraSectionSkips,
         hourlyTollReport: enrich.hourlyTollReport,
         fuelArbitrage: enrich.fuelArbitrage,
+        hotelArbitrage: enrich.hotelArbitrage,
         weatherSegments: enrich.weatherSegments,
         // `rawJson` intentionally null — merging two envelopes into
         // one wouldn't have a canonical wire representation. The
@@ -2066,6 +2263,50 @@ class FuelArbitrage {
         deltaEurPerL: (j['delta_eur_per_l'] as num).toDouble(),
         estimatedTankSavingEur:
             (j['estimated_tank_saving_eur'] as num).toDouble(),
+      );
+}
+
+/// Cross-country hotel-price gap. Backend emits this when the corridor
+/// crosses ≥ 2 countries whose median hotel-price ratio exceeds 20 %.
+/// Mobile renders it inside each affected day card so the driver sees
+/// "sleeping here costs €N more per night than one country south".
+@immutable
+class HotelArbitrage {
+  const HotelArbitrage({
+    required this.cheaperCountry,
+    required this.cheaperMedianEurPerNight,
+    required this.pricierCountry,
+    required this.pricierMedianEurPerNight,
+    required this.deltaEurPerNight,
+    required this.deltaPercent,
+    required this.affectedDayIndices,
+    required this.estimatedTotalSavingEur,
+  });
+
+  final Country cheaperCountry;
+  final double cheaperMedianEurPerNight;
+  final Country pricierCountry;
+  final double pricierMedianEurPerNight;
+  final double deltaEurPerNight;
+  final double deltaPercent;
+  final List<int> affectedDayIndices;
+  final double estimatedTotalSavingEur;
+
+  factory HotelArbitrage.fromJson(Map<String, dynamic> j) => HotelArbitrage(
+        cheaperCountry: Country.fromCode(j['cheaper_country'] as String),
+        cheaperMedianEurPerNight:
+            (j['cheaper_median_eur_per_night'] as num).toDouble(),
+        pricierCountry: Country.fromCode(j['pricier_country'] as String),
+        pricierMedianEurPerNight:
+            (j['pricier_median_eur_per_night'] as num).toDouble(),
+        deltaEurPerNight: (j['delta_eur_per_night'] as num).toDouble(),
+        deltaPercent: (j['delta_percent'] as num).toDouble(),
+        affectedDayIndices:
+            (j['affected_day_indices'] as List<dynamic>? ?? const [])
+                .map((e) => (e as num).toInt())
+                .toList(growable: false),
+        estimatedTotalSavingEur:
+            (j['estimated_total_saving_eur'] as num).toDouble(),
       );
 }
 
@@ -2676,4 +2917,41 @@ class CompanionAction {
         payload:
             (j['payload'] as Map<String, dynamic>?) ?? const {},
       );
+}
+
+/// State pushed by the driver to the group Companion session every 10 s.
+/// Passengers receive this via GET /v1/companion/session/{join_code}.
+@immutable
+class CompanionSessionState {
+  const CompanionSessionState({
+    required this.lat,
+    required this.lon,
+    required this.speedKmh,
+    this.nextStopName,
+    this.etaMinutes,
+    this.destinationName,
+    this.destinationEtaMinutes,
+    this.radarAheadKm,
+  });
+
+  final double lat;
+  final double lon;
+  final double speedKmh;
+  final String? nextStopName;
+  final int? etaMinutes;
+  final String? destinationName;
+  final int? destinationEtaMinutes;
+  final double? radarAheadKm;
+
+  Map<String, dynamic> toJson() => {
+        'lat': lat,
+        'lon': lon,
+        'speed_kmh': speedKmh,
+        if (nextStopName != null) 'next_stop_name': nextStopName,
+        if (etaMinutes != null) 'eta_minutes': etaMinutes,
+        if (destinationName != null) 'destination_name': destinationName,
+        if (destinationEtaMinutes != null)
+          'destination_eta_minutes': destinationEtaMinutes,
+        if (radarAheadKm != null) 'radar_ahead_km': radarAheadKm,
+      };
 }

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.api.premium import is_premium
@@ -52,6 +54,7 @@ def _day_overrides_map(
         out[ov.day_index] = {
             "start_hour": ov.start_hour,
             "daily_driving_cap_hours": ov.daily_driving_cap_hours,
+            "daily_km_cap": ov.daily_km_cap,
         }
     return out
 
@@ -122,7 +125,9 @@ def _pick_reason_locale(accept_language: str | None) -> str:
     """
     if not accept_language:
         return "en"
-    primary = accept_language.split(",", 1)[0].strip().lower()
+    # Starlette may pass a Header object instead of a plain str
+    # when the header is accessed via request.headers directly.
+    primary = str(accept_language).split(",", 1)[0].strip().lower()
     lang = primary.split("-", 1)[0]
     return lang if lang in _REASON_STRINGS else "en"
 
@@ -228,8 +233,9 @@ class DayOverrideIn(BaseModel):
     day_index: int = Field(ge=1, le=30)
     start_hour: int | None = Field(default=None, ge=4, le=14)
     daily_driving_cap_hours: int | None = Field(
-        default=None, ge=4, le=14,
+        default=None, ge=2, le=14,
     )
+    daily_km_cap: int | None = Field(default=None, ge=50, le=2000)
 
 
 class WaypointIn(BaseModel):
@@ -255,10 +261,13 @@ class WaypointIn(BaseModel):
 class VehicleIn(BaseModel):
     type: VehicleType = VehicleType.CAR
     fuel_type: FuelType = FuelType.PETROL
-    consumption_l_per_100km: float = Field(default=6.5, gt=0, le=40)
-    consumption_kwh_per_100km: float = Field(default=18.0, gt=0, le=80)
-    fuel_tank_l: float = Field(default=50.0, gt=0, le=200)
-    ev_range_km: float = Field(default=350.0, gt=0, le=1200)
+    consumption_l_per_100km: float = Field(default=6.5, ge=0, le=40)
+    consumption_kwh_per_100km: float = Field(default=18.0, ge=0, le=80)
+    # `ge=0` (not `gt=0`): pure EVs post `fuel_tank_l=0`, ICE posts
+    # `consumption_kwh_per_100km=0`. The validator downstream picks
+    # the field pair that matches `fuel_type` and ignores the other.
+    fuel_tank_l: float = Field(default=50.0, ge=0, le=200)
+    ev_range_km: float = Field(default=350.0, ge=0, le=1200)
 
 
 class MealPreferencesIn(BaseModel):
@@ -281,7 +290,11 @@ class TripProfileIn(BaseModel):
     # -- Travel style --
     travel_pace: TravelPace = TravelPace.STEADY
     overnight_policy: OvernightPolicy = OvernightPolicy.IF_NEEDED
-    daily_driving_cap_hours: int = Field(default=8, ge=4, le=14)
+    daily_driving_cap_hours: int = Field(default=8, ge=2, le=14)
+    # Optional km per day cap. When set, the backend caps each day
+    # at min(daily_driving_cap_hours, daily_km_cap / avg_speed_kmh)
+    # so the driver can express limits in either time OR distance.
+    daily_km_cap: int | None = Field(default=None, ge=50, le=2000)
     bedtime_hour: int = Field(default=22, ge=18, le=23)
     wake_hour: int = Field(default=8, ge=5, le=11)
     # Optional. Independent from wake_hour — the driver may want to
@@ -314,26 +327,42 @@ class TripProfileIn(BaseModel):
     def to_domain(self) -> TripProfile:
         # Optional catalogue lookup for tank + consumption. Falls back
         # to the manual `vehicle` sliders when the id is unknown or
-        # missing, so a broken/stale id doesn't break the plan.
+        # missing, so a broken/stale id doesn't break the plan. EV
+        # entries in the catalogue override the ELECTRIC-specific
+        # fields (battery kWh / range km / kWh per 100 km); ICE
+        # entries override the fuel-tank / L per 100 km pair.
         tank_l = self.vehicle.fuel_tank_l
         consumption = self.vehicle.consumption_l_per_100km
+        fuel_type = self.vehicle.fuel_type
+        consumption_kwh = self.vehicle.consumption_kwh_per_100km
+        ev_range = self.vehicle.ev_range_km
         if self.vehicle_model_id:
             from app.data.vehicle_models import find as _find_vehicle
             hit = _find_vehicle(self.vehicle_model_id)
             if hit is not None:
-                tank_l = hit.tank_liters
-                consumption = hit.consumption_l100km
+                # Catalogue always wins over the user's fuel_type
+                # selection — a Tesla Model 3 is never diesel.
+                fuel_type = hit.fuel_type
+                if hit.fuel_type == FuelType.ELECTRIC:
+                    consumption_kwh = hit.consumption_kwh100km
+                    ev_range = hit.ev_range_km
+                    # Leave tank_l at whatever the ICE slider had —
+                    # ignored for EVs downstream but keeps the object
+                    # constructor happy with a non-zero float.
+                else:
+                    tank_l = hit.tank_liters
+                    consumption = hit.consumption_l100km
         return TripProfile(
             travellers=self.travellers,
             has_kids=self.has_kids,
             has_pets=self.has_pets,
             vehicle=Vehicle(
                 type=self.vehicle.type,
-                fuel_type=self.vehicle.fuel_type,
+                fuel_type=fuel_type,
                 consumption_l_per_100km=consumption,
-                consumption_kwh_per_100km=self.vehicle.consumption_kwh_per_100km,
+                consumption_kwh_per_100km=consumption_kwh,
                 fuel_tank_l=tank_l,
-                ev_range_km=self.vehicle.ev_range_km,
+                ev_range_km=ev_range,
             ),
             meals=MealPreferences(
                 breakfast_hour=self.meals.breakfast_hour,
@@ -351,6 +380,9 @@ class TripProfileIn(BaseModel):
             wake_hour=self.wake_hour,
             preferred_driving_start_hour=self.preferred_driving_start_hour,
             break_style=self.break_style,
+            vehicle_model_id=self.vehicle_model_id,
+            current_tank_level_percent=self.current_tank_level_percent,
+            daily_km_cap=self.daily_km_cap,
         )
 
 
@@ -738,6 +770,17 @@ class FuelArbitrageOut(BaseModel):
     estimated_tank_saving_eur: float
 
 
+class HotelArbitrageOut(BaseModel):
+    cheaper_country: Country
+    cheaper_median_eur_per_night: float
+    pricier_country: Country
+    pricier_median_eur_per_night: float
+    delta_eur_per_night: float
+    delta_percent: float
+    affected_day_indices: list[int] = Field(default_factory=list)
+    estimated_total_saving_eur: float
+
+
 class DayPlanOut(BaseModel):
     day_index: int
     start_at: datetime
@@ -776,10 +819,12 @@ class HotelOut(BaseModel):
     price_eur_per_night: float
     price_band: PriceBand
     detour_minutes: float
+    detour_km: float = 0.0
     distance_from_route_km: float
     lat: float
     lon: float
     attributes: dict[str, str] = Field(default_factory=dict)
+    photo_url: str | None = None  # Wikimedia Commons thumbnail (CC-BY-SA)
 
 
 class RestaurantOut(BaseModel):
@@ -788,6 +833,7 @@ class RestaurantOut(BaseModel):
     price_eur_per_meal: float
     price_band: PriceBand
     detour_minutes: float
+    detour_km: float = 0.0
     distance_from_route_km: float
     lat: float
     lon: float
@@ -796,6 +842,7 @@ class RestaurantOut(BaseModel):
     # restaurants under "Suggested for breakfast/lunch/dinner"
     # sections based on the intersection with the trip's clock window.
     open_meal_slots: list[MealSlot] = Field(default_factory=list)
+    photo_url: str | None = None  # Wikimedia Commons thumbnail (CC-BY-SA)
 
 
 class RestStopOut(BaseModel):
@@ -1019,6 +1066,7 @@ class TripPlanResponse(BaseModel):
     recommendation_scope: RecommendationScopeOut | None = None
     consistency_issues: list[ConsistencyIssueOut] = Field(default_factory=list)
     fuel_arbitrage: FuelArbitrageOut | None = None
+    hotel_arbitrage: HotelArbitrageOut | None = None
     days: list[DayPlanOut] = Field(default_factory=list)
     weather_segments: list[WeatherSegmentOut] = Field(default_factory=list)
     refuel_window: RefuelWindowOut | None = None
@@ -1126,14 +1174,14 @@ async def _plan_shared_preamble(
         prefer_scenic=payload.prefer_scenic,
     )
 
-    # Toll pricing and time windows are independent post-route — run
-    # them concurrently to keep the preamble short.
-    _tolls_coro = (
-        providers.tollguru.quote(route)
-        if providers.tollguru is not None and route.geometry
-        else asyncio.sleep(0, result=None)
-    )
-    _windows_coro = compute_time_windows(
+    # Time windows are independent post-route — start immediately.
+    # Toll pricing moves to the enrich phase so the preamble is as
+    # short as possible (routing is already on the critical path;
+    # adding a serial toll round-trip here adds ~1-2 s to every plan).
+    # The route.toll_cost_eur from HereRoutingProvider already carries
+    # a usable toll figure for the cost card; booth-level data (for
+    # partial-toll-skip display) is computed in enrich.
+    windows = await compute_time_windows(
         route=route,
         desired_departure_at=payload.desired_departure_at,
         traffic=providers.traffic,
@@ -1142,11 +1190,7 @@ async def _plan_shared_preamble(
             top_n=payload.time_window_top_n,
         ),
     )
-    _quote, windows = await asyncio.gather(_tolls_coro, _windows_coro)
     real_tolls: tuple = ()
-    if _quote is not None:
-        real_tolls = tuple(_quote.tolls)
-        route = _dc_replace(route, toll_cost_eur=round(_quote.total_eur, 2))
 
     # Rest stops are cheap and both slices need them — enrich enriches
     # further, core ships them as empty on the wire but the day plan
@@ -1201,6 +1245,15 @@ async def _plan_shared_preamble(
     _cap_hours = float(
         getattr(profile, "daily_driving_cap_hours", 8) or 8,
     ) if profile is not None else 24.0
+    # km cap: convert to equivalent hours using the route's avg speed.
+    _avg_speed_kmh = (
+        route.distance_km
+        / (route.free_flow_duration.total_seconds() / 3600.0)
+    ) if route.free_flow_duration.total_seconds() > 0 else 100.0
+    _daily_km_cap = getattr(profile, "daily_km_cap", None) if profile else None
+    if _daily_km_cap:
+        _km_cap_hours = _daily_km_cap / max(_avg_speed_kmh, 30.0)
+        _cap_hours = min(_cap_hours, _km_cap_hours)
     # Prefer `preferred_driving_start_hour` when set — the arrival
     # estimate has to match what `trip_optimizations` actually does
     # or the consistency check falsely fires "breakfast at Thu 08:00
@@ -1408,6 +1461,7 @@ async def _plan_core_impl(
             profile=profile,
             include_meal_stops=include_meal_stops,
             day_overrides=_day_overrides_map(payload),
+            route_km=route.distance_km,
         )
         opt_domain = opt
         # Placeholder fuel cost — real one is computed in enrich. Falls
@@ -1603,6 +1657,7 @@ async def _plan_core_impl(
         recommendation_scope=scope_out,
         consistency_issues=consistency_out,
         fuel_arbitrage=None,
+        hotel_arbitrage=None,
         days=days_out,
         weather_segments=[],
         refuel_window=None,
@@ -1839,6 +1894,19 @@ async def _plan_enrich_impl(
             _log.warning("route_variants failed: %r", exc)
             return ()
 
+    async def _fetch_tolls() -> object:
+        """Booth-level toll data — runs in enrich (parallel with fuel/hotels)
+        so the preamble stays short. The route.toll_cost_eur from routing
+        already carries a usable total; this adds per-booth detail for
+        partial-skip display."""
+        if providers.tollguru is None or not route.geometry:
+            return None
+        try:
+            return await providers.tollguru.quote(route)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("toll quote in enrich failed: %r", exc)
+            return None
+
     (
         hotels_raw,
         restaurants_raw,
@@ -1848,6 +1916,7 @@ async def _plan_enrich_impl(
         alt_route_domain,
         parkings_raw,
         variants_raw,
+        _toll_quote,
     ) = await asyncio.gather(
         _bounded_provider(
             _fetch_hotels_along(),
@@ -1885,15 +1954,37 @@ async def _plan_enrich_impl(
             _fetch_variants(),
             budget_s=_VARIANTS_BUDGET_S, label="route_variants", fallback=(),
         ),
+        _bounded_provider(
+            _fetch_tolls(),
+            budget_s=15.0, label="toll quote (enrich)", fallback=None,
+        ),
     )
+
+    # Extract booth-level toll data from the enrich-phase quote.
+    if _toll_quote is not None:
+        real_tolls = tuple(_toll_quote.tolls)
+        # Update the route toll cost if HERE returned a more precise figure.
+        if _toll_quote.total_eur > 0:
+            route = _dc_replace(route, toll_cost_eur=round(_toll_quote.total_eur, 2))
 
     fuel: tuple = tuple(fuel_raw)
 
-    # ---- Hotel filter + Google/HERE enrichment ---------------------
-    hotels_out: list[HotelOut] = []
+    # ---- Post-gather parallel enrichment ----------------------------
+    # Hotels (Google → HERE, sequential within), restaurants, and all
+    # toll operations are independent of each other.  Gathering them
+    # collapses wall-clock from
+    #   sum(hotel_enrich + rest_enrich + skips + intra + hourly)
+    # to max(hotel_enrich, rest_enrich, skips + intra + hourly).
+    # On a typical toll-bearing trip that shaves 30-50 s off the
+    # post-gather serialisation chain.
+
     all_hotels_cache = hotels_raw
-    if effective_hotel_detour and effective_hotel_detour > 0 and hotels_raw:
-        filtered = filter_hotels(
+    all_restaurants_cache = restaurants_raw
+
+    async def _enrich_hotels_phase() -> list[HotelOut]:
+        if not (effective_hotel_detour and effective_hotel_detour > 0 and hotels_raw):
+            return []
+        _filtered = filter_hotels(
             all_hotels_cache,
             max_detour_minutes=float(effective_hotel_detour),
             price_band=payload.hotel_price_band or PriceBand.ANY,
@@ -1901,44 +1992,46 @@ async def _plan_enrich_impl(
             profile=profile,
             min_stars=payload.hotel_min_stars,
         )
+        # Google enrichment first
         try:
             _h_enricher = GooglePlacesEnricher()
-            _h_head, _h_tail = filtered[:30], filtered[30:]
+            _h_head, _h_tail = _filtered[:30], _filtered[30:]
             _h_enriched = await _h_enricher.enrich_hotels(tuple(_h_head))
-            filtered = tuple(_h_enriched) + tuple(_h_tail)
+            _filtered = tuple(_h_enriched) + tuple(_h_tail)
         except Exception as exc:  # noqa: BLE001
             _log.warning("Google Places hotel enrichment failed: %r", exc)
+        # HERE enrichment consumes Google output — must stay sequential
         try:
             _here_enricher = HerePlacesEnricher()
-            _h_head, _h_tail = filtered[:30], filtered[30:]
+            _h_head, _h_tail = _filtered[:30], _filtered[30:]
             _h_enriched = await _here_enricher.enrich_hotels(tuple(_h_head))
-            filtered = tuple(_h_enriched) + tuple(_h_tail)
+            _filtered = tuple(_h_enriched) + tuple(_h_tail)
         except Exception as exc:  # noqa: BLE001
             _log.warning("HERE Places hotel enrichment failed: %r", exc)
-        hotels_out = [
+        return [
             HotelOut(
                 name=h.name,
                 country=h.country,
                 price_eur_per_night=h.price_eur_per_night,
                 price_band=h.price_band,
                 detour_minutes=h.detour_minutes,
+                detour_km=h.detour_km,
                 distance_from_route_km=h.distance_from_route_km,
                 lat=h.coordinate.lat,
                 lon=h.coordinate.lon,
                 attributes=dict(h.attributes),
             )
-            for h in filtered
+            for h in _filtered
         ]
 
-    # ---- Restaurant filter + Google enrichment ---------------------
-    restaurants_out: list[RestaurantOut] = []
-    all_restaurants_cache = restaurants_raw
-    if (
-        payload.restaurant_max_detour_minutes
-        and payload.restaurant_max_detour_minutes > 0
-        and restaurants_raw
-    ):
-        filtered_r = filter_restaurants(
+    async def _enrich_restaurants_phase() -> list[RestaurantOut]:
+        if not (
+            payload.restaurant_max_detour_minutes
+            and payload.restaurant_max_detour_minutes > 0
+            and restaurants_raw
+        ):
+            return []
+        _filtered_r = filter_restaurants(
             all_restaurants_cache,
             max_detour_minutes=float(payload.restaurant_max_detour_minutes),
             price_band=payload.restaurant_price_band or PriceBand.ANY,
@@ -1949,141 +2042,166 @@ async def _plan_enrich_impl(
             profile=profile,
         )
         try:
-            enricher = GooglePlacesEnricher()
-            head, tail = filtered_r[:30], filtered_r[30:]
-            enriched_head = await enricher.enrich_restaurants(tuple(head))
-            filtered_r = tuple(enriched_head) + tuple(tail)
+            _enricher = GooglePlacesEnricher()
+            _head, _tail = _filtered_r[:30], _filtered_r[30:]
+            _enriched_head = await _enricher.enrich_restaurants(tuple(_head))
+            _filtered_r = tuple(_enriched_head) + tuple(_tail)
         except Exception as exc:  # noqa: BLE001
             _log.warning("Google Places enrichment failed: %r", exc)
-        restaurants_out = [
+        return [
             RestaurantOut(
                 name=r.name,
                 country=r.country,
                 price_eur_per_meal=r.price_eur_per_meal,
                 price_band=r.price_band,
                 detour_minutes=r.detour_minutes,
+                detour_km=r.detour_km,
                 distance_from_route_km=r.distance_from_route_km,
                 lat=r.coordinate.lat,
                 lon=r.coordinate.lon,
                 attributes=dict(r.attributes),
                 open_meal_slots=list(r.open_meal_slots),
             )
-            for r in filtered_r
+            for r in _filtered_r
         ]
 
-    # ---- Toll alternative + partial/intra skips + hourly report ----
-    toll_alternative_out: TollAlternativeOut | None = None
-    partial_skips_out: list[PartialTollSkipOut] = []
-    if payload.include_toll_alternative and route.toll_cost_eur > 0:
-        raw_skips = compute_partial_skips(route, real_tolls=real_tolls)
-        # Upgrade the heuristic penalty / extra_km numbers to REAL
-        # figures from HERE Routing v8 (avoid=tollRoad) and attach
-        # the alternative polyline so the mobile day map can draw
-        # the detour. Silently degrades to the heuristic values
-        # when the HERE key is missing or a request fails.
-        try:
-            from app.providers.here_toll_alternatives import (
-                enrich_skips_with_alternatives,
-            )
-            raw_skips = await asyncio.wait_for(
-                enrich_skips_with_alternatives(route, raw_skips),
-                timeout=30.0,
-            )
-        except asyncio.TimeoutError:
-            _log.warning("here_toll_alternatives budget exceeded — heuristics only")
-        except Exception as exc:  # noqa: BLE001
-            _log.warning("here_toll_alternatives failed: %r", exc)
-        for skip in raw_skips:
-            partial_skips_out.append(
-                PartialTollSkipOut(
-                    label=skip.label,
-                    kind=skip.kind,
-                    index=skip.index,
-                    total=skip.total,
-                    distance_from_origin_km=skip.distance_from_origin_km,
-                    savings_eur=skip.savings_eur,
-                    time_penalty_minutes=skip.time_penalty_minutes,
-                    extra_distance_km=skip.extra_distance_km,
-                    worth_it=skip.worth_it,
-                    lat=skip.coordinate.lat,
-                    lon=skip.coordinate.lon,
-                    detour_geometry=[
-                        [c.lon, c.lat] for c in skip.alternative_geometry
-                    ],
+    async def _process_toll_phase() -> tuple[
+        list[PartialTollSkipOut],
+        list[IntraSectionSkipOut],
+        "TollAlternativeOut | None",
+        "HourlyTollReportOut | None",
+    ]:
+        _partial_skips_out: list[PartialTollSkipOut] = []
+        _intra_skips_out: list[IntraSectionSkipOut] = []
+        _toll_alternative_out: TollAlternativeOut | None = None
+        _hourly_toll_out: HourlyTollReportOut | None = None
+
+        # ---- Partial skips (HERE Routing v8 upgrade) ----------------
+        if payload.include_toll_alternative and route.toll_cost_eur > 0:
+            _raw_skips = compute_partial_skips(route, real_tolls=real_tolls)
+            # Upgrade the heuristic penalty / extra_km numbers to REAL
+            # figures from HERE Routing v8 (avoid=tollRoad) and attach
+            # the alternative polyline so the mobile day map can draw
+            # the detour. Silently degrades to the heuristic values
+            # when the HERE key is missing or a request fails.
+            try:
+                from app.providers.here_toll_alternatives import (
+                    enrich_skips_with_alternatives,
                 )
-            )
-
-    intra_skips_out: list[IntraSectionSkipOut] = []
-    if (
-        payload.include_toll_alternative
-        and real_tolls
-        and isinstance(providers.tollguru, _HereTollsProvider)
-    ):
-        try:
-            _raw_skips = await asyncio.wait_for(
-                compute_intra_section_skips(
-                    real_tolls, providers.osm_gates, providers.tollguru,
-                ),
-                timeout=20.0,
-            )
-        except asyncio.TimeoutError:
-            _log.warning("intra_section_skips timed out after 20s — skipping")
-            _raw_skips = []
-        for s in _raw_skips:
-            intra_skips_out.append(IntraSectionSkipOut(
-                section_name=s.section_name,
-                exit_gate_name=s.exit_gate_name,
-                exit_lat=s.exit_lat,
-                exit_lon=s.exit_lon,
-                reentry_gate_name=s.reentry_gate_name,
-                reentry_lat=s.reentry_lat,
-                reentry_lon=s.reentry_lon,
-                full_section_eur=s.full_section_eur,
-                bypass_eur=s.bypass_eur,
-                savings_eur=s.savings_eur,
-                free_road_km=s.free_road_km,
-                time_penalty_minutes=s.time_penalty_minutes,
-                worth_it=s.worth_it,
-            ))
-
-    if payload.include_toll_alternative and alt_route_domain is not None:
-        alt = compare_toll(route, alt_route_domain)
-        toll_alternative_out = TollAlternativeOut(
-            distance_km=alt.distance_km,
-            duration_minutes=alt.duration_minutes,
-            toll_cost_eur=alt.toll_cost_eur,
-            savings_eur=alt.savings_eur,
-            time_penalty_minutes=alt.time_penalty_minutes,
-            extra_distance_km=alt.extra_distance_km,
-            worth_it=alt.worth_it,
-            geometry=[
-                [c.lon, c.lat]
-                for c in simplify_polyline(alt.geometry, epsilon_km=0.2)
-            ],
-        )
-
-    hourly_toll_out: HourlyTollReportOut | None = None
-    if payload.include_hourly_toll_analysis and alt_route_domain is not None:
-        report = await hourly_toll_analyze(
-            reference_day=payload.desired_departure_at,
-            main_route=route,
-            toll_free_route=alt_route_domain,
-            traffic=providers.traffic,
-        )
-        hourly_toll_out = HourlyTollReportOut(
-            verdicts=[
-                HourlyTollVerdictOut(
-                    hour=v.hour,
-                    toll_route_minutes=v.toll_route_minutes,
-                    toll_free_route_minutes=v.toll_free_route_minutes,
-                    savings_eur=v.savings_eur,
-                    recommendation=v.recommendation,
+                _raw_skips = await asyncio.wait_for(
+                    enrich_skips_with_alternatives(route, _raw_skips),
+                    timeout=30.0,
                 )
-                for v in report.verdicts
-            ],
-            best_hours_to_skip=list(report.best_hours_to_skip),
-            worst_hours_to_skip=list(report.worst_hours_to_skip),
-        )
+            except asyncio.TimeoutError:
+                _log.warning(
+                    "here_toll_alternatives budget exceeded — heuristics only",
+                )
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("here_toll_alternatives failed: %r", exc)
+            for _skip in _raw_skips:
+                _partial_skips_out.append(
+                    PartialTollSkipOut(
+                        label=_skip.label,
+                        kind=_skip.kind,
+                        index=_skip.index,
+                        total=_skip.total,
+                        distance_from_origin_km=_skip.distance_from_origin_km,
+                        savings_eur=_skip.savings_eur,
+                        time_penalty_minutes=_skip.time_penalty_minutes,
+                        extra_distance_km=_skip.extra_distance_km,
+                        worth_it=_skip.worth_it,
+                        lat=_skip.coordinate.lat,
+                        lon=_skip.coordinate.lon,
+                        detour_geometry=[
+                            [c.lon, c.lat] for c in _skip.alternative_geometry
+                        ],
+                    )
+                )
+
+        # ---- Intra-section skips ------------------------------------
+        if (
+            payload.include_toll_alternative
+            and real_tolls
+            and isinstance(providers.tollguru, _HereTollsProvider)
+        ):
+            try:
+                _raw_intra = await asyncio.wait_for(
+                    compute_intra_section_skips(
+                        real_tolls, providers.osm_gates, providers.tollguru,
+                    ),
+                    timeout=20.0,
+                )
+            except asyncio.TimeoutError:
+                _log.warning("intra_section_skips timed out after 20s — skipping")
+                _raw_intra = []
+            for _s in _raw_intra:
+                _intra_skips_out.append(IntraSectionSkipOut(
+                    section_name=_s.section_name,
+                    exit_gate_name=_s.exit_gate_name,
+                    exit_lat=_s.exit_lat,
+                    exit_lon=_s.exit_lon,
+                    reentry_gate_name=_s.reentry_gate_name,
+                    reentry_lat=_s.reentry_lat,
+                    reentry_lon=_s.reentry_lon,
+                    full_section_eur=_s.full_section_eur,
+                    bypass_eur=_s.bypass_eur,
+                    savings_eur=_s.savings_eur,
+                    free_road_km=_s.free_road_km,
+                    time_penalty_minutes=_s.time_penalty_minutes,
+                    worth_it=_s.worth_it,
+                ))
+
+        # ---- Toll alternative comparison (CPU) + hourly analysis ----
+        if payload.include_toll_alternative and alt_route_domain is not None:
+            _alt = compare_toll(route, alt_route_domain)
+            _toll_alternative_out = TollAlternativeOut(
+                distance_km=_alt.distance_km,
+                duration_minutes=_alt.duration_minutes,
+                toll_cost_eur=_alt.toll_cost_eur,
+                savings_eur=_alt.savings_eur,
+                time_penalty_minutes=_alt.time_penalty_minutes,
+                extra_distance_km=_alt.extra_distance_km,
+                worth_it=_alt.worth_it,
+                geometry=[
+                    [c.lon, c.lat]
+                    for c in simplify_polyline(_alt.geometry, epsilon_km=0.2)
+                ],
+            )
+
+        if payload.include_hourly_toll_analysis and alt_route_domain is not None:
+            _report = await hourly_toll_analyze(
+                reference_day=payload.desired_departure_at,
+                main_route=route,
+                toll_free_route=alt_route_domain,
+                traffic=providers.traffic,
+            )
+            _hourly_toll_out = HourlyTollReportOut(
+                verdicts=[
+                    HourlyTollVerdictOut(
+                        hour=v.hour,
+                        toll_route_minutes=v.toll_route_minutes,
+                        toll_free_route_minutes=v.toll_free_route_minutes,
+                        savings_eur=v.savings_eur,
+                        recommendation=v.recommendation,
+                    )
+                    for v in _report.verdicts
+                ],
+                best_hours_to_skip=list(_report.best_hours_to_skip),
+                worst_hours_to_skip=list(_report.worst_hours_to_skip),
+            )
+
+        return _partial_skips_out, _intra_skips_out, _toll_alternative_out, _hourly_toll_out
+
+    # Fire all three phases concurrently — none depend on each other.
+    (
+        hotels_out,
+        restaurants_out,
+        (partial_skips_out, intra_skips_out, toll_alternative_out, hourly_toll_out),
+    ) = await asyncio.gather(
+        _enrich_hotels_phase(),
+        _enrich_restaurants_phase(),
+        _process_toll_phase(),
+    )
 
     # ---- Optimizations (real POIs) + densification -----------------
     optimizations_out: OptimizationsOut | None = None
@@ -2143,6 +2261,7 @@ async def _plan_enrich_impl(
             profile=profile,
             include_meal_stops=restaurants_requested,
             day_overrides=_day_overrides_map(payload),
+            route_km=route.distance_km,
         )
         # ---- Densification (meal restaurants + per-day hotels) ------
         # Fanned out in parallel after 2026-09-28 dogfood report:
@@ -2295,6 +2414,10 @@ async def _plan_enrich_impl(
                     continue
                 seen_coords.add(key)
                 extra_sleep_coords.append(s.rest_stop.coordinate)
+            _log.info(
+                "hotel densify: sleep_stops=%d extra_sleep_coords=%d",
+                len(opt.sleep_stops), len(extra_sleep_coords),
+            )
 
             extra_fan = await asyncio.gather(
                 _hotels_hits_for(dest_coord, tight=dest_radius, wide=dest_radius * 2),
@@ -2319,40 +2442,28 @@ async def _plan_enrich_impl(
             _preview_days = (
                 _preview_multiday.days if _preview_multiday else ()
             )
+            # Parallel late-pass: dwell waypoints, per-day sleep coords and
+            # meal-stop hotel searches were previously three sequential loops
+            # (each blocking on a Geoapify HTTP call). Collect unique coords
+            # synchronously, then fan out all near_hotels calls in one gather.
+            # On a 3-day trip this saves ~6-10 s of wall-clock time.
+            _late: list[tuple[object, float, float, str, tuple]] = []
             for wp in dwell_waypoints:
                 if wp.dwell_nights < 1:
                     continue
-                key = (
-                    round(wp.coordinate.lat, 3),
-                    round(wp.coordinate.lon, 3),
-                )
+                key = (round(wp.coordinate.lat, 3), round(wp.coordinate.lon, 3))
                 if key in seen_coords:
                     continue
                 seen_coords.add(key)
-                hits = await near_hotels(wp.coordinate, 30.0)
-                if not hits:
-                    hits = await near_hotels(wp.coordinate, 60.0)
-                densified_hotels.extend(hits)
+                _late.append((wp.coordinate, 30.0, 60.0, "dwell", key))
             for _d in _preview_days:
                 if _d.sleep_coord is None:
                     continue
-                key = (
-                    round(_d.sleep_coord.lat, 3),
-                    round(_d.sleep_coord.lon, 3),
-                )
+                key = (round(_d.sleep_coord.lat, 3), round(_d.sleep_coord.lon, 3))
                 if key in seen_coords:
                     continue
                 seen_coords.add(key)
-                hits = await near_hotels(_d.sleep_coord, 60.0)
-                if not hits:
-                    hits = await near_hotels(_d.sleep_coord, 90.0)
-                _log.info(
-                    "densify day %d sleep_coord=%.3f,%.3f raw_hits=%d",
-                    _d.day_index, _d.sleep_coord.lat,
-                    _d.sleep_coord.lon, len(hits),
-                )
-                _middle_day_hits[key] = list(hits)
-                densified_hotels.extend(hits)
+                _late.append((_d.sleep_coord, 60.0, 90.0, "day_sleep", key))
             for m in opt.meal_stops:
                 key = (
                     round(m.rest_stop.coordinate.lat, 3),
@@ -2361,13 +2472,39 @@ async def _plan_enrich_impl(
                 if key in seen_coords:
                     continue
                 seen_coords.add(key)
-                hits = await near_hotels(m.rest_stop.coordinate, 40.0)
-                densified_hotels.extend(hits)
+                _late.append((m.rest_stop.coordinate, 40.0, 40.0, "meal", key))
+            if _late:
+                _late_results = await asyncio.gather(
+                    *[
+                        _hotels_hits_for(coord, tight=tight, wide=wide)
+                        for coord, tight, wide, _, _ in _late
+                    ],
+                    return_exceptions=True,
+                )
+                for (coord, _t, _w, kind, key), hits in zip(_late, _late_results):
+                    if isinstance(hits, Exception):
+                        _log.warning(
+                            "hotels_near late-pass failed kind=%s key=%s: %r",
+                            kind, key, hits,
+                        )
+                        hits = ()
+                    densified_hotels.extend(hits)
+                    if kind == "day_sleep":
+                        _middle_day_hits[key] = list(hits)
+                        _log.info(
+                            "densify sleep_coord=%.3f,%.3f raw_hits=%d",
+                            key[0], key[1], len(hits),
+                        )
         opt_domain = opt
         _seen_hotels = {
             (h.name, round(h.lat, 4), round(h.lon, 4))
             for h in hotels_out
         }
+        # Large limit: this pool spans ALL sleep coords (origin,
+        # mid-route nights, destination). The default limit=10 would
+        # crowd out mid-route hotels — they all score similarly on
+        # detour_minutes since each was fetched near its own coord.
+        # 300 is ~30 hotels × 10 nights, well above any realistic trip.
         _densified_filtered = filter_hotels(
             tuple(densified_hotels),
             max_detour_minutes=1e9,
@@ -2375,6 +2512,7 @@ async def _plan_enrich_impl(
             price_bands=payload.hotel_price_bands,
             profile=profile,
             min_stars=payload.hotel_min_stars,
+            limit=300,
         )
         try:
             _kept_coords = {
@@ -2412,6 +2550,7 @@ async def _plan_enrich_impl(
                 price_eur_per_night=h.price_eur_per_night,
                 price_band=h.price_band,
                 detour_minutes=h.detour_minutes,
+                detour_km=h.detour_km,
                 distance_from_route_km=h.distance_from_route_km,
                 lat=h.coordinate.lat,
                 lon=h.coordinate.lon,
@@ -2432,6 +2571,7 @@ async def _plan_enrich_impl(
                 price_eur_per_meal=r.price_eur_per_meal,
                 price_band=r.price_band,
                 detour_minutes=r.detour_minutes,
+                detour_km=r.detour_km,
                 distance_from_route_km=r.distance_from_route_km,
                 lat=r.coordinate.lat,
                 lon=r.coordinate.lon,
@@ -2463,23 +2603,28 @@ async def _plan_enrich_impl(
             except Exception:  # noqa: BLE001
                 return None
 
-        meal_city_hints = await asyncio.gather(*(
-            _city(m.rest_stop.coordinate) for m in opt.meal_stops
-        ))
+        # Merge all reverse-geocode calls into one gather to avoid
+        # 2-3 extra Nominatim serial round-trips (~300-900 ms each).
+        _origin_coord = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
+        _dest_coord = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
+        _sleep_coord = (
+            opt.sleep_stop.rest_stop.coordinate
+            if opt.sleep_stop is not None else None
+        )
+        _n_meals = len(opt.meal_stops)
+        _all_geo = await asyncio.gather(
+            *(_city(m.rest_stop.coordinate) for m in opt.meal_stops),
+            _city(_sleep_coord),
+            _city(_origin_coord),
+            _city(_dest_coord),
+        )
+        meal_city_hints = _all_geo[:_n_meals]
+        sleep_city_hint = _all_geo[_n_meals]
+        _origin_label, _dest_label = _all_geo[_n_meals + 1], _all_geo[_n_meals + 2]
         _meal_hint_by_km = {
             m.rest_stop.distance_from_origin_km: meal_city_hints[i]
             for i, m in enumerate(opt.meal_stops)
         }
-        sleep_city_hint = await _city(
-            opt.sleep_stop.rest_stop.coordinate
-            if opt.sleep_stop is not None else None
-        )
-        _origin_coord = Coordinate(lat=payload.origin.lat, lon=payload.origin.lon)
-        _dest_coord = Coordinate(lat=payload.destination.lat, lon=payload.destination.lon)
-        _origin_label, _dest_label = await asyncio.gather(
-            _city(_origin_coord),
-            _city(_dest_coord),
-        )
         optimizations_out = OptimizationsOut(
             meal_stops=[
                 MealStopOut(
@@ -2587,6 +2732,7 @@ async def _plan_enrich_impl(
                     price_eur_per_night=h.price_eur_per_night,
                     price_band=h.price_band,
                     detour_minutes=h.detour_minutes,
+                    detour_km=h.detour_km,
                     distance_from_route_km=h.distance_from_route_km,
                     lat=h.coordinate.lat,
                     lon=h.coordinate.lon,
@@ -2659,6 +2805,43 @@ async def _plan_enrich_impl(
         delta_eur_per_l=arbitrage_domain.delta_eur_per_l,
         estimated_tank_saving_eur=arbitrage_domain.estimated_tank_saving_eur,
     )
+
+    # ---- Hotel arbitrage (per-night country delta) -----------------
+    # `opt` is only bound inside the `if profile is not None:` block
+    # above (~line 2137). Guard with `locals()` to avoid the
+    # UnboundLocalError Sentry surfaced on 2026-09-30 for anonymous
+    # / no-profile plan requests.
+    hotel_arb_out: HotelArbitrageOut | None = None
+    _opt_local = locals().get("opt")
+    _all_sleeps = (
+        () if _opt_local is None else getattr(_opt_local, "sleep_stops", ())
+    )
+    if hotels_out and _all_sleeps:
+        from app.services.hotel_arbitrage import (
+            cross_country_hotel_arbitrage as _hotel_arb,
+        )
+        # Use the corridor pool (all hotels enrich fetched), not just
+        # the ones already filtered for the chosen sleep coord — the
+        # arbitrage compares COUNTRY medians, so we need the full pool.
+        _pool_for_arb = tuple(all_hotels_cache) if all_hotels_cache else ()
+        try:
+            _domain = _hotel_arb(
+                _pool_for_arb, all_sleeps=_all_sleeps, route=route,
+            )
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("hotel arbitrage failed: %r", exc)
+            _domain = None
+        if _domain is not None:
+            hotel_arb_out = HotelArbitrageOut(
+                cheaper_country=_domain.cheaper_country,
+                cheaper_median_eur_per_night=_domain.cheaper_median_eur_per_night,
+                pricier_country=_domain.pricier_country,
+                pricier_median_eur_per_night=_domain.pricier_median_eur_per_night,
+                delta_eur_per_night=_domain.delta_eur_per_night,
+                delta_percent=_domain.delta_percent,
+                affected_day_indices=list(_domain.affected_day_indices),
+                estimated_total_saving_eur=_domain.estimated_total_saving_eur,
+            )
 
     # ---- Multi-day breakdown with enriched hints -------------------
     days_out: list[DayPlanOut] = []
@@ -2928,6 +3111,38 @@ async def _plan_enrich_impl(
             rv_friendly=p.rv_friendly,
         ))
 
+    # ---- Wikimedia Commons photo enrichment (hotels + restaurants) -----
+    # Best-effort, 3 s timeout per request, 7-day in-process cache.
+    # Failures are silently swallowed — photo_url stays None.
+    try:
+        from app.providers.wikimedia_photos import photo_url_for as _wiki_photo
+
+        _hotel_photo_tasks = [
+            _wiki_photo(h.name, h.lat, h.lon, "hotel") for h in hotels_out
+        ]
+        _rest_photo_tasks = [
+            _wiki_photo(r.name, r.lat, r.lon, "restaurant")
+            for r in restaurants_out
+        ]
+        _hotel_photos, _rest_photos = await asyncio.gather(
+            asyncio.gather(*_hotel_photo_tasks, return_exceptions=True),
+            asyncio.gather(*_rest_photo_tasks, return_exceptions=True),
+        )
+        hotels_out = [
+            HotelOut(
+                **{**h.model_dump(), "photo_url": p if isinstance(p, str) else None}
+            )
+            for h, p in zip(hotels_out, _hotel_photos)
+        ]
+        restaurants_out = [
+            RestaurantOut(
+                **{**r.model_dump(), "photo_url": p if isinstance(p, str) else None}
+            )
+            for r, p in zip(restaurants_out, _rest_photos)
+        ]
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Wikimedia photo enrichment failed: %r", exc)
+
     # Re-run consistency with the real fuel_cost + fuel_prices tuple.
     # For /plan/enrich HTTP we drop this on the wire (core owns it),
     # but the merged /plan payload uses it when core's list is empty.
@@ -2972,7 +3187,10 @@ async def _plan_enrich_impl(
                 is_charging_station=fp.is_charging_station,
             )
             for fp in fuel_curated
-            if fp.price_available or fp.is_charging_station
+            # Include unpriced stations (no real-price feed for this country)
+            # so the driver can see WHERE to stop even without €/L data.
+            # Mobile renders "precio no disponible" for price_available=False.
+            # EV charging stations always included regardless.
         ],
         hotels=hotels_out,
         restaurants=restaurants_out,
@@ -2989,6 +3207,7 @@ async def _plan_enrich_impl(
         recommendation_scope=None,
         consistency_issues=consistency_out,
         fuel_arbitrage=arbitrage_out,
+        hotel_arbitrage=hotel_arb_out,
         days=days_out,
         weather_segments=[
             WeatherSegmentOut(
@@ -3163,16 +3382,17 @@ async def plan_trip_enrich(
         payload, providers, premium, user, preamble,
         reason_locale=_pick_reason_locale(accept_language),
     )
-    # Strip core-owned fields on the wire. Days STAY on the response
-    # because their per-day `rest_stops` carry the Overpass-enriched
-    # POI names / types / reasons — clearing them (as the earlier
-    # version did) meant the mobile client, whose progressive merge
-    # takes days from /plan/core, kept rendering empty per-day
-    # rest_stop rows until the driver forced a full re-plan.
+    # Strip core-owned fields on the wire. Days STAY because their
+    # per-day `rest_stops` carry Overpass POI names/types/reasons that
+    # core doesn't have. Optimizations ALSO STAYS: enrich densifies
+    # `meal_stops` by attaching real restaurants (via `restaurants_near`
+    # fan-out), and if we null it out the mobile merge falls back to
+    # core.optimizations whose meal_stops all have `restaurant=null` —
+    # which is the "no restaurants" bug tester reported on 2026-09-29
+    # for the Toledo → Murcia single-day trip.
     resp = resp.model_copy(update={
         "route": _empty_route(),
         "time_windows": [],
-        "optimizations": None,
         "recommendation_scope": None,
         "consistency_issues": [],
         "savings": SavingsSummaryOut(
@@ -3186,6 +3406,121 @@ async def plan_trip_enrich(
     return resp
 
 
+@router.post("/plan/stream")
+async def plan_trip_stream(
+    payload: TripPlanRequest,
+    providers: Providers = Depends(_providers),
+    premium: bool = Depends(is_premium),
+    user: AuthUser | None = Depends(current_user_optional),
+    accept_language: str | None = Header(default=None),
+) -> StreamingResponse:
+    """SSE streaming plan — same compute as POST /plan but yields
+    real-time progress events so the mobile loading dialog can show
+    accurate percentages instead of a fake elapsed-time estimate.
+
+    Event wire format (one JSON object per SSE data line):
+      {"event":"progress","step":"<step>","pct":<0-100>,"label":"<str>"}
+      {"event":"result","plan":<full TripPlanResponse JSON>}
+      {"event":"done"}
+      {"event":"error","message":"<str>"}   (only on unrecoverable failure)
+
+    Fires preamble (routing + tollguru + windows) then starts core +
+    enrich concurrently. Core is fast and unlocks the days phase early;
+    enrich is the slow fan-out (hotels, fuel, weather, …). Timed progress
+    ticks fire while enrich is in flight so the bar keeps moving.
+    """
+
+    _enforce_premium_gates(payload, premium)
+
+    async def _generate():
+        def _sse(data: dict) -> str:
+            return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
+
+        try:
+            yield _sse({
+                "event": "progress", "step": "routing", "pct": 5,
+                "label": "Calculando ruta...",
+            })
+
+            preamble = await _plan_shared_preamble(payload, providers)
+            reason_locale = _pick_reason_locale(accept_language)
+
+            yield _sse({
+                "event": "progress", "step": "routing", "pct": 20,
+                "label": "Ruta calculada.",
+            })
+            yield _sse({
+                "event": "progress", "step": "days", "pct": 30,
+                "label": "Planificando días...",
+            })
+
+            # Start core + enrich concurrently — they share the preamble
+            # so routing / tollguru / time-windows are paid exactly once.
+            core_task = asyncio.create_task(
+                _plan_core_impl(
+                    payload, providers, premium, user, preamble,
+                    reason_locale=reason_locale,
+                )
+            )
+            enrich_task = asyncio.create_task(
+                _plan_enrich_impl(
+                    payload, providers, premium, user, preamble,
+                    reason_locale=reason_locale,
+                )
+            )
+
+            # Core finishes in 1-3 s — await it first so we can advance
+            # the progress bar past the days phase immediately.
+            core_resp = await core_task
+
+            yield _sse({
+                "event": "progress", "step": "hotels", "pct": 45,
+                "label": "Buscando hoteles y restaurantes...",
+            })
+
+            # Enrich is the slow phase (50 s hotel / restaurant budgets,
+            # weather, fuel, adverse events, toll analysis running in
+            # parallel). Emit timed ticks so the bar keeps moving while
+            # we wait. Each entry: (budget_s, pct, step, label).
+            _enrich_ticks: list[tuple[float, int, str, str]] = [
+                (8.0,  55, "fuel",       "Calculando combustible..."),
+                (8.0,  65, "weather",    "Consultando tiempo..."),
+                (8.0,  75, "tolls",      "Analizando peajes..."),
+                (8.0,  82, "finalizing", "Preparando resultado..."),
+            ]
+            for delay_s, pct, step, label in _enrich_ticks:
+                done, _ = await asyncio.wait({enrich_task}, timeout=delay_s)
+                if done:
+                    break
+                yield _sse({
+                    "event": "progress", "step": step, "pct": pct,
+                    "label": label,
+                })
+
+            enrich_resp = await enrich_task
+            merged = _merge_full(core_resp, enrich_resp)
+
+            yield _sse({
+                "event": "result",
+                "plan": merged.model_dump(mode="json"),
+            })
+            yield _sse({"event": "done"})
+
+        except Exception as exc:  # noqa: BLE001
+            _log.error("plan/stream generator error: %r", exc)
+            try:
+                yield _sse({"event": "error", "message": str(exc)})
+            except Exception:  # noqa: BLE001
+                pass
+
+    return StreamingResponse(
+        _generate(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 class AdverseRefreshCoordinate(BaseModel):

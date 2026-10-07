@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/components.dart';
 import '../design/tokens.dart';
-import '../domain/travel_style_presets.dart';
+// travel_style_presets import removed — presets replaced by direct parameters
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
 import '../domain/vehicle_model.dart';
@@ -291,6 +291,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         currentTankLevelPercent: null,
                       ));
                     },
+                    onCustom: (values) {
+                      _update(
+                        _profile.copyWith(
+                          vehicleModelId: kCustomVehicleId,
+                          vehicle: _profile.vehicle.copyWith(
+                            fuelTankL: values.tankL,
+                            consumptionLPer100km: values.consumptionL100km,
+                            fuelType: values.fuelType,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   if (_profile.vehicleModelId != null) ...[
                     const SizedBox(height: Tokens.space16),
@@ -414,12 +426,13 @@ class _Stepper extends StatelessWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    this.step = 1,
   });
   final int value;
   final int min;
   final int max;
   final ValueChanged<int> onChanged;
-  int get step => 1;
+  final int step;
 
   @override
   Widget build(BuildContext context) {
@@ -519,14 +532,27 @@ class _LabeledSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
             Expanded(child: Text(label, style: t.labelMedium)),
-            Text('${value.toStringAsFixed(1)} $suffix',
-                style: t.labelMedium),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: BorderRadius.circular(Tokens.radiusPill),
+              ),
+              child: Text(
+                '${value.toStringAsFixed(1)} $suffix',
+                style: t.labelSmall?.copyWith(
+                  color: scheme.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
         Slider(
@@ -554,81 +580,16 @@ class _TravelStyleCard extends StatefulWidget {
 }
 
 class _TravelStyleCardState extends State<_TravelStyleCard> {
-  bool _expanded = false;
-
-  String _presetLabel(BuildContext c, TravelStylePreset p) {
-    final l = AppLocalizations.of(c);
-    return switch (p) {
-      TravelStylePreset.direct => l.stylePresetDirect,
-      TravelStylePreset.balanced => l.stylePresetBalanced,
-      TravelStylePreset.slow => l.stylePresetSlow,
-    };
-  }
-
-  String _presetHint(BuildContext c, TravelStylePreset p) {
-    final l = AppLocalizations.of(c);
-    return switch (p) {
-      TravelStylePreset.direct => l.stylePresetDirectHint,
-      TravelStylePreset.balanced => l.stylePresetBalancedHint,
-      TravelStylePreset.slow => l.stylePresetSlowHint,
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    final active = TravelStylePreset.matching(widget.profile);
-
+    // Presets removed — all parameters always visible.
+    // The user configures their actual values directly; a label
+    // like "Directo" adds abstraction without clarity.
     return SoftCard(
       padding: const EdgeInsets.all(Tokens.space16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: Tokens.space8,
-            runSpacing: Tokens.space8,
-            children: [
-              for (final preset in TravelStylePreset.values)
-                ChoiceChip(
-                  selected: preset == active,
-                  avatar: Icon(preset.icon, size: 16),
-                  label: Text(_presetLabel(context, preset)),
-                  onSelected: (v) {
-                    if (!v) return;
-                    widget.onChanged(preset.apply(widget.profile));
-                  },
-                ),
-              if (active == null)
-                Chip(
-                  avatar: const Icon(Icons.tune, size: 16),
-                  label: Text(l.styleCustom),
-                  backgroundColor: scheme.tertiaryContainer,
-                ),
-            ],
-          ),
-          const SizedBox(height: Tokens.space8),
-          Text(
-            active == null ? l.styleCustom : _presetHint(context, active),
-            style: t.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: Tokens.space8),
-          TextButton.icon(
-            style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            onPressed: () => setState(() => _expanded = !_expanded),
-            icon: Icon(
-              _expanded ? Icons.expand_less : Icons.expand_more,
-              size: 18,
-            ),
-            label: Text(l.styleAdvanced),
-          ),
-          if (_expanded) _AdvancedStyleControls(
-            profile: widget.profile,
-            onChanged: widget.onChanged,
-          ),
-        ],
+      child: _AdvancedStyleControls(
+        profile: widget.profile,
+        onChanged: widget.onChanged,
       ),
     );
   }
@@ -693,16 +654,17 @@ class _AdvancedStyleControls extends StatelessWidget {
           // final say. Previously we hard-clamped steady to 6 h and
           // silently corrected higher values; users pushed back
           // because 6 h wasn't a suggestion, it was a wall.
-          const capMin = 4;
+          const capMin = 2;
           const capMax = 14;
           final recommended = switch (profile.travelPace) {
-            TravelPace.push => null,        // no advice — the user picked "push".
+            TravelPace.push => null,
             TravelPace.steady => 6,
-            TravelPace.savour => 8,
+            TravelPace.savour => 4,
           };
           final value = profile.dailyDrivingCapHours;
           final showHint =
               recommended != null && value > recommended;
+          final kmCap = profile.dailyKmCap;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -729,6 +691,35 @@ class _AdvancedStyleControls extends StatelessWidget {
                       ),
                 ),
               ],
+              const SizedBox(height: Tokens.space12),
+              // km cap — optional daily distance limit.
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      kmCap == null
+                          ? 'Máx. km/día: sin límite'
+                          : 'Máx. km/día: $kmCap km',
+                    ),
+                  ),
+                  if (kmCap != null)
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 16),
+                      tooltip: 'Quitar límite de km',
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => onChanged(
+                        profile.copyWith(dailyKmCap: null),
+                      ),
+                    ),
+                  _Stepper(
+                    value: kmCap ?? 0,
+                    min: 0, max: 800, step: 50,
+                    onChanged: (v) => onChanged(
+                      profile.copyWith(dailyKmCap: v == 0 ? null : v),
+                    ),
+                  ),
+                ],
+              ),
             ],
           );
         }),
@@ -917,11 +908,16 @@ class _MealTimeTile extends StatelessWidget {
 /// A tappable row showing the currently-picked vehicle model (short
 /// label) or a "pick model" hint. Opens the [VehiclePickerScreen] and
 /// forwards the selection back up to the parent form.
+///
+/// When the user picks the "Custom vehicle" option, [onCustom] is called
+/// with the user-entered tank size and consumption; [onClear] is invoked
+/// first to clear any previously pinned catalogue model id.
 class _VehicleModelRow extends ConsumerWidget {
   const _VehicleModelRow({
     required this.currentId,
     required this.onPicked,
     required this.onClear,
+    required this.onCustom,
   });
 
   final String? currentId;
@@ -931,6 +927,10 @@ class _VehicleModelRow extends ConsumerWidget {
   // spec fields shown below stay stale and disagree with the model.
   final ValueChanged<VehicleModel> onPicked;
   final VoidCallback onClear;
+  /// Called when the user saves a custom vehicle. The record carries the
+  /// user-entered [tankL] (5–200 L) and [consumptionL100km] (1–50).
+  /// vehicleModelId will already have been cleared via [onClear].
+  final ValueChanged<({double tankL, double consumptionL100km, FuelType fuelType})> onCustom;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -941,8 +941,9 @@ class _VehicleModelRow extends ConsumerWidget {
     // catalogue is still loading (cold start) we render the raw id so
     // the row is never empty for the user.
     final async = ref.watch(vehicleCatalogueProvider);
+    final isCustom = currentId == kCustomVehicleId;
     VehicleModel? picked;
-    if (currentId != null && async.hasValue) {
+    if (currentId != null && !isCustom && async.hasValue) {
       picked = async.value!.firstWhere(
         (m) => m.id == currentId,
         orElse: () => VehicleModel(
@@ -957,12 +958,16 @@ class _VehicleModelRow extends ConsumerWidget {
         ),
       );
     }
-    final labelText = picked == null
-        ? l.profileVehicleModelHint
-        : '${picked.make} ${picked.model}';
-    final subLabel = picked == null || picked.tankLiters <= 0
-        ? null
-        : picked.shortLabel;
+    final labelText = isCustom
+        ? l.vehiclePickerCustomOption
+        : picked == null
+            ? l.profileVehicleModelHint
+            : '${picked.make} ${picked.model}';
+    final subLabel = isCustom
+        ? l.vehiclePickerCustomOptionSubtitle
+        : picked == null || picked.tankLiters <= 0
+            ? null
+            : picked.shortLabel;
 
     return InkWell(
       borderRadius: BorderRadius.circular(8),
@@ -973,6 +978,17 @@ class _VehicleModelRow extends ConsumerWidget {
           ),
         );
         if (id == null || id.isEmpty) return;
+
+        // Custom vehicle: show a form sheet to collect tank + consumption.
+        if (id == kCustomVehicleId) {
+          // ignore: use_build_context_synchronously
+          final result = await _promptForCustomVehicle(context, l);
+          if (result == null) return;
+          onClear();
+          onCustom(result);
+          return;
+        }
+
         // Resolve to a full VehicleModel via the cached catalogue so
         // the caller can apply fuel type + tank + consumption to the
         // profile's Vehicle. Fall back to a stub with just the id if
@@ -992,7 +1008,10 @@ class _VehicleModelRow extends ConsumerWidget {
         padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
         child: Row(
           children: [
-            Icon(Icons.directions_car_filled, color: scheme.primary),
+            Icon(
+              isCustom ? Icons.tune : Icons.directions_car_filled,
+              color: scheme.primary,
+            ),
             const SizedBox(width: Tokens.space12),
             Expanded(
               child: Column(
@@ -1029,6 +1048,140 @@ class _VehicleModelRow extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// Bottom sheet that collects a custom vehicle's tank size and consumption.
+/// Returns null if cancelled.
+Future<({double tankL, double consumptionL100km, FuelType fuelType})?> _promptForCustomVehicle(
+  BuildContext context,
+  AppLocalizations l,
+) async {
+  final tankCtrl = TextEditingController(text: '55');
+  final consCtrl = TextEditingController(text: '7.5');
+  final formKey = GlobalKey<FormState>();
+  FuelType selectedFuelType = FuelType.petrol;
+
+  return showModalBottomSheet<({double tankL, double consumptionL100km, FuelType fuelType})>(
+    context: context,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (sheetCtx) => StatefulBuilder(
+      builder: (sheetCtx, setSheetState) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Tokens.space16, Tokens.space20, Tokens.space16, Tokens.space16,
+          ),
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l.vehicleCustomTitle,
+                    style: Theme.of(sheetCtx).textTheme.titleLarge),
+                const SizedBox(height: Tokens.space16),
+                // Fuel type selector
+                Text(l.profileFuelType,
+                    style: Theme.of(sheetCtx).textTheme.labelMedium),
+                const SizedBox(height: Tokens.space8),
+                Wrap(
+                  spacing: Tokens.space8,
+                  runSpacing: Tokens.space4,
+                  children: [
+                    for (final ft in FuelType.values)
+                      ChoiceChip(
+                        label: Text(_fuelTypeLabel(ft, l)),
+                        selected: selectedFuelType == ft,
+                        onSelected: (_) =>
+                            setSheetState(() => selectedFuelType = ft),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: Tokens.space16),
+                TextFormField(
+                  controller: tankCtrl,
+                  autofocus: false,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: false),
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: l.vehicleCustomTank,
+                    border: const OutlineInputBorder(),
+                    suffixText: selectedFuelType == FuelType.electric
+                        ? 'kWh'
+                        : 'L',
+                    isDense: true,
+                  ),
+                  validator: (v) {
+                    final n = double.tryParse(v ?? '');
+                    if (n == null || n < 1 || n > 200) return '1 – 200';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: Tokens.space12),
+                TextFormField(
+                  controller: consCtrl,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  textInputAction: TextInputAction.done,
+                  decoration: InputDecoration(
+                    labelText: l.vehicleCustomConsumption,
+                    border: const OutlineInputBorder(),
+                    suffixText: selectedFuelType == FuelType.electric
+                        ? 'kWh/100 km'
+                        : 'L/100 km',
+                    isDense: true,
+                  ),
+                  validator: (v) {
+                    final n = double.tryParse(v ?? '');
+                    if (n == null || n < 0.5 || n > 50) return '0.5 – 50';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: Tokens.space16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.of(sheetCtx).pop(),
+                      child: Text(MaterialLocalizations.of(sheetCtx).cancelButtonLabel),
+                    ),
+                    const SizedBox(width: Tokens.space8),
+                    FilledButton(
+                      onPressed: () {
+                        if (!formKey.currentState!.validate()) return;
+                        final tankL = double.parse(tankCtrl.text.trim());
+                        final consL = double.parse(consCtrl.text.trim());
+                        Navigator.of(sheetCtx).pop(
+                          (tankL: tankL, consumptionL100km: consL, fuelType: selectedFuelType),
+                        );
+                      },
+                      child: Text(l.vehicleCustomSave),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+String _fuelTypeLabel(FuelType ft, AppLocalizations l) {
+  switch (ft) {
+    case FuelType.petrol: return 'Gasolina';
+    case FuelType.diesel: return 'Diésel';
+    case FuelType.hybrid: return 'Híbrido';
+    case FuelType.electric: return 'Eléctrico';
+    case FuelType.lpg: return 'GLP';
   }
 }
 

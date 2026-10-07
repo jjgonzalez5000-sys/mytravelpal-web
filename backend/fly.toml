@@ -29,6 +29,10 @@ primary_region = 'cdg'
 [http_service]
   internal_port = 8000
   force_https = true
+  # Increase proxy idle timeout to 300 s so long /plan requests (up to
+  # 120 s backend + network) don't get cut by the default 60 s proxy wall.
+  [http_service.http_options]
+    idle_timeout = 300
   # Suspend mode (2026-08-26): Fly rolled out fast snapshot resume
   # (~250 ms typical) which is well inside the proxy's grace
   # window — the previous cold-boot mode was where we hit the
@@ -37,7 +41,7 @@ primary_region = 'cdg'
   # for F&F beta traffic. Revert to `off` if 503s reappear.
   auto_stop_machines = 'suspend'
   auto_start_machines = true
-  min_machines_running = 0
+  min_machines_running = 1
 
   [[http_service.checks]]
     # Generous windows: /health is trivial but the same event loop

@@ -117,6 +117,10 @@ def compute(
     """
     arrival_at = departure_at + timedelta(hours=trip_duration_hours)
     cap_hours = float(profile.daily_driving_cap_hours)
+    # If a km cap is set, convert to hours using avg speed and apply
+    # as a secondary ceiling. Needed both for the is_multiday check
+    # and for the per-day boundary loop below.
+    _profile_km_cap = getattr(profile, "daily_km_cap", None)
     _overrides = day_overrides or {}
     # Profile-level preferred driving start hour — used on days 2+
     # when no per-day override says otherwise. Falls back to
@@ -175,11 +179,9 @@ def compute(
     _day1_over = (day_overrides or {}).get(1) or {}
     _day1_start_hour = _day1_over.get("start_hour")
     if _day1_start_hour is not None:
-        shifted = current_start.replace(
+        current_start = current_start.replace(
             hour=_day1_start_hour, minute=0, second=0, microsecond=0,
         )
-        if shifted > current_start:
-            current_start = shifted
     current_start_km = 0.0
     # Project dwell waypoints onto the route geometry so we can
     # detect when the driving cap for a day would carry us past a
@@ -236,6 +238,10 @@ def compute(
         if trip_duration_hours > 0
         else 90.0
     )
+    # Apply km cap to the profile-level cap_hours so is_multiday and
+    # the first-day boundary are consistent with the per-day loop.
+    if _profile_km_cap and avg_kmh > 0:
+        cap_hours = min(cap_hours, _profile_km_cap / max(avg_kmh, 30.0))
     remaining_hours = trip_duration_hours
     day_index = 0
     opt_sleep = (
@@ -255,6 +261,14 @@ def compute(
         _this_day_cap = float(
             _day_over.get("daily_driving_cap_hours") or cap_hours
         )
+        # km cap: convert to hours using route avg speed.
+        _day_km_cap = _day_over.get("daily_km_cap") or getattr(
+            profile, "daily_km_cap", None
+        )
+        if _day_km_cap and avg_kmh > 0:
+            _this_day_cap = min(
+                _this_day_cap, _day_km_cap / max(avg_kmh, 30.0)
+            )
         # Day 1: honour the opt sleep-stop when present. It already
         # respects `cap_hours` and pause overhead, and its `at` is
         # what the promoted card shows.

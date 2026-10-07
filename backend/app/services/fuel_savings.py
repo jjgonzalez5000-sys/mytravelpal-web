@@ -83,22 +83,51 @@ def _primary_fuel_key(p: FuelPrice) -> str:
     return dict(p.attributes).get("primary_fuel", "unknown")
 
 
+_MIN_SAMPLE_FOR_CORRIDOR_MEDIAN = 5
+"""Minimum number of priced stations per (country, fuel_type) group
+before we trust the corridor sample as a representative median.
+
+With fewer stations the sample is likely biased (e.g. only motorway
+service areas, which price 0.3-0.5 €/L above city averages). Below
+this threshold we fall back to the country anchor price from COUNTRIES,
+which is a stable national-average estimate.
+"""
+
+
 def _country_fuel_medians(
     prices: tuple[FuelPrice, ...],
 ) -> dict[tuple[Country, str], float]:
-    """Median price per (country, fuel type). Mixing diesel (~1.9€/L)
-    with LPG (~0.8€/L) into a single median made every LPG station
-    look like a huge savings vs "average", which is wrong — LPG cars
-    aren't a majority and LPG isn't a substitute for diesel. Comparing
-    within the same fuel type keeps the deal signal honest.
+    """Median price per (country, fuel type).
+
+    When the corridor sample has fewer than `_MIN_SAMPLE_FOR_CORRIDOR_MEDIAN`
+    priced stations for a given (country, fuel_type) pair we fall back to the
+    country anchor price so we don't compare against a biased motorway-only
+    median that overstates savings.
     """
+    from app.data.countries import COUNTRIES
+
     by_group: dict[tuple[Country, str], list[float]] = {}
     for p in prices:
         if not p.price_available or p.price_eur_per_l <= 0:
             continue
         key = (p.country, _primary_fuel_key(p))
         by_group.setdefault(key, []).append(p.price_eur_per_l)
-    return {k: round(median(vs), 3) for k, vs in by_group.items() if vs}
+
+    result: dict[tuple[Country, str], float] = {}
+    for (country, fuel_key), vs in by_group.items():
+        if len(vs) >= _MIN_SAMPLE_FOR_CORRIDOR_MEDIAN:
+            result[(country, fuel_key)] = round(median(vs), 3)
+        else:
+            # Small sample → use the stable country anchor instead.
+            anchor = COUNTRIES.get(country.value)
+            if anchor is not None:
+                base = anchor.fuel_petrol_anchor_eur
+                # Rough fuel-type adjustment: diesel ~5% cheaper, diesel premium ~3% over petrol.
+                adjustment = {"diesel": -0.05, "diesel_premium": -0.02, "petrol_premium": 0.05}.get(fuel_key, 0.0)
+                result[(country, fuel_key)] = round(base * (1 + adjustment), 3)
+            elif vs:
+                result[(country, fuel_key)] = round(median(vs), 3)
+    return result
 
 
 def _country_medians(

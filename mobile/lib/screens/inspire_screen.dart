@@ -9,6 +9,7 @@ import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/billing_service.dart';
 import '../services/trip_sharing.dart';
 import '../storage/inspiration_storage.dart';
 import 'plan_screen.dart';
@@ -93,6 +94,18 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
   Future<void> _generate() async {
     final prompt = _controller.text.trim();
     if (prompt.length < 8) return;
+
+    // Free tier: 1 generation per calendar week. Essential+ is unlimited.
+    final isEssential = ref.read(isEssentialOrAboveProvider);
+    if (!isEssential) {
+      final prefs = ref.read(appPrefsProvider);
+      if (prefs.inspireWeekUsage >= 1) {
+        if (!mounted) return;
+        await BillingService.showPurchaseSheet(context, ref);
+        return;
+      }
+    }
+
     setState(() {
       _loading = true;
       _error = null;
@@ -111,6 +124,8 @@ class _InspireScreenState extends ConsumerState<InspireScreen> {
       );
       if (!mounted) return;
       setState(() => _result = itinerary);
+      // Increment Free-tier weekly counter on success.
+      unawaited(ref.read(appPrefsProvider).incrementInspireWeekUsage());
       // Auto-save every generation. Cheaper than losing an
       // itinerary the driver liked but didn't tap "save" for.
       // Dedup by prompt inside InspirationStorage prevents

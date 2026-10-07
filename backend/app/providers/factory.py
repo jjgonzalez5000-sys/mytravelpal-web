@@ -11,6 +11,7 @@ from app.providers.adverse_events import (
     UserMarkedAdverseEventsProvider,
 )
 from app.providers.copernicus_ems import CopernicusEmsProvider
+from app.providers.meteoalarm import MeteoAlarmProvider
 from app.providers.firms import FirmsFireProvider
 from app.providers.heatwave import HeatwaveProvider
 from app.providers.road_closures import RoadClosureProvider
@@ -87,20 +88,17 @@ def get_providers() -> Providers:
 
 
 def _tollguru_provider() -> TollProvider | None:
-    """Preferred booth-level provider. TollGuru returns per-booth
-    fares with real coordinates but requires a paid subscription
-    ($80/mo minimum as of 2026). We keep the wiring so switching
-    on the key is one env var, but the default falls to
-    `_here_tolls_provider()` for the free tier.
+    """Booth-level toll provider. HERE Routing v8 is preferred — it's
+    free within our subscription and returns per-gate coordinates and
+    vignette flags. TollGuru ($80/mo minimum) is no longer the default;
+    set MYTRAVELPAL_USE_TOLLGURU=1 to force it if needed.
     """
-    if os.environ.get("TOLLGURU_API_KEY"):
-        return TollGuruProvider()
-    # Fall back to HERE Routing v8 tolls when the free HERE key
-    # is set — same TollProvider protocol, section-level fares
-    # rather than booth-level. Costs are bundled in HERE's free
-    # tier along with Fuel Prices.
+    # HERE Tolls first — free, per-section with real gate coordinates.
     if os.environ.get("MYTRAVELPAL_HERE_API_KEY"):
         return HereTollsProvider()
+    # TollGuru as explicit opt-in (paid, $80/mo minimum).
+    if os.environ.get("TOLLGURU_API_KEY") and os.environ.get("MYTRAVELPAL_USE_TOLLGURU"):
+        return TollGuruProvider()
     return None
 
 
@@ -165,10 +163,12 @@ def _adverse_providers() -> tuple[AdverseEventsProvider, ...]:
     # Every external provider is opt-in via env var. Off by default in
     # tests and CI (avoids network); production docker-compose enables
     # the ones we've integrated.
-    providers: list[AdverseEventsProvider] = [
-        MockAdverseEventsProvider(),
-        _USER_MARKED,
-    ]
+    # MockAdverseEventsProvider gated by explicit env var — should
+    # NEVER appear in production. Set MYTRAVELPAL_MOCK_ADVERSE=on in
+    # local docker-compose or dev .env only.
+    providers: list[AdverseEventsProvider] = [_USER_MARKED]
+    if os.environ.get("MYTRAVELPAL_MOCK_ADVERSE", "").lower() in {"on", "1", "true"}:
+        providers.append(MockAdverseEventsProvider())
     if os.environ.get("MYTRAVELPAL_WEATHER", "").lower() == "openmeteo":
         providers.append(OpenMeteoWeatherProvider())
     # Fires: default-on now that we're wired to a stable service
@@ -185,6 +185,11 @@ def _adverse_providers() -> tuple[AdverseEventsProvider, ...]:
     # it on via MYTRAVELPAL_HEATWAVE=on.
     if os.environ.get("MYTRAVELPAL_HEATWAVE", "").lower() in {"on", "1", "true"}:
         providers.append(HeatwaveProvider())
+    # MeteoAlarm: pan-European severe weather warnings (thunderstorms,
+    # heavy rain, snow, wind, fog, heatwave, floods) from official NMS.
+    # Keyless, default-on. Opt-out with MYTRAVELPAL_METEOALARM=off.
+    if os.environ.get("MYTRAVELPAL_METEOALARM", "on").lower() not in {"off", "0", "false"}:
+        providers.append(MeteoAlarmProvider())
     # Landslides / avalanches: Copernicus EMS stub (returns () today).
     # Wired unconditionally so the log line appears once at startup
     # and so real activations flow through the moment we ship the

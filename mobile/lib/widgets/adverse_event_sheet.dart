@@ -172,12 +172,8 @@ class _AdverseEventSheet extends StatelessWidget {
               event.displayText(AppLocalizations.of(context)),
               style: t.bodyMedium,
             ),
-            const SizedBox(height: 8),
-            Text(
-              _timeFootnote(),
-              style: t.bodySmall
-                  ?.copyWith(color: scheme.onSurfaceVariant),
-            ),
+            const SizedBox(height: 12),
+            _MetaGrid(event: event),
           ],
         ),
       ),
@@ -302,8 +298,111 @@ class _AdverseEventSheet extends StatelessWidget {
         ),
       );
 
-  String _timeFootnote() {
+}
+
+/// Structured meta grid for the event: source · reported-at ·
+/// valid-until · estimated duration. Uses localised labels so a
+/// weather event surfaced from Open-Meteo shows in the driver's
+/// language + with all the context needed to decide whether to
+/// wait it out or push through.
+class _MetaGrid extends StatelessWidget {
+  const _MetaGrid({required this.event});
+  final AdverseEvent event;
+
+  String _sourceLabel(AppLocalizations l) {
+    switch (event.source.toLowerCase()) {
+      case 'weather':
+        return l.advEventSourceWeather;
+      case 'effis':
+      case 'wildfire':
+        return l.advEventSourceEffis;
+      case 'usgs':
+      case 'earthquake':
+        return l.advEventSourceUsgs;
+      case 'user':
+        return l.advEventSourceUser;
+      case 'mock':
+        return l.advEventSourceMock;
+      case 'official':
+      default:
+        return l.advEventSourceOfficial;
+    }
+  }
+
+  String _formatDuration(AppLocalizations l) {
+    final now = DateTime.now();
+    final end = event.expiresAt;
+    final start = event.reportedAt;
+    // Prefer "reported → expires" span; fall back to "now → expires"
+    // if the reported timestamp looks bogus (e.g. epoch).
+    final effectiveStart =
+        start.isBefore(DateTime.utc(2000)) ? now : start;
+    if (end.isBefore(effectiveStart) || end.isBefore(now)) {
+      return l.advEventDurationOngoing;
+    }
+    final total = end.difference(effectiveStart);
+    final days = total.inDays;
+    final hours = total.inHours - days * 24;
+    if (days > 0) {
+      return l.advEventDurationDays(days.toString(), hours.toString());
+    }
+    return l.advEventDurationHours(total.inHours.toString());
+  }
+
+  Widget _row(
+    ThemeData theme,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    final scheme = theme.colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 16, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: scheme.onSurfaceVariant,
+                letterSpacing: 0.6,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: scheme.onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l = AppLocalizations.of(context);
     final fmt = DateFormat('d MMM · HH:mm');
-    return 'Reported ${fmt.format(event.reportedAt.toLocal())}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _row(theme, Icons.info_outline, l.advEventLabelSource,
+            _sourceLabel(l)),
+        _row(theme, Icons.access_time, l.advEventLabelReported,
+            fmt.format(event.reportedAt.toLocal())),
+        _row(theme, Icons.event_available, l.advEventLabelExpires,
+            fmt.format(event.expiresAt.toLocal())),
+        _row(theme, Icons.hourglass_bottom, l.advEventLabelDuration,
+            _formatDuration(l)),
+      ],
+    );
   }
 }

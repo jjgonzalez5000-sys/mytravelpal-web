@@ -1,4 +1,9 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+          xmlns:tools="http://schemas.android.com/tools">
+    <!-- Remove AD_ID permission injected transitively by Google SDKs.
+         MyTravelPal does not use advertising identifiers. -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID"
+                     tools:node="remove" />
     <!-- Location — powers the "Use my location" button on the search
          screen. Coarse is enough for city-level reverse geocoding;
          fine is declared so Android grants the more useful accuracy
@@ -18,15 +23,10 @@
          so integrating `flutter_background_service` later doesn't
          need a manifest-only rebuild. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-    <!-- FOREGROUND_SERVICE_DATA_SYNC covers the "planificando tu viaje"
-         ongoing notification we show while /plan is in flight (network
-         data sync). Android 14+ rejects starting a foreground service
-         without a matching typed permission — without this the plugin's
-         `startForeground(..., FOREGROUND_SERVICE_TYPE_MANIFEST)` call
-         throws MissingForegroundServiceTypeException and the tray
-         notification never appears. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <!-- Required to use PlaceListMapTemplate in Android Auto. -->
+    <uses-permission android:name="androidx.car.app.MAP_TEMPLATES" />
     <!-- WakeLock is required by wakelock_plus to keep the screen on
          while the trip dashboard is foregrounded. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -44,6 +44,19 @@
         android:label="mytravelpal"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Foreground service notification icon referenced by
+             NotificationIcon(metaDataName: ...) in trip_foreground.dart.
+             Uses the launcher icon as a placeholder; replace with a
+             monochrome white drawable before production release. -->
+        <meta-data
+            android:name="com.mytravelpal.travel.notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        <!-- Car App API level — must be at <application> level so the
+             Car App host can read it before binding the service. Also
+             declared inside the <service> element below. -->
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="3" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -72,6 +85,23 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="mytravelpal" android:host="trip" />
+            </intent-filter>
+            <!-- HTTPS deep-link for shared trip links: mytravelpal.io/join/{slug} -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="mytravelpal.io"
+                    android:pathPattern="/join/.*" />
+            </intent-filter>
+            <!-- Group Companion join: mytravelpal://companion/{join_code} -->
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="mytravelpal" android:host="companion" />
             </intent-filter>
             <!-- ACTION_SEND filter — makes MyTravelPal show up in the
                  Android share sheet for plain-text shares. The driver
@@ -144,20 +174,25 @@
                 android:resource="@xml/next_trip_widget_info" />
         </receiver>
 
-        <!-- flutter_foreground_task's own service. The plugin's manifest
-             only declares FOREGROUND_SERVICE permission, but the actual
-             <service> element MUST live in the app manifest — otherwise
-             `startForeground(id, notif, FOREGROUND_SERVICE_TYPE_MANIFEST)`
-             finds no serviceType on Android 14+ and the start fails
-             silently (wrapped in a ServiceRequestFailure). Types combine
-             the two use-cases we drive through this single service:
-             `dataSync` for the /plan HTTP call held open while the app
-             is backgrounded, and `location` for the companion drive
-             GPS tracking. Do NOT rename the service class — the plugin
-             hard-codes this fully-qualified name. -->
+        <!-- flutter_foreground_task notification service — used for plan
+             loading HTTP keep-alive. Only dataSync here; location type
+             would require the app to be in the foreground at start time
+             (Android 14 SecurityException otherwise). GPS runs through
+             geolocator's own service declared below. -->
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="dataSync"
+            android:exported="false"
+            android:stopWithTask="false" />
+
+        <!-- geolocator background location service — declared here so
+             Android 14 allows it to run with type=location even when
+             the screen is off during companion drive. The plugin adds
+             its own <service> stub but without foregroundServiceType,
+             which causes a silent failure on API 34+. -->
+        <service
+            android:name="com.baseflow.geolocator.GeolocatorLocationService"
+            android:foregroundServiceType="location"
             android:exported="false"
             android:stopWithTask="false" />
 
