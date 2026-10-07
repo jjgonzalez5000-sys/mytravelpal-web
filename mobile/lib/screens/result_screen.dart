@@ -49,7 +49,8 @@ import '../widgets/consistency_banner.dart';
 import '../widgets/empty_state_card.dart';
 import '../widgets/enrichment_progress.dart';
 import '../widgets/hotel_preferences.dart' show HotelPreferences;
-import '../widgets/hour_wheel_picker.dart';
+import '../utils/sun_calc.dart';
+import '../widgets/driving_window_bar.dart';
 import '../widgets/restaurant_preferences.dart' show RestaurantPreferences;
 import '../widgets/trip_insights.dart';
 import '../widgets/favorite_star_button.dart';
@@ -808,8 +809,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
     );
     if (confirmed == true) return proposedKm; // "Ajustar" — extend km
-    return null; // "Mantener" or dismissed — cancel the whole change
-    return null; // dismissed — caller handles
+    return null; // "Mantener" or dismissed
+  }
+
+  /// Format minutes-from-midnight as "HH:MM".
+  String _fmtMin(int minutes) {
+    final h = (minutes ~/ 60) % 24;
+    final m = minutes % 60;
+    return '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
   }
 
   Future<void> _openDayEditSheet(int dayIndex) async {
@@ -826,10 +833,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         widget.request.tripProfile?.dailyDrivingCapHours ?? 8;
     final defaultKmCap =
         widget.request.tripProfile?.dailyKmCap;
-    int startHour = current?.startHour ?? defaultStart;
-    int capHours = current?.dailyDrivingCapHours ?? defaultCap;
-    final capHoursBefore = capHours; // snapshot before user edits
+    // Convert to minutes-from-midnight for DrivingWindowBar
+    int startMinutes = (current?.startHour ?? defaultStart) * 60;
+    int endMinutes = startMinutes + (current?.dailyDrivingCapHours ?? defaultCap) * 60;
+    endMinutes = endMinutes.clamp(startMinutes + 60, 1440);
+    final capHoursBefore = current?.dailyDrivingCapHours ?? defaultCap;
     int? kmCap = current?.dailyKmCap ?? defaultKmCap;
+
+    // Compute actual sunrise/sunset for the trip location on this day's date.
+    final dayDate = dayPlan?.startAt.toLocal() ?? widget.request.desiredDepartureAt.toLocal();
+    final lat = widget.request.origin.lat;
+    final lon = widget.request.origin.lon;
+    final sunTimes = SunCalc.compute(lat: lat, lon: lon, date: dayDate);
+
     final saved = await showModalBottomSheet<DayOverride?>(
       context: context,
       showDragHandle: true,
@@ -850,64 +866,36 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   style: Theme.of(ctx).textTheme.titleMedium
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: Tokens.space16),
-                Text(l.dayEditStartHour,
-                    style: Theme.of(ctx).textTheme.labelMedium),
-                const SizedBox(height: 4),
-                HourWheelPicker(
-                  value: startHour,
-                  min: 4, max: 14,
-                  onChanged: (v) => setSheetState(() => startHour = v),
-                ),
-                const SizedBox(height: Tokens.space16),
+                const SizedBox(height: Tokens.space4),
+                // Sunrise / sunset info row
                 Row(
                   children: [
-                    Expanded(
-                      child: Builder(builder: (ctx2) {
-                        final endHour = startHour + capHours;
-                        final hh = (endHour % 24)
-                            .toString()
-                            .padLeft(2, '0');
-                        return Text(
-                          l.dayEditEndHour('$hh:00'),
-                          style: Theme.of(ctx2).textTheme.labelMedium,
-                        );
-                      }),
+                    Icon(Icons.wb_sunny_rounded, size: 12,
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant),
+                    const SizedBox(width: 4),
+                    Text(
+                      '${_fmtMin(sunTimes.sunriseMinutes)}  '
+                      '${_fmtMin(sunTimes.sunsetMinutes)}',
+                      style: Theme.of(ctx).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                     ),
-                    TextButton.icon(
-                      icon: const Icon(Icons.access_time, size: 16),
-                      label: Text(l.dayEditPickTime),
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                      ),
-                      onPressed: () async {
-                        final endHour = (startHour + capHours) % 24;
-                        final picked = await showTimePicker(
-                          context: ctx,
-                          initialTime:
-                              TimeOfDay(hour: endHour, minute: 0),
-                          helpText: l.dayEditEndTimePicker,
-                        );
-                        if (picked == null) return;
-                        final newCap =
-                            ((picked.hour * 60 + picked.minute) -
-                                    (startHour * 60)) ~/
-                                60;
-                        if (newCap >= 1 && newCap <= 14) {
-                          setSheetState(() => capHours = newCap);
-                        }
-                      },
-                    ),
+                    Icon(Icons.nightlight_round, size: 12,
+                        color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                   ],
                 ),
-                const SizedBox(height: 4),
-                DurationWheelPicker(
-                  value: capHours,
-                  min: 2, max: 14,
-                  onChanged: (v) => setSheetState(() => capHours = v),
+                const SizedBox(height: Tokens.space12),
+                // ── Driving window bar ─────────────────────────────
+                DrivingWindowBar(
+                  startMinutes: startMinutes,
+                  endMinutes: endMinutes,
+                  sunTimes: sunTimes,
+                  onChanged: (s, e) => setSheetState(() {
+                    startMinutes = s;
+                    endMinutes = e;
+                  }),
                 ),
                 const SizedBox(height: Tokens.space16),
-                // km cap for this specific day.
+                // ── km cap slider ──────────────────────────────────
                 Row(
                   children: [
                     Expanded(
@@ -919,38 +907,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       ),
                     ),
                     if (kmCap != null)
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 16),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () =>
-                            setSheetState(() => kmCap = null),
+                      GestureDetector(
+                        onTap: () => setSheetState(() => kmCap = null),
+                        child: Icon(Icons.close, size: 16,
+                            color: Theme.of(ctx).colorScheme.onSurfaceVariant),
                       ),
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: (kmCap ?? 0) >= 100
-                          ? () => setSheetState(
-                              () => kmCap = ((kmCap ?? 0) - 50)
-                                  .clamp(50, 800))
-                          : null,
-                    ),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        kmCap == null ? '∞' : '$kmCap',
-                        textAlign: TextAlign.center,
-                        style: Theme.of(ctx).textTheme.titleMedium,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.add_circle_outline),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: (kmCap ?? 0) < 800
-                          ? () => setSheetState(() =>
-                              kmCap = ((kmCap ?? 0) + 50).clamp(50, 800))
-                          : null,
-                    ),
                   ],
+                ),
+                Slider(
+                  value: (kmCap ?? 0).toDouble(),
+                  min: 0,
+                  max: 1000,
+                  divisions: 20, // 50 km steps
+                  label: kmCap == null ? '∞' : '$kmCap km',
+                  onChanged: (v) => setSheetState(() =>
+                      kmCap = v < 50 ? null : v.round()),
                 ),
                 const SizedBox(height: Tokens.space16),
                 Row(
@@ -974,8 +945,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       onPressed: () => Navigator.of(ctx).pop(
                         DayOverride(
                           dayIndex: dayIndex,
-                          startHour: startHour,
-                          dailyDrivingCapHours: capHours,
+                          startHour: startMinutes ~/ 60,
+                          dailyDrivingCapHours:
+                              ((endMinutes - startMinutes) / 60)
+                                  .round()
+                                  .clamp(1, 20),
                           dailyKmCap: kmCap,
                         ),
                       ),
