@@ -5819,15 +5819,45 @@ class _TripCostWindowsDropdown extends StatelessWidget {
           style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
         ),
         children: [
-          if (!alreadyClaimed) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: Tokens.space8),
-              child: Text(
-                l.resultSavingsClaimedHint,
-                style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
-              ),
+          // Always show current departure — either the user's chosen time
+          // (before claiming) or a confirmation after claiming.
+          Padding(
+            padding: const EdgeInsets.only(bottom: Tokens.space8),
+            child: Row(
+              children: [
+                Icon(Icons.person_outlined, size: 14,
+                    color: scheme.onSurfaceVariant),
+                const SizedBox(width: 6),
+                Text(
+                  '${l.windowsBadgeCurrent}: '
+                  '${DateFormat.Hm().format(baseline.departureAt.toLocal())}',
+                  style: t.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (alreadyClaimed) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: scheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      l.windowsBadgeRecommended,
+                      style: t.labelSmall?.copyWith(
+                        color: scheme.primary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
           Wrap(
             spacing: 8,
             runSpacing: 8,
