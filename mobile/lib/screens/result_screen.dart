@@ -812,6 +812,46 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     return null; // "Mantener" or dismissed
   }
 
+  /// When the user reduces the driving cap, warn them that km coverage
+  /// will be limited and offer to set a matching km cap automatically.
+  /// Returns the suggested reduced km cap, or null to keep existing cap.
+  Future<int?> _offerKmReduction({
+    required DayPlan day,
+    required double actualDrivingHours,
+    required int newCapHours,
+    required int currentDayKm,
+  }) async {
+    if (newCapHours >= actualDrivingHours - 0.25) return null;
+
+    // Estimate reachable km at the current avg speed with the new cap.
+    final avgKmH = actualDrivingHours > 0
+        ? currentDayKm / actualDrivingHours
+        : 90.0;
+    final reducedKm = ((newCapHours * avgKmH) / 10).round() * 10;
+    if (reducedKm >= currentDayKm || !mounted) return null;
+
+    final l = AppLocalizations.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.dayReduceKmTitle),
+        content: Text(l.dayReduceKmBody(reducedKm.toString())),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.dayReduceKmKeep),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.dayReduceKmAdjust(reducedKm.toString())),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) return reducedKm;
+    return null;
+  }
+
   /// Format minutes-from-midnight as "HH:MM".
   String _fmtMin(int minutes) {
     final h = (minutes ~/ 60) % 24;
@@ -991,12 +1031,32 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       final day = _response.days
           .where((d) => d.dayIndex == dayIndex)
           .firstOrNull;
+      final actualDrivingHours =
+          day != null
+              ? day.endAt.toLocal()
+                    .difference(day.startAt.toLocal()).inMinutes / 60.0
+              : newCap.toDouble();
+      final currentDayKm = day != null ? (day.toKm - day.fromKm).round() : 0;
+
       if (day != null && newCap > capHoursBefore) {
-        final actualDrivingHours =
-            day.endAt.toLocal().difference(day.startAt.toLocal()).inMinutes /
-                60.0;
-        final currentDayKm = (day.toKm - day.fromKm).round();
+        // Extended time → offer more km
         final kmResult = await _offerKmExtension(
+          day: day,
+          actualDrivingHours: actualDrivingHours,
+          newCapHours: newCap,
+          currentDayKm: currentDayKm,
+        );
+        if (kmResult != null) {
+          effective = DayOverride(
+            dayIndex: saved.dayIndex,
+            startHour: saved.startHour,
+            dailyDrivingCapHours: saved.dailyDrivingCapHours,
+            dailyKmCap: kmResult,
+          );
+        }
+      } else if (day != null && newCap < capHoursBefore) {
+        // Reduced time → warn and offer reduced km cap
+        final kmResult = await _offerKmReduction(
           day: day,
           actualDrivingHours: actualDrivingHours,
           newCapHours: newCap,

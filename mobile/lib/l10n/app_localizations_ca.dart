@@ -1946,6 +1946,22 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get dayReduceKmTitle => 'Temps de conducció reduït';
+
+  @override
+  String dayReduceKmBody(String reducedKm) {
+    return 'Amb aquest horari arribaràs fins a aprox. $reducedKm km. Vols ajustar el límit de quilòmetres?';
+  }
+
+  @override
+  String get dayReduceKmKeep => 'Mantenir km actuals';
+
+  @override
+  String dayReduceKmAdjust(String reducedKm) {
+    return 'Ajustar a $reducedKm km';
+  }
+
+  @override
   String dayEditEndHour(String time) {
     return 'Stop driving at $time';
   }

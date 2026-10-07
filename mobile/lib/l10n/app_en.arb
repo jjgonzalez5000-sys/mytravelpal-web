@@ -1100,6 +1100,26 @@
       }
     }
   },
+  "dayReduceKmTitle": "Driving time reduced",
+  "@dayReduceKmTitle": {},
+  "dayReduceKmBody": "With this schedule you will reach approx. {reducedKm} km. Do you want to adjust the km limit?",
+  "@dayReduceKmBody": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayReduceKmKeep": "Keep current km",
+  "@dayReduceKmKeep": {},
+  "dayReduceKmAdjust": "Adjust to {reducedKm} km",
+  "@dayReduceKmAdjust": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
   "dayEditEndHour": "Stop driving at {time}",
   "@dayEditEndHour": {
     "placeholders": {

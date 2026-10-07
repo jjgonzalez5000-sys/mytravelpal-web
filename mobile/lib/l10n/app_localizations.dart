@@ -3553,6 +3553,30 @@ abstract class AppLocalizations {
   /// **'Extend the day (+{extraKm} km)'**
   String dayExtendKmAdjust(String extraKm);
 
+  /// No description provided for @dayReduceKmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving time reduced'**
+  String get dayReduceKmTitle;
+
+  /// No description provided for @dayReduceKmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'With this schedule you will reach approx. {reducedKm} km. Do you want to adjust the km limit?'**
+  String dayReduceKmBody(String reducedKm);
+
+  /// No description provided for @dayReduceKmKeep.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep current km'**
+  String get dayReduceKmKeep;
+
+  /// No description provided for @dayReduceKmAdjust.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust to {reducedKm} km'**
+  String dayReduceKmAdjust(String reducedKm);
+
   /// No description provided for @dayEditEndHour.
   ///
   /// In en, this message translates to:

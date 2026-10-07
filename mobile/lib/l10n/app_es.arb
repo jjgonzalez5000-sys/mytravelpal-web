@@ -1101,6 +1101,26 @@
       }
     }
   },
+  "dayReduceKmTitle": "Tiempo de conducción reducido",
+  "@dayReduceKmTitle": {},
+  "dayReduceKmBody": "Con este horario llegarás hasta aprox. {reducedKm} km. ¿Quieres ajustar el límite de kilómetros?",
+  "@dayReduceKmBody": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayReduceKmKeep": "Mantener km actuales",
+  "@dayReduceKmKeep": {},
+  "dayReduceKmAdjust": "Ajustar a {reducedKm} km",
+  "@dayReduceKmAdjust": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
   "dayEditEndHour": "Terminarás de conducir a las {time}",
   "@dayEditEndHour": {
     "placeholders": {

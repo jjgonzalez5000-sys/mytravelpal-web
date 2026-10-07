@@ -1100,6 +1100,26 @@
       }
     }
   },
+  "dayReduceKmTitle": "Temps de conduite réduit",
+  "@dayReduceKmTitle": {},
+  "dayReduceKmBody": "Avec cet horaire vous atteindrez environ {reducedKm} km. Voulez-vous ajuster la limite de km ?",
+  "@dayReduceKmBody": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayReduceKmKeep": "Garder les km actuels",
+  "@dayReduceKmKeep": {},
+  "dayReduceKmAdjust": "Ajuster à {reducedKm} km",
+  "@dayReduceKmAdjust": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
   "dayEditEndHour": "Fin de conduite à {time}",
   "@dayEditEndHour": {
     "placeholders": {

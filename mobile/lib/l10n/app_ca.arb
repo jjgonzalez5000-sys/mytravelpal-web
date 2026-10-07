@@ -729,6 +729,26 @@
       }
     }
   },
+  "dayReduceKmTitle": "Temps de conducció reduït",
+  "@dayReduceKmTitle": {},
+  "dayReduceKmBody": "Amb aquest horari arribaràs fins a aprox. {reducedKm} km. Vols ajustar el límit de quilòmetres?",
+  "@dayReduceKmBody": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
+  "dayReduceKmKeep": "Mantenir km actuals",
+  "@dayReduceKmKeep": {},
+  "dayReduceKmAdjust": "Ajustar a {reducedKm} km",
+  "@dayReduceKmAdjust": {
+    "placeholders": {
+      "reducedKm": {
+        "type": "String"
+      }
+    }
+  },
   "tripDayBarsTitle": "Distribució per etapes",
   "@tripDayBarsTitle": {},
   "styleSectionTitle": "Ritmo de conducción",
