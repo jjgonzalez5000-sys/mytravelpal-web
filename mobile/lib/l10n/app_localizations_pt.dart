@@ -1070,6 +1070,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get resultStatFreeFlow => 'Free flow';
 
   @override
+  String get resultStatPlanned => 'Planned';
+
+  @override
   String get resultStatTolls => 'Tolls';
 
   @override

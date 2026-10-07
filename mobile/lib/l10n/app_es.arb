@@ -514,6 +514,7 @@
   "eventSubmitted": "Reportado.",
   "resultStatDistance": "Distancia",
   "resultStatFreeFlow": "Sin tráfico",
+  "resultStatPlanned": "Planificado",
   "resultStatTolls": "Peajes",
   "resultEyebrowNearRoute": "Cerca de tu ruta",
   "resultEyebrowAlongRoute": "En la ruta",

@@ -513,6 +513,7 @@
   "eventSubmitted": "Gemeldet.",
   "resultStatDistance": "Distanz",
   "resultStatFreeFlow": "Ohne Stau",
+  "resultStatPlanned": "Geplant",
   "resultStatTolls": "Maut",
   "resultEyebrowNearRoute": "Nahe deiner Route",
   "resultEyebrowAlongRoute": "Entlang der Route",

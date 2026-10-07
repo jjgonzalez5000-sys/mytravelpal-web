@@ -1074,6 +1074,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get resultStatFreeFlow => 'Senza traffico';
 
   @override
+  String get resultStatPlanned => 'Pianificato';
+
+  @override
   String get resultStatTolls => 'Pedaggi';
 
   @override

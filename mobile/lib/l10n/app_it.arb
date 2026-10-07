@@ -513,6 +513,7 @@
   "eventSubmitted": "Segnalato.",
   "resultStatDistance": "Distanza",
   "resultStatFreeFlow": "Senza traffico",
+  "resultStatPlanned": "Pianificato",
   "resultStatTolls": "Pedaggi",
   "resultEyebrowNearRoute": "Vicino al percorso",
   "resultEyebrowAlongRoute": "Lungo il percorso",

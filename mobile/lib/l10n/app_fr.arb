@@ -513,6 +513,7 @@
   "eventSubmitted": "Signalé.",
   "resultStatDistance": "Distance",
   "resultStatFreeFlow": "Sans trafic",
+  "resultStatPlanned": "Planifié",
   "resultStatTolls": "Péages",
   "resultEyebrowNearRoute": "Près de votre itinéraire",
   "resultEyebrowAlongRoute": "Sur l'itinéraire",

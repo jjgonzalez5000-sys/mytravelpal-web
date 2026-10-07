@@ -513,6 +513,7 @@
   "eventSubmitted": "Reported.",
   "resultStatDistance": "Distance",
   "resultStatFreeFlow": "Free flow",
+  "resultStatPlanned": "Planned",
   "resultStatTolls": "Tolls",
   "resultEyebrowNearRoute": "Near your route",
   "resultEyebrowAlongRoute": "Along the route",

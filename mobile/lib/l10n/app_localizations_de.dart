@@ -1070,6 +1070,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get resultStatFreeFlow => 'Ohne Stau';
 
   @override
+  String get resultStatPlanned => 'Geplant';
+
+  @override
   String get resultStatTolls => 'Maut';
 
   @override

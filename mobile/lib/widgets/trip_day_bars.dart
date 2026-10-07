@@ -21,6 +21,7 @@ class TripDayBars extends StatefulWidget {
     required this.days,
     required this.dayOverrides,
     required this.profileCapHours,
+    this.onDayTap,
   });
 
   final List<DayPlan> days;
@@ -30,6 +31,10 @@ class TripDayBars extends StatefulWidget {
 
   /// Default cap from the user's profile (fallback when no override).
   final int profileCapHours;
+
+  /// Called with the day's index when a bar row is tapped.
+  /// Null while replanning to prevent concurrent edits.
+  final void Function(int dayIndex)? onDayTap;
 
   @override
   State<TripDayBars> createState() => _TripDayBarsState();
@@ -62,9 +67,7 @@ class _TripDayBarsState extends State<TripDayBars> {
         .reduce((a, b) => a > b ? a : b)
         .clamp(1.0, 16.0);
 
-    return GestureDetector(
-      onTap: () => setState(() => _expanded = !_expanded),
-      child: Container(
+    return Container(
         padding: const EdgeInsets.all(Tokens.space12),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
@@ -75,47 +78,55 @@ class _TripDayBarsState extends State<TripDayBars> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
-            Row(
-              children: [
-                Icon(Icons.bar_chart_rounded,
-                    size: 15, color: scheme.primary),
-                const SizedBox(width: 6),
-                Text(l.tripDayBarsTitle,
-                    style: t.labelMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.primary)),
-                const Spacer(),
-                // Global cap label
-                Text(
-                  'Cap: ${widget.profileCapHours}h',
-                  style: t.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  _expanded ? Icons.expand_less : Icons.expand_more,
-                  size: 15,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ],
+            // Header — tap to expand/collapse detail
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  Icon(Icons.bar_chart_rounded,
+                      size: 15, color: scheme.primary),
+                  const SizedBox(width: 6),
+                  Text(l.tripDayBarsTitle,
+                      style: t.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.primary)),
+                  const Spacer(),
+                  Text(
+                    'Cap: ${widget.profileCapHours}h',
+                    style: t.labelSmall?.copyWith(
+                        color: scheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(width: 6),
+                  Icon(
+                    _expanded ? Icons.expand_less : Icons.expand_more,
+                    size: 15,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: Tokens.space8),
             for (final (i, (day, actual, cap)) in data.indexed) ...[
               if (i > 0) const SizedBox(height: Tokens.space8),
-              _DayBar(
-                day: day,
-                actualHours: actual,
-                capHours: cap,
-                maxCap: maxCap,
-                expanded: _expanded,
-                scheme: scheme,
-                t: t,
+              GestureDetector(
+                onTap: widget.onDayTap != null
+                    ? () => widget.onDayTap!(day.dayIndex)
+                    : null,
+                child: _DayBar(
+                  day: day,
+                  actualHours: actual,
+                  capHours: cap,
+                  maxCap: maxCap,
+                  expanded: _expanded,
+                  tappable: widget.onDayTap != null,
+                  scheme: scheme,
+                  t: t,
+                ),
               ).animate(delay: (i * 60).ms).fadeIn(duration: 250.ms),
             ],
           ],
         ),
-      ),
     );
   }
 }
@@ -127,6 +138,7 @@ class _DayBar extends StatelessWidget {
     required this.capHours,
     required this.maxCap,
     required this.expanded,
+    required this.tappable,
     required this.scheme,
     required this.t,
   });
@@ -136,6 +148,7 @@ class _DayBar extends StatelessWidget {
   final double capHours;
   final double maxCap;
   final bool expanded;
+  final bool tappable;
   final ColorScheme scheme;
   final TextTheme t;
 
@@ -182,7 +195,7 @@ class _DayBar extends StatelessWidget {
                     color: barColor.withValues(alpha: 0.5), width: 1),
               ),
               child: Center(
-                child: Text('${day.dayIndex + 1}',
+                child: Text('${day.dayIndex}',
                     style: TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w800,
@@ -218,6 +231,11 @@ class _DayBar extends StatelessWidget {
               Text('${dayKm.toStringAsFixed(0)} km',
                   style: t.labelSmall?.copyWith(
                       color: scheme.onSurfaceVariant, fontSize: 10)),
+            ],
+            if (tappable) ...[
+              const SizedBox(width: 6),
+              Icon(Icons.tune_rounded, size: 11,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.6)),
             ],
           ],
         ),

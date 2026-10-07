@@ -1070,6 +1070,9 @@ class AppLocalizationsCa extends AppLocalizations {
   String get resultStatFreeFlow => 'Free flow';
 
   @override
+  String get resultStatPlanned => 'Planificat';
+
+  @override
   String get resultStatTolls => 'Tolls';
 
   @override

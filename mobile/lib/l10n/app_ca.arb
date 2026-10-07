@@ -736,5 +736,7 @@
   "historyReplanNetworkError": "La connexió s'ha tallat durant el recàlcul. Comprova el senyal i torna a intentar-ho.",
   "@historyReplanNetworkError": {},
   "retryLabel": "Torna-ho a intentar",
-  "@retryLabel": {}
+  "@retryLabel": {},
+  "resultStatPlanned": "Planificat",
+  "@resultStatPlanned": {}
 }

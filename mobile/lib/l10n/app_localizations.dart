@@ -2041,6 +2041,12 @@ abstract class AppLocalizations {
   /// **'Free flow'**
   String get resultStatFreeFlow;
 
+  /// No description provided for @resultStatPlanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned'**
+  String get resultStatPlanned;
+
   /// No description provided for @resultStatTolls.
   ///
   /// In en, this message translates to:

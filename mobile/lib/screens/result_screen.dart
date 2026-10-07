@@ -2684,12 +2684,28 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     value: fmt.distance(route.distanceKm),
                   );
                 }),
-                _HeroStatTile(
-                  label: l.resultStatFreeFlow,
-                  value: _hhmm(
-                    route.freeFlowMinutes + _addedMinutesTotal,
-                  ),
-                ),
+                Builder(builder: (ctx) {
+                  // Multi-day: show total planned driving-day time
+                  // (driving + stops per day) so it matches the
+                  // day-bars widget below. Single-day: free-flow.
+                  final drivingDays = _response.days
+                      .where((d) => !d.isDwellDay)
+                      .toList();
+                  if (drivingDays.length > 1) {
+                    final totalMin = drivingDays.fold(0.0, (acc, d) =>
+                      acc + d.endAt.difference(d.startAt).inMinutes);
+                    return _HeroStatTile(
+                      label: l.resultStatPlanned,
+                      value: _hhmm(totalMin + _addedMinutesTotal),
+                    );
+                  }
+                  return _HeroStatTile(
+                    label: l.resultStatFreeFlow,
+                    value: _hhmm(
+                      route.freeFlowMinutes + _addedMinutesTotal,
+                    ),
+                  );
+                }),
                 _HeroStatTile(
                   label: l.resultStatTolls,
                   value: formatMoney(_heroTollTotal(route, ccy), ccy),
@@ -2730,6 +2746,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 dayOverrides: _dayOverrides,
                 profileCapHours:
                     widget.request.tripProfile?.dailyDrivingCapHours ?? 8,
+                onDayTap: _replanning ? null : _openDayEditSheet,
               ),
             ],
             if (_addedStops.isNotEmpty ||
@@ -3074,7 +3091,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // showing "arrive at 23:00" from the raw single-day math
       // reads as broken. When multi-day the day plan itself shows
       // the last-day end time.
-      if (scope != null && scope.arrivalAfterBedtime && !scope.requiresOvernight) ...[
+      if (scope != null && scope.arrivalAfterBedtime &&
+          !scope.requiresOvernight &&
+          _response.days.where((d) => !d.isDwellDay).length <= 1) ...[
         _ArrivalHintCard(
           arrivalHour: scope.arrivalLocalHour,
           bedtimeHour: bedtimeHour,
