@@ -105,7 +105,13 @@ class _TripDayBarsState extends State<TripDayBars> {
         .reduce((a, b) => a > b ? a : b)
         .clamp(1.0, 16.0);
 
-    return Container(
+    // Opaque hit-test so taps on gaps between bar rows (SizedBox
+    // spacers) are absorbed here and don't fall through to the parent
+    // InkWell (heroStatsCard) which would open the wrong map.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {}, // absorb stray taps between bar rows
+      child: Container(
         padding: const EdgeInsets.all(Tokens.space12),
         decoration: BoxDecoration(
           color: scheme.surfaceContainerLow,
@@ -165,7 +171,8 @@ class _TripDayBarsState extends State<TripDayBars> {
             ],
           ],
         ),
-    );
+      ),  // closes Container
+    );    // closes GestureDetector
   }
 }
 

@@ -897,6 +897,17 @@ class DayPlanSection extends StatelessWidget {
     );
   }
 
+  /// Returns the WeatherSegment that covers [km] from origin, or null.
+  WeatherSegment? _weatherForKm(double km) {
+    for (final w in weatherSegments) {
+      if (km >= w.fromKm && km < w.toKm) return w;
+    }
+    // Fallback: nearest segment when km is outside all ranges
+    if (weatherSegments.isEmpty) return null;
+    return weatherSegments.reduce((a, b) =>
+        (a.fromKm - km).abs() < (b.fromKm - km).abs() ? a : b);
+  }
+
   String _slotLabel(AppLocalizations l, String slot) => switch (slot) {
         'breakfast' => l.profileBreakfast,
         'lunch' => l.profileLunch,
@@ -1435,6 +1446,32 @@ class DayPlanSection extends StatelessWidget {
                                     style: t.bodySmall,
                                   ),
                                 ),
+                                // Weather chip for this stop's km position.
+                                if (weatherSegments.isNotEmpty) ...[
+                                  const SizedBox(width: 4),
+                                  Builder(builder: (ctx) {
+                                    final seg = _weatherForKm(
+                                        m.distanceFromOriginKm);
+                                    if (seg == null) return const SizedBox.shrink();
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(seg.iconData, size: 13,
+                                            color: scheme.onSurfaceVariant),
+                                        if (seg.temperatureC != null) ...[
+                                          const SizedBox(width: 2),
+                                          Text(
+                                            '${seg.temperatureC!.round()}°',
+                                            style: t.labelSmall?.copyWith(
+                                              color: scheme.onSurfaceVariant,
+                                              fontSize: 10,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    );
+                                  }),
+                                ],
                                 // Inline add-to-route toggle.
                                 if (m.restaurantCoordinate != null &&
                                     onToggleRestaurantPick != null) ...[
@@ -1723,6 +1760,29 @@ class DayPlanSection extends StatelessWidget {
                                   ],
                                 ),
                               ),
+                              // Weather at this rest stop km position.
+                              if (weatherSegments.isNotEmpty) ...[
+                                const SizedBox(width: 4),
+                                Builder(builder: (ctx) {
+                                  final seg = _weatherForKm(
+                                      r.distanceFromOriginKm);
+                                  if (seg == null) return const SizedBox.shrink();
+                                  return Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(seg.iconData, size: 13,
+                                          color: scheme.onSurfaceVariant),
+                                      if (seg.temperatureC != null) ...[
+                                        const SizedBox(width: 2),
+                                        Text('${seg.temperatureC!.round()}°',
+                                          style: t.labelSmall?.copyWith(
+                                            color: scheme.onSurfaceVariant,
+                                            fontSize: 10)),
+                                      ],
+                                    ],
+                                  );
+                                }),
+                              ],
                               InkWell(
                                 onTap: () => _showRestStopWhy(context, r),
                                 borderRadius: BorderRadius.circular(20),

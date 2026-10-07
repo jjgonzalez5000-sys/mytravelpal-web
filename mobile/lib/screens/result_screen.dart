@@ -833,10 +833,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         widget.request.tripProfile?.dailyDrivingCapHours ?? 8;
     final defaultKmCap =
         widget.request.tripProfile?.dailyKmCap;
-    // Convert to minutes-from-midnight for DrivingWindowBar
-    int startMinutes = (current?.startHour ?? defaultStart) * 60;
-    int endMinutes = startMinutes + (current?.dailyDrivingCapHours ?? defaultCap) * 60;
-    endMinutes = endMinutes.clamp(startMinutes + 60, 1440);
+    // Convert to minutes-from-midnight for DrivingWindowBar.
+    // When no override exists, use the actual planned start/end minutes
+    // from dayPlan so the bar is in sync with what was planned.
+    int startMinutes;
+    int endMinutes;
+    if (current?.startHour != null) {
+      // Existing override — use override values
+      startMinutes = current!.startHour! * 60;
+      endMinutes = (startMinutes +
+          (current.dailyDrivingCapHours ?? defaultCap) * 60)
+          .clamp(startMinutes + 60, 1440);
+    } else if (dayPlan != null) {
+      // No override — mirror the planned times exactly (h + min)
+      final s = dayPlan.startAt.toLocal();
+      final e = (dayPlan.sleepAt ?? dayPlan.endAt).toLocal();
+      startMinutes = s.hour * 60 + s.minute;
+      endMinutes = (e.hour * 60 + e.minute).clamp(startMinutes + 60, 1440);
+    } else {
+      startMinutes = defaultStart * 60;
+      endMinutes = (startMinutes + defaultCap * 60).clamp(startMinutes + 60, 1440);
+    }
     final capHoursBefore = current?.dailyDrivingCapHours ?? defaultCap;
     int? kmCap = current?.dailyKmCap ?? defaultKmCap;
 
@@ -1011,47 +1028,67 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// Fire a full /plan with the current `_dayOverrides` map. In-place
   /// swap of `_response` so scroll position + saved-hotel selection
   /// survive. Enrich landed data (hotels / restaurants / fuel) stays
-  /// because we call `.planTrip` (monolithic endpoint) rather than
-  /// the core/enrich split — user is willing to wait once for the
-  /// full picture after an edit.
+  /// Uses the core/enrich split so the new day structure appears fast
+  /// (~3-5 s) and enrichment (hotels, fuel, weather) runs in background.
+  /// The previous enrichment data is preserved as a fallback while
+  /// the new enrich is in flight — user sees updated days immediately.
   Future<void> _replanWithOverrides() async {
     final api = ref.read(apiClientWithPremiumProvider);
-    setState(() => _replanning = true);
+    setState(() {
+      _replanning = true;
+      _enrichPending = false; // will flip to true once core lands
+    });
     final l = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).languageCode;
-    final tips = [
-      l.planLoadingRecalculating,
-      l.replanTipRoute,
-      l.replanTipFuel,
-      l.replanTipStops,
-    ];
-    int tipIdx = 0;
     final tipTimer = Timer.periodic(const Duration(seconds: 4), (_) async {
-      tipIdx = (tipIdx + 1) % tips.length;
-      await TripForegroundService.instance
-          .updateNotification(title: l.planLoadingTitle, body: tips[tipIdx]);
+      await TripForegroundService.instance.updateNotification(
+        title: l.planLoadingTitle, body: l.planLoadingRecalculating);
     });
     try {
       final replan = widget.request
           .withDayOverrides(_dayOverrides.values.toList());
-      final response = await runInForeground(
+      // Phase 1: core plan (routing + day structure). Fast.
+      final coreResponse = await runInForeground(
         context,
-        tips[0],
-        () => api.planTrip(replan, locale: locale),
+        l.planLoadingRecalculating,
+        () => api.planTripCore(replan, locale: locale),
       );
       tipTimer.cancel();
       if (!mounted) return;
+      // Merge core result with PREVIOUS enrich data so UI doesn't
+      // blank while new enrich is still in flight.
+      final previousEnrich = _response;
       setState(() {
-        _response = response;
+        _response = TripPlanResponse.merge(
+          core: coreResponse,
+          enrich: previousEnrich,
+        );
         _replanning = false;
         _activeReplanDayIndex = null;
+        _enrichPending = true; // enrich starts now
       });
+      // Phase 2: enrichment in background — updates hotels/fuel/weather.
+      try {
+        final enrichResponse = await api.planTripEnrich(replan, locale: locale);
+        if (!mounted) return;
+        setState(() {
+          _response = TripPlanResponse.merge(
+            core: coreResponse,
+            enrich: enrichResponse,
+          );
+          _enrichPending = false;
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _enrichPending = false);
+      }
     } catch (_) {
       tipTimer.cancel();
       if (!mounted) return;
       setState(() {
         _replanning = false;
         _activeReplanDayIndex = null;
+        _enrichPending = false;
       });
     }
   }
@@ -2872,50 +2909,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           onTap: () => _showAdverseEventsSheet(context),
         )
       else if (widget.request.includeAdverseEvents && _enrichPending)
-        const SizedBox.shrink()
-      else if (widget.request.includeAdverseEvents)
-        Padding(
-          padding: const EdgeInsets.only(bottom: Tokens.space8),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle, size: 16,
-                  color: Colors.green.shade600),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  l.emptyAlertsTitle,
-                  style: t.bodySmall?.copyWith(
-                    color: Colors.green.shade700,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              GestureDetector(
-                onTap: () => showModalBottomSheet<void>(
-                  context: context,
-                  showDragHandle: true,
-                  builder: (_) => Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                        Tokens.space20, 0, Tokens.space20, Tokens.space24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(l.emptyAlertsTitle,
-                            style: t.titleMedium),
-                        const SizedBox(height: Tokens.space8),
-                        Text(l.emptyAlertsBody,
-                            style: t.bodyMedium),
-                      ],
-                    ),
-                  ),
-                ),
-                child: Icon(Icons.info_outline, size: 16,
-                    color: scheme.onSurfaceVariant),
-              ),
-            ],
-          ),
-        ),
+        const SizedBox.shrink(),
+      // all-clear row removed — the enrichment banner chips show the ✓
+      // for alerts once enrich completes, avoiding duplicate "no issues" info.
       heroMapCard,
       const SizedBox(height: Tokens.space12),
       heroOriginDestRow,
@@ -3292,10 +3288,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
       body: Column(
         children: [
-          // Sticky enrichment banner — outside the scroll so it stays
-          // pinned at the top of the screen while the user scrolls.
+          // Sticky progress banner — shown during ANY background
+          // operation: enrichment OR day-override replanning.
           _EnrichmentProgressBanner(
-            visible: _enrichPending && !_replanning,
+            visible: _enrichPending || _replanning,
             hotelsRequested: (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
             restaurantsRequested:
                 (widget.request.restaurantMaxDetourMinutes ?? 0) > 0,
