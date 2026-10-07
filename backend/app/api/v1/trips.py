@@ -1209,6 +1209,16 @@ async def _plan_shared_preamble(
     # consistency check (arrival timestamp); they stay in sync
     # because they both consume `effective_departure_at`.
     effective_departure_at = payload.desired_departure_at
+    # Day-1 start_hour override shifts the effective departure.
+    # trip_optimizations and day_plan both apply the same replacement, so
+    # consistency checks must use the same shifted time — otherwise meals
+    # computed from 08:00 get flagged as "before departure" at 15:00.
+    _d1_ov = _day_overrides_map(payload).get(1) or {}
+    _d1_start_hour = _d1_ov.get("start_hour")
+    if _d1_start_hour is not None:
+        effective_departure_at = effective_departure_at.replace(
+            hour=_d1_start_hour, minute=0, second=0, microsecond=0,
+        )
     # Pace-dependent pause overhead — same table as
     # `trip_optimizations._PAUSE_RATIO_BY_PACE`. Kept inline here so
     # the check can compute an accurate arrival even before `opt` is

@@ -22,6 +22,7 @@ class TripDayBars extends StatefulWidget {
     required this.dayOverrides,
     required this.profileCapHours,
     this.onDayTap,
+    this.loading = false,
   });
 
   final List<DayPlan> days;
@@ -36,6 +37,10 @@ class TripDayBars extends StatefulWidget {
   /// Null while replanning to prevent concurrent edits.
   final void Function(int dayIndex)? onDayTap;
 
+  /// When true, shows animated shimmer bars instead of real data.
+  /// Prevents user interaction while a replan is running.
+  final bool loading;
+
   @override
   State<TripDayBars> createState() => _TripDayBarsState();
 }
@@ -49,7 +54,40 @@ class _TripDayBarsState extends State<TripDayBars> {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
     final days = widget.days.where((d) => !d.isDwellDay).toList();
-    if (days.isEmpty) return const SizedBox.shrink();
+    if (days.isEmpty && !widget.loading) return const SizedBox.shrink();
+
+    // Shimmer loading state — shown while a replan is in flight.
+    if (widget.loading) {
+      return Container(
+        padding: const EdgeInsets.all(Tokens.space12),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(Tokens.radiusMd),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.bar_chart_rounded, size: 15, color: scheme.primary),
+              const SizedBox(width: 6),
+              Text(l.tripDayBarsTitle,
+                  style: t.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w700, color: scheme.primary)),
+              const Spacer(),
+              Icon(Icons.sync_rounded, size: 13, color: scheme.primary)
+                  .animate(onPlay: (c) => c.repeat())
+                  .rotate(duration: 900.ms, curve: Curves.linear),
+            ]),
+            const SizedBox(height: Tokens.space8),
+            for (var i = 0; i < (days.isEmpty ? 3 : days.length); i++) ...[
+              if (i > 0) const SizedBox(height: Tokens.space8),
+              _ShimmerBar(scheme: scheme, widthFraction: 0.45 + i * 0.15),
+            ],
+          ],
+        ),
+      );
+    }
 
     // For each day compute [actualHours, capHours]
     final data = days.map((d) {
@@ -308,6 +346,75 @@ class _DayBar extends StatelessWidget {
               ],
             ),
           );
+        }),
+      ],
+    );
+  }
+}
+
+// ── Shimmer placeholder bar for loading state ─────────────────────────────────
+
+class _ShimmerBar extends StatelessWidget {
+  const _ShimmerBar({required this.scheme, required this.widthFraction});
+
+  final ColorScheme scheme;
+  final double widthFraction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(children: [
+          // Day badge placeholder
+          Container(
+            width: 20, height: 20,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ).animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 600.ms).then().fadeOut(duration: 600.ms),
+          const SizedBox(width: 6),
+          Container(
+            width: 40, height: 10,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ).animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 600.ms).then().fadeOut(duration: 600.ms),
+          const Spacer(),
+          Container(
+            width: 60, height: 10,
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(5),
+            ),
+          ).animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 600.ms).then().fadeOut(duration: 600.ms),
+        ]),
+        const SizedBox(height: 4),
+        LayoutBuilder(builder: (ctx, constraints) {
+          return Stack(children: [
+            Container(
+              width: constraints.maxWidth,
+              height: 10,
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ),
+            Container(
+              width: constraints.maxWidth * widthFraction.clamp(0.0, 1.0),
+              height: 10,
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(5),
+              ),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+                .fadeIn(duration: 700.ms).then().fadeOut(duration: 700.ms),
+          ]);
         }),
       ],
     );

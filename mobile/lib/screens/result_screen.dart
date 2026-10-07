@@ -2738,7 +2738,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ],
             ),
             const SizedBox(height: Tokens.space12),
-            TripQualityScore(response: _response),
+            TripQualityScore(response: _response, request: widget.request),
             if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space8),
               TripDayBars(
@@ -2747,6 +2747,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 profileCapHours:
                     widget.request.tripProfile?.dailyDrivingCapHours ?? 8,
                 onDayTap: _replanning ? null : _openDayEditSheet,
+                loading: _replanning,
               ),
             ],
             if (_addedStops.isNotEmpty ||
