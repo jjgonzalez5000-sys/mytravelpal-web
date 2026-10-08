@@ -6251,29 +6251,25 @@ class _WindowChip extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final l = AppLocalizations.of(context);
     final recommended = window.recommended;
-    // "Your time" gets a distinct neutral style so it doesn't compete
-    // visually with "Recommended" (primaryContainer) but is still easy
-    // to spot as the user's own choice.
+    // "Tu hora" = selected/active state → solid primary background (most prominent)
+    // "Recomendada" = suggestion → subtle tinted background
+    // Other windows → neutral background
     final bg = isYourTime
-        ? scheme.surfaceContainerHigh
+        ? scheme.primary                        // selected: bold
         : recommended
-            ? scheme.primaryContainer
-            : scheme.surfaceContainerHighest;
-    final fg = recommended && !isYourTime
-        ? scheme.onPrimaryContainer
-        : scheme.onSurface;
+            ? scheme.primaryContainer.withValues(alpha: 0.5)  // suggestion: subtle
+            : scheme.surfaceContainerHighest;   // neutral
+    final fg = isYourTime
+        ? scheme.onPrimary                      // white on primary
+        : recommended
+            ? scheme.primary
+            : scheme.onSurface;
     final hasSaving = savedMinutes >= 1;
     final isLate = savedMinutes <= -1;
     final timeLabel = DateFormat.Hm().format(window.departureAt.toLocal());
     return Material(
       color: bg,
       borderRadius: BorderRadius.circular(999),
-      shape: isYourTime
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(color: scheme.outline, width: 1.5),
-            )
-          : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(999),
         onTap: onTap,
@@ -6284,16 +6280,12 @@ class _WindowChip extends StatelessWidget {
             children: [
               Icon(
                 isYourTime
-                    ? Icons.person_outlined
+                    ? Icons.check_rounded   // ✓ = this is what's selected
                     : recommended
                         ? Icons.bolt_rounded
                         : Icons.schedule_outlined,
                 size: 14,
-                color: isYourTime
-                    ? scheme.onSurfaceVariant
-                    : recommended
-                        ? scheme.primary
-                        : fg.withValues(alpha: 0.7),
+                color: fg.withValues(alpha: isYourTime ? 1.0 : 0.8),
               ),
               const SizedBox(width: 6),
               Text(
@@ -6308,7 +6300,7 @@ class _WindowChip extends StatelessWidget {
                 Text(
                   l.windowsBadgeCurrent,
                   style: t.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
+                    color: fg.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w500,
                   ),
                 )
@@ -6316,7 +6308,9 @@ class _WindowChip extends StatelessWidget {
                 Text(
                   '-${durationCompact(savedMinutes)}',
                   style: t.labelSmall?.copyWith(
-                    color: Colors.green.shade700,
+                    color: recommended
+                        ? scheme.primary
+                        : Colors.green.shade700,
                     fontWeight: FontWeight.w700,
                   ),
                 )
