@@ -6,21 +6,19 @@ import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 
-/// Day-by-day timeline bars showing actual driving hours vs the user's
-/// configured cap per day. Bar width = cap; fill = actual hours used.
+/// Gantt-style day timeline bars.
 ///
-/// - Green  : actual ≤ 75 % of cap (comfortable)
-/// - Amber  : 75–100 % of cap (near limit)
-/// - Red    : actual > cap (over limit — backend may have split the day)
-///
-/// The cap marker (`│`) shows the user's configured limit per day.
-/// Tapping the card toggles expanded mode (adds km, time range, date).
+/// Each day shows proportional segments for driving, meal stops (breakfast /
+/// lunch / dinner), and rest stops. Unselected rest stops are ghost bars
+/// (low-alpha fill + dashed border). A vertical marker shows the daily cap.
+/// Tapping the header expands each row to show an unselected-stops hint.
 class TripDayBars extends StatefulWidget {
   const TripDayBars({
     super.key,
     required this.days,
     required this.dayOverrides,
     required this.profileCapHours,
+    required this.addedStopKeys,
     this.onDayTap,
     this.loading = false,
     this.avgKmh = 90.0,
@@ -29,14 +27,16 @@ class TripDayBars extends StatefulWidget {
   final List<DayPlan> days;
 
   /// Per-day overrides currently active in the result screen.
-  final Map<int, dynamic> dayOverrides; // DayOverride — using dynamic to avoid import
+  final Map<int, dynamic> dayOverrides; // DayOverride — dynamic to avoid import
 
   /// Default cap from the user's profile (fallback when no override).
   final int profileCapHours;
 
-  /// Route average speed (km/h) used to estimate actual driving hours
-  /// from km instead of wall-clock time (wall-clock includes meal/rest
-  /// stops and makes all days look red even on a fresh calculation).
+  /// Stop keys currently added by the user (_addedStops.keys.toSet()).
+  /// Drives ghost vs solid rendering for rest stops.
+  final Set<String> addedStopKeys;
+
+  /// Route average speed (km/h).
   final double avgKmh;
 
   /// Called with the day's index when a bar row is tapped.
@@ -44,15 +44,130 @@ class TripDayBars extends StatefulWidget {
   final void Function(int dayIndex)? onDayTap;
 
   /// When true, shows animated shimmer bars instead of real data.
-  /// Prevents user interaction while a replan is running.
   final bool loading;
 
   @override
   State<TripDayBars> createState() => _TripDayBarsState();
 }
 
+// ── Segment model ─────────────────────────────────────────────────────────────
+
+enum _SegType { driving, breakfast, lunch, dinner, rest }
+
+class _Seg {
+  const _Seg({
+    required this.startFrac,
+    required this.endFrac,
+    required this.type,
+    this.selected = true,
+  });
+  final double startFrac; // 0..1 of total bar width
+  final double endFrac;   // 0..1 of total bar width
+  final _SegType type;
+  final bool selected; // false → ghost bar (rest stops only)
+}
+
+Color _baseColor(_SegType type, ColorScheme scheme) => switch (type) {
+      _SegType.driving   => scheme.primary,
+      _SegType.breakfast => const Color(0xFFF59E0B),
+      _SegType.lunch     => const Color(0xFF22C55E),
+      _SegType.dinner    => const Color(0xFF818CF8),
+      _SegType.rest      => const Color(0xFFFB923C),
+    };
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
 class _TripDayBarsState extends State<TripDayBars> {
   bool _expanded = false;
+
+  String _restKey(RestStop r) =>
+      'reststop:${r.name ?? "noname"}:'
+      '${r.coordinate.lat.toStringAsFixed(4)},'
+      '${r.coordinate.lon.toStringAsFixed(4)}';
+
+  bool _isSelected(RestStop r) =>
+      widget.addedStopKeys.contains(_restKey(r));
+
+  /// Build an ordered list of Gantt segments for one day.
+  List<_Seg> _buildSegments(DayPlan d) {
+    final startLocal = d.startAt.toLocal();
+    final totalMin   = d.endAt.toLocal().difference(startLocal).inMinutes;
+    if (totalMin <= 0) {
+      return [const _Seg(startFrac: 0, endFrac: 1, type: _SegType.driving)];
+    }
+
+    // (startMin, durationMin, type, selected)
+    final events = <(int, int, _SegType, bool)>[];
+
+    // Meal stops — always selected, 30-min slots
+    for (final m in d.mealStops) {
+      final offset = m.at
+          .toLocal()
+          .difference(startLocal)
+          .inMinutes
+          .clamp(0, totalMin - 1);
+      final type = switch (m.slot.toLowerCase()) {
+        'breakfast' => _SegType.breakfast,
+        'dinner'    => _SegType.dinner,
+        _           => _SegType.lunch,
+      };
+      events.add((offset, 30, type, true));
+    }
+
+    // Rest stops — selected iff key is in addedStopKeys
+    final dayRange = d.toKm - d.fromKm;
+    for (final r in d.restStops) {
+      final frac = dayRange > 0
+          ? ((r.distanceFromOriginKm - d.fromKm) / dayRange).clamp(0.0, 1.0)
+          : 0.5;
+      final offset = (totalMin * frac).round().clamp(0, totalMin - 1);
+      events.add((
+        offset,
+        r.recommendedBreakMinutes.clamp(1, 120),
+        _SegType.rest,
+        _isSelected(r),
+      ));
+    }
+
+    // Sort events by start offset
+    events.sort((a, b) => a.$1.compareTo(b.$1));
+
+    final segs = <_Seg>[];
+    var cursor = 0;
+    for (final (s, dur, type, sel) in events) {
+      final cs = s.clamp(cursor, totalMin);
+      if (cs > cursor) {
+        // Driving gap before this event
+        segs.add(_Seg(
+          startFrac: cursor / totalMin,
+          endFrac: cs / totalMin,
+          type: _SegType.driving,
+        ));
+      }
+      final e = (cs + dur).clamp(0, totalMin);
+      if (e > cs) {
+        segs.add(_Seg(
+          startFrac: cs / totalMin,
+          endFrac: e / totalMin,
+          type: type,
+          selected: sel,
+        ));
+      }
+      cursor = e;
+    }
+    // Trailing driving segment
+    if (cursor < totalMin) {
+      segs.add(_Seg(
+        startFrac: cursor / totalMin,
+        endFrac: 1.0,
+        type: _SegType.driving,
+      ));
+    }
+    return segs;
+  }
+
+  int _unselectedCount(DayPlan d) =>
+      d.restStops.where((r) => !_isSelected(r)).length;
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +177,7 @@ class _TripDayBarsState extends State<TripDayBars> {
     final days = widget.days.where((d) => !d.isDwellDay).toList();
     if (days.isEmpty && !widget.loading) return const SizedBox.shrink();
 
-    // Shimmer loading state — shown while a replan is in flight.
+    // ── Loading shimmer ──────────────────────────────────────────────────────
     if (widget.loading) {
       return Container(
         padding: const EdgeInsets.all(Tokens.space12),
@@ -95,37 +210,14 @@ class _TripDayBarsState extends State<TripDayBars> {
       );
     }
 
-    // For each day compute [actualDrivingHours, capHours].
-    // Use km / avgSpeed to estimate DRIVING hours (excludes meal/rest
-    // stop overhead) rather than wall-clock time (endAt - startAt).
-    // Wall-clock inflates by ~20-30 % on savour/steady plans and makes
-    // every freshly-planned day look red even when the backend respected
-    // the cap. Fall back to wall-clock only when km range is zero.
-    final avgKmh = widget.avgKmh > 0 ? widget.avgKmh : 90.0;
-    final data = days.map((d) {
-      final dayKm = d.toKm - d.fromKm;
-      final actual = dayKm > 0
-          ? dayKm / avgKmh
-          : d.endAt.toLocal()
-                .difference(d.startAt.toLocal()).inMinutes / 60.0;
-      final override = widget.dayOverrides[d.dayIndex];
-      final cap = (override?.dailyDrivingCapHours as int?) ??
-          widget.profileCapHours;
-      return (d, actual, cap.toDouble());
-    }).toList();
+    final totalUnselected =
+        days.fold(0, (sum, d) => sum + _unselectedCount(d));
 
-    // Bar x-axis scale: max cap across all days (so all bars fit)
-    final maxCap = data
-        .map((e) => e.$3)
-        .reduce((a, b) => a > b ? a : b)
-        .clamp(1.0, 16.0);
-
-    // Opaque hit-test so taps on gaps between bar rows (SizedBox
-    // spacers) are absorbed here and don't fall through to the parent
-    // InkWell (heroStatsCard) which would open the wrong map.
+    // Opaque hit-test so taps on spacers between rows don't fall through
+    // to the parent InkWell (heroStatsCard).
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: () {}, // absorb stray taps between bar rows
+      onTap: () {},
       child: Container(
         padding: const EdgeInsets.all(Tokens.space12),
         decoration: BoxDecoration(
@@ -137,7 +229,7 @@ class _TripDayBarsState extends State<TripDayBars> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header — tap to expand/collapse detail
+            // ── Card header ─────────────────────────────────────────────────
             GestureDetector(
               onTap: () => setState(() => _expanded = !_expanded),
               behavior: HitTestBehavior.opaque,
@@ -151,6 +243,26 @@ class _TripDayBarsState extends State<TripDayBars> {
                           fontWeight: FontWeight.w700,
                           color: scheme.primary)),
                   const Spacer(),
+                  if (totalUnselected > 0) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 5, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFB923C).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        '$totalUnselected parada'
+                        '${totalUnselected == 1 ? '' : 's'} sin añadir',
+                        style: t.labelSmall?.copyWith(
+                          color: const Color(0xFFFB923C),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
                   Text(
                     'Cap: ${widget.profileCapHours}h',
                     style: t.labelSmall?.copyWith(
@@ -166,17 +278,18 @@ class _TripDayBarsState extends State<TripDayBars> {
               ),
             ),
             const SizedBox(height: Tokens.space8),
-            for (final (i, (day, actual, cap)) in data.indexed) ...[
+            // ── Day rows ────────────────────────────────────────────────────
+            for (final (i, day) in days.indexed) ...[
               if (i > 0) const SizedBox(height: Tokens.space8),
               GestureDetector(
                 onTap: widget.onDayTap != null
                     ? () => widget.onDayTap!(day.dayIndex)
                     : null,
-                child: _DayBar(
+                child: _GanttDayRow(
                   day: day,
-                  actualHours: actual,
-                  capHours: cap,
-                  maxCap: maxCap,
+                  segments: _buildSegments(day),
+                  profileCapHours: widget.profileCapHours,
+                  unselectedCount: _unselectedCount(day),
                   expanded: _expanded,
                   tappable: widget.onDayTap != null,
                   scheme: scheme,
@@ -186,17 +299,19 @@ class _TripDayBarsState extends State<TripDayBars> {
             ],
           ],
         ),
-      ),  // closes Container
-    );    // closes GestureDetector
+      ),
+    );
   }
 }
 
-class _DayBar extends StatelessWidget {
-  const _DayBar({
+// ── Gantt row per day ─────────────────────────────────────────────────────────
+
+class _GanttDayRow extends StatelessWidget {
+  const _GanttDayRow({
     required this.day,
-    required this.actualHours,
-    required this.capHours,
-    required this.maxCap,
+    required this.segments,
+    required this.profileCapHours,
+    required this.unselectedCount,
     required this.expanded,
     required this.tappable,
     required this.scheme,
@@ -204,40 +319,38 @@ class _DayBar extends StatelessWidget {
   });
 
   final DayPlan day;
-  final double actualHours;
-  final double capHours;
-  final double maxCap;
+  final List<_Seg> segments;
+  final int profileCapHours;
+  final int unselectedCount;
   final bool expanded;
   final bool tappable;
   final ColorScheme scheme;
   final TextTheme t;
 
+  static const double _barH = 14.0;
+
   @override
   Widget build(BuildContext context) {
-    final dayKm = (day.toKm - day.fromKm);
     final startLocal = day.startAt.toLocal();
-    final endLocal = (day.sleepAt ?? day.endAt).toLocal();
+    final totalMin =
+        day.endAt.toLocal().difference(startLocal).inMinutes;
+    final dayKm = (day.toKm - day.fromKm).toStringAsFixed(0);
 
-    // How full is the bar (clamped to 100% — over-cap shown red)
-    final fillFraction = (actualHours / capHours).clamp(0.0, 1.0);
-    // Cap marker position within the bar (cap/maxCap of total width)
-    final capFraction = (capHours / maxCap).clamp(0.0, 1.0);
-    // Over cap?
-    final overCap = actualHours > capHours + 0.25;
-    final nearCap = !overCap && actualHours > capHours * 0.75;
+    final dateLabel = DateFormat(
+      'EEE d',
+      Localizations.localeOf(context).toString(),
+    ).format(startLocal);
 
-    final barColor = overCap
-        ? const Color(0xFFF87171)  // red
-        : nearCap
-            ? const Color(0xFFFBBF24) // amber
-            : const Color(0xFF4ADE80); // green
+    final hh = totalMin ~/ 60;
+    final mm = totalMin % 60;
+    final durLabel = mm > 0 ? '${hh}h ${mm}m' : '${hh}h';
 
-    final statusEmoji = overCap ? '🔴' : nearCap ? '⚠️' : '✓';
-
-    final timeFmt = DateFormat('HH:mm');
-    final dateLabel = DateFormat('EEE d',
-            Localizations.localeOf(context).toString())
-        .format(startLocal);
+    // Cap marker: fraction of wall-clock bar where driving cap falls.
+    // Only draw when the cap is strictly inside the bar (not at edges).
+    final capFrac = totalMin > 0
+        ? (profileCapHours * 60.0 / totalMin).clamp(0.0, 1.0)
+        : 1.0;
+    final showCap = capFrac > 0.02 && capFrac < 0.99;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -245,133 +358,191 @@ class _DayBar extends StatelessWidget {
         // Label row
         Row(
           children: [
-            // Day badge
             Container(
-              width: 20, height: 20,
+              width: 20,
+              height: 20,
               decoration: BoxDecoration(
-                color: barColor.withValues(alpha: 0.15),
+                color: scheme.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(5),
                 border: Border.all(
-                    color: barColor.withValues(alpha: 0.5), width: 1),
+                    color: scheme.primary.withValues(alpha: 0.35), width: 1),
               ),
               child: Center(
-                child: Text('${day.dayIndex}',
-                    style: TextStyle(
-                        fontSize: 9,
-                        fontWeight: FontWeight.w800,
-                        color: barColor)),
+                child: Text(
+                  '${day.dayIndex}',
+                  style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                      color: scheme.primary),
+                ),
               ),
             ),
             const SizedBox(width: 6),
-            Text(dateLabel,
-                style: t.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant,
-                    fontSize: 10)),
-            const Spacer(),
-            if (expanded) ...[
-              Text(
-                '${timeFmt.format(startLocal)} → ${timeFmt.format(endLocal)}',
-                style: t.labelSmall?.copyWith(
-                    color: scheme.onSurfaceVariant, fontSize: 10),
-              ),
-              const SizedBox(width: 8),
-            ],
             Text(
-              '${actualHours.toStringAsFixed(1)}h / ${capHours.toStringAsFixed(0)}h',
-              style: t.labelSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                fontSize: 10,
-                color: overCap ? const Color(0xFFF87171) : null,
-              ),
+              '$dateLabel · $dayKm km · $durLabel',
+              style: t.labelSmall
+                  ?.copyWith(color: scheme.onSurfaceVariant, fontSize: 10),
             ),
-            const SizedBox(width: 6),
-            Text(statusEmoji, style: const TextStyle(fontSize: 10)),
-            if (expanded) ...[
-              const SizedBox(width: 8),
-              Text('${dayKm.toStringAsFixed(0)} km',
-                  style: t.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant, fontSize: 10)),
-            ],
-            if (tappable) ...[
-              const SizedBox(width: 6),
-              Icon(Icons.tune_rounded, size: 11,
+            const Spacer(),
+            if (tappable)
+              Icon(Icons.tune_rounded,
+                  size: 11,
                   color: scheme.onSurfaceVariant.withValues(alpha: 0.6)),
-            ],
           ],
         ),
         const SizedBox(height: 4),
-        // Bar
+        // Gantt bar
         LayoutBuilder(builder: (ctx, constraints) {
           final W = constraints.maxWidth;
           return SizedBox(
-            height: 10,
+            height: _barH,
             child: Stack(
               children: [
-                // Track (full width = maxCap)
-                Container(
-                  width: W,
-                  height: 10,
-                  decoration: BoxDecoration(
-                    color: scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(5),
+                // Segments clipped to rounded track shape
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(7),
+                  child: Stack(
+                    children: [
+                      // Track background
+                      Container(
+                        width: W,
+                        height: _barH,
+                        color: scheme.surfaceContainerHighest,
+                      ),
+                      // Gantt segments
+                      for (final seg in segments)
+                        _SegBar(seg: seg, W: W, h: _barH, scheme: scheme),
+                    ],
                   ),
                 ),
-                // Cap zone (shaded area = this day's cap)
-                Positioned(
-                  left: 0,
-                  child: Container(
-                    width: W * capFraction,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: scheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(5),
+                // Cap marker — drawn outside ClipRRect so it's always visible
+                if (showCap)
+                  Positioned(
+                    left: (W * capFrac - 1.0).clamp(0.0, W - 2.0),
+                    top: 0,
+                    child: Container(
+                      width: 2,
+                      height: _barH,
+                      decoration: BoxDecoration(
+                        color: scheme.onSurface.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(1),
+                      ),
                     ),
                   ),
-                ),
-                // Fill (actual hours)
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: fillFraction * capFraction),
-                  duration: 700.ms,
-                  curve: Curves.easeOutCubic,
-                  builder: (_, v, __) => Container(
-                    width: W * v,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [
-                        barColor,
-                        barColor.withValues(alpha: 0.75),
-                      ]),
-                      borderRadius: BorderRadius.circular(5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: barColor.withValues(alpha: 0.3),
-                          blurRadius: 4,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                // Cap marker line (user's limit)
-                Positioned(
-                  left: W * capFraction - 1.5,
-                  top: 0,
-                  child: Container(
-                    width: 3,
-                    height: 10,
-                    decoration: BoxDecoration(
-                      color: scheme.onSurface.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(1.5),
-                    ),
-                  ),
-                ),
               ],
             ),
           );
         }),
+        // Ghost hint — shown when expanded and this day has unselected stops
+        if (expanded && unselectedCount > 0) ...[
+          const SizedBox(height: 3),
+          Text(
+            '$unselectedCount parada'
+            '${unselectedCount == 1 ? '' : 's'} sin seleccionar'
+            ' · toca + para añadirlas',
+            style: t.labelSmall?.copyWith(
+              color: const Color(0xFFFB923C).withValues(alpha: 0.8),
+              fontSize: 9,
+            ),
+          ),
+        ],
       ],
     );
   }
+}
+
+// ── Single Gantt segment ──────────────────────────────────────────────────────
+
+class _SegBar extends StatelessWidget {
+  const _SegBar({
+    required this.seg,
+    required this.W,
+    required this.h,
+    required this.scheme,
+  });
+
+  final _Seg seg;
+  final double W;
+  final double h;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final base  = _baseColor(seg.type, scheme);
+    final left  = W * seg.startFrac;
+    final width = W * (seg.endFrac - seg.startFrac);
+    if (width <= 0) return const SizedBox.shrink();
+
+    if (!seg.selected) {
+      // Ghost: low-alpha fill + dashed border
+      return Positioned(
+        left: left,
+        top: 0,
+        child: SizedBox(
+          width: width,
+          height: h,
+          child: CustomPaint(
+            painter: _DashedBorderPainter(base.withValues(alpha: 0.5)),
+            child: Container(color: base.withValues(alpha: 0.15)),
+          ),
+        ),
+      );
+    }
+
+    return Positioned(
+      left: left,
+      top: 0,
+      child: Container(width: width, height: h, color: base),
+    );
+  }
+}
+
+// ── Dashed border painter ─────────────────────────────────────────────────────
+
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter(this.color);
+  final Color color;
+
+  static const double _dash = 3.0;
+  static const double _gap  = 2.0;
+
+  void _dashedLine(Canvas c, Paint p, Offset a, Offset b) {
+    final dx  = b.dx - a.dx;
+    final dy  = b.dy - a.dy;
+    final len = (b - a).distance;
+    if (len == 0) return;
+    var t = 0.0;
+    while (t < len) {
+      final t1 = t / len;
+      final t2 = ((t + _dash) / len).clamp(0.0, 1.0);
+      c.drawLine(
+        Offset(a.dx + dx * t1, a.dy + dy * t1),
+        Offset(a.dx + dx * t2, a.dy + dy * t2),
+        p,
+      );
+      t += _dash + _gap;
+    }
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = color
+      ..strokeWidth = 1.0;
+    // Top and bottom edges
+    _dashedLine(canvas, p, Offset.zero, Offset(size.width, 0));
+    _dashedLine(
+        canvas, p, Offset(0, size.height), Offset(size.width, size.height));
+    // Left and right edges (only for segments wide enough to matter)
+    if (size.width > 5) {
+      _dashedLine(canvas, p, Offset.zero, Offset(0, size.height));
+      _dashedLine(
+          canvas, p, Offset(size.width, 0), Offset(size.width, size.height));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter old) => old.color != color;
 }
 
 // ── Shimmer placeholder bar for loading state ─────────────────────────────────
@@ -388,54 +559,68 @@ class _ShimmerBar extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          // Day badge placeholder
           Container(
-            width: 20, height: 20,
+            width: 20,
+            height: 20,
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(5),
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-              .fadeIn(duration: 600.ms).then().fadeOut(duration: 600.ms),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 600.ms)
+              .then()
+              .fadeOut(duration: 600.ms),
           const SizedBox(width: 6),
           Container(
-            width: 40, height: 10,
+            width: 40,
+            height: 10,
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(5),
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-              .fadeIn(duration: 600.ms).then().fadeOut(duration: 600.ms),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 600.ms)
+              .then()
+              .fadeOut(duration: 600.ms),
           const Spacer(),
           Container(
-            width: 60, height: 10,
+            width: 60,
+            height: 10,
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(5),
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-              .fadeIn(duration: 600.ms).then().fadeOut(duration: 600.ms),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .fadeIn(duration: 600.ms)
+              .then()
+              .fadeOut(duration: 600.ms),
         ]),
         const SizedBox(height: 4),
         LayoutBuilder(builder: (ctx, constraints) {
           return Stack(children: [
             Container(
               width: constraints.maxWidth,
-              height: 10,
+              height: 14,
               decoration: BoxDecoration(
                 color: scheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(7),
               ),
             ),
             Container(
               width: constraints.maxWidth * widthFraction.clamp(0.0, 1.0),
-              height: 10,
+              height: 14,
               decoration: BoxDecoration(
                 color: scheme.primary.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(7),
               ),
-            ).animate(onPlay: (c) => c.repeat(reverse: true))
-                .fadeIn(duration: 700.ms).then().fadeOut(duration: 700.ms),
+            )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .fadeIn(duration: 700.ms)
+                .then()
+                .fadeOut(duration: 700.ms),
           ]);
         }),
       ],

@@ -40,7 +40,7 @@ from app.providers.overpass import (
     OverpassRestaurantsProvider,
 )
 from app.providers.osm_toll_gates import OsmTollGateProvider
-from app.providers.tollguru import TollGuruProvider, TollProvider
+from app.providers.tollguru import TollProvider
 from app.providers.tolls_here import HereTollsProvider
 from app.providers.weather import OpenMeteoWeatherProvider
 from app.providers.fuel import FuelProvider, MockFuelProvider
@@ -88,17 +88,21 @@ def get_providers() -> Providers:
 
 
 def _tollguru_provider() -> TollProvider | None:
-    """Booth-level toll provider. HERE Routing v8 is preferred — it's
-    free within our subscription and returns per-gate coordinates and
-    vignette flags. TollGuru ($80/mo minimum) is no longer the default;
-    set MYTRAVELPAL_USE_TOLLGURU=1 to force it if needed.
+    """Booth-level toll provider.
+
+    Priority:
+    1. HERE Routing v8 — per-gate, free if the key has Routing access.
+       Fails silently (401) if the key only has Browse/Fuel access;
+       the heuristic fallback below then kicks in.
+    2. HeuristicTollProvider — country-rate estimates from known
+       per-km motorway tolls and vignette fees. Always available,
+       accurate enough for the trip cost card.
+    TollGuru removed (2026-10-08): €80/mo minimum, replaced by heuristic.
     """
-    # HERE Tolls first — free, per-section with real gate coordinates.
+    # HERE Routing v8 — requires the Routing API activated on the key
+    # (not just Browse/Fuel). Returns None if the key only has Browse access.
     if os.environ.get("MYTRAVELPAL_HERE_API_KEY"):
         return HereTollsProvider()
-    # TollGuru as explicit opt-in (paid, $80/mo minimum).
-    if os.environ.get("TOLLGURU_API_KEY") and os.environ.get("MYTRAVELPAL_USE_TOLLGURU"):
-        return TollGuruProvider()
     return None
 
 

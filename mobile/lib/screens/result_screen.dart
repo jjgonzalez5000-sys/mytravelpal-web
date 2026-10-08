@@ -2843,6 +2843,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 dayOverrides: _dayOverrides,
                 profileCapHours:
                     widget.request.tripProfile?.dailyDrivingCapHours ?? 8,
+                addedStopKeys: _addedStops.keys.toSet(),
                 onDayTap: _replanning ? null : _openDayEditSheet,
                 loading: _replanning,
                 avgKmh: _response.route.freeFlowMinutes > 0
