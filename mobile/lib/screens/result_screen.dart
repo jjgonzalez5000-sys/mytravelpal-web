@@ -2834,15 +2834,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ],
             ),
             const SizedBox(height: Tokens.space12),
-            TripQualityScore(
-              response: _response,
-              request: widget.request,
-              addedStopKeys: _addedStops.keys.toSet(),
-              selectedHotelCount: _selectedNightHotels.length,
-              pickedFuelCount: _pickedFuelSavings.keys
-                  .where(_addedStops.containsKey)
-                  .length,
-            ),
+            if (!_enrichPending)
+              TripQualityScore(
+                response: _response,
+                request: widget.request,
+                addedStopKeys: _addedStops.keys.toSet(),
+                selectedHotelCount: _selectedNightHotels.length,
+                pickedFuelCount: _pickedFuelSavings.keys
+                    .where(_addedStops.containsKey)
+                    .length,
+              ),
             if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space8),
               TripDayBars(
