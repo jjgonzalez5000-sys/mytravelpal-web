@@ -546,7 +546,7 @@
   "@wizardBreakEvery": {
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -596,6 +596,12 @@
   "@wizardModelGeneric": {},
   "wizardModelGenericSub": "Estimación estándar por tipo de vehículo",
   "@wizardModelGenericSub": {},
+  "wizardTollFreeDetour": "Desviament lliure",
+  "@wizardTollFreeDetour": {},
+  "wizardTollMotorway": "Autopista",
+  "@wizardTollMotorway": {},
+  "wizardTollFaster": "Més ràpid",
+  "@wizardTollFaster": {},
   "wizardTollTitle": "¿Evitamos peajes?",
   "@wizardTollTitle": {},
   "wizardTollSubtitle": "Analizamos miles de rutas para saber cuándo el desvío vale la pena.",
@@ -749,6 +755,18 @@
       }
     }
   },
+  "tripDayBarsCap": "Límit: {n}h",
+  "@tripDayBarsCap": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsUnselected": "{n} parada(es) sense afegir",
+  "@tripDayBarsUnselected": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsHint": "Toca + per incloure-les en la durada total",
+  "@tripDayBarsHint": {},
+  "tripDayBarsCapLabel": "Límit",
+  "@tripDayBarsCapLabel": {},
   "tripDayBarsTitle": "Distribució per etapes",
   "@tripDayBarsTitle": {},
   "styleSectionTitle": "Ritmo de conducción",
@@ -759,4 +777,36 @@
   "@retryLabel": {},
   "resultStatPlanned": "Planificat",
   "@resultStatPlanned": {}
+,
+  "onboardCostFuel": "Combustible",
+  "@onboardCostFuel": {},
+  "onboardCostTolls": "Peatges",
+  "@onboardCostTolls": {},
+  "onboardCostMeals": "Menjars",
+  "@onboardCostMeals": {},
+  "onboardCostHotel": "Hotel",
+  "@onboardCostHotel": {},
+  "onboardCostTotal": "TOTAL",
+  "@onboardCostTotal": {},
+  "onboardSavingsTitle": "Estalvis detectats",
+  "@onboardSavingsTitle": {},
+  "onboardSavingsToll": "Peatge alternatiu",
+  "@onboardSavingsToll": {},
+  "onboardSavingsFuel": "Gasolinera òptima",
+  "@onboardSavingsFuel": {},
+  "onboardSavingsHotel": "Millor hotel",
+  "@onboardSavingsHotel": {},
+  "onboardSavingsTotal": "TOTAL ESTALVIAT",
+  "@onboardSavingsTotal": {}
+,
+  "drivingWindowNightStart": "Conducció nocturna a l'inici",
+  "@drivingWindowNightStart": {},
+  "drivingWindowNightEnd": "Conducció nocturna al final",
+  "@drivingWindowNightEnd": {},
+  "dayEditKmNoLimit": "Màx. km: sense límit",
+  "@dayEditKmNoLimit": {},
+  "dayEditKmCap": "Màx. km: {km} km",
+  "@dayEditKmCap": {
+    "placeholders": { "km": { "type": "int" } }
+  }
 }

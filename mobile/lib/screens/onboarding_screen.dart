@@ -296,16 +296,17 @@ class _CostReceiptWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const rows = [
-      (Icons.local_gas_station_outlined, 'Gasolina', 71),
-      (Icons.toll_outlined,              'Peajes',   74),
-      (Icons.restaurant_outlined,        'Comidas',  306),
-      (Icons.hotel_outlined,             'Hotel',    480),
+    final l = AppLocalizations.of(context);
+    final rows = [
+      (Icons.local_gas_station_outlined, l.onboardCostFuel, 71),
+      (Icons.toll_outlined,              l.onboardCostTolls, 74),
+      (Icons.restaurant_outlined,        l.onboardCostMeals, 306),
+      (Icons.hotel_outlined,             l.onboardCostHotel, 480),
     ];
-    const savings = [
-      (Icons.alt_route,              'Peaje alternativo',  -8),
-      (Icons.local_gas_station,      'Gasolinera óptima',  -14),
-      (Icons.hotel,                  'Mejor hotel',        -42),
+    final savings = [
+      (Icons.alt_route,              l.onboardSavingsToll,  -8),
+      (Icons.local_gas_station,      l.onboardSavingsFuel,  -14),
+      (Icons.hotel,                  l.onboardSavingsHotel, -42),
     ];
     const total = 931;
     const saved = 64;
@@ -362,7 +363,7 @@ class _CostReceiptWidget extends StatelessWidget {
                 const SizedBox(height: 6),
                 Row(
                   children: [
-                    Text('TOTAL', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 1)),
+                    Text(l.onboardCostTotal, style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 12, letterSpacing: 1)),
                     const Spacer(),
                     TweenAnimationBuilder<double>(
                       tween: Tween(begin: 0, end: total.toDouble()),
@@ -390,7 +391,7 @@ class _CostReceiptWidget extends StatelessWidget {
                         children: [
                           Icon(Icons.savings_outlined, size: 13, color: green),
                           const SizedBox(width: 6),
-                          Text('Ahorros detectados', style: TextStyle(color: green, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 0.5)),
+                          Text(l.onboardSavingsTitle, style: TextStyle(color: green, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 0.5)),
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -411,7 +412,7 @@ class _CostReceiptWidget extends StatelessWidget {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          Text('TOTAL AHORRADO', style: TextStyle(color: green, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 0.5)),
+                          Text(l.onboardSavingsTotal, style: TextStyle(color: green, fontWeight: FontWeight.w700, fontSize: 11, letterSpacing: 0.5)),
                           const Spacer(),
                           TweenAnimationBuilder<double>(
                             tween: Tween(begin: 0, end: saved.toDouble()),

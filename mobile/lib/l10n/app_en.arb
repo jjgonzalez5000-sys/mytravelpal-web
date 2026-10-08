@@ -11,6 +11,26 @@
   "onboardEyebrowAlerts": "REAL-TIME ALERTS",
   "onboardTitleAlerts": "Wildfire 14 km\nfrom your route.",
   "onboardBodyAlerts": "Fires, storms, earthquakes, road closures. Only events that affect your specific route, before you reach them.",
+  "onboardCostFuel": "Fuel",
+  "@onboardCostFuel": {},
+  "onboardCostTolls": "Tolls",
+  "@onboardCostTolls": {},
+  "onboardCostMeals": "Meals",
+  "@onboardCostMeals": {},
+  "onboardCostHotel": "Hotel",
+  "@onboardCostHotel": {},
+  "onboardCostTotal": "TOTAL",
+  "@onboardCostTotal": {},
+  "onboardSavingsTitle": "Savings detected",
+  "@onboardSavingsTitle": {},
+  "onboardSavingsToll": "Toll alternative",
+  "@onboardSavingsToll": {},
+  "onboardSavingsFuel": "Optimal fuel stop",
+  "@onboardSavingsFuel": {},
+  "onboardSavingsHotel": "Best hotel",
+  "@onboardSavingsHotel": {},
+  "onboardSavingsTotal": "TOTAL SAVED",
+  "@onboardSavingsTotal": {},
   "onboardSkip": "Skip",
   "onboardContinue": "Continue",
   "onboardGetStarted": "Get started",
@@ -1063,6 +1083,16 @@
   "styleBedtimeLabel": "Bedtime",
   "styleWakeLabel": "Wake time",
   "styleDrivingStartLabel": "Preferred time to start driving",
+  "drivingWindowNightStart": "Night driving at start",
+  "@drivingWindowNightStart": {},
+  "drivingWindowNightEnd": "Night driving at end",
+  "@drivingWindowNightEnd": {},
+  "dayEditKmNoLimit": "Max. km: no limit",
+  "@dayEditKmNoLimit": {},
+  "dayEditKmCap": "Max. km: {km} km",
+  "@dayEditKmCap": {
+    "placeholders": { "km": { "type": "int" } }
+  },
   "dayEditSheetTitle": "Adjust day {day}",
   "@dayEditSheetTitle": {
     "placeholders": {
@@ -2406,7 +2436,7 @@
   "@wizardBreakEvery": {
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -2456,6 +2486,12 @@
   "@wizardModelGeneric": {},
   "wizardModelGenericSub": "Standard estimate for your vehicle type",
   "@wizardModelGenericSub": {},
+  "wizardTollFreeDetour": "Free detour",
+  "@wizardTollFreeDetour": {},
+  "wizardTollMotorway": "Motorway",
+  "@wizardTollMotorway": {},
+  "wizardTollFaster": "Faster",
+  "@wizardTollFaster": {},
   "wizardTollTitle": "Avoid tolls?",
   "@wizardTollTitle": {},
   "wizardTollSubtitle": "We analyse thousands of routes to know when a detour is worth it.",
@@ -2566,6 +2602,18 @@
   "@replanTipFuel": {},
   "replanTipStops": "Adjusting stops and arrival times...",
   "@replanTipStops": {},
+  "tripDayBarsCap": "Cap: {n}h",
+  "@tripDayBarsCap": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsUnselected": "{n} stop(s) not added",
+  "@tripDayBarsUnselected": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsHint": "Tap + to include them in total duration",
+  "@tripDayBarsHint": {},
+  "tripDayBarsCapLabel": "Cap",
+  "@tripDayBarsCapLabel": {},
   "tripDayBarsTitle": "Day breakdown",
   "@tripDayBarsTitle": {}
 }

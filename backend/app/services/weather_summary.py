@@ -28,7 +28,17 @@ from app.domain import (
 )
 
 _URL = "https://api.open-meteo.com/v1/forecast"
-_SAMPLE_POINTS = 5
+
+
+def _n_samples(distance_km: float) -> int:
+    """Return the number of weather/toll sample points for a given route distance."""
+    if distance_km < 300:
+        return 3
+    if distance_km < 600:
+        return 4
+    if distance_km < 1200:
+        return 5
+    return max(6, min(8, int(distance_km // 200)))
 
 # Threshold at which a sampled point emits a synthetic HEATWAVE event.
 # 38 °C matches the Copernicus C3S heatwave definition for southern
@@ -83,7 +93,7 @@ async def weather_along_route(
 ) -> tuple[WeatherSegment, ...]:
     if route.distance_km <= 0:
         return ()
-    samples = _sample_points(route, _SAMPLE_POINTS)
+    samples = _sample_points(route, _n_samples(route.distance_km))
     if not samples:
         return ()
 
@@ -204,7 +214,7 @@ async def heatwave_events_along_route(
     """
     if route.distance_km <= 0:
         return ()
-    samples = _sample_points(route, _SAMPLE_POINTS)
+    samples = _sample_points(route, _n_samples(route.distance_km))
     if not samples:
         return ()
 

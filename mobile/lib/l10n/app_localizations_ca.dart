@@ -47,6 +47,36 @@ class AppLocalizationsCa extends AppLocalizations {
       'Fires, storms, earthquakes, road closures. Only events that affect your specific route, before you reach them.';
 
   @override
+  String get onboardCostFuel => 'Combustible';
+
+  @override
+  String get onboardCostTolls => 'Peatges';
+
+  @override
+  String get onboardCostMeals => 'Menjars';
+
+  @override
+  String get onboardCostHotel => 'Hotel';
+
+  @override
+  String get onboardCostTotal => 'TOTAL';
+
+  @override
+  String get onboardSavingsTitle => 'Estalvis detectats';
+
+  @override
+  String get onboardSavingsToll => 'Peatge alternatiu';
+
+  @override
+  String get onboardSavingsFuel => 'Gasolinera òptima';
+
+  @override
+  String get onboardSavingsHotel => 'Millor hotel';
+
+  @override
+  String get onboardSavingsTotal => 'TOTAL ESTALVIAT';
+
+  @override
   String get onboardSkip => 'Skip';
 
   @override
@@ -1915,6 +1945,20 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get styleDrivingStartLabel => 'Preferred time to start driving';
+
+  @override
+  String get drivingWindowNightStart => 'Conducció nocturna a l\'inici';
+
+  @override
+  String get drivingWindowNightEnd => 'Conducció nocturna al final';
+
+  @override
+  String get dayEditKmNoLimit => 'Màx. km: sense límit';
+
+  @override
+  String dayEditKmCap(int km) {
+    return 'Màx. km: $km km';
+  }
 
   @override
   String dayEditSheetTitle(int day) {
@@ -3963,7 +4007,7 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
-  String wizardBreakEvery(int n) {
+  String wizardBreakEvery(String n) {
     return 'Paro cada ${n}h';
   }
 
@@ -4033,6 +4077,15 @@ class AppLocalizationsCa extends AppLocalizations {
   @override
   String get wizardModelGenericSub =>
       'Estimación estándar por tipo de vehículo';
+
+  @override
+  String get wizardTollFreeDetour => 'Desviament lliure';
+
+  @override
+  String get wizardTollMotorway => 'Autopista';
+
+  @override
+  String get wizardTollFaster => 'Més ràpid';
 
   @override
   String get wizardTollTitle => '¿Evitamos peajes?';
@@ -4206,6 +4259,22 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get replanTipStops => 'Ajustando paradas y tiempos de llegada...';
+
+  @override
+  String tripDayBarsCap(int n) {
+    return 'Límit: ${n}h';
+  }
+
+  @override
+  String tripDayBarsUnselected(int n) {
+    return '$n parada(es) sense afegir';
+  }
+
+  @override
+  String get tripDayBarsHint => 'Toca + per incloure-les en la durada total';
+
+  @override
+  String get tripDayBarsCapLabel => 'Límit';
 
   @override
   String get tripDayBarsTitle => 'Distribució per etapes';

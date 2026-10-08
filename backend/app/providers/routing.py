@@ -209,6 +209,16 @@ def _fake_polyline(
     return f"mock:{digest[:16]}"
 
 
+# In-process cache for OSRM route responses.
+# Key: (origin_lat_r3, origin_lon_r3, dest_lat_r3, dest_lon_r3,
+#        avoid_tolls, avoid_motorways, waypoints_tuple_r3)
+# TTL: 1 h — road data changes rarely; the /plan/core + /plan/enrich
+# split fires two independent preamble calls for the same trip; caching
+# the route means the second call (whichever lands second) hits memory.
+_OSRM_ROUTE_CACHE: dict[tuple, tuple["Route", float]] = {}
+_OSRM_ROUTE_CACHE_TTL_S = 3600  # 1 h
+
+
 class OsrmRoutingProvider:
     """Real routing via OpenStreetMap's OSRM service.
 
@@ -224,6 +234,10 @@ class OsrmRoutingProvider:
     If OSRM is unreachable or returns an error, the provider raises
     `httpx.HTTPError`; the caller (typically the composite/fallback
     provider) can decide to retry with the mock.
+
+    Route results are cached 1 h in-process so repeated calls for the
+    same corridor (e.g. /plan/core + /plan/enrich fired concurrently)
+    share one OSRM round-trip.
     """
 
     _DEFAULT_URL = "https://router.project-osrm.org"
@@ -249,6 +263,19 @@ class OsrmRoutingProvider:
         avoid_motorways: bool = False,
         prefer_scenic: bool = False,  # noqa: ARG002 - see docstring
     ) -> Route:
+        cache_key = (
+            round(origin.lat, 3), round(origin.lon, 3),
+            round(destination.lat, 3), round(destination.lon, 3),
+            avoid_tolls, avoid_motorways,
+            tuple((round(c.lat, 3), round(c.lon, 3)) for c in waypoints),
+        )
+        cached = _OSRM_ROUTE_CACHE.get(cache_key)
+        if cached is not None:
+            cached_route, ts = cached
+            if time.time() - ts < _OSRM_ROUTE_CACHE_TTL_S:
+                _log.debug("OSRM: cache hit for %s→%s", origin, destination)
+                return cached_route
+
         # Join origin + intermediate waypoints + destination as
         # semicolon-separated `lon,lat` pairs (OSRM's convention).
         # Public demo caps at ~10 total coords; the API layer
@@ -302,7 +329,7 @@ class OsrmRoutingProvider:
         distance_km = distance_m / 1000.0
         toll = 0.0 if avoid_tolls else _apply_toll_pricing(distance_km, countries)
 
-        return Route(
+        result = Route(
             origin=origin,
             destination=destination,
             distance_km=round(distance_km, 1),
@@ -314,6 +341,8 @@ class OsrmRoutingProvider:
             geometry=geometry,
             avoid_tolls=avoid_tolls,
         )
+        _OSRM_ROUTE_CACHE[cache_key] = (result, time.time())
+        return result
 
 
 def _sample_evenly(

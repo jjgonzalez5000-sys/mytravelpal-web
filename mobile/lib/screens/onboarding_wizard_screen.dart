@@ -63,9 +63,9 @@ class _OnboardingWizardScreenState
   double _consumptionL100km = 7.0;
   double _tankL = 50.0;
   bool _avoidTolls = true;
-  int _wakeHour = 8;
-  int _breakHours = 3;
-  int _bedtimeHour = 22;
+  double _wakeHour = 8.0;
+  double _breakHours = 3.0;
+  double _bedtimeHour = 22.0;
   PriceBand _hotelBudget = PriceBand.mid;
   PriceBand _mealBudget = PriceBand.mid;
 
@@ -94,9 +94,9 @@ class _OnboardingWizardScreenState
       existing.copyWith(
         hasKids: _hasKids,
         hasPets: _hasPets,
-        wakeHour: _wakeHour,
-        bedtimeHour: _bedtimeHour,
-        dailyDrivingCapHours: (_bedtimeHour - _wakeHour - 1).clamp(3, 14),
+        wakeHour: _wakeHour.round(),
+        bedtimeHour: _bedtimeHour.round(),
+        dailyDrivingCapHours: (_bedtimeHour - _wakeHour - 1).round().clamp(3, 14),
         vehicle: existing.vehicle.copyWith(
           type: _vehicleType,
           fuelType: _fuelType,
@@ -912,9 +912,9 @@ class _VehicleContent extends StatelessWidget {
 class _RhythmVisual extends StatelessWidget {
   const _RhythmVisual(
       {required this.wake, required this.brk, required this.bed});
-  final int wake;
-  final int brk;
-  final int bed;
+  final double wake;
+  final double brk;
+  final double bed;
 
   @override
   Widget build(BuildContext context) {
@@ -938,7 +938,7 @@ class _RhythmVisual extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     _TimeChip(icon: Icons.wb_sunny_outlined,
-                        label: '${wake.toString().padLeft(2, '0')}:00', color: hl),
+                        label: '${wake.floor().toString().padLeft(2, '0')}:${wake % 1 >= 0.5 ? "30" : "00"}', color: hl),
                     Expanded(
                       child: Container(
                         height: 2,
@@ -951,7 +951,7 @@ class _RhythmVisual extends StatelessWidget {
                       ),
                     ),
                     _TimeChip(icon: Icons.bedtime_outlined,
-                        label: '${bed.toString().padLeft(2, '0')}:00', color: hl),
+                        label: '${bed.floor().toString().padLeft(2, '0')}:${bed % 1 >= 0.5 ? "30" : "00"}', color: hl),
                   ],
                 ),
                 const SizedBox(height: 12),
@@ -961,7 +961,7 @@ class _RhythmVisual extends StatelessWidget {
                     Icon(Icons.coffee_outlined, size: 14,
                         color: hl.withValues(alpha: 0.7)),
                     const SizedBox(width: 6),
-                    Text('Pausa cada ${brk}h',
+                    Text('Pausa cada ${brk % 1.0 >= 0.5 ? "${brk.floor()}h 30m" : "${brk.floor()}h"}',
                         style: TextStyle(
                             color: hl.withValues(alpha: 0.7),
                             fontSize: 12,
@@ -1065,12 +1065,12 @@ class _RhythmContent extends StatelessWidget {
     required this.mealBudget,
     required this.onChanged,
   });
-  final int wakeHour;
-  final int breakHours;
-  final int bedtimeHour;
+  final double wakeHour;
+  final double breakHours;
+  final double bedtimeHour;
   final PriceBand hotelBudget;
   final PriceBand mealBudget;
-  final void Function(int wake, int brk, int bed, PriceBand hotel,
+  final void Function(double wake, double brk, double bed, PriceBand hotel,
       PriceBand meal) onChanged;
 
   @override
@@ -1098,29 +1098,30 @@ class _RhythmContent extends StatelessWidget {
           _WizardSlider(
             label: l.wizardWakeHour(_fmtH(wakeHour)),
             icon: Icons.wb_sunny_outlined,
-            value: wakeHour.toDouble(),
-            min: 5, max: 12, divisions: 7,
+            value: wakeHour,
+            min: 5, max: 12, divisions: 14,
             highlight: hl,
             onChanged: (v) => onChanged(
-                v.round(), breakHours, bedtimeHour, hotelBudget, mealBudget),
+                _snapHalf(v), breakHours, bedtimeHour, hotelBudget, mealBudget),
           ),
           _WizardSlider(
-            label: l.wizardBreakEvery(breakHours),
+            label: l.wizardBreakEvery(
+                '${breakHours.floor()}h${breakHours % 1.0 >= 0.5 ? " 30m" : ""}'),
             icon: Icons.coffee_outlined,
-            value: breakHours.toDouble(),
-            min: 1, max: 5, divisions: 4,
+            value: breakHours,
+            min: 1, max: 5, divisions: 8,
             highlight: hl,
             onChanged: (v) => onChanged(
-                wakeHour, v.round(), bedtimeHour, hotelBudget, mealBudget),
+                wakeHour, _snapHalf(v), bedtimeHour, hotelBudget, mealBudget),
           ),
           _WizardSlider(
             label: l.wizardBedtime(_fmtH(bedtimeHour)),
             icon: Icons.bedtime_outlined,
-            value: bedtimeHour.toDouble(),
-            min: 18, max: 24, divisions: 6,
+            value: bedtimeHour,
+            min: 18, max: 24, divisions: 12,
             highlight: hl,
             onChanged: (v) => onChanged(
-                wakeHour, breakHours, v.round(), hotelBudget, mealBudget),
+                wakeHour, breakHours, _snapHalf(v), hotelBudget, mealBudget),
           ),
           const SizedBox(height: 6),
           // "Not written in stone" reassurance
@@ -1180,7 +1181,22 @@ class _RhythmContent extends StatelessWidget {
     );
   }
 
-  String _fmtH(int h) => '${h.toString().padLeft(2, '0')}:00';
+  /// Snap a slider value to the nearest 0.5.
+  double _snapHalf(double v) => (v * 2).round() / 2.0;
+
+  /// Format hours as HH:MM, supporting .5 = :30.
+  String _fmtH(double h) {
+    final whole = h.floor();
+    final mins = h % 1.0 >= 0.5 ? '30' : '00';
+    return '${whole.toString().padLeft(2, '0')}:$mins';
+  }
+
+  /// Format break interval as "2h" or "2h 30m".
+  String _fmtBreak(double h) {
+    final whole = h.floor();
+    if (h % 1.0 >= 0.5) return '${whole}h 30m';
+    return '${whole}h';
+  }
 }
 
 class _WizardSlider extends StatelessWidget {
@@ -1872,23 +1888,31 @@ class _TollVisual extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              _TollCompCard(
-                icon: Icons.alt_route,
-                label: 'Desvío libre',
-                value: '+12 min',
-                savings: 'Ahorro €8',
-                selected: avoidTolls,
-                highlight: hl,
-              ),
-              const SizedBox(width: 12),
-              _TollCompCard(
-                icon: Icons.toll_outlined,
-                label: 'Autopista',
-                value: '€8',
-                savings: 'Más rápido',
-                selected: !avoidTolls,
-                highlight: Colors.white54,
-              ),
+              Builder(builder: (ctx) {
+                final lc = AppLocalizations.of(ctx);
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _TollCompCard(
+                      icon: Icons.alt_route,
+                      label: lc.wizardTollFreeDetour,
+                      value: '+12 min',
+                      savings: 'Ahorro €8',
+                      selected: avoidTolls,
+                      highlight: hl,
+                    ),
+                    const SizedBox(width: 12),
+                    _TollCompCard(
+                      icon: Icons.toll_outlined,
+                      label: lc.wizardTollMotorway,
+                      value: '€8',
+                      savings: lc.wizardTollFaster,
+                      selected: !avoidTolls,
+                      highlight: Colors.white54,
+                    ),
+                  ],
+                );
+              }),
             ],
           ).animate(delay: 200.ms).fadeIn(duration: 350.ms),
         ],
@@ -1963,7 +1987,8 @@ class _TollContent extends StatelessWidget {
     final t = Theme.of(context).textTheme;
     final hl = _kHighlights[3];
 
-    return Column(
+    return SingleChildScrollView(
+      child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -2078,7 +2103,8 @@ class _TollContent extends StatelessWidget {
             style: t.labelSmall?.copyWith(color: Colors.white30))
             .animate().fadeIn(delay: 550.ms, duration: 300.ms),
       ],
-    );
+      ), // closes Column
+    ); // closes SingleChildScrollView
   }
 }
 

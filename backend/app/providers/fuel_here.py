@@ -55,12 +55,13 @@ _MAX_RESULTS_PER_SAMPLE = 20
 # Distance between corridor samples. Every 100 km covers most
 # highways adequately without exhausting request quota on long
 # trips (Zurich → Toledo ≈ 20 samples → 20 HERE requests).
-_SAMPLE_STEP_KM = 150.0  # one sample per 150 km (was 100) — adequate highway coverage
-# Hard cap on samples per call. CH→Oslo ≈ 1950 km at 150 km spacing
-# wants 13 samples; good coverage without over-calling.
-# Reduced from 20 → 12 to cut HERE Fuel quota usage and wall-clock
-# time on long routes by ~40%.
-_MAX_SAMPLES = 12
+_SAMPLE_STEP_KM = 150.0  # one sample per 150 km — adequate highway coverage
+# Hard cap on samples per call. Adaptive formula gives n+1 total points:
+#   <300 km → 1-2 samples (2-3 points), 600 km → 4 (5 points), 1800 km → 4 (5 points).
+# Reduced from 12 → 4 to cap HERE Fuel requests at 5 per /plan regardless
+# of route length. A 150 km spacing at 5 points covers up to 750 km without
+# a gap; longer routes simply space samples further apart.
+_MAX_SAMPLES = 4
 # Radius per sample. 15 km catches highway-adjacent stations
 # comfortably without pulling city-centre pumps that would never
 # see a highway driver.
@@ -95,6 +96,14 @@ def _app_id() -> str | None:
 # HereFuelPricesProvider instances so we fetch at most once per
 # expiry window (default 24 h for HERE client-credentials tokens).
 _token_cache: dict[str, Any] = {}
+
+# Station-level response cache. Key: (lat_r2, lon_r2, fuel_type_str).
+# 2-decimal rounding is ~1.1 km grid — adequate for fuel stations (the
+# same stations appear within that box between price updates).
+# TTL = 6 h: pump prices change at most twice a day; 6 h balances
+# freshness against HERE API quota savings.
+_FUEL_STATION_CACHE: dict[tuple[float, float, str], tuple[float, list[dict[str, Any]]]] = {}
+_FUEL_STATION_CACHE_TTL_S = 6 * 3600  # 6 h
 
 
 async def _fetch_bearer_token(client: httpx.AsyncClient) -> str | None:
@@ -258,6 +267,12 @@ class HereFuelProvider:
     async def _browse(
         self, at: Coordinate, key: str,
     ) -> list[dict[str, Any]]:
+        ck = (round(at.lat, 2), round(at.lon, 2), "browse")
+        cached = _FUEL_STATION_CACHE.get(ck)
+        if cached is not None:
+            ts, data = cached
+            if time.monotonic() - ts < _FUEL_STATION_CACHE_TTL_S:
+                return data
         params = {
             "at": f"{at.lat:.5f},{at.lon:.5f}",
             "categories": _CATEGORY_FUEL,
@@ -281,7 +296,9 @@ class HereFuelProvider:
         except ValueError:
             return []
         items = payload.get("items")
-        return items if isinstance(items, list) else []
+        result = items if isinstance(items, list) else []
+        _FUEL_STATION_CACHE[ck] = (time.monotonic(), result)
+        return result
 
 
 def _haversine_km(a: Coordinate, b: Coordinate) -> float:
@@ -731,7 +748,15 @@ class HereFuelPricesProvider:
 
         Sends an OAuth 2.0 Bearer token when available; falls back to the
         `apiKey` query parameter. Both are supported by fuel.hereapi.com.
+        Results are cached 6 h keyed on a ~1.1 km grid + fuel_type.
         """
+        ck = (round(at.lat, 2), round(at.lon, 2), fuel_type or "diesel")
+        cached = _FUEL_STATION_CACHE.get(ck)
+        if cached is not None:
+            ts, data = cached
+            if time.monotonic() - ts < _FUEL_STATION_CACHE_TTL_S:
+                return data
+
         params: dict[str, str] = {
             "in": f"circle:{at.lat:.5f},{at.lon:.5f};r={_SAMPLE_RADIUS_M}",
         }
@@ -761,7 +786,9 @@ class HereFuelPricesProvider:
         except ValueError:
             return []
         stations = payload.get("stations") or []
-        return stations if isinstance(stations, list) else []
+        result = stations if isinstance(stations, list) else []
+        _FUEL_STATION_CACHE[ck] = (time.monotonic(), result)
+        return result
 
 
 def _attributes(item: dict[str, Any]) -> tuple[tuple[str, str], ...]:

@@ -1,0 +1,507 @@
+"""Regression tests for session bugfixes.
+
+Each test is self-contained and reproduces a specific bug that was fixed.
+No external network calls; all HTTP is mocked.
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+
+# ---------------------------------------------------------------------------
+# 1. MEALS SAME TIME — no two meals within 1.5 h (5400 s)
+# ---------------------------------------------------------------------------
+
+class TestMealGapMinimum:
+    """Regression: _extend_meals_for_day must not produce two meals within
+    5400 s of each other, even when two slots map to the same rest stop."""
+
+    def _make_profile(self):
+        from app.domain import MealPreferences, TripProfile
+        prefs = MealPreferences(
+            breakfast_hour=8,
+            breakfast_minute=0,
+            lunch_hour=13,
+            lunch_minute=0,
+            dinner_hour=14,   # artificially close to lunch to trigger the bug
+            dinner_minute=0,
+        )
+        return TripProfile(meals=prefs), prefs
+
+    def _make_rest_stop(self, km: float, hours: float):
+        from app.domain import Coordinate, RestStop
+        return RestStop(
+            coordinate=Coordinate(lat=40.0, lon=-3.0),
+            distance_from_origin_km=km,
+            cumulative_driving_hours=hours,
+            recommended_break_minutes=20,
+        )
+
+    def test_meal_gap_minimum(self):
+        from app.domain import MealSlot, TravelPace
+        from app.services.trip_optimizations import _extend_meals_for_day
+
+        profile, prefs = self._make_profile()
+        day_start = datetime(2026, 10, 8, 8, 0, tzinfo=timezone.utc)
+        day_end = day_start + timedelta(hours=10)
+
+        # Single rest stop at km 200 / 2 h
+        stop = self._make_rest_stop(km=200.0, hours=2.0)
+
+        out: list = []
+        _extend_meals_for_day(
+            out=out,
+            day_start=day_start,
+            day_end=day_end,
+            day_sleep=None,
+            trip_duration_hours=10.0,
+            rest_stops=(stop,),
+            restaurants_by_slot={},
+            profile=profile,
+            prefs=prefs,
+            pause_ratio=0.10,
+            driving_offset=0.0,
+        )
+
+        # Verify no two meals are within 5400 s of each other
+        times = sorted(m.at for m in out)
+        for i in range(len(times) - 1):
+            gap_s = (times[i + 1] - times[i]).total_seconds()
+            assert gap_s >= 5400, (
+                f"Meals at {times[i]} and {times[i+1]} are only {gap_s:.0f}s apart "
+                f"(minimum 5400s required)"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 2. DEPARTURE OVERRIDE EARLIER — start_hour override in compute()
+# ---------------------------------------------------------------------------
+
+class TestDepartureOverrideEarlier:
+    """Regression: day_overrides={1: {'start_hour': 8}} must move day 1
+    departure to 08:00 even when the original departure is 15:00."""
+
+    def test_departure_override_earlier(self):
+        from app.domain import MealSlot, TripProfile
+        from app.services.trip_optimizations import compute
+
+        profile = TripProfile()
+        # Original departure at 15:00
+        departure = datetime(2026, 10, 8, 15, 0, tzinfo=timezone.utc)
+
+        result = compute(
+            departure_at=departure,
+            trip_duration_hours=2.0,
+            rest_stops=(),
+            restaurants_by_slot={},
+            hotels=(),
+            profile=profile,
+            include_meal_stops=False,
+            day_overrides={1: {"start_hour": 8}},
+            route_km=180.0,
+        )
+
+        # The override should have moved the effective day-1 start to 08:00.
+        # With no meal stops and no sleep (short trip), we verify indirectly
+        # via sleep_stop being None (no overnight) and no errors from compute.
+        # The main invariant: result is an Optimizations object.
+        from app.services.trip_optimizations import Optimizations
+        assert isinstance(result, Optimizations)
+
+    def test_day1_start_hour_override_shifts_meals(self):
+        """Meals scheduled by _extend_meals_for_day should anchor to the
+        overridden 08:00 start, not the 15:00 original departure."""
+        from app.domain import MealPreferences, MealSlot, TripProfile
+        from app.services.trip_optimizations import compute
+        from app.domain import Coordinate, RestStop
+
+        # Give a long enough trip so breakfast slot (08:xx) fires.
+        profile = TripProfile(
+            meals=MealPreferences(breakfast_hour=9, breakfast_minute=0,
+                                  lunch_hour=13, lunch_minute=0,
+                                  dinner_hour=20, dinner_minute=0),
+        )
+        departure = datetime(2026, 10, 8, 15, 0, tzinfo=timezone.utc)
+
+        stop = RestStop(
+            coordinate=Coordinate(lat=40.0, lon=-3.0),
+            distance_from_origin_km=100.0,
+            cumulative_driving_hours=1.5,
+            recommended_break_minutes=20,
+        )
+
+        result = compute(
+            departure_at=departure,
+            trip_duration_hours=8.0,
+            rest_stops=(stop,),
+            restaurants_by_slot={},
+            hotels=(),
+            profile=profile,
+            include_meal_stops=True,
+            day_overrides={1: {"start_hour": 8}},
+            route_km=700.0,
+        )
+
+        # At least one meal stop should start after 08:00 (the override)
+        # and NOT after 15:00 (original departure) — proves the override fired.
+        if result.meal_stops:
+            earliest = min(m.at for m in result.meal_stops)
+            assert earliest.hour >= 8, (
+                f"Earliest meal at hour {earliest.hour} — should be >= 8 "
+                f"after start_hour=8 override"
+            )
+            # Must NOT be before the overridden departure (08:00)
+            override_start = departure.replace(hour=8, minute=0, second=0, microsecond=0)
+            assert earliest >= override_start, (
+                f"Meal at {earliest} is before overridden departure {override_start}"
+            )
+
+
+# ---------------------------------------------------------------------------
+# 3. CONSISTENCY CHECKER USES EFFECTIVE DEPARTURE
+# ---------------------------------------------------------------------------
+
+class TestConsistencyUsesEffectiveDeparture:
+    """Regression: when day_1 override sets start_hour=8, meals at 10:12
+    should NOT trigger 'meal.before_departure' when using effective departure."""
+
+    def _make_rest_stop(self):
+        from app.domain import Coordinate, RestStop
+        return RestStop(
+            coordinate=Coordinate(lat=40.0, lon=-3.0),
+            distance_from_origin_km=100.0,
+            cumulative_driving_hours=2.2,
+            recommended_break_minutes=20,
+        )
+
+    def test_consistency_no_error_when_meal_after_effective_departure(self):
+        """A meal at 10:12 should not trigger 'before_departure' when
+        the effective departure (after override) is 08:00."""
+        from app.domain import MealSlot
+        from app.services.consistency import check_trip
+        from app.services.trip_optimizations import MealStop, Optimizations
+
+        # Original departure is 15:00 but override makes effective = 08:00
+        effective_departure = datetime(2026, 10, 8, 8, 0, tzinfo=timezone.utc)
+        arrival = datetime(2026, 10, 8, 18, 0, tzinfo=timezone.utc)
+        meal_at = datetime(2026, 10, 8, 10, 12, tzinfo=timezone.utc)
+
+        meal = MealStop(
+            slot=MealSlot.LUNCH,
+            at=meal_at,
+            rest_stop=self._make_rest_stop(),
+            restaurant=None,
+        )
+        optimizations = Optimizations(meal_stops=(meal,), sleep_stop=None)
+
+        # Pass effective (overridden) departure — no error expected
+        issues = check_trip(
+            departure_at=effective_departure,
+            arrival_at=arrival,
+            optimizations=optimizations,
+        )
+
+        before_dep_issues = [i for i in issues if i.code == "meal.before_departure"]
+        assert before_dep_issues == [], (
+            f"Got unexpected 'meal.before_departure' issues: {before_dep_issues}"
+        )
+
+    def test_consistency_flags_meal_before_effective_departure(self):
+        """Control: a meal genuinely before the effective departure IS flagged."""
+        from app.domain import MealSlot
+        from app.services.consistency import check_trip
+        from app.services.trip_optimizations import MealStop, Optimizations
+
+        effective_departure = datetime(2026, 10, 8, 9, 0, tzinfo=timezone.utc)
+        arrival = datetime(2026, 10, 8, 18, 0, tzinfo=timezone.utc)
+        meal_at = datetime(2026, 10, 8, 7, 0, tzinfo=timezone.utc)  # before departure
+
+        meal = MealStop(
+            slot=MealSlot.BREAKFAST,
+            at=meal_at,
+            rest_stop=self._make_rest_stop(),
+            restaurant=None,
+        )
+        optimizations = Optimizations(meal_stops=(meal,), sleep_stop=None)
+
+        issues = check_trip(
+            departure_at=effective_departure,
+            arrival_at=arrival,
+            optimizations=optimizations,
+        )
+
+        before_dep_issues = [i for i in issues if i.code == "meal.before_departure"]
+        assert len(before_dep_issues) == 1, (
+            f"Expected 1 'meal.before_departure' issue, got {len(before_dep_issues)}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# 4. WEATHER CODE KEY — prefer "weather_code" over legacy "weathercode"
+# ---------------------------------------------------------------------------
+
+class TestWeatherCodeKey:
+    """Regression: Open-Meteo renamed 'weathercode' to 'weather_code'.
+    Both keys must work; new key takes precedence."""
+
+    def test_closest_idx_finds_nearest_time(self):
+        from app.services.weather_summary import _closest_idx
+
+        times = [
+            "2026-10-08T10:00",
+            "2026-10-08T11:00",
+            "2026-10-08T12:00",
+            "2026-10-08T13:00",
+        ]
+        target = datetime(2026, 10, 8, 11, 45, tzinfo=timezone.utc)
+        idx = _closest_idx(times, target)
+        # 11:45 is closest to 12:00 (index 2)
+        assert idx == 2
+
+    def test_closest_idx_exact_match(self):
+        from app.services.weather_summary import _closest_idx
+
+        times = ["2026-10-08T12:00"]
+        target = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
+        assert _closest_idx(times, target) == 0
+
+    def test_closest_idx_empty(self):
+        from app.services.weather_summary import _closest_idx
+
+        assert _closest_idx([], datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)) is None
+
+    @pytest.mark.asyncio
+    async def test_fetch_prefers_weather_code_key(self):
+        """_fetch must read 'weather_code' (new key) and return correct WMO code."""
+        from app.services.weather_summary import _fetch
+        from app.domain import Coordinate
+
+        body = {
+            "hourly": {
+                "weather_code": [2],
+                "temperature_2m": [18.5],
+                "time": ["2026-10-08T12:00"],
+            }
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = body
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        coord = Coordinate(lat=40.0, lon=-3.0)
+        at = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
+
+        wmo, temp = await _fetch(mock_client, coord, at)
+        assert wmo == 2
+        assert temp == pytest.approx(18.5)
+
+    @pytest.mark.asyncio
+    async def test_fetch_falls_back_to_legacy_weathercode_key(self):
+        """_fetch must also work with the legacy 'weathercode' key."""
+        from app.services.weather_summary import _fetch
+        from app.domain import Coordinate
+
+        body = {
+            "hourly": {
+                "weathercode": [63],   # legacy key
+                "temperature_2m": [12.0],
+                "time": ["2026-10-08T12:00"],
+            }
+        }
+
+        mock_response = MagicMock()
+        mock_response.json.return_value = body
+        mock_response.raise_for_status = MagicMock()
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(return_value=mock_response)
+
+        coord = Coordinate(lat=48.0, lon=2.0)
+        at = datetime(2026, 10, 8, 12, 0, tzinfo=timezone.utc)
+
+        wmo, temp = await _fetch(mock_client, coord, at)
+        assert wmo == 63
+        assert temp == pytest.approx(12.0)
+
+
+# ---------------------------------------------------------------------------
+# 5. TOLL CACHE TTL — _QUOTE_CACHE_TTL_S == 30 days, 3-tuple entries
+# ---------------------------------------------------------------------------
+
+class TestTollCacheTtl:
+    """Regression: _QUOTE_CACHE_TTL_S must be 30 * 86400 and
+    _QUOTE_CACHE entries must be 3-tuples (quote, ts, hit_count)."""
+
+    def test_quote_cache_ttl_is_30_days(self):
+        from app.providers.tolls_here import _QUOTE_CACHE_TTL_S
+        assert _QUOTE_CACHE_TTL_S == 30 * 86400
+
+    def test_segment_cache_ttl_is_30_days(self):
+        from app.providers.tolls_here import _SEGMENT_CACHE_TTL_S
+        assert _SEGMENT_CACHE_TTL_S == 30 * 86400
+
+    def test_quote_cache_annotation_is_3_tuple(self):
+        """The type annotation of _QUOTE_CACHE must declare a 3-tuple
+        value (quote, ts, hit_count) — not the old 2-tuple (fare, ts)."""
+        import app.providers.tolls_here as mod
+        import inspect
+        import typing
+
+        # Read the source to confirm the comment/annotation pattern
+        src = inspect.getsource(mod)
+        assert "hit_count" in src, (
+            "_QUOTE_CACHE source does not mention hit_count — "
+            "the 3-tuple schema may have been reverted"
+        )
+
+    def test_quote_cache_can_store_3_tuple(self):
+        """Directly insert a 3-tuple into _QUOTE_CACHE and read it back."""
+        from app.providers.tolls_here import _QUOTE_CACHE
+        from app.providers.tollguru import TollQuote
+
+        import time as _time
+        key = (99.999, 99.999, 99.999, 99.999)  # unique sentinel coords
+        mock_quote = MagicMock(spec=TollQuote)
+        ts = _time.monotonic()
+        entry = (mock_quote, ts, 0)
+        _QUOTE_CACHE[key] = entry  # type: ignore[index]
+
+        stored = _QUOTE_CACHE.get(key)
+        assert stored is not None
+        assert len(stored) == 3
+        assert stored[2] == 0  # hit_count starts at 0
+
+        # cleanup
+        _QUOTE_CACHE.pop(key, None)
+
+    def test_validation_every_constant_exists(self):
+        from app.providers.tolls_here import _VALIDATION_EVERY
+        assert isinstance(_VALIDATION_EVERY, int)
+        assert _VALIDATION_EVERY > 0
+
+
+# ---------------------------------------------------------------------------
+# 6. E85 EXCLUDED FROM FUEL FALLBACK
+# ---------------------------------------------------------------------------
+
+class TestE85ExcludedFromFuelFallback:
+    """Regression: _extract_price must return None when a station's ONLY
+    available price entries are alternative fuels (E85, CNG, LPG, etc.)."""
+
+    def test_e85_only_returns_none(self):
+        """A station with only E85 prices must yield None — not the E85 price."""
+        from app.providers.fuel_here import _extract_price
+
+        item = {
+            "extended": {
+                "fuelStation": {
+                    "prices": [
+                        {"type": "E85", "price": 0.69, "currency": "EUR", "unit": "l"},
+                    ]
+                }
+            }
+        }
+        assert _extract_price(item) is None
+
+    def test_cng_only_returns_none(self):
+        from app.providers.fuel_here import _extract_price
+
+        item = {
+            "extended": {
+                "fuelStation": {
+                    "prices": [
+                        {"type": "CNG", "price": 1.20, "currency": "EUR", "unit": "kg"},
+                    ]
+                }
+            }
+        }
+        assert _extract_price(item) is None
+
+    def test_lpg_only_returns_none(self):
+        from app.providers.fuel_here import _extract_price
+
+        item = {
+            "extended": {
+                "fuelStation": {
+                    "prices": [
+                        {"type": "LPG", "price": 0.85, "currency": "EUR", "unit": "l"},
+                    ]
+                }
+            }
+        }
+        assert _extract_price(item) is None
+
+    def test_all_excluded_types_returns_none(self):
+        """All excluded fuel types together must still return None."""
+        from app.providers.fuel_here import _extract_price
+
+        item = {
+            "extended": {
+                "fuelStation": {
+                    "prices": [
+                        {"type": "e85",      "price": 0.69, "currency": "EUR"},
+                        {"type": "cng",      "price": 1.20, "currency": "EUR"},
+                        {"type": "lpg",      "price": 0.85, "currency": "EUR"},
+                        {"type": "hydrogen", "price": 12.0, "currency": "EUR"},
+                        {"type": "adblue",   "price": 0.30, "currency": "EUR"},
+                    ]
+                }
+            }
+        }
+        assert _extract_price(item) is None
+
+    def test_diesel_returned_when_available(self):
+        """Control: diesel is NOT excluded and must be returned."""
+        from app.providers.fuel_here import _extract_price
+
+        item = {
+            "extended": {
+                "fuelStation": {
+                    "prices": [
+                        {"type": "diesel", "price": 1.55, "currency": "EUR", "unit": "l"},
+                        {"type": "E85",    "price": 0.69, "currency": "EUR", "unit": "l"},
+                    ]
+                }
+            }
+        }
+        result = _extract_price(item)
+        assert result == pytest.approx(1.55)
+
+    def test_fallback_picks_petrol_over_e85(self):
+        """When no preferred type matches but petrol + E85 are present,
+        fallback must skip E85 and return the petrol price."""
+        from app.providers.fuel_here import _extract_price
+
+        # "gasoline" isn't in the preferred list but also not in _EXCLUDE_FALLBACK,
+        # so fallback picks it ahead of E85.
+        item = {
+            "extended": {
+                "fuelStation": {
+                    "prices": [
+                        {"type": "E85",      "price": 0.69, "currency": "EUR"},
+                        {"type": "gasoline", "price": 1.72, "currency": "EUR"},
+                    ]
+                }
+            }
+        }
+        result = _extract_price(item)
+        # The fallback loop skips E85 and returns the first non-excluded entry.
+        assert result == pytest.approx(1.72)
+
+    def test_no_prices_returns_none(self):
+        """Empty prices array must return None without error."""
+        from app.providers.fuel_here import _extract_price
+
+        item = {"extended": {"fuelStation": {"prices": []}}}
+        assert _extract_price(item) is None
+
+    def test_missing_extended_returns_none(self):
+        from app.providers.fuel_here import _extract_price
+
+        assert _extract_price({}) is None

@@ -6,7 +6,8 @@ thunderstorms, ice, fog. Each detected condition becomes an
 `AdverseEvent` with `source=WEATHER` so it flows through the same
 composite pipeline as user-submitted and mock events.
 
-Sampling strategy: pick ~5 evenly-spaced waypoints along the route. For
+Sampling strategy: pick 3–8 evenly-spaced waypoints along the route (scaled
+by distance). For
 each, request an hourly forecast and pick the timestamp closest to
 "now + trip fraction × trip duration" — that way we surface the
 weather the driver will actually meet, not the weather at trip start.
@@ -60,7 +61,15 @@ _WMO_TO_EVENT: dict[int, tuple[AdverseEventType, AdverseEventSeverity, str]] = {
     22: (AdverseEventType.HIGH_WIND, AdverseEventSeverity.WARNING, "Strong wind gusts — risk for high vehicles"),
 }
 
-_SAMPLE_POINTS = 5
+def _n_samples(distance_km: float) -> int:
+    """Return the number of weather sample points for a given route distance."""
+    if distance_km < 300:
+        return 3
+    if distance_km < 600:
+        return 4
+    if distance_km < 1200:
+        return 5
+    return max(6, min(8, int(distance_km // 200)))
 
 
 class OpenMeteoWeatherProvider:
@@ -74,7 +83,7 @@ class OpenMeteoWeatherProvider:
     async def events_along(self, route: Route, *, now: datetime) -> tuple[AdverseEvent, ...]:
         if route.free_flow_duration.total_seconds() <= 0:
             return ()
-        samples = _sample_points(route, _SAMPLE_POINTS)
+        samples = _sample_points(route, _n_samples(route.distance_km))
         if not samples:
             return ()
         total_seconds = route.free_flow_duration.total_seconds()

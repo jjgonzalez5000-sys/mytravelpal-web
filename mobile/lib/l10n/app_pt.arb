@@ -546,7 +546,7 @@
   "@wizardBreakEvery": {
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -733,4 +733,36 @@
   "@tripDayBarsTitle": {},
   "styleSectionTitle": "Ritmo de conducción",
   "styleSectionEyebrow": "Cómo organizas tus jornadas"
+,
+  "onboardCostFuel": "Combustível",
+  "@onboardCostFuel": {},
+  "onboardCostTolls": "Portagens",
+  "@onboardCostTolls": {},
+  "onboardCostMeals": "Refeições",
+  "@onboardCostMeals": {},
+  "onboardCostHotel": "Hotel",
+  "@onboardCostHotel": {},
+  "onboardCostTotal": "TOTAL",
+  "@onboardCostTotal": {},
+  "onboardSavingsTitle": "Poupanças detectadas",
+  "@onboardSavingsTitle": {},
+  "onboardSavingsToll": "Portagem alternativa",
+  "@onboardSavingsToll": {},
+  "onboardSavingsFuel": "Posto óptimo",
+  "@onboardSavingsFuel": {},
+  "onboardSavingsHotel": "Melhor hotel",
+  "@onboardSavingsHotel": {},
+  "onboardSavingsTotal": "TOTAL POUPADO",
+  "@onboardSavingsTotal": {}
+,
+  "drivingWindowNightStart": "Condução nocturna no início",
+  "@drivingWindowNightStart": {},
+  "drivingWindowNightEnd": "Condução nocturna no final",
+  "@drivingWindowNightEnd": {},
+  "dayEditKmNoLimit": "Máx. km: sem limite",
+  "@dayEditKmNoLimit": {},
+  "dayEditKmCap": "Máx. km: {km} km",
+  "@dayEditKmCap": {
+    "placeholders": { "km": { "type": "int" } }
+  }
 }

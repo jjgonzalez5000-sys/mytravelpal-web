@@ -958,8 +958,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     Expanded(
                       child: Text(
                         kmCap == null
-                            ? 'Máx. km: sin límite'
-                            : 'Máx. km: $kmCap km',
+                            ? l.dayEditKmNoLimit
+                            : l.dayEditKmCap(kmCap!),
                         style: Theme.of(ctx).textTheme.labelMedium,
                       ),
                     ),
@@ -2835,7 +2835,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ],
             ),
             const SizedBox(height: Tokens.space12),
-            TripQualityScore(response: _response, request: widget.request),
+            TripQualityScore(
+              response: _response,
+              request: widget.request,
+              addedStopKeys: _addedStops.keys.toSet(),
+              selectedHotelCount: _selectedNightHotels.length,
+              pickedFuelCount: _pickedFuelSavings.keys
+                  .where(_addedStops.containsKey)
+                  .length,
+            ),
             if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space8),
               TripDayBars(

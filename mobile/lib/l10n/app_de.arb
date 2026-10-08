@@ -11,6 +11,26 @@
   "onboardEyebrowAlerts": "ECHTZEIT-WARNUNGEN",
   "onboardTitleAlerts": "Waldbrand 14 km\nvon Ihrer Route.",
   "onboardBodyAlerts": "Brände, Stürme, Erdbeben, Straßensperrungen. Nur Ereignisse, die Ihre konkrete Route betreffen.",
+  "onboardCostFuel": "Kraftstoff",
+  "@onboardCostFuel": {},
+  "onboardCostTolls": "Maut",
+  "@onboardCostTolls": {},
+  "onboardCostMeals": "Mahlzeiten",
+  "@onboardCostMeals": {},
+  "onboardCostHotel": "Hotel",
+  "@onboardCostHotel": {},
+  "onboardCostTotal": "GESAMT",
+  "@onboardCostTotal": {},
+  "onboardSavingsTitle": "Erkannte Einsparungen",
+  "@onboardSavingsTitle": {},
+  "onboardSavingsToll": "Mautalternative",
+  "@onboardSavingsToll": {},
+  "onboardSavingsFuel": "Optimale Tankstelle",
+  "@onboardSavingsFuel": {},
+  "onboardSavingsHotel": "Bestes Hotel",
+  "@onboardSavingsHotel": {},
+  "onboardSavingsTotal": "GESAMT GESPART",
+  "@onboardSavingsTotal": {},
   "onboardSkip": "Überspringen",
   "onboardContinue": "Weiter",
   "onboardGetStarted": "Loslegen",
@@ -1063,6 +1083,16 @@
   "styleBedtimeLabel": "Schlafenszeit",
   "styleWakeLabel": "Aufstehzeit",
   "styleDrivingStartLabel": "Bevorzugte Startzeit für die Fahrt",
+  "drivingWindowNightStart": "Nachtfahrt am Anfang",
+  "@drivingWindowNightStart": {},
+  "drivingWindowNightEnd": "Nachtfahrt am Ende",
+  "@drivingWindowNightEnd": {},
+  "dayEditKmNoLimit": "Max. km: unbegrenzt",
+  "@dayEditKmNoLimit": {},
+  "dayEditKmCap": "Max. km: {km} km",
+  "@dayEditKmCap": {
+    "placeholders": { "km": { "type": "int" } }
+  },
   "dayEditSheetTitle": "Tag {day} anpassen",
   "@dayEditSheetTitle": {
     "placeholders": {
@@ -2402,11 +2432,11 @@
       }
     }
   },
-  "wizardBreakEvery": "Pause alle {n}h",
+  "wizardBreakEvery": "Pause alle {n}",
   "@wizardBreakEvery": {
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -2456,6 +2486,12 @@
   "@wizardModelGeneric": {},
   "wizardModelGenericSub": "Standardschätzung für Ihren Fahrzeugtyp",
   "@wizardModelGenericSub": {},
+  "wizardTollFreeDetour": "Kostenloser Umweg",
+  "@wizardTollFreeDetour": {},
+  "wizardTollMotorway": "Autobahn",
+  "@wizardTollMotorway": {},
+  "wizardTollFaster": "Schneller",
+  "@wizardTollFaster": {},
   "wizardTollTitle": "Maut vermeiden?",
   "@wizardTollTitle": {},
   "wizardTollSubtitle": "Wir analysieren tausende Routen, um zu wissen, ob ein Umweg lohnt.",
@@ -2566,6 +2602,18 @@
   "@replanTipFuel": {},
   "replanTipStops": "Stopps und Ankunftszeiten werden angepasst...",
   "@replanTipStops": {},
+  "tripDayBarsCap": "Limit: {n}h",
+  "@tripDayBarsCap": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsUnselected": "{n} Halt(e) nicht hinzugefügt",
+  "@tripDayBarsUnselected": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsHint": "Tippe +, um sie in die Gesamtdauer einzuschließen",
+  "@tripDayBarsHint": {},
+  "tripDayBarsCapLabel": "Limit",
+  "@tripDayBarsCapLabel": {},
   "tripDayBarsTitle": "Tagesverteilung",
   "@tripDayBarsTitle": {}
 }

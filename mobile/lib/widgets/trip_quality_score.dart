@@ -21,12 +21,25 @@ class TripQualityScore extends StatefulWidget {
     super.key,
     required this.response,
     this.request,
+    this.addedStopKeys = const {},
+    this.selectedHotelCount = 0,
+    this.pickedFuelCount = 0,
   });
   final TripPlanResponse response;
 
   /// Original request that produced [response]. When provided, factor
   /// weights are adapted to the user's profile and trip options.
   final TripPlanRequest? request;
+
+  /// Keys of stops the user has explicitly added via the + button.
+  /// Used to penalise factors whose data exists but hasn't been actioned.
+  final Set<String> addedStopKeys;
+
+  /// Number of overnight hotels the user has selected (per-night).
+  final int selectedHotelCount;
+
+  /// Number of fuel stations the user has added to the route.
+  final int pickedFuelCount;
 
   @override
   State<TripQualityScore> createState() => _TripQualityScoreState();
@@ -42,7 +55,14 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     final l = AppLocalizations.of(context);
 
     // Only include applicable factors (max > 0).
-    final allFactors = _computeFactors(widget.response, widget.request, l);
+    final allFactors = _computeFactors(
+      widget.response,
+      widget.request,
+      l,
+      addedStopKeys: widget.addedStopKeys,
+      selectedHotelCount: widget.selectedHotelCount,
+      pickedFuelCount: widget.pickedFuelCount,
+    );
     final factors = allFactors.where((f) => f.max > 0).toList();
 
     final rawScore = factors.fold<int>(0, (s, f) => s + f.score);
@@ -164,7 +184,13 @@ class _TripQualityScoreState extends State<TripQualityScore> {
   }
 
   List<_QFactor> _computeFactors(
-      TripPlanResponse r, TripPlanRequest? req, AppLocalizations l) {
+    TripPlanResponse r,
+    TripPlanRequest? req,
+    AppLocalizations l, {
+    Set<String> addedStopKeys = const {},
+    int selectedHotelCount = 0,
+    int pickedFuelCount = 0,
+  }) {
     final profile = req?.tripProfile;
 
     // ---- Route geometry (max 20) ----------------------------------------
@@ -232,21 +258,25 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         score: isElectric
             ? 15
             : hasFuelPrices
-                ? 15
+                ? (pickedFuelCount == 0 ? 8 : 15)
                 : r.fuelPrices.isNotEmpty
                     ? 8
                     : 0,
         max: 15,
-        ok: isElectric || hasFuelPrices,
+        ok: isElectric || (hasFuelPrices && pickedFuelCount > 0),
       ),
 
       // Hotels — max 15 (overnight=never or not expected: auto full-score)
       _QFactor(
         icon: Icons.hotel_outlined,
         label: l.tripQualityFactorHotels,
-        score: !hotelExpected ? 15 : hasHotels ? 15 : 0,
+        score: !hotelExpected
+            ? 15
+            : hasHotels
+                ? (selectedHotelCount == 0 ? 8 : 15)
+                : 0,
         max: 15,
-        ok: !hotelExpected || hasHotels,
+        ok: !hotelExpected || (hasHotels && selectedHotelCount > 0),
       ),
 
       // Weather — max 15 (computed from segment severity; empty = perfect)
@@ -286,10 +316,10 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         score: pace == TravelPace.push
             ? 0
             : hasMealStops
-                ? stopsMax
+                ? (addedStopKeys.isEmpty ? stopsMax ~/ 2 : stopsMax)
                 : 0,
         max: stopsMax,
-        ok: pace == TravelPace.push || hasMealStops,
+        ok: pace == TravelPace.push || (hasMealStops && addedStopKeys.isNotEmpty),
       ),
     ];
   }

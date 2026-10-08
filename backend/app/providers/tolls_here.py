@@ -39,7 +39,24 @@ _TIMEOUT_S = 8.0
 # In-memory cache for segment fares: (lat1_r3, lon1_r3, lat2_r3, lon2_r3) → (fare_eur, ts)
 # Key coords rounded to 3 decimal places (~100 m precision) to maximise cache hits.
 _SEGMENT_CACHE: dict[tuple[float, float, float, float], tuple[float, float]] = {}
-_SEGMENT_CACHE_TTL_S = 86400  # 24 h — fares change rarely
+_SEGMENT_CACHE_TTL_S = 30 * 86400  # 30 days — EU toll prices change 1-2×/year
+
+# Full-route quote cache keyed on (origin_lat_r1, origin_lon_r1, dest_lat_r1, dest_lon_r1).
+# Coords rounded to 1 decimal (~11 km grid) so nearby origin/destination pairs share a
+# cache entry — a driver leaving from slightly different addresses on the same route pays
+# the same tolls. European toll prices change at most once or twice a year (January
+# vignette cycles, motorway price reviews). 30 days is very conservative.
+#
+# Cache entry: (TollQuote, timestamp, hit_count)
+# Every _VALIDATION_EVERY hits on the same cache key we fire a background
+# re-fetch to detect price drift. If the new total differs by >15% we log
+# a warning and update the entry; otherwise we silently reset the counter.
+_QUOTE_CACHE: dict[
+    tuple[float, float, float, float],
+    tuple["TollQuote", float, int],       # (quote, ts, hit_count)
+] = {}
+_QUOTE_CACHE_TTL_S = 30 * 86400  # 30 days
+_VALIDATION_EVERY = 8            # re-validate every 8th cache hit
 
 
 def _api_key() -> str | None:
@@ -65,6 +82,32 @@ class HereTollsProvider:
             return None
         if not route.geometry:
             return None
+
+        # Check route-level cache before hitting HERE.
+        # Round to 1 decimal (~11 km grid) so nearby addresses share a cache entry —
+        # toll costs for routes from the same city area are identical.
+        qk: tuple[float, float, float, float] = (
+            round(route.geometry[0].lat, 1), round(route.geometry[0].lon, 1),
+            round(route.geometry[-1].lat, 1), round(route.geometry[-1].lon, 1),
+        )
+        cached_q = _QUOTE_CACHE.get(qk)
+        if cached_q is not None:
+            cached_quote, ts, hit_count = cached_q
+            if time.time() - ts < _QUOTE_CACHE_TTL_S:
+                new_hits = hit_count + 1
+                _QUOTE_CACHE[qk] = (cached_quote, ts, new_hits)
+                _log.debug("HERE tolls: cache hit #%d for %s→%s",
+                           new_hits, qk[:2], qk[2:])
+                # Periodic background re-validation so stale prices don't
+                # silently persist for 30 days after a vignette price change.
+                if new_hits % _VALIDATION_EVERY == 0:
+                    import asyncio
+                    asyncio.create_task(
+                        self._validate_cache(qk, cached_quote, route,
+                                             vehicle_class, key),
+                    )
+                return cached_quote
+
         # HERE wants origin + destination + optional via points.
         # We forward the first + last geometry points as endpoints
         # and drop every other geometry vertex in between as a
@@ -179,8 +222,146 @@ class HereTollsProvider:
                     operator=operator,
                     is_vignette=_is_vignette_toll(toll, operator),
                 ))
-        return TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
+        result_quote = TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
+        _QUOTE_CACHE[qk] = (result_quote, time.time(), 0)
+        return result_quote
 
+
+    async def _validate_cache(
+        self,
+        qk: tuple[float, float, float, float],
+        cached: "TollQuote",
+        route: "Route",
+        vehicle_class: str,
+        api_key: str,
+    ) -> None:
+        """Background re-fetch to detect toll price drift.
+
+        Fires every _VALIDATION_EVERY cache hits. If the live total
+        differs from cached by >15%, updates the cache entry and logs a
+        warning so ops can investigate. Silent on network errors.
+        """
+        try:
+            fresh = await self._fetch_quote(route, vehicle_class=vehicle_class,
+                                            api_key=api_key)
+            if fresh is None:
+                return
+            if cached.total_eur <= 0:
+                return
+            drift = abs(fresh.total_eur - cached.total_eur) / cached.total_eur
+            if drift > 0.15:
+                _log.warning(
+                    "HERE tolls: cached total %.2f EUR differs from live %.2f EUR "
+                    "(%.0f%%) — updating cache for %s→%s",
+                    cached.total_eur, fresh.total_eur, drift * 100, qk[:2], qk[2:],
+                )
+                _QUOTE_CACHE[qk] = (fresh, time.time(), 0)
+            else:
+                # Price still valid — reset counter, keep existing timestamp
+                existing_ts = _QUOTE_CACHE[qk][1] if qk in _QUOTE_CACHE else time.time()
+                _QUOTE_CACHE[qk] = (cached, existing_ts, 0)
+        except Exception as exc:  # noqa: BLE001
+            _log.debug("HERE tolls: background validation failed: %r", exc)
+
+    async def _fetch_quote(
+        self, route: "Route", *, vehicle_class: str, api_key: str,
+    ) -> "TollQuote | None":
+        """Live fetch bypassing the in-memory cache. Used by background
+        validation only — main path goes through quote()."""
+        if not route.geometry:
+            return None
+        params: dict[str, Any] = {
+            "transportMode": "car",
+            "origin": f"{route.geometry[0].lat:.5f},{route.geometry[0].lon:.5f}",
+            "destination": (
+                f"{route.geometry[-1].lat:.5f},{route.geometry[-1].lon:.5f}"
+            ),
+            "return": "tolls,summary,polyline",
+            "currency": "EUR",
+            "apiKey": api_key,
+        }
+        vias = _downsample_vias(route)
+        if vias:
+            params["via"] = [f"{c.lat:.5f},{c.lon:.5f}" for c in vias]
+        try:
+            r = await self._client.get(_ENDPOINT, params=params)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("HERE tolls background fetch failed: %r", exc)
+            return None
+        if r.status_code != 200:
+            return None
+        try:
+            body = r.json()
+        except ValueError:
+            return None
+        routes = body.get("routes") or []
+        if not routes:
+            return None
+        total_eur = 0.0
+        booths: list[TollBooth] = []
+        for section in routes[0].get("sections") or []:
+            tolls = section.get("tolls") or []
+            if not tolls:
+                continue
+            for toll in tolls:
+                eur_fares = [
+                    float((f.get("price") or {}).get("value"))
+                    for f in (toll.get("fares") or [])
+                    if str(((f.get("price") or {}).get("currency") or ""))
+                        .upper() == "EUR"
+                    and isinstance(
+                        (f.get("price") or {}).get("value"), (int, float),
+                    )
+                ]
+                if not eur_fares:
+                    continue
+                val = min(eur_fares)
+                total_eur += val
+                locs = toll.get("tollCollectionLocations") or []
+                operator = str(
+                    toll.get("tollSystem") or toll.get("name") or "Toll",
+                )
+                if len(locs) >= 2:
+                    entry_name = str(locs[0].get("name") or "").title()
+                    exit_name = str(locs[-1].get("name") or "").title()
+                    booth_name = f"{entry_name} → {exit_name}"
+                    entry_loc = locs[0].get("location") or {}
+                    exit_loc = locs[-1].get("location") or {}
+                    booth_lat = float(entry_loc.get("lat") or 0)
+                    booth_lon = float(entry_loc.get("lng") or 0)
+                    booth_exit_lat = float(exit_loc.get("lat") or 0)
+                    booth_exit_lon = float(exit_loc.get("lng") or 0)
+                elif len(locs) == 1:
+                    booth_name = str(locs[0].get("name") or operator).title()
+                    loc = locs[0].get("location") or {}
+                    booth_lat = float(loc.get("lat") or 0)
+                    booth_lon = float(loc.get("lng") or 0)
+                    booth_exit_lat = booth_exit_lon = 0.0
+                else:
+                    booth_name = operator
+                    dep = section.get("departure", {}).get("place", {}).get(
+                        "location", {},
+                    )
+                    arr = section.get("arrival", {}).get("place", {}).get(
+                        "location", {},
+                    )
+                    try:
+                        booth_lat = (float(dep["lat"]) + float(arr["lat"])) / 2
+                        booth_lon = (float(dep["lng"]) + float(arr["lng"])) / 2
+                    except (TypeError, ValueError, KeyError):
+                        booth_lat = booth_lon = 0.0
+                    booth_exit_lat = booth_exit_lon = 0.0
+                booths.append(TollBooth(
+                    name=booth_name,
+                    cost_eur=round(val, 2),
+                    lat=booth_lat,
+                    lon=booth_lon,
+                    exit_lat=booth_exit_lat,
+                    exit_lon=booth_exit_lon,
+                    operator=operator,
+                    is_vignette=_is_vignette_toll(toll, operator),
+                ))
+        return TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
 
     async def quote_segment(
         self,

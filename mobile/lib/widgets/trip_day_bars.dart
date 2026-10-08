@@ -37,6 +37,9 @@ class TripDayBars extends StatefulWidget {
   final Set<String> addedStopKeys;
 
   /// Route average speed (km/h).
+  // TODO(day-plan-v2): use avgKmh to derive km-based driving time estimate
+  // when wall-clock data is unavailable. Currently unused — wall-clock
+  // (endAt - startAt) is the correct input for the Gantt timeline.
   final double avgKmh;
 
   /// Called with the day's index when a bar row is tapped.
@@ -252,8 +255,7 @@ class _TripDayBarsState extends State<TripDayBars> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        '$totalUnselected parada'
-                        '${totalUnselected == 1 ? '' : 's'} sin añadir',
+                        l.tripDayBarsUnselected(totalUnselected),
                         style: t.labelSmall?.copyWith(
                           color: const Color(0xFFFB923C),
                           fontSize: 9,
@@ -264,7 +266,7 @@ class _TripDayBarsState extends State<TripDayBars> {
                     const SizedBox(width: 6),
                   ],
                   Text(
-                    'Cap: ${widget.profileCapHours}h',
+                    l.tripDayBarsCap(widget.profileCapHours),
                     style: t.labelSmall?.copyWith(
                         color: scheme.onSurfaceVariant),
                   ),
@@ -436,15 +438,16 @@ class _GanttDayRow extends StatelessWidget {
         // Ghost hint — shown when expanded and this day has unselected stops
         if (expanded && unselectedCount > 0) ...[
           const SizedBox(height: 3),
-          Text(
-            '$unselectedCount parada'
-            '${unselectedCount == 1 ? '' : 's'} sin seleccionar'
-            ' · toca + para añadirlas',
-            style: t.labelSmall?.copyWith(
-              color: const Color(0xFFFB923C).withValues(alpha: 0.8),
-              fontSize: 9,
-            ),
-          ),
+          Builder(builder: (ctx) {
+            final l = AppLocalizations.of(ctx);
+            return Text(
+              '${l.tripDayBarsUnselected(unselectedCount)} · ${l.tripDayBarsHint}',
+              style: t.labelSmall?.copyWith(
+                color: const Color(0xFFFB923C).withValues(alpha: 0.8),
+                fontSize: 9,
+              ),
+            );
+          }),
         ],
       ],
     );

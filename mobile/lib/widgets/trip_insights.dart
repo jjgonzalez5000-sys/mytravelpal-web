@@ -1045,15 +1045,8 @@ class DayPlanSection extends StatelessWidget {
             decoration: BoxDecoration(
               color: scheme.surfaceContainerHigh.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(Tokens.radiusLg),
-              border: Border(
-                left: BorderSide(color: dayAccent, width: 2),
-                top: BorderSide(
-                    color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                right: BorderSide(
-                    color: scheme.outlineVariant.withValues(alpha: 0.5)),
-                bottom: BorderSide(
-                    color: scheme.outlineVariant.withValues(alpha: 0.5)),
-              ),
+              border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

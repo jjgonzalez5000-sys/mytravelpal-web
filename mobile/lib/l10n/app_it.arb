@@ -11,6 +11,26 @@
   "onboardEyebrowAlerts": "ALERT IN TEMPO REALE",
   "onboardTitleAlerts": "Incendio a 14 km\ndal tuo percorso.",
   "onboardBodyAlerts": "Incendi, tempeste, terremoti, chiusure stradali. Solo gli eventi che riguardano il tuo percorso specifico.",
+  "onboardCostFuel": "Carburante",
+  "@onboardCostFuel": {},
+  "onboardCostTolls": "Pedaggi",
+  "@onboardCostTolls": {},
+  "onboardCostMeals": "Pasti",
+  "@onboardCostMeals": {},
+  "onboardCostHotel": "Hotel",
+  "@onboardCostHotel": {},
+  "onboardCostTotal": "TOTALE",
+  "@onboardCostTotal": {},
+  "onboardSavingsTitle": "Risparmi rilevati",
+  "@onboardSavingsTitle": {},
+  "onboardSavingsToll": "Alternativa pedaggi",
+  "@onboardSavingsToll": {},
+  "onboardSavingsFuel": "Stazione ottimale",
+  "@onboardSavingsFuel": {},
+  "onboardSavingsHotel": "Hotel migliore",
+  "@onboardSavingsHotel": {},
+  "onboardSavingsTotal": "TOTALE RISPARMIATO",
+  "@onboardSavingsTotal": {},
   "onboardSkip": "Salta",
   "onboardContinue": "Continua",
   "onboardGetStarted": "Inizia",
@@ -1063,6 +1083,16 @@
   "styleBedtimeLabel": "Ora di dormire",
   "styleWakeLabel": "Ora di sveglia",
   "styleDrivingStartLabel": "Ora preferita per iniziare a guidare",
+  "drivingWindowNightStart": "Guida notturna all'inizio",
+  "@drivingWindowNightStart": {},
+  "drivingWindowNightEnd": "Guida notturna alla fine",
+  "@drivingWindowNightEnd": {},
+  "dayEditKmNoLimit": "Km max: nessun limite",
+  "@dayEditKmNoLimit": {},
+  "dayEditKmCap": "Km max: {km} km",
+  "@dayEditKmCap": {
+    "placeholders": { "km": { "type": "int" } }
+  },
   "dayEditSheetTitle": "Regola giorno {day}",
   "@dayEditSheetTitle": {
     "placeholders": {
@@ -2406,7 +2436,7 @@
   "@wizardBreakEvery": {
     "placeholders": {
       "n": {
-        "type": "int"
+        "type": "String"
       }
     }
   },
@@ -2456,6 +2486,12 @@
   "@wizardModelGeneric": {},
   "wizardModelGenericSub": "Stima standard per il tuo tipo di veicolo",
   "@wizardModelGenericSub": {},
+  "wizardTollFreeDetour": "Deviazione gratuita",
+  "@wizardTollFreeDetour": {},
+  "wizardTollMotorway": "Autostrada",
+  "@wizardTollMotorway": {},
+  "wizardTollFaster": "Più veloce",
+  "@wizardTollFaster": {},
   "wizardTollTitle": "Evitare i pedaggi?",
   "@wizardTollTitle": {},
   "wizardTollSubtitle": "Analizziamo migliaia di percorsi per sapere quando la deviazione conviene.",
@@ -2566,6 +2602,18 @@
   "@replanTipFuel": {},
   "replanTipStops": "Adattamento delle soste e degli orari di arrivo...",
   "@replanTipStops": {},
+  "tripDayBarsCap": "Limite: {n}h",
+  "@tripDayBarsCap": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsUnselected": "{n} sosta/e non aggiunte",
+  "@tripDayBarsUnselected": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tripDayBarsHint": "Tocca + per includerle nella durata totale",
+  "@tripDayBarsHint": {},
+  "tripDayBarsCapLabel": "Limite",
+  "@tripDayBarsCapLabel": {},
   "tripDayBarsTitle": "Distribuzione per tappe",
   "@tripDayBarsTitle": {}
 }

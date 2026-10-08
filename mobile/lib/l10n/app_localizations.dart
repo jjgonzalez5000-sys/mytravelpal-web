@@ -174,6 +174,66 @@ abstract class AppLocalizations {
   /// **'Fires, storms, earthquakes, road closures. Only events that affect your specific route, before you reach them.'**
   String get onboardBodyAlerts;
 
+  /// No description provided for @onboardCostFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel'**
+  String get onboardCostFuel;
+
+  /// No description provided for @onboardCostTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'Tolls'**
+  String get onboardCostTolls;
+
+  /// No description provided for @onboardCostMeals.
+  ///
+  /// In en, this message translates to:
+  /// **'Meals'**
+  String get onboardCostMeals;
+
+  /// No description provided for @onboardCostHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel'**
+  String get onboardCostHotel;
+
+  /// No description provided for @onboardCostTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL'**
+  String get onboardCostTotal;
+
+  /// No description provided for @onboardSavingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Savings detected'**
+  String get onboardSavingsTitle;
+
+  /// No description provided for @onboardSavingsToll.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll alternative'**
+  String get onboardSavingsToll;
+
+  /// No description provided for @onboardSavingsFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Optimal fuel stop'**
+  String get onboardSavingsFuel;
+
+  /// No description provided for @onboardSavingsHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'Best hotel'**
+  String get onboardSavingsHotel;
+
+  /// No description provided for @onboardSavingsTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'TOTAL SAVED'**
+  String get onboardSavingsTotal;
+
   /// No description provided for @onboardSkip.
   ///
   /// In en, this message translates to:
@@ -3510,6 +3570,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Preferred time to start driving'**
   String get styleDrivingStartLabel;
+
+  /// No description provided for @drivingWindowNightStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Night driving at start'**
+  String get drivingWindowNightStart;
+
+  /// No description provided for @drivingWindowNightEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'Night driving at end'**
+  String get drivingWindowNightEnd;
+
+  /// No description provided for @dayEditKmNoLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Max. km: no limit'**
+  String get dayEditKmNoLimit;
+
+  /// No description provided for @dayEditKmCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Max. km: {km} km'**
+  String dayEditKmCap(int km);
 
   /// No description provided for @dayEditSheetTitle.
   ///
@@ -7065,7 +7149,7 @@ abstract class AppLocalizations {
   ///
   /// In en, this message translates to:
   /// **'I stop every {n}h'**
-  String wizardBreakEvery(int n);
+  String wizardBreakEvery(String n);
 
   /// No description provided for @wizardBedtime.
   ///
@@ -7186,6 +7270,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Standard estimate for your vehicle type'**
   String get wizardModelGenericSub;
+
+  /// No description provided for @wizardTollFreeDetour.
+  ///
+  /// In en, this message translates to:
+  /// **'Free detour'**
+  String get wizardTollFreeDetour;
+
+  /// No description provided for @wizardTollMotorway.
+  ///
+  /// In en, this message translates to:
+  /// **'Motorway'**
+  String get wizardTollMotorway;
+
+  /// No description provided for @wizardTollFaster.
+  ///
+  /// In en, this message translates to:
+  /// **'Faster'**
+  String get wizardTollFaster;
 
   /// No description provided for @wizardTollTitle.
   ///
@@ -7498,6 +7600,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Adjusting stops and arrival times...'**
   String get replanTipStops;
+
+  /// No description provided for @tripDayBarsCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Cap: {n}h'**
+  String tripDayBarsCap(int n);
+
+  /// No description provided for @tripDayBarsUnselected.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} stop(s) not added'**
+  String tripDayBarsUnselected(int n);
+
+  /// No description provided for @tripDayBarsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap + to include them in total duration'**
+  String get tripDayBarsHint;
+
+  /// No description provided for @tripDayBarsCapLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cap'**
+  String get tripDayBarsCapLabel;
 
   /// No description provided for @tripDayBarsTitle.
   ///

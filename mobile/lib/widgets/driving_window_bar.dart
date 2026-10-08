@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../l10n/app_localizations.dart';
 import '../utils/sun_calc.dart';
 
 /// Interactive 24-hour timeline bar for picking a driving window.
@@ -88,6 +89,7 @@ class _DrivingWindowBarState extends State<DrivingWindowBar> {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final bright = Theme.of(context).brightness == Brightness.dark;
+    final l = AppLocalizations.of(context);
     final durationMin = _end - _start;
     final durationH = durationMin ~/ 60;
     final durationM = durationMin % 60;
@@ -297,8 +299,8 @@ class _DrivingWindowBarState extends State<DrivingWindowBar> {
               const SizedBox(width: 6),
               Text(
                 startNight
-                    ? 'Conducción nocturna al inicio'
-                    : 'Conducción nocturna al final',
+                    ? l.drivingWindowNightStart
+                    : l.drivingWindowNightEnd,
                 style: const TextStyle(
                   fontSize: 11,
                   color: Color(0xFF818CF8),
