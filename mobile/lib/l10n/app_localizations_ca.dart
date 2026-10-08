@@ -2895,6 +2895,29 @@ class AppLocalizationsCa extends AppLocalizations {
   String get onboardCompanionTank => 'Dipòsit';
 
   @override
+  String get onboardAlertFire =>
+      'Incendi forestal · km 214 · 14 km de la teva ruta';
+
+  @override
+  String get onboardAlertSevere => 'GREU';
+
+  @override
+  String get onboardAlertStorm => 'Tempesta forta · Girona · en 2h';
+
+  @override
+  String get onboardAlertWarning => 'AVÍS';
+
+  @override
+  String get onboardCompanionQuestion => 'Paro a repostar aquí o espero?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Repsol · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'La propera estació a 58 km costa 1,79 €/L.\nAmb el teu dipòsit actual hi arribes de sobres.';
+
+  @override
   String get multiDaySleepLabel => 'You\'ll sleep at';
 
   @override

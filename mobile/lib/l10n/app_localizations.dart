@@ -5180,6 +5180,48 @@ abstract class AppLocalizations {
   /// **'Tank'**
   String get onboardCompanionTank;
 
+  /// No description provided for @onboardAlertFire.
+  ///
+  /// In en, this message translates to:
+  /// **'Forest fire · km 214 · 14 km from your route'**
+  String get onboardAlertFire;
+
+  /// No description provided for @onboardAlertSevere.
+  ///
+  /// In en, this message translates to:
+  /// **'SEVERE'**
+  String get onboardAlertSevere;
+
+  /// No description provided for @onboardAlertStorm.
+  ///
+  /// In en, this message translates to:
+  /// **'Heavy storm · Girona · in 2h'**
+  String get onboardAlertStorm;
+
+  /// No description provided for @onboardAlertWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'WARNING'**
+  String get onboardAlertWarning;
+
+  /// No description provided for @onboardCompanionQuestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Do I refuel here or wait?'**
+  String get onboardCompanionQuestion;
+
+  /// No description provided for @onboardCompanionFuelStation.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell · km 387 — 1.52 €/L'**
+  String get onboardCompanionFuelStation;
+
+  /// No description provided for @onboardCompanionFuelAdvice.
+  ///
+  /// In en, this message translates to:
+  /// **'Next station in 58 km costs 1.79 €/L.\nYour current tank will get you there easily.'**
+  String get onboardCompanionFuelAdvice;
+
   /// No description provided for @multiDaySleepLabel.
   ///
   /// In en, this message translates to:

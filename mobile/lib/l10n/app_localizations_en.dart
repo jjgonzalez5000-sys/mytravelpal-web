@@ -2891,6 +2891,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardCompanionTank => 'Tank';
 
   @override
+  String get onboardAlertFire => 'Forest fire · km 214 · 14 km from your route';
+
+  @override
+  String get onboardAlertSevere => 'SEVERE';
+
+  @override
+  String get onboardAlertStorm => 'Heavy storm · Girona · in 2h';
+
+  @override
+  String get onboardAlertWarning => 'WARNING';
+
+  @override
+  String get onboardCompanionQuestion => 'Do I refuel here or wait?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Shell · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'Next station in 58 km costs 1.79 €/L.\nYour current tank will get you there easily.';
+
+  @override
   String get multiDaySleepLabel => 'You\'ll sleep at';
 
   @override

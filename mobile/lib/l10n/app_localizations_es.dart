@@ -2909,6 +2909,29 @@ class AppLocalizationsEs extends AppLocalizations {
   String get onboardCompanionTank => 'Depósito';
 
   @override
+  String get onboardAlertFire =>
+      'Incendio forestal · km 214 · 14 km de tu ruta';
+
+  @override
+  String get onboardAlertSevere => 'SEVERO';
+
+  @override
+  String get onboardAlertStorm => 'Tormenta fuerte · Girona · próx. 2h';
+
+  @override
+  String get onboardAlertWarning => 'AVISO';
+
+  @override
+  String get onboardCompanionQuestion => '¿Paro a repostar aquí o espero?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Eroski · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'La siguiente estación en 58 km cuesta 1.79 €/L.\nCon tu depósito actual llegas de sobra.';
+
+  @override
   String get multiDaySleepLabel => 'Dormirás en';
 
   @override

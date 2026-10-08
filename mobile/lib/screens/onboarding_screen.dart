@@ -773,6 +773,7 @@ class _AlertsWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final h = _kSlideHighlights[3];
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -820,8 +821,8 @@ class _AlertsWidget extends StatelessWidget {
         const SizedBox(height: 16),
         // Alert cards
         for (final (icon, text, severity, delay) in [
-          (Icons.local_fire_department, 'Incendio forestal · km 214 · 14 km de tu ruta', 'SEVERO', 400.ms),
-          (Icons.thunderstorm_outlined, 'Tormenta fuerte · Girona · próx. 2h', 'AVISO', 600.ms),
+          (Icons.local_fire_department, l.onboardAlertFire, l.onboardAlertSevere, 400.ms),
+          (Icons.thunderstorm_outlined, l.onboardAlertStorm, l.onboardAlertWarning, 600.ms),
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -944,7 +945,7 @@ class _CompanionWidget extends StatelessWidget {
               border: Border.all(color: h.withValues(alpha: 0.3)),
             ),
             child: Text(
-              '¿Paro a repostar aquí o espero?',
+              l.onboardCompanionQuestion,
               style: TextStyle(color: h, fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
@@ -970,10 +971,10 @@ class _CompanionWidget extends StatelessWidget {
                 Row(children: [
                   Icon(Icons.local_gas_station, color: h, size: 14),
                   const SizedBox(width: 6),
-                  Text('Eroski km 387 — 1.52 €/L', style: TextStyle(color: h, fontSize: 12, fontWeight: FontWeight.w700)),
+                  Text(l.onboardCompanionFuelStation, style: TextStyle(color: h, fontSize: 12, fontWeight: FontWeight.w700)),
                 ]),
                 const SizedBox(height: 4),
-                Text('La siguiente estación en 58 km cuesta 1.79 €/L.\nCon tu depósito actual llegas de sobra.', style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
+                Text(l.onboardCompanionFuelAdvice, style: const TextStyle(color: Colors.white70, fontSize: 12, height: 1.4)),
               ],
             ),
           ),

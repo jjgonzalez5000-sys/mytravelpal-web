@@ -2897,6 +2897,29 @@ class AppLocalizationsIt extends AppLocalizations {
   String get onboardCompanionTank => 'Serbatoio';
 
   @override
+  String get onboardAlertFire =>
+      'Incendio boschivo · km 214 · 14 km dal percorso';
+
+  @override
+  String get onboardAlertSevere => 'GRAVE';
+
+  @override
+  String get onboardAlertStorm => 'Tempesta forte · Girona · tra 2h';
+
+  @override
+  String get onboardAlertWarning => 'AVVISO';
+
+  @override
+  String get onboardCompanionQuestion => 'Mi fermo a fare benzina o aspetto?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Eni · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'La prossima stazione a 58 km costa 1,79 €/L.\nIl tuo serbatoio attuale è più che sufficiente.';
+
+  @override
   String get multiDaySleepLabel => 'Dormirai a';
 
   @override

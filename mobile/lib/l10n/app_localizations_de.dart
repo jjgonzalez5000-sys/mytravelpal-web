@@ -2904,6 +2904,28 @@ class AppLocalizationsDe extends AppLocalizations {
   String get onboardCompanionTank => 'Tank';
 
   @override
+  String get onboardAlertFire => 'Waldbrand · km 214 · 14 km von Ihrer Route';
+
+  @override
+  String get onboardAlertSevere => 'SCHWER';
+
+  @override
+  String get onboardAlertStorm => 'Schweres Unwetter · Girona · in 2 Std.';
+
+  @override
+  String get onboardAlertWarning => 'WARNUNG';
+
+  @override
+  String get onboardCompanionQuestion => 'Hier tanken oder weiterfahren?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Aral · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'Die nächste Station in 58 km kostet 1,79 €/L.\nMit Ihrem aktuellen Tank kommen Sie problemlos hin.';
+
+  @override
   String get multiDaySleepLabel => 'Du übernachtest in';
 
   @override

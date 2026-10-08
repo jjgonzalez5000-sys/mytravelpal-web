@@ -2895,6 +2895,29 @@ class AppLocalizationsPt extends AppLocalizations {
   String get onboardCompanionTank => 'Depósito';
 
   @override
+  String get onboardAlertFire =>
+      'Incêndio florestal · km 214 · 14 km da sua rota';
+
+  @override
+  String get onboardAlertSevere => 'GRAVE';
+
+  @override
+  String get onboardAlertStorm => 'Tempestade forte · Girona · em 2h';
+
+  @override
+  String get onboardAlertWarning => 'AVISO';
+
+  @override
+  String get onboardCompanionQuestion => 'Abastecimento aqui ou espero?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Galp · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'A próxima estação a 58 km custa 1,79 €/L.\nO seu depósito atual chega mais que suficiente.';
+
+  @override
   String get multiDaySleepLabel => 'You\'ll sleep at';
 
   @override

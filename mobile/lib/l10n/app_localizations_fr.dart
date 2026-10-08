@@ -2905,6 +2905,29 @@ class AppLocalizationsFr extends AppLocalizations {
   String get onboardCompanionTank => 'Réservoir';
 
   @override
+  String get onboardAlertFire =>
+      'Incendie de forêt · km 214 · 14 km de votre route';
+
+  @override
+  String get onboardAlertSevere => 'GRAVE';
+
+  @override
+  String get onboardAlertStorm => 'Tempête forte · Girona · dans 2h';
+
+  @override
+  String get onboardAlertWarning => 'ALERTE';
+
+  @override
+  String get onboardCompanionQuestion => 'Je fais le plein ici ou j\'attends ?';
+
+  @override
+  String get onboardCompanionFuelStation => 'Total · km 387 — 1.52 €/L';
+
+  @override
+  String get onboardCompanionFuelAdvice =>
+      'La prochaine station à 58 km coûte 1,79 €/L.\nVotre réservoir actuel est amplement suffisant.';
+
+  @override
   String get multiDaySleepLabel => 'Vous dormirez à';
 
   @override
