@@ -1702,6 +1702,30 @@
   "onboardEyebrowProfile": "PERSONALISED",
   "onboardTitleProfile": "Fill your profile",
   "onboardBodyProfile": "Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.",
+  "onboardTollSkip": "Skip it",
+  "@onboardTollSkip": {},
+  "onboardTollSavingsAmt": "saves €8",
+  "@onboardTollSavingsAmt": {},
+  "onboardTollPay": "Pay it",
+  "@onboardTollPay": {},
+  "onboardTollPeakTime": "Peak 08:00-10:00",
+  "@onboardTollPeakTime": {},
+  "onboardFuelStationsTitle": "Fuel stations on your route",
+  "@onboardFuelStationsTitle": {},
+  "onboardProfileGroup": "2 adults + 1 child",
+  "@onboardProfileGroup": {},
+  "onboardProfilePet": "Dog",
+  "@onboardProfilePet": {},
+  "onboardProfileParking": "Parking",
+  "@onboardProfileParking": {},
+  "onboardProfileStars": "3+ stars",
+  "@onboardProfileStars": {},
+  "onboardProfileBudget": "Max. €€",
+  "@onboardProfileBudget": {},
+  "onboardCompanionNextStop": "Next stop",
+  "@onboardCompanionNextStop": {},
+  "onboardCompanionTank": "Tank",
+  "@onboardCompanionTank": {},
   "multiDaySleepLabel": "You'll sleep at",
   "multiDaySleepNoHotel": "Overnight stop — no hotel available",
   "resumeTripTitle": "Resume your trip?",
@@ -2615,5 +2639,21 @@
   "tripDayBarsCapLabel": "Cap",
   "@tripDayBarsCapLabel": {},
   "tripDayBarsTitle": "Day breakdown",
-  "@tripDayBarsTitle": {}
+  "@tripDayBarsTitle": {},
+  "wizardStepProfile": "Profile",
+  "@wizardStepProfile": {},
+  "wizardStepVehicle": "Vehicle",
+  "@wizardStepVehicle": {},
+  "wizardStepRhythm": "Rhythm",
+  "@wizardStepRhythm": {},
+  "wizardStepBudget": "Budget",
+  "@wizardStepBudget": {},
+  "wizardModelsAvailable": "{count} models available",
+  "@wizardModelsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

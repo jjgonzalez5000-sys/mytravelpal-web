@@ -2855,6 +2855,42 @@ class AppLocalizationsEn extends AppLocalizations {
       'Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.';
 
   @override
+  String get onboardTollSkip => 'Skip it';
+
+  @override
+  String get onboardTollSavingsAmt => 'saves €8';
+
+  @override
+  String get onboardTollPay => 'Pay it';
+
+  @override
+  String get onboardTollPeakTime => 'Peak 08:00-10:00';
+
+  @override
+  String get onboardFuelStationsTitle => 'Fuel stations on your route';
+
+  @override
+  String get onboardProfileGroup => '2 adults + 1 child';
+
+  @override
+  String get onboardProfilePet => 'Dog';
+
+  @override
+  String get onboardProfileParking => 'Parking';
+
+  @override
+  String get onboardProfileStars => '3+ stars';
+
+  @override
+  String get onboardProfileBudget => 'Max. €€';
+
+  @override
+  String get onboardCompanionNextStop => 'Next stop';
+
+  @override
+  String get onboardCompanionTank => 'Tank';
+
+  @override
   String get multiDaySleepLabel => 'You\'ll sleep at';
 
   @override
@@ -4266,4 +4302,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripDayBarsTitle => 'Day breakdown';
+
+  @override
+  String get wizardStepProfile => 'Profile';
+
+  @override
+  String get wizardStepVehicle => 'Vehicle';
+
+  @override
+  String get wizardStepRhythm => 'Rhythm';
+
+  @override
+  String get wizardStepBudget => 'Budget';
+
+  @override
+  String wizardModelsAvailable(int count) {
+    return '$count models available';
+  }
 }

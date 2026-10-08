@@ -5108,6 +5108,78 @@ abstract class AppLocalizations {
   /// **'Without a profile we only optimise time. With one we compute real fuel, hotels and meal times tuned to you.'**
   String get onboardBodyProfile;
 
+  /// No description provided for @onboardTollSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip it'**
+  String get onboardTollSkip;
+
+  /// No description provided for @onboardTollSavingsAmt.
+  ///
+  /// In en, this message translates to:
+  /// **'saves €8'**
+  String get onboardTollSavingsAmt;
+
+  /// No description provided for @onboardTollPay.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay it'**
+  String get onboardTollPay;
+
+  /// No description provided for @onboardTollPeakTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Peak 08:00-10:00'**
+  String get onboardTollPeakTime;
+
+  /// No description provided for @onboardFuelStationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel stations on your route'**
+  String get onboardFuelStationsTitle;
+
+  /// No description provided for @onboardProfileGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'2 adults + 1 child'**
+  String get onboardProfileGroup;
+
+  /// No description provided for @onboardProfilePet.
+  ///
+  /// In en, this message translates to:
+  /// **'Dog'**
+  String get onboardProfilePet;
+
+  /// No description provided for @onboardProfileParking.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking'**
+  String get onboardProfileParking;
+
+  /// No description provided for @onboardProfileStars.
+  ///
+  /// In en, this message translates to:
+  /// **'3+ stars'**
+  String get onboardProfileStars;
+
+  /// No description provided for @onboardProfileBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Max. €€'**
+  String get onboardProfileBudget;
+
+  /// No description provided for @onboardCompanionNextStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Next stop'**
+  String get onboardCompanionNextStop;
+
+  /// No description provided for @onboardCompanionTank.
+  ///
+  /// In en, this message translates to:
+  /// **'Tank'**
+  String get onboardCompanionTank;
+
   /// No description provided for @multiDaySleepLabel.
   ///
   /// In en, this message translates to:
@@ -7630,6 +7702,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Day breakdown'**
   String get tripDayBarsTitle;
+
+  /// No description provided for @wizardStepProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get wizardStepProfile;
+
+  /// No description provided for @wizardStepVehicle.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle'**
+  String get wizardStepVehicle;
+
+  /// No description provided for @wizardStepRhythm.
+  ///
+  /// In en, this message translates to:
+  /// **'Rhythm'**
+  String get wizardStepRhythm;
+
+  /// No description provided for @wizardStepBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get wizardStepBudget;
+
+  /// No description provided for @wizardModelsAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} models available'**
+  String wizardModelsAvailable(int count);
 }
 
 class _AppLocalizationsDelegate

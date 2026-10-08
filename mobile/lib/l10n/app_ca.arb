@@ -690,6 +690,30 @@
   "@tripQualityFactorStops": {},
   "onboardEyebrowDriving": "COPILOTO IA · PREMIUM",
   "onboardBodyDriving": "Conoce tu ruta, tu depósito y los precios siguientes. Responde en segundos. Funciona con Android Auto. (Premium)",
+  "onboardTollSkip": "Saltar-lo",
+  "@onboardTollSkip": {},
+  "onboardTollSavingsAmt": "estalvia €8",
+  "@onboardTollSavingsAmt": {},
+  "onboardTollPay": "Pagar-lo",
+  "@onboardTollPay": {},
+  "onboardTollPeakTime": "Pic 08:00-10:00",
+  "@onboardTollPeakTime": {},
+  "onboardFuelStationsTitle": "Gasolineres a la teva ruta",
+  "@onboardFuelStationsTitle": {},
+  "onboardProfileGroup": "2 adults + 1 nen",
+  "@onboardProfileGroup": {},
+  "onboardProfilePet": "Gos",
+  "@onboardProfilePet": {},
+  "onboardProfileParking": "Parking",
+  "@onboardProfileParking": {},
+  "onboardProfileStars": "3+ estrelles",
+  "@onboardProfileStars": {},
+  "onboardProfileBudget": "Màx. €€",
+  "@onboardProfileBudget": {},
+  "onboardCompanionNextStop": "Propera parada",
+  "@onboardCompanionNextStop": {},
+  "onboardCompanionTank": "Dipòsit",
+  "@onboardCompanionTank": {},
   "partialTollSkipsTitle": "Peaje a peaje · Optimización Premium",
   "wizardModelConsumption": "Consumo",
   "@wizardModelConsumption": {},
@@ -808,5 +832,21 @@
   "dayEditKmCap": "Màx. km: {km} km",
   "@dayEditKmCap": {
     "placeholders": { "km": { "type": "int" } }
+  },
+  "wizardStepProfile": "Perfil",
+  "@wizardStepProfile": {},
+  "wizardStepVehicle": "Vehicle",
+  "@wizardStepVehicle": {},
+  "wizardStepRhythm": "Ritmo",
+  "@wizardStepRhythm": {},
+  "wizardStepBudget": "Budget",
+  "@wizardStepBudget": {},
+  "wizardModelsAvailable": "{count} models disponibles",
+  "@wizardModelsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

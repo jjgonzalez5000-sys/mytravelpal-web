@@ -1703,6 +1703,30 @@
   "onboardEyebrowProfile": "PERSONALIZADO",
   "onboardTitleProfile": "Rellena tu perfil",
   "onboardBodyProfile": "Sin perfil optimizamos solo tiempo. Con perfil calculamos fuel real, hoteles y comidas ajustadas a ti.",
+  "onboardTollSkip": "Saltarlo",
+  "@onboardTollSkip": {},
+  "onboardTollSavingsAmt": "ahorra €8",
+  "@onboardTollSavingsAmt": {},
+  "onboardTollPay": "Pagarlo",
+  "@onboardTollPay": {},
+  "onboardTollPeakTime": "Pico 08:00-10:00",
+  "@onboardTollPeakTime": {},
+  "onboardFuelStationsTitle": "Gasolineras en tu ruta",
+  "@onboardFuelStationsTitle": {},
+  "onboardProfileGroup": "2 adultos + 1 niño",
+  "@onboardProfileGroup": {},
+  "onboardProfilePet": "Perro",
+  "@onboardProfilePet": {},
+  "onboardProfileParking": "Parking",
+  "@onboardProfileParking": {},
+  "onboardProfileStars": "3+ estrellas",
+  "@onboardProfileStars": {},
+  "onboardProfileBudget": "Máx. €€",
+  "@onboardProfileBudget": {},
+  "onboardCompanionNextStop": "Próxima parada",
+  "@onboardCompanionNextStop": {},
+  "onboardCompanionTank": "Depósito",
+  "@onboardCompanionTank": {},
   "multiDaySleepLabel": "Dormirás en",
   "multiDaySleepNoHotel": "Punto de pernocta sin hotel disponible",
   "resumeTripTitle": "¿Retomamos tu viaje?",
@@ -2616,5 +2640,21 @@
   "tripDayBarsHint": "Toca + para incluirlas en la duración total",
   "@tripDayBarsHint": {},
   "tripDayBarsCapLabel": "Cap",
-  "@tripDayBarsCapLabel": {}
+  "@tripDayBarsCapLabel": {},
+  "wizardStepProfile": "Perfil",
+  "@wizardStepProfile": {},
+  "wizardStepVehicle": "Vehículo",
+  "@wizardStepVehicle": {},
+  "wizardStepRhythm": "Ritmo",
+  "@wizardStepRhythm": {},
+  "wizardStepBudget": "Presupuesto",
+  "@wizardStepBudget": {},
+  "wizardModelsAvailable": "{count} modelos disponibles",
+  "@wizardModelsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }

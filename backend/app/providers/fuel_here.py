@@ -243,7 +243,7 @@ class HereFuelProvider:
                 if lat is None or lon is None:
                     continue
                 price = _extract_price(item)
-                price_ok = price is not None
+                price_ok = price is not None and _price_plausible(price)
                 if not price_ok:
                     # HERE didn't return price data for this station
                     # (typical when the Browse endpoint has no price feed

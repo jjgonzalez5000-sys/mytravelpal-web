@@ -740,6 +740,7 @@ class _VehicleVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final hl = _kHighlights[2];
     return Center(
       child: Column(
@@ -777,7 +778,7 @@ class _VehicleVisual extends StatelessWidget {
               border: Border.all(color: hl.withValues(alpha: 0.35)),
             ),
             child: Text(
-              _fuelEmoji(fuel),
+              '${_fuelEmoji(fuel)} ${_fuelLabel(l, fuel)}',
               style: TextStyle(
                   color: hl, fontSize: 13, fontWeight: FontWeight.w700),
             ),
@@ -792,10 +793,18 @@ class _VehicleVisual extends StatelessWidget {
   }
 
   String _fuelEmoji(FuelType f) => switch (f) {
-        FuelType.petrol => '⛽ Gasolina',
-        FuelType.diesel => '🛢 Diésel',
-        FuelType.hybrid => '⚡ Híbrido',
-        FuelType.electric => '🔋 Eléctrico',
+        FuelType.petrol => '⛽',
+        FuelType.diesel => '🛢',
+        FuelType.hybrid => '⚡',
+        FuelType.electric => '🔋',
+        _ => '',
+      };
+
+  String _fuelLabel(AppLocalizations l, FuelType f) => switch (f) {
+        FuelType.petrol => l.fuelTypePetrol,
+        FuelType.diesel => l.fuelTypeDiesel,
+        FuelType.hybrid => l.fuelTypeHybrid,
+        FuelType.electric => l.fuelTypeElectric,
         _ => f.label,
       };
 }
@@ -918,6 +927,7 @@ class _RhythmVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final hl = _kHighlights[3];
     return Center(
       child: Column(
@@ -961,7 +971,7 @@ class _RhythmVisual extends StatelessWidget {
                     Icon(Icons.coffee_outlined, size: 14,
                         color: hl.withValues(alpha: 0.7)),
                     const SizedBox(width: 6),
-                    Text('Pausa cada ${brk % 1.0 >= 0.5 ? "${brk.floor()}h 30m" : "${brk.floor()}h"}',
+                    Text(l.wizardBreakEvery(brk % 1.0 >= 0.5 ? '${brk.floor()}h 30m' : '${brk.floor()}h'),
                         style: TextStyle(
                             color: hl.withValues(alpha: 0.7),
                             fontSize: 12,
@@ -978,13 +988,13 @@ class _RhythmVisual extends StatelessWidget {
               Expanded(
                 child: _BudgetPreview(
                     icon: Icons.hotel_outlined,
-                    label: 'Hotel', color: hl, delay: 300.ms),
+                    label: l.wizardHotelBudget, color: hl, delay: 300.ms),
               ),
               const SizedBox(width: 10),
               Expanded(
                 child: _BudgetPreview(
                     icon: Icons.restaurant_outlined,
-                    label: 'Comida', color: hl, delay: 450.ms),
+                    label: l.wizardMealBudget, color: hl, delay: 450.ms),
               ),
             ],
           ),
@@ -1326,6 +1336,7 @@ class _DoneVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final hl = _kHighlights[4];
     return Center(
       child: Column(
@@ -1361,10 +1372,10 @@ class _DoneVisual extends StatelessWidget {
             alignment: WrapAlignment.center,
             children: [
               for (final (i, (icon, label)) in [
-                (Icons.people_outlined, 'Perfil'),
-                (Icons.directions_car_outlined, 'Vehículo'),
-                (Icons.schedule, 'Ritmo'),
-                (Icons.hotel_outlined, 'Presupuesto'),
+                (Icons.people_outlined, l.wizardStepProfile),
+                (Icons.directions_car_outlined, l.wizardStepVehicle),
+                (Icons.schedule, l.wizardStepRhythm),
+                (Icons.hotel_outlined, l.wizardStepBudget),
               ].indexed)
                 Container(
                   padding: const EdgeInsets.symmetric(
@@ -1523,6 +1534,7 @@ class _ModelVisual extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final hl = _kHighlights[2];
     return Consumer(
       builder: (context, ref, _) {
@@ -1590,7 +1602,7 @@ class _ModelVisual extends StatelessWidget {
                             end: const Offset(1, 1)),
                   ] else ...[
                     Text(
-                      '${filtered.length} modelos disponibles',
+                      l.wizardModelsAvailable(filtered.length),
                       style: TextStyle(
                           color: hl.withValues(alpha: 0.6), fontSize: 12),
                     ).animate().fadeIn(delay: 200.ms, duration: 300.ms),

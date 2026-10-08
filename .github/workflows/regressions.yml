@@ -1,0 +1,53 @@
+name: Regression tests
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend-regressions:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run session regression tests
+        run: python -m pytest tests/test_session_regressions.py -x --tb=short -q
+
+  mobile-analyze:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Get packages
+        run: flutter pub get
+
+      - name: Flutter analyze
+        run: flutter analyze --no-pub lib/
+
+      - name: Run mobile regression tests
+        run: flutter test test/regression_test.dart --no-pub

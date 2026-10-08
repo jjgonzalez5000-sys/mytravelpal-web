@@ -491,6 +491,7 @@ class _TollsFuelWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final h = _kSlideHighlights[1];
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -501,9 +502,9 @@ class _TollsFuelWidget extends StatelessWidget {
             Expanded(
               child: _InfoCard(
                 icon: Icons.alt_route,
-                label: 'Saltarlo',
+                label: l.onboardTollSkip,
                 value: '+12 min',
-                subValue: 'ahorra €8',
+                subValue: l.onboardTollSavingsAmt,
                 color: h,
                 delay: 100.ms,
               ),
@@ -512,9 +513,9 @@ class _TollsFuelWidget extends StatelessWidget {
             Expanded(
               child: _InfoCard(
                 icon: Icons.toll_outlined,
-                label: 'Pagarlo',
+                label: l.onboardTollPay,
                 value: '€8',
-                subValue: 'sale 08:00-10:00',
+                subValue: l.onboardTollPeakTime,
                 color: Colors.red.shade300,
                 delay: 250.ms,
               ),
@@ -536,8 +537,8 @@ class _TollsFuelWidget extends StatelessWidget {
                 children: [
                   Icon(Icons.local_gas_station, color: h, size: 18),
                   const SizedBox(width: 8),
-                  const Text('Gasolineras en tu ruta',
-                      style: TextStyle(color: Colors.white70, fontSize: 12)),
+                  Text(l.onboardFuelStationsTitle,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -653,6 +654,7 @@ class _ProfileWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final h = _kSlideHighlights[2];
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -664,11 +666,11 @@ class _ProfileWidget extends StatelessWidget {
           alignment: WrapAlignment.center,
           children: [
             for (final (icon, text, delay) in [
-              (Icons.people_outlined, '2 adultos + 1 niño', 0.ms),
-              (Icons.pets, 'Perro', 100.ms),
-              (Icons.local_parking_outlined, 'Parking', 200.ms),
-              (Icons.star_border, '3+ estrellas', 300.ms),
-              (Icons.euro, 'Máx. €€', 400.ms),
+              (Icons.people_outlined, l.onboardProfileGroup, 0.ms),
+              (Icons.pets, l.onboardProfilePet, 100.ms),
+              (Icons.local_parking_outlined, l.onboardProfileParking, 200.ms),
+              (Icons.star_border, l.onboardProfileStars, 300.ms),
+              (Icons.euro, l.onboardProfileBudget, 400.ms),
             ])
               _ProfileChip(icon: icon, text: text, color: h, delay: delay),
           ],
@@ -920,6 +922,7 @@ class _CompanionWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final h = _kSlideHighlights[4];
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -987,8 +990,8 @@ class _CompanionWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _DashStat(label: 'ETA', value: '17:43', color: h),
-              _DashStat(label: 'Próxima parada', value: '42 km', color: h),
-              _DashStat(label: 'Depósito', value: '68%', color: h),
+              _DashStat(label: l.onboardCompanionNextStop, value: '42 km', color: h),
+              _DashStat(label: l.onboardCompanionTank, value: '68%', color: h),
             ],
           ),
         ).animate(delay: 800.ms).fadeIn(duration: 350.ms),

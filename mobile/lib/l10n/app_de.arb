@@ -1702,6 +1702,30 @@
   "onboardEyebrowProfile": "PERSÖNLICH",
   "onboardTitleProfile": "Fülle dein Profil aus",
   "onboardBodyProfile": "Ohne Profil optimieren wir nur die Zeit. Mit Profil berechnen wir echten Sprit, Hotels und Mahlzeiten für dich.",
+  "onboardTollSkip": "Umfahren",
+  "@onboardTollSkip": {},
+  "onboardTollSavingsAmt": "spart €8",
+  "@onboardTollSavingsAmt": {},
+  "onboardTollPay": "Bezahlen",
+  "@onboardTollPay": {},
+  "onboardTollPeakTime": "Stoßzeit 08:00-10:00",
+  "@onboardTollPeakTime": {},
+  "onboardFuelStationsTitle": "Tankstellen auf deiner Route",
+  "@onboardFuelStationsTitle": {},
+  "onboardProfileGroup": "2 Erwachsene + 1 Kind",
+  "@onboardProfileGroup": {},
+  "onboardProfilePet": "Hund",
+  "@onboardProfilePet": {},
+  "onboardProfileParking": "Parking",
+  "@onboardProfileParking": {},
+  "onboardProfileStars": "3+ Sterne",
+  "@onboardProfileStars": {},
+  "onboardProfileBudget": "Max. €€",
+  "@onboardProfileBudget": {},
+  "onboardCompanionNextStop": "Nächster Halt",
+  "@onboardCompanionNextStop": {},
+  "onboardCompanionTank": "Tank",
+  "@onboardCompanionTank": {},
   "multiDaySleepLabel": "Du übernachtest in",
   "multiDaySleepNoHotel": "Übernachtungsstopp — kein Hotel verfügbar",
   "resumeTripTitle": "Fahrt fortsetzen?",
@@ -2615,5 +2639,21 @@
   "tripDayBarsCapLabel": "Limit",
   "@tripDayBarsCapLabel": {},
   "tripDayBarsTitle": "Tagesverteilung",
-  "@tripDayBarsTitle": {}
+  "@tripDayBarsTitle": {},
+  "wizardStepProfile": "Profil",
+  "@wizardStepProfile": {},
+  "wizardStepVehicle": "Fahrzeug",
+  "@wizardStepVehicle": {},
+  "wizardStepRhythm": "Rhythmus",
+  "@wizardStepRhythm": {},
+  "wizardStepBudget": "Budget",
+  "@wizardStepBudget": {},
+  "wizardModelsAvailable": "{count} Modelle verfügbar",
+  "@wizardModelsAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  }
 }
