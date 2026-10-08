@@ -27,6 +27,7 @@ enum FuelType {
   diesel('diesel', 'Diesel'),
   hybrid('hybrid', 'Hybrid'),
   electric('electric', 'Electric'),
+  e85('e85', 'E85 / Etanol'),
   lpg('lpg', 'LPG');
 
   const FuelType(this.code, this.label);

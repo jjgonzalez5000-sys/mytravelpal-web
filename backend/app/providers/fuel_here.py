@@ -385,9 +385,16 @@ def _extract_price(item: dict[str, Any]) -> float | None:
                 cur = str(p.get("currency", "EUR")).upper()
                 if isinstance(val, (int, float)):
                     return _to_eur(float(val), cur)
-    # Fallback: first entry with any known currency.
+    # Fallback: first road-fuel entry. Exclude alternative fuels whose
+    # per-litre price is incompatible with petrol/diesel benchmarks:
+    # E85 (~0.70 €/L), CNG, LPG, hydrogen. Using their price as a
+    # "petrol price" inflates the savings delta and breaks the display.
+    _EXCLUDE_FALLBACK = {"e85", "cng", "lpg", "lng", "hydrogen", "h2",
+                         "adblue", "autogas"}
     for p in prices:
         if not isinstance(p, dict):
+            continue
+        if str(p.get("type", "")).lower() in _EXCLUDE_FALLBACK:
             continue
         val = p.get("price")
         cur = str(p.get("currency", "EUR")).upper()

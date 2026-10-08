@@ -28,5 +28,6 @@ String fuelTypeLabel(BuildContext context, FuelType type) {
     FuelType.hybrid => l.fuelTypeHybrid,
     FuelType.electric => l.fuelTypeElectric,
     FuelType.lpg => l.fuelTypeLpg,
+    FuelType.e85 => 'E85 / Etanol',
   };
 }

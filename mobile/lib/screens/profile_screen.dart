@@ -1182,6 +1182,7 @@ String _fuelTypeLabel(FuelType ft, AppLocalizations l) {
     case FuelType.hybrid: return 'Híbrido';
     case FuelType.electric: return 'Eléctrico';
     case FuelType.lpg: return 'GLP';
+    case FuelType.e85: return 'E85 / Etanol';
   }
 }
 

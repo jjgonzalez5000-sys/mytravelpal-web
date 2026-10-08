@@ -1,7 +1,7 @@
 name: mytravelpal
 description: MyTravelPal — road-trip planning app.
 publish_to: 'none'
-version: 0.2.83+88
+version: 0.2.84+89
 
 environment:
   sdk: ^3.5.0

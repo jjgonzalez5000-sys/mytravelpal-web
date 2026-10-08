@@ -366,6 +366,8 @@ String _fuelTypeLabelGarage(FuelType ft, AppLocalizations l) {
       return l.fuelTypeHybrid;
     case FuelType.lpg:
       return l.fuelTypeLpg;
+    case FuelType.e85:
+      return 'E85 / Etanol';
   }
 }
 

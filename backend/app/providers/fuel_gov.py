@@ -153,6 +153,8 @@ _FUEL_TYPE_MAP: dict[str, tuple[str, ...]] = {
     "lpg": ("lpg",),
     "electric": (),
 }
+# E85 deliberately last — its ~0.70 €/L price would distort savings
+# calculations when used as a fallback for regular petrol stations.
 _DEFAULT_ORDER = ("diesel", "sp95", "e10", "sp98", "lpg", "e85")
 
 
