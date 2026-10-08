@@ -4404,4 +4404,158 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get wizardTollSavingsDemo => 'Ahorro €8';
+
+  @override
+  String companionNotifFuelBody(int km) {
+    return 'A $km km · Toca \"Desviar\" para añadirla a tu ruta en Maps';
+  }
+
+  @override
+  String get companionDemoNotifFuel => 'A 3 km · Desvía en Maps para repostar';
+
+  @override
+  String get companionDemoNotifRoute =>
+      'A 18 km en tu ruta · Considera la N-II · Desviar en Maps';
+
+  @override
+  String get companionDemoNotifMeal =>
+      'Menú €12 · A 4 km · ¿Paramos a comer? Desviar en Maps';
+
+  @override
+  String get companionDemoNotifEta => 'ETA en 10 min · 12 km · Sin incidencias';
+
+  @override
+  String get companionOffRouteTitle => '¿Estás fuera de la ruta?';
+
+  @override
+  String get companionOffRouteBody =>
+      'Tu posición está lejos de la ruta planificada. En modo libre el asistente sigue contigo sin calcular km de ruta.';
+
+  @override
+  String get companionOffRouteBack => 'Volver a la ruta';
+
+  @override
+  String get companionFreeModeBtn => 'Modo libre';
+
+  @override
+  String companionGroupSessionError(String error) {
+    return 'No se pudo crear la sesión grupal: $error';
+  }
+
+  @override
+  String get companionMealStopTitle => 'Cambiar parada de comida';
+
+  @override
+  String get companionMealStopDelayBody =>
+      '¿Quieres retrasar la parada de comida? La moveremos al siguiente área de servicio.';
+
+  @override
+  String get settingsLogoutStep3 => '3/4 · Cerrando sesión…';
+
+  @override
+  String get settingsLogoutStep4 => '4/4 · Volviendo al inicio…';
+
+  @override
+  String get settingsNickTaken => 'Ya está en uso';
+
+  @override
+  String get settingsNickHelper =>
+      'Tu nombre en el ranking de rutas. Elige un nick y tu país — solo visible en el Hall of Fame.';
+
+  @override
+  String get settingsNickEmpty => 'Sin nick aún';
+
+  @override
+  String get settingsCountrySearch => 'Buscar país...';
+
+  @override
+  String get settingsPremiumDevNote => 'Se activará por compra en producción';
+
+  @override
+  String get settingsTierFeaturesPremium =>
+      '✓ Companion IA · Peajes optimizados · Android Auto · Grupos · Monitor de viaje';
+
+  @override
+  String get settingsTierFeaturesEssential =>
+      '✓ Gasolineras óptimas · Peajes básicos · Alertas adversas · Radares';
+
+  @override
+  String get settingsTierFeaturesFree =>
+      'Solo planificación básica · Sin optimización de combustible ni peajes';
+
+  @override
+  String resultStationAdded(String name) {
+    return '$name añadida · estimación de depósito actualizada en los días siguientes';
+  }
+
+  @override
+  String get resultRestStopFallback => 'Parada de descanso';
+
+  @override
+  String get resultTooltipProfile => 'Perfil y vehículo';
+
+  @override
+  String get resultRecalculating => 'Recalculando con tus nuevos ajustes…';
+
+  @override
+  String resultPlanReady(int km, int h, int m) {
+    return 'Plan listo · $km km · ${h}h ${m}m';
+  }
+
+  @override
+  String get resultGenericConsumptionHint =>
+      'Cálculo con consumo genérico. Configura tu vehículo para mayor precisión.';
+
+  @override
+  String resultFuelSavingsPct(int pct) {
+    return '$pct% del coste';
+  }
+
+  @override
+  String get resultChartAdded => '  añadido';
+
+  @override
+  String get resultSettingsChangedBody =>
+      'Tus ajustes han cambiado. ¿Recalcular con los nuevos valores?';
+
+  @override
+  String resultSummaryStops(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count paradas',
+      one: '$count parada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resultSummaryTolls(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count peajes saltados',
+      one: '$count peaje saltado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resultSummaryHotels(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hoteles',
+      one: '$count hotel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resultGyGError => 'No se pudo abrir GetYourGuide';
+
+  @override
+  String resultGyGActivities(String city) {
+    return 'Ver actividades en $city';
+  }
 }

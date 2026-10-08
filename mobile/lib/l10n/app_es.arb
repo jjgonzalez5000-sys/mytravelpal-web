@@ -2696,5 +2696,107 @@
     }
   },
   "wizardTollSavingsDemo": "Ahorro €8",
-  "@wizardTollSavingsDemo": {}
+  "@wizardTollSavingsDemo": {},
+  "companionNotifFuelBody": "A {km} km · Toca \"Desviar\" para añadirla a tu ruta en Maps",
+  "@companionNotifFuelBody": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "companionDemoNotifFuel": "A 3 km · Desvía en Maps para repostar",
+  "@companionDemoNotifFuel": {},
+  "companionDemoNotifRoute": "A 18 km en tu ruta · Considera la N-II · Desviar en Maps",
+  "@companionDemoNotifRoute": {},
+  "companionDemoNotifMeal": "Menú €12 · A 4 km · ¿Paramos a comer? Desviar en Maps",
+  "@companionDemoNotifMeal": {},
+  "companionDemoNotifEta": "ETA en 10 min · 12 km · Sin incidencias",
+  "@companionDemoNotifEta": {},
+  "companionOffRouteTitle": "¿Estás fuera de la ruta?",
+  "@companionOffRouteTitle": {},
+  "companionOffRouteBody": "Tu posición está lejos de la ruta planificada. En modo libre el asistente sigue contigo sin calcular km de ruta.",
+  "@companionOffRouteBody": {},
+  "companionOffRouteBack": "Volver a la ruta",
+  "@companionOffRouteBack": {},
+  "companionFreeModeBtn": "Modo libre",
+  "@companionFreeModeBtn": {},
+  "companionGroupSessionError": "No se pudo crear la sesión grupal: {error}",
+  "@companionGroupSessionError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "companionMealStopTitle": "Cambiar parada de comida",
+  "@companionMealStopTitle": {},
+  "companionMealStopDelayBody": "¿Quieres retrasar la parada de comida? La moveremos al siguiente área de servicio.",
+  "@companionMealStopDelayBody": {},
+  "settingsLogoutStep3": "3/4 · Cerrando sesión…",
+  "@settingsLogoutStep3": {},
+  "settingsLogoutStep4": "4/4 · Volviendo al inicio…",
+  "@settingsLogoutStep4": {},
+  "settingsNickTaken": "Ya está en uso",
+  "@settingsNickTaken": {},
+  "settingsNickHelper": "Tu nombre en el ranking de rutas. Elige un nick y tu país — solo visible en el Hall of Fame.",
+  "@settingsNickHelper": {},
+  "settingsNickEmpty": "Sin nick aún",
+  "@settingsNickEmpty": {},
+  "settingsCountrySearch": "Buscar país...",
+  "@settingsCountrySearch": {},
+  "settingsPremiumDevNote": "Se activará por compra en producción",
+  "@settingsPremiumDevNote": {},
+  "settingsTierFeaturesPremium": "✓ Companion IA · Peajes optimizados · Android Auto · Grupos · Monitor de viaje",
+  "@settingsTierFeaturesPremium": {},
+  "settingsTierFeaturesEssential": "✓ Gasolineras óptimas · Peajes básicos · Alertas adversas · Radares",
+  "@settingsTierFeaturesEssential": {},
+  "settingsTierFeaturesFree": "Solo planificación básica · Sin optimización de combustible ni peajes",
+  "@settingsTierFeaturesFree": {},
+  "resultStationAdded": "{name} añadida · estimación de depósito actualizada en los días siguientes",
+  "@resultStationAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "resultRestStopFallback": "Parada de descanso",
+  "@resultRestStopFallback": {},
+  "resultTooltipProfile": "Perfil y vehículo",
+  "@resultTooltipProfile": {},
+  "resultRecalculating": "Recalculando con tus nuevos ajustes…",
+  "@resultRecalculating": {},
+  "resultPlanReady": "Plan listo · {km} km · {h}h {m}m",
+  "@resultPlanReady": {
+    "placeholders": {
+      "km": { "type": "int" },
+      "h": { "type": "int" },
+      "m": { "type": "int" }
+    }
+  },
+  "resultGenericConsumptionHint": "Cálculo con consumo genérico. Configura tu vehículo para mayor precisión.",
+  "@resultGenericConsumptionHint": {},
+  "resultFuelSavingsPct": "{pct}% del coste",
+  "@resultFuelSavingsPct": {
+    "placeholders": { "pct": { "type": "int" } }
+  },
+  "resultChartAdded": "  añadido",
+  "@resultChartAdded": {},
+  "resultSettingsChangedBody": "Tus ajustes han cambiado. ¿Recalcular con los nuevos valores?",
+  "@resultSettingsChangedBody": {},
+  "resultSummaryStops": "{count, plural, one{{count} parada} other{{count} paradas}}",
+  "@resultSummaryStops": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryTolls": "{count, plural, one{{count} peaje saltado} other{{count} peajes saltados}}",
+  "@resultSummaryTolls": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryHotels": "{count, plural, one{{count} hotel} other{{count} hoteles}}",
+  "@resultSummaryHotels": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultGyGError": "No se pudo abrir GetYourGuide",
+  "@resultGyGError": {},
+  "resultGyGActivities": "Ver actividades en {city}",
+  "@resultGyGActivities": {
+    "placeholders": { "city": { "type": "String" } }
+  }
 }

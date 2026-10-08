@@ -887,5 +887,107 @@
     }
   },
   "wizardTollSavingsDemo": "Estalvia €8",
-  "@wizardTollSavingsDemo": {}
+  "@wizardTollSavingsDemo": {},
+  "companionNotifFuelBody": "A {km} km · Toca \"Desviament\" per afegir-la a la teva ruta",
+  "@companionNotifFuelBody": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "companionDemoNotifFuel": "A 3 km · Desvia a Maps per repostar",
+  "@companionDemoNotifFuel": {},
+  "companionDemoNotifRoute": "A 18 km a la teva ruta · Considera la N-II · Desvia a Maps",
+  "@companionDemoNotifRoute": {},
+  "companionDemoNotifMeal": "Menú €12 · A 4 km · Parem a menjar? Desvia a Maps",
+  "@companionDemoNotifMeal": {},
+  "companionDemoNotifEta": "ETA en 10 min · 12 km · Sense incidències",
+  "@companionDemoNotifEta": {},
+  "companionOffRouteTitle": "Estàs fora de la ruta?",
+  "@companionOffRouteTitle": {},
+  "companionOffRouteBody": "La teva posició és lluny de la ruta planificada. En mode lliure l'assistent segueix amb tu sense calcular km.",
+  "@companionOffRouteBody": {},
+  "companionOffRouteBack": "Tornar a la ruta",
+  "@companionOffRouteBack": {},
+  "companionFreeModeBtn": "Mode lliure",
+  "@companionFreeModeBtn": {},
+  "companionGroupSessionError": "No s'ha pogut crear la sessió grupal: {error}",
+  "@companionGroupSessionError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "companionMealStopTitle": "Canviar parada de menjar",
+  "@companionMealStopTitle": {},
+  "companionMealStopDelayBody": "Vols endarrerir la parada de menjar? La mourem a la propera àrea de servei.",
+  "@companionMealStopDelayBody": {},
+  "settingsLogoutStep3": "3/4 · Tancant sessió…",
+  "@settingsLogoutStep3": {},
+  "settingsLogoutStep4": "4/4 · Tornant a l'inici…",
+  "@settingsLogoutStep4": {},
+  "settingsNickTaken": "Ja està en ús",
+  "@settingsNickTaken": {},
+  "settingsNickHelper": "El teu nom al rànquing de rutes. Tria un nick i el teu país — visible només al Hall of Fame.",
+  "@settingsNickHelper": {},
+  "settingsNickEmpty": "Sense nick encara",
+  "@settingsNickEmpty": {},
+  "settingsCountrySearch": "Cercar país...",
+  "@settingsCountrySearch": {},
+  "settingsPremiumDevNote": "S'activarà per compra en producció",
+  "@settingsPremiumDevNote": {},
+  "settingsTierFeaturesPremium": "✓ Companion IA · Peatges optimitzats · Android Auto · Grups · Monitor de viatge",
+  "@settingsTierFeaturesPremium": {},
+  "settingsTierFeaturesEssential": "✓ Gasolineres òptimes · Peatges bàsics · Alertes adverses · Radars",
+  "@settingsTierFeaturesEssential": {},
+  "settingsTierFeaturesFree": "Només planificació bàsica · Sense optimització de combustible ni peatges",
+  "@settingsTierFeaturesFree": {},
+  "resultStationAdded": "{name} afegida · estimació del dipòsit actualitzada per als dies següents",
+  "@resultStationAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "resultRestStopFallback": "Àrea de descans",
+  "@resultRestStopFallback": {},
+  "resultTooltipProfile": "Perfil i vehicle",
+  "@resultTooltipProfile": {},
+  "resultRecalculating": "Recalculant amb els nous ajustos…",
+  "@resultRecalculating": {},
+  "resultPlanReady": "Pla llest · {km} km · {h}h {m}m",
+  "@resultPlanReady": {
+    "placeholders": {
+      "km": { "type": "int" },
+      "h": { "type": "int" },
+      "m": { "type": "int" }
+    }
+  },
+  "resultGenericConsumptionHint": "Càlcul amb consum genèric. Configura el teu vehicle per a més precisió.",
+  "@resultGenericConsumptionHint": {},
+  "resultFuelSavingsPct": "{pct}% del cost",
+  "@resultFuelSavingsPct": {
+    "placeholders": { "pct": { "type": "int" } }
+  },
+  "resultChartAdded": "  afegit",
+  "@resultChartAdded": {},
+  "resultSettingsChangedBody": "Els teus ajustos han canviat. Recalcular amb els nous valors?",
+  "@resultSettingsChangedBody": {},
+  "resultSummaryStops": "{count, plural, one{{count} parada} other{{count} parades}}",
+  "@resultSummaryStops": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryTolls": "{count, plural, one{{count} peatge saltat} other{{count} peatges saltats}}",
+  "@resultSummaryTolls": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryHotels": "{count, plural, one{{count} hotel} other{{count} hotels}}",
+  "@resultSummaryHotels": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultGyGError": "No s'ha pogut obrir GetYourGuide",
+  "@resultGyGError": {},
+  "resultGyGActivities": "Veure activitats a {city}",
+  "@resultGyGActivities": {
+    "placeholders": { "city": { "type": "String" } }
+  }
 }

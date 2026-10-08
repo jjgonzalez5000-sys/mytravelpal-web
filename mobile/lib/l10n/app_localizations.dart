@@ -7840,6 +7840,222 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saves €8'**
   String get wizardTollSavingsDemo;
+
+  /// No description provided for @companionNotifFuelBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km away · Tap \"Detour\" to add it to your route in Maps'**
+  String companionNotifFuelBody(int km);
+
+  /// No description provided for @companionDemoNotifFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'3 km away · Detour in Maps to refuel'**
+  String get companionDemoNotifFuel;
+
+  /// No description provided for @companionDemoNotifRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'18 km on your route · Consider the N-II · Detour in Maps'**
+  String get companionDemoNotifRoute;
+
+  /// No description provided for @companionDemoNotifMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Menu €12 · 4 km away · Stop for lunch? Detour in Maps'**
+  String get companionDemoNotifMeal;
+
+  /// No description provided for @companionDemoNotifEta.
+  ///
+  /// In en, this message translates to:
+  /// **'ETA in 10 min · 12 km · No incidents'**
+  String get companionDemoNotifEta;
+
+  /// No description provided for @companionOffRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Off route?'**
+  String get companionOffRouteTitle;
+
+  /// No description provided for @companionOffRouteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your position is far from the planned route. In free mode the assistant stays with you without calculating route km.'**
+  String get companionOffRouteBody;
+
+  /// No description provided for @companionOffRouteBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to route'**
+  String get companionOffRouteBack;
+
+  /// No description provided for @companionFreeModeBtn.
+  ///
+  /// In en, this message translates to:
+  /// **'Free mode'**
+  String get companionFreeModeBtn;
+
+  /// No description provided for @companionGroupSessionError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create group session: {error}'**
+  String companionGroupSessionError(String error);
+
+  /// No description provided for @companionMealStopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change meal stop'**
+  String get companionMealStopTitle;
+
+  /// No description provided for @companionMealStopDelayBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to delay the meal stop? We\'ll move it to the next service area.'**
+  String get companionMealStopDelayBody;
+
+  /// No description provided for @settingsLogoutStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'3/4 · Signing out…'**
+  String get settingsLogoutStep3;
+
+  /// No description provided for @settingsLogoutStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'4/4 · Returning to start…'**
+  String get settingsLogoutStep4;
+
+  /// No description provided for @settingsNickTaken.
+  ///
+  /// In en, this message translates to:
+  /// **'Already taken'**
+  String get settingsNickTaken;
+
+  /// No description provided for @settingsNickHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Your name in the route rankings. Choose a nick and your country — only visible in the Hall of Fame.'**
+  String get settingsNickHelper;
+
+  /// No description provided for @settingsNickEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No nick yet'**
+  String get settingsNickEmpty;
+
+  /// No description provided for @settingsCountrySearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search country...'**
+  String get settingsCountrySearch;
+
+  /// No description provided for @settingsPremiumDevNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Will activate via purchase in production'**
+  String get settingsPremiumDevNote;
+
+  /// No description provided for @settingsTierFeaturesPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'✓ AI Companion · Optimised tolls · Android Auto · Groups · Trip monitor'**
+  String get settingsTierFeaturesPremium;
+
+  /// No description provided for @settingsTierFeaturesEssential.
+  ///
+  /// In en, this message translates to:
+  /// **'✓ Optimal fuel stations · Basic tolls · Adverse alerts · Speed cameras'**
+  String get settingsTierFeaturesEssential;
+
+  /// No description provided for @settingsTierFeaturesFree.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic planning only · No fuel or toll optimisation'**
+  String get settingsTierFeaturesFree;
+
+  /// No description provided for @resultStationAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added · tank estimate updated for the following days'**
+  String resultStationAdded(String name);
+
+  /// No description provided for @resultRestStopFallback.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest stop'**
+  String get resultRestStopFallback;
+
+  /// No description provided for @resultTooltipProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile & vehicle'**
+  String get resultTooltipProfile;
+
+  /// No description provided for @resultRecalculating.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculating with your new settings…'**
+  String get resultRecalculating;
+
+  /// No description provided for @resultPlanReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan ready · {km} km · {h}h {m}m'**
+  String resultPlanReady(int km, int h, int m);
+
+  /// No description provided for @resultGenericConsumptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Calculated with generic fuel consumption. Set up your vehicle for better accuracy.'**
+  String get resultGenericConsumptionHint;
+
+  /// No description provided for @resultFuelSavingsPct.
+  ///
+  /// In en, this message translates to:
+  /// **'{pct}% of cost'**
+  String resultFuelSavingsPct(int pct);
+
+  /// No description provided for @resultChartAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'  added'**
+  String get resultChartAdded;
+
+  /// No description provided for @resultSettingsChangedBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your settings have changed. Recalculate with the new values?'**
+  String get resultSettingsChangedBody;
+
+  /// No description provided for @resultSummaryStops.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} stop} other{{count} stops}}'**
+  String resultSummaryStops(int count);
+
+  /// No description provided for @resultSummaryTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} toll skipped} other{{count} tolls skipped}}'**
+  String resultSummaryTolls(int count);
+
+  /// No description provided for @resultSummaryHotels.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} hotel} other{{count} hotels}}'**
+  String resultSummaryHotels(int count);
+
+  /// No description provided for @resultGyGError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open GetYourGuide'**
+  String get resultGyGError;
+
+  /// No description provided for @resultGyGActivities.
+  ///
+  /// In en, this message translates to:
+  /// **'See activities in {city}'**
+  String resultGyGActivities(String city);
 }
 
 class _AppLocalizationsDelegate

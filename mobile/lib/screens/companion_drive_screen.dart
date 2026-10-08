@@ -512,12 +512,13 @@ class _CompanionDriveScreenState
     _notifiedFuelIds.add(stationId);
 
     final savings = (hint.savingsEurPerL * 100).toStringAsFixed(0);
-    final km = hint.aheadKm.toStringAsFixed(0);
+    final kmDouble = hint.aheadKm;
     final dest = widget.tripDestination?.coordinate;
+    final l = AppLocalizations.of(context);
     unawaited(CarNotificationBridge.instance.postAlert(
       id: stationId.hashCode.abs() % 10000 + 2000,
       title: '⛽ ${hint.station.stationName} − ${savings}ct/L',
-      body: 'A $km km · Toca "Desviar" para añadirla a tu ruta en Maps',
+      body: l.companionNotifFuelBody(kmDouble.round()),
       waypointLat: coord.lat,
       waypointLon: coord.lon,
       destLat: dest?.lat,
@@ -566,6 +567,7 @@ class _CompanionDriveScreenState
     _injectPosition(40.4168, -3.7038, speedKmh: 0);
     await Future<void>.delayed(const Duration(seconds: 2));
 
+    final l = AppLocalizations.of(context);
     final steps = [
       () async {
         // Step 1: Fuel alert
@@ -573,7 +575,7 @@ class _CompanionDriveScreenState
         await CarNotificationBridge.instance.postAlert(
           id: 9001,
           title: '⛽ Repsol — −9 ct/L',
-          body: 'A 3 km · Desvía en Maps para repostar',
+          body: l.companionDemoNotifFuel,
           waypointLat: fuelCoord.lat,
           waypointLon: fuelCoord.lon,
           destLat: dest.lat,
@@ -599,7 +601,7 @@ class _CompanionDriveScreenState
         await CarNotificationBridge.instance.postAlert(
           id: 9002,
           title: '🔥 Incendio forestal detectado',
-          body: 'A 18 km en tu ruta · Considera la N-II · Desviar en Maps',
+          body: l.companionDemoNotifRoute,
           waypointLat: fireCoord.lat,
           waypointLon: fireCoord.lon,
           destLat: dest.lat,
@@ -625,7 +627,7 @@ class _CompanionDriveScreenState
         await CarNotificationBridge.instance.postAlert(
           id: 9003,
           title: '🍽 El Portal del Jiloca',
-          body: 'Menú €12 · A 4 km · ¿Paramos a comer? Desviar en Maps',
+          body: l.companionDemoNotifMeal,
           waypointLat: restCoord.lat,
           waypointLon: restCoord.lon,
           destLat: dest.lat,
@@ -651,7 +653,7 @@ class _CompanionDriveScreenState
         await CarNotificationBridge.instance.postAlert(
           id: 9004,
           title: '🏁 Llegando a Zaragoza',
-          body: 'ETA en 10 min · 12 km · Sin incidencias',
+          body: l.companionDemoNotifEta,
         );
         await CarBridge.instance.updateTrip(
           progress: TripProgress(
@@ -1261,19 +1263,16 @@ class _CompanionDriveScreenState
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('¿Estás fuera de la ruta?'),
-        content: const Text(
-          'Tu posición está lejos de la ruta planificada. '
-          'En modo libre el asistente sigue contigo sin calcular km de ruta.',
-        ),
+        title: Text(l.companionOffRouteTitle),
+        content: Text(l.companionOffRouteBody),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Volver a la ruta'),
+            child: Text(l.companionOffRouteBack),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Modo libre'),
+            child: Text(l.companionFreeModeBtn),
           ),
         ],
       ),
@@ -1449,7 +1448,7 @@ class _CompanionDriveScreenState
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('No se pudo crear la sesion grupal: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context).companionGroupSessionError(e.toString()))),
         );
       }
     }
@@ -1515,49 +1514,51 @@ class _CompanionDriveScreenState
     if (nextMeal == null) return;
     showModalBottomSheet<void>(
       context: context,
-      builder: (sheetCtx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(Tokens.space24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'Cambiar parada de comida',
-                style: Theme.of(sheetCtx).textTheme.titleLarge,
-              ),
-              const SizedBox(height: Tokens.space12),
-              Text(
-                'Quieres retrasar la parada de comida? '
-                'La moveremos al siguiente area de servicio.',
-                style: Theme.of(sheetCtx).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: Tokens.space24),
-              FilledButton(
-                onPressed: () {
-                  Navigator.of(sheetCtx).pop();
-                  setState(() {
-                    _deferredMealKms.add(nextMeal.distanceFromOriginKm);
-                    // Clear the proactive suggestion that triggered this.
-                    _proactiveSuggestion = null;
-                  });
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Parada de comida eliminada del recorrido'),
-                    ),
-                  );
-                },
-                child: const Text('Si, adelante'),
-              ),
-              const SizedBox(height: Tokens.space8),
-              OutlinedButton(
-                onPressed: () => Navigator.of(sheetCtx).pop(),
-                child: const Text('No, mantener'),
-              ),
-            ],
+      builder: (sheetCtx) {
+        final sl = AppLocalizations.of(sheetCtx);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(Tokens.space24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  sl.companionMealStopTitle,
+                  style: Theme.of(sheetCtx).textTheme.titleLarge,
+                ),
+                const SizedBox(height: Tokens.space12),
+                Text(
+                  sl.companionMealStopDelayBody,
+                  style: Theme.of(sheetCtx).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: Tokens.space24),
+                FilledButton(
+                  onPressed: () {
+                    Navigator.of(sheetCtx).pop();
+                    setState(() {
+                      _deferredMealKms.add(nextMeal.distanceFromOriginKm);
+                      // Clear the proactive suggestion that triggered this.
+                      _proactiveSuggestion = null;
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Parada de comida eliminada del recorrido'),
+                      ),
+                    );
+                  },
+                  child: const Text('Si, adelante'),
+                ),
+                const SizedBox(height: Tokens.space8),
+                OutlinedButton(
+                  onPressed: () => Navigator.of(sheetCtx).pop(),
+                  child: const Text('No, mantener'),
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 

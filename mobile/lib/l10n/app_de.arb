@@ -2695,5 +2695,107 @@
     }
   },
   "wizardTollSavingsDemo": "Spart €8",
-  "@wizardTollSavingsDemo": {}
+  "@wizardTollSavingsDemo": {},
+  "companionNotifFuelBody": "{km} km entfernt · Tippe \"Umweg\" um es zur Route hinzuzufügen",
+  "@companionNotifFuelBody": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "companionDemoNotifFuel": "3 km entfernt · Umweg in Maps zum Tanken",
+  "@companionDemoNotifFuel": {},
+  "companionDemoNotifRoute": "18 km auf deiner Route · N-II in Betracht ziehen · Umweg in Maps",
+  "@companionDemoNotifRoute": {},
+  "companionDemoNotifMeal": "Menü €12 · 4 km entfernt · Essen pause? Umweg in Maps",
+  "@companionDemoNotifMeal": {},
+  "companionDemoNotifEta": "Ankunft in 10 min · 12 km · Keine Vorfälle",
+  "@companionDemoNotifEta": {},
+  "companionOffRouteTitle": "Außerhalb der Route?",
+  "@companionOffRouteTitle": {},
+  "companionOffRouteBody": "Deine Position ist weit von der geplanten Route entfernt. Im freien Modus bleibt der Assistent bei dir ohne km zu berechnen.",
+  "@companionOffRouteBody": {},
+  "companionOffRouteBack": "Zurück zur Route",
+  "@companionOffRouteBack": {},
+  "companionFreeModeBtn": "Freier Modus",
+  "@companionFreeModeBtn": {},
+  "companionGroupSessionError": "Gruppensitzung konnte nicht erstellt werden: {error}",
+  "@companionGroupSessionError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "companionMealStopTitle": "Mahlzeitenstopp ändern",
+  "@companionMealStopTitle": {},
+  "companionMealStopDelayBody": "Möchtest du den Mahlzeitenstopp verschieben? Wir verschieben ihn zum nächsten Rastplatz.",
+  "@companionMealStopDelayBody": {},
+  "settingsLogoutStep3": "3/4 · Abmelden…",
+  "@settingsLogoutStep3": {},
+  "settingsLogoutStep4": "4/4 · Zurück zum Start…",
+  "@settingsLogoutStep4": {},
+  "settingsNickTaken": "Bereits vergeben",
+  "@settingsNickTaken": {},
+  "settingsNickHelper": "Dein Name im Strecken-Ranking. Wähle einen Nick und dein Land — nur im Hall of Fame sichtbar.",
+  "@settingsNickHelper": {},
+  "settingsNickEmpty": "Noch kein Nick",
+  "@settingsNickEmpty": {},
+  "settingsCountrySearch": "Land suchen...",
+  "@settingsCountrySearch": {},
+  "settingsPremiumDevNote": "Wird per Kauf in Produktion aktiviert",
+  "@settingsPremiumDevNote": {},
+  "settingsTierFeaturesPremium": "✓ KI-Companion · Optimierte Maut · Android Auto · Gruppen · Reisemonitor",
+  "@settingsTierFeaturesPremium": {},
+  "settingsTierFeaturesEssential": "✓ Optimale Tankstellen · Basismaut · Unwetterwarnungen · Blitzer",
+  "@settingsTierFeaturesEssential": {},
+  "settingsTierFeaturesFree": "Nur Basisplanung · Keine Kraftstoff- oder Mautoptimierung",
+  "@settingsTierFeaturesFree": {},
+  "resultStationAdded": "{name} hinzugefügt · Tankschätzung für die nächsten Tage aktualisiert",
+  "@resultStationAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "resultRestStopFallback": "Rastplatz",
+  "@resultRestStopFallback": {},
+  "resultTooltipProfile": "Profil & Fahrzeug",
+  "@resultTooltipProfile": {},
+  "resultRecalculating": "Neuberechnung mit deinen neuen Einstellungen…",
+  "@resultRecalculating": {},
+  "resultPlanReady": "Plan fertig · {km} km · {h}h {m}m",
+  "@resultPlanReady": {
+    "placeholders": {
+      "km": { "type": "int" },
+      "h": { "type": "int" },
+      "m": { "type": "int" }
+    }
+  },
+  "resultGenericConsumptionHint": "Berechnung mit generischem Verbrauch. Fahrzeug einrichten für mehr Genauigkeit.",
+  "@resultGenericConsumptionHint": {},
+  "resultFuelSavingsPct": "{pct}% der Kosten",
+  "@resultFuelSavingsPct": {
+    "placeholders": { "pct": { "type": "int" } }
+  },
+  "resultChartAdded": "  hinzugefügt",
+  "@resultChartAdded": {},
+  "resultSettingsChangedBody": "Deine Einstellungen haben sich geändert. Mit neuen Werten neu berechnen?",
+  "@resultSettingsChangedBody": {},
+  "resultSummaryStops": "{count, plural, one{{count} Pause} other{{count} Pausen}}",
+  "@resultSummaryStops": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryTolls": "{count, plural, one{{count} Maut übersprungen} other{{count} Mauten übersprungen}}",
+  "@resultSummaryTolls": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryHotels": "{count, plural, one{{count} Hotel} other{{count} Hotels}}",
+  "@resultSummaryHotels": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultGyGError": "GetYourGuide konnte nicht geöffnet werden",
+  "@resultGyGError": {},
+  "resultGyGActivities": "Aktivitäten in {city}",
+  "@resultGyGActivities": {
+    "placeholders": { "city": { "type": "String" } }
+  }
 }

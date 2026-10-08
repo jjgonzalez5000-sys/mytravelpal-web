@@ -482,9 +482,9 @@ class SettingsScreen extends ConsumerWidget {
     status.value = '2/4 · Borrando datos locales…';
     try { await tripStorage.clear(); } catch (_) {}
     try { await prefs.clearUserScoped(); } catch (_) {}
-    status.value = '3/4 · Cerrando sesión…';
+    status.value = l.settingsLogoutStep3;
     try { await ref.read(authProvider.notifier).signOut(); } catch (_) {}
-    status.value = '4/4 · Volviendo al inicio…';
+    status.value = l.settingsLogoutStep4;
 
     if (rootNav.canPop()) rootNav.pop();
     await rootNav.pushAndRemoveUntil<void>(
@@ -1383,6 +1383,7 @@ class _HallOfFameSectionState extends ConsumerState<_HallOfFameSection> {
     final prefs = ref.watch(appPrefsProvider);
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final selectedCountry = prefs.hallCountry;
 
     // Nick field suffix: spinner / check / error based on availability state
@@ -1402,7 +1403,7 @@ class _HallOfFameSectionState extends ConsumerState<_HallOfFameSection> {
     } else if (_nickAvailable == false) {
       nickSuffix = Icon(Icons.cancel_outlined,
           color: scheme.error, size: 20);
-      nickHelperText = 'Ya está en uso';
+      nickHelperText = l.settingsNickTaken;
       nickHelperColor = scheme.error;
     }
 
@@ -1413,7 +1414,7 @@ class _HallOfFameSectionState extends ConsumerState<_HallOfFameSection> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tu nombre en el ranking de rutas. Elige un nick y tu país — solo visible en el Hall of Fame.',
+            l.settingsNickHelper,
             style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: Tokens.space12),
@@ -1503,7 +1504,7 @@ class _HallOfFameSectionState extends ConsumerState<_HallOfFameSection> {
                   const SizedBox(width: 6),
                   Text(
                     _nickCtrl.text.isEmpty
-                        ? 'Sin nick aún'
+                        ? l.settingsNickEmpty
                         : _nickCtrl.text,
                     style: t.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
@@ -1567,6 +1568,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final filtered = _query.isEmpty
         ? _eu
         : _eu
@@ -1593,10 +1595,10 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
             padding: const EdgeInsets.all(Tokens.space12),
             child: TextField(
               autofocus: true,
-              decoration: const InputDecoration(
-                hintText: 'Buscar país...',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: l.settingsCountrySearch,
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
               ),
               onChanged: (v) => setState(() => _query = v),
             ),
@@ -1633,6 +1635,7 @@ class _PremiumTierToggle extends ConsumerWidget {
     final tier = ref.watch(subscriptionTierProvider);
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
 
     final tiers = [
       ('free', 'Gratuito', Icons.lock_outline),
@@ -1673,7 +1676,7 @@ class _PremiumTierToggle extends ConsumerWidget {
               ),
               const Spacer(),
               Text(
-                'Se activará por compra en producción',
+                l.settingsPremiumDevNote,
                 style: t.labelSmall?.copyWith(
                     color: scheme.onSurfaceVariant),
               ),
@@ -1736,7 +1739,7 @@ class _PremiumTierToggle extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            _tierDescription(tier),
+            _tierDescription(tier, l),
             style: t.labelSmall?.copyWith(
                 color: scheme.onSurfaceVariant),
           ),
@@ -1745,9 +1748,9 @@ class _PremiumTierToggle extends ConsumerWidget {
     );
   }
 
-  String _tierDescription(String tier) => switch (tier) {
-    'premium' => '✓ Companion IA · Peajes optimizados · Android Auto · Grupos · Monitor de viaje',
-    'essential' => '✓ Gasolineras óptimas · Peajes básicos · Alertas adversas · Radares',
-    _ => 'Solo planificación básica · Sin optimización de combustible ni peajes',
+  String _tierDescription(String tier, AppLocalizations l) => switch (tier) {
+    'premium' => l.settingsTierFeaturesPremium,
+    'essential' => l.settingsTierFeaturesEssential,
+    _ => l.settingsTierFeaturesFree,
   };
 }

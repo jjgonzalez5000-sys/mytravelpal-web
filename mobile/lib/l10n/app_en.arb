@@ -2695,5 +2695,107 @@
     }
   },
   "wizardTollSavingsDemo": "Saves €8",
-  "@wizardTollSavingsDemo": {}
+  "@wizardTollSavingsDemo": {},
+  "companionNotifFuelBody": "{km} km away · Tap \"Detour\" to add it to your route in Maps",
+  "@companionNotifFuelBody": {
+    "placeholders": {
+      "km": {
+        "type": "int"
+      }
+    }
+  },
+  "companionDemoNotifFuel": "3 km away · Detour in Maps to refuel",
+  "@companionDemoNotifFuel": {},
+  "companionDemoNotifRoute": "18 km on your route · Consider the N-II · Detour in Maps",
+  "@companionDemoNotifRoute": {},
+  "companionDemoNotifMeal": "Menu €12 · 4 km away · Stop for lunch? Detour in Maps",
+  "@companionDemoNotifMeal": {},
+  "companionDemoNotifEta": "ETA in 10 min · 12 km · No incidents",
+  "@companionDemoNotifEta": {},
+  "companionOffRouteTitle": "Off route?",
+  "@companionOffRouteTitle": {},
+  "companionOffRouteBody": "Your position is far from the planned route. In free mode the assistant stays with you without calculating route km.",
+  "@companionOffRouteBody": {},
+  "companionOffRouteBack": "Back to route",
+  "@companionOffRouteBack": {},
+  "companionFreeModeBtn": "Free mode",
+  "@companionFreeModeBtn": {},
+  "companionGroupSessionError": "Could not create group session: {error}",
+  "@companionGroupSessionError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "companionMealStopTitle": "Change meal stop",
+  "@companionMealStopTitle": {},
+  "companionMealStopDelayBody": "Do you want to delay the meal stop? We'll move it to the next service area.",
+  "@companionMealStopDelayBody": {},
+  "settingsLogoutStep3": "3/4 · Signing out…",
+  "@settingsLogoutStep3": {},
+  "settingsLogoutStep4": "4/4 · Returning to start…",
+  "@settingsLogoutStep4": {},
+  "settingsNickTaken": "Already taken",
+  "@settingsNickTaken": {},
+  "settingsNickHelper": "Your name in the route rankings. Choose a nick and your country — only visible in the Hall of Fame.",
+  "@settingsNickHelper": {},
+  "settingsNickEmpty": "No nick yet",
+  "@settingsNickEmpty": {},
+  "settingsCountrySearch": "Search country...",
+  "@settingsCountrySearch": {},
+  "settingsPremiumDevNote": "Will activate via purchase in production",
+  "@settingsPremiumDevNote": {},
+  "settingsTierFeaturesPremium": "✓ AI Companion · Optimised tolls · Android Auto · Groups · Trip monitor",
+  "@settingsTierFeaturesPremium": {},
+  "settingsTierFeaturesEssential": "✓ Optimal fuel stations · Basic tolls · Adverse alerts · Speed cameras",
+  "@settingsTierFeaturesEssential": {},
+  "settingsTierFeaturesFree": "Basic planning only · No fuel or toll optimisation",
+  "@settingsTierFeaturesFree": {},
+  "resultStationAdded": "{name} added · tank estimate updated for the following days",
+  "@resultStationAdded": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "resultRestStopFallback": "Rest stop",
+  "@resultRestStopFallback": {},
+  "resultTooltipProfile": "Profile & vehicle",
+  "@resultTooltipProfile": {},
+  "resultRecalculating": "Recalculating with your new settings…",
+  "@resultRecalculating": {},
+  "resultPlanReady": "Plan ready · {km} km · {h}h {m}m",
+  "@resultPlanReady": {
+    "placeholders": {
+      "km": { "type": "int" },
+      "h": { "type": "int" },
+      "m": { "type": "int" }
+    }
+  },
+  "resultGenericConsumptionHint": "Calculated with generic fuel consumption. Set up your vehicle for better accuracy.",
+  "@resultGenericConsumptionHint": {},
+  "resultFuelSavingsPct": "{pct}% of cost",
+  "@resultFuelSavingsPct": {
+    "placeholders": { "pct": { "type": "int" } }
+  },
+  "resultChartAdded": "  added",
+  "@resultChartAdded": {},
+  "resultSettingsChangedBody": "Your settings have changed. Recalculate with the new values?",
+  "@resultSettingsChangedBody": {},
+  "resultSummaryStops": "{count, plural, one{{count} stop} other{{count} stops}}",
+  "@resultSummaryStops": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryTolls": "{count, plural, one{{count} toll skipped} other{{count} tolls skipped}}",
+  "@resultSummaryTolls": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultSummaryHotels": "{count, plural, one{{count} hotel} other{{count} hotels}}",
+  "@resultSummaryHotels": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "resultGyGError": "Could not open GetYourGuide",
+  "@resultGyGError": {},
+  "resultGyGActivities": "See activities in {city}",
+  "@resultGyGActivities": {
+    "placeholders": { "city": { "type": "String" } }
+  }
 }

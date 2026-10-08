@@ -542,8 +542,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '${p.stationName} añadida · estimación de depósito actualizada '
-            'en los días siguientes',
+            l.resultStationAdded(p.stationName),
           ),
           duration: const Duration(seconds: 3),
           behavior: SnackBarBehavior.floating,
@@ -575,7 +574,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       key,
       r.recommendedBreakMinutes.toDouble(),
       coord: r.coordinate,
-      label: r.name ?? 'Parada de descanso',
+      label: r.name ?? AppLocalizations.of(context).resultRestStopFallback,
     );
   }
 
@@ -3289,7 +3288,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               },
             ),
           IconButton(
-            tooltip: 'Perfil y vehículo',
+            tooltip: l.resultTooltipProfile,
             icon: const Icon(Icons.person_outline),
             onPressed: _openProfileFromResult,
           ),
@@ -3543,7 +3542,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       newDeparture: widget.desiredDepartureAt ?? widget.request.desiredDepartureAt,
       avoidMotorways: widget.request.avoidMotorways,
       overrideRequest: widget.request.copyWith(tripProfile: current),
-      loadingTitle: 'Recalculando con tus nuevos ajustes…',
+      loadingTitle: AppLocalizations.of(context).resultRecalculating,
     );
   }
 
@@ -3721,10 +3720,11 @@ class _PlanReadyChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
+    final l = AppLocalizations.of(context);
     final km = distanceKm.round();
     final h = (minutes / 60).floor();
     final m = (minutes % 60).round();
-    final label = 'Plan listo  ·  ${km} km  ·  ${h}h ${m}m';
+    final label = l.resultPlanReady(km, h, m);
     final chip = Material(
       color: const Color(0xFF16A34A), // green-600
       elevation: 4,
@@ -4340,7 +4340,7 @@ class _TotalTripCostCard extends ConsumerWidget {
               value: fuelCostEur, scheme: scheme, t: t),
           if (isDefaultVehicle && fuelCostEur > 0)
             _ProfileNudge(
-              message: 'Cálculo con consumo genérico. Configura tu vehículo para mayor precisión.',
+              message: l.resultGenericConsumptionHint,
               onTap: onOpenProfile,
             ),
           _CostRow(
@@ -4553,7 +4553,7 @@ class _TotalTripCostCard extends ConsumerWidget {
                                     if (fuelLitersFilled > 0.5)
                                       '${fuelLitersFilled.toStringAsFixed(0)} L',
                                     if (fuelCostEur > 0)
-                                      '${(fuelSavedEur / fuelCostEur * 100).round()}% del coste',
+                                      l.resultFuelSavingsPct((fuelSavedEur / fuelCostEur * 100).round()),
                                   ];
                                   return parts.join(' · ');
                                 }(),
@@ -4977,7 +4977,7 @@ class _FuelSavingsSectionState extends State<_FuelSavingsSection> {
                     ),
                     if (pct > 0)
                       Text(
-                        '$pct% del coste',
+                        l.resultFuelSavingsPct(pct),
                         style: t.labelSmall?.copyWith(
                           color: Colors.green.shade600,
                           fontSize: 9,
@@ -5066,6 +5066,7 @@ class _FuelRouteMinimap extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final l = AppLocalizations.of(context);
     return GestureDetector(
       onTapDown: onTapStation == null || cheapStations.isEmpty || totalKm <= 0
           ? null
@@ -5113,6 +5114,7 @@ class _FuelRouteMinimap extends StatelessWidget {
                 cheapStations: cheapStations,
                 addedKeys: addedKeys,
                 selectedIndex: selectedIndex,
+                addedLabel: l.resultChartAdded,
           ),
             ),
           );
@@ -5140,6 +5142,7 @@ class _FuelRouteMinimapPainter extends CustomPainter {
     this.cheapStations = const [],
     this.addedKeys = const {},
     this.selectedIndex = -1,
+    this.addedLabel = '  added',
   });
 
   final List<FuelPrice> stations;
@@ -5152,6 +5155,8 @@ class _FuelRouteMinimapPainter extends CustomPainter {
   /// Keys of stations the user has currently added to the route.
   final Set<String> addedKeys;
   final int selectedIndex;
+  /// Localized label for the "added" legend entry.
+  final String addedLabel;
 
   static const double _routeY = 68.0;
   static const double _topPad = 8.0;
@@ -5340,9 +5345,9 @@ class _FuelRouteMinimapPainter extends CustomPainter {
     // Green line = optimal
     _line(canvas, 0, legendY, greenDot.withValues(alpha: 0.6));
     _textAt(canvas, '  optimal', 14, legendY - 5, textStyle);
-    // Orange dot = añadido
+    // Orange dot = added
     _dot(canvas, size.width * 0.48, legendY, orangeDot);
-    _textAt(canvas, '  añadido', size.width * 0.48 + 4, legendY - 5, textStyle);
+    _textAt(canvas, addedLabel, size.width * 0.48 + 4, legendY - 5, textStyle);
   }
 
   void _textAt(
@@ -7833,6 +7838,7 @@ class _ProfileChangedBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.space8),
       padding: const EdgeInsets.symmetric(
@@ -7848,7 +7854,7 @@ class _ProfileChangedBanner extends StatelessWidget {
           const SizedBox(width: Tokens.space8),
           Expanded(
             child: Text(
-              'Tus ajustes han cambiado. ¿Recalcular con los nuevos valores?',
+              l.resultSettingsChangedBody,
               style: t.bodySmall?.copyWith(color: scheme.onPrimaryContainer),
             ),
           ),
@@ -8964,12 +8970,12 @@ class _AddedStopsChip extends StatelessWidget {
 
   String _chipLabel(AppLocalizations l) {
     final parts = <String>[];
-    if (count > 0) parts.add('$count ${count == 1 ? "parada" : "paradas"}');
+    if (count > 0) parts.add(l.resultSummaryStops(count));
     if (tollSkipsCount > 0) {
-      parts.add('$tollSkipsCount ${tollSkipsCount == 1 ? "peaje" : "peajes"} saltado${tollSkipsCount == 1 ? "" : "s"}');
+      parts.add(l.resultSummaryTolls(tollSkipsCount));
     }
     if (hotelCount > 0) {
-      parts.add('$hotelCount ${hotelCount == 1 ? "hotel" : "hoteles"}');
+      parts.add(l.resultSummaryHotels(hotelCount));
     }
     final base = parts.join(' · ');
     if (minutes > 0) return '$base · +${minutes.toStringAsFixed(0)} min';
@@ -9363,7 +9369,7 @@ class _ActivitiesCta extends StatelessWidget {
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir GetYourGuide')),
+          SnackBar(content: Text(AppLocalizations.of(context).resultGyGError)),
         );
       }
     }
@@ -9453,7 +9459,7 @@ class _IntermediateActivitiesCta extends StatelessWidget {
     if (!await launchUrl(url, mode: LaunchMode.externalApplication)) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No se pudo abrir GetYourGuide')),
+          SnackBar(content: Text(AppLocalizations.of(context).resultGyGError)),
         );
       }
     }
@@ -9461,6 +9467,7 @@ class _IntermediateActivitiesCta extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final city = _ActivitiesCta.extractCityName(cityName);
     return GestureDetector(
       onTap: () => _launch(context),
@@ -9472,7 +9479,7 @@ class _IntermediateActivitiesCta extends StatelessWidget {
             const SizedBox(width: 6),
             Expanded(
               child: Text(
-                'Ver actividades en $city',
+                l.resultGyGActivities(city),
                 style: const TextStyle(
                   color: Color(0xFFF59E0B),
                   fontSize: 13,

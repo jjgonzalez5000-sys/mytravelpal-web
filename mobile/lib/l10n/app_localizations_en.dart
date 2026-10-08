@@ -4376,4 +4376,159 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get wizardTollSavingsDemo => 'Saves €8';
+
+  @override
+  String companionNotifFuelBody(int km) {
+    return '$km km away · Tap \"Detour\" to add it to your route in Maps';
+  }
+
+  @override
+  String get companionDemoNotifFuel => '3 km away · Detour in Maps to refuel';
+
+  @override
+  String get companionDemoNotifRoute =>
+      '18 km on your route · Consider the N-II · Detour in Maps';
+
+  @override
+  String get companionDemoNotifMeal =>
+      'Menu €12 · 4 km away · Stop for lunch? Detour in Maps';
+
+  @override
+  String get companionDemoNotifEta => 'ETA in 10 min · 12 km · No incidents';
+
+  @override
+  String get companionOffRouteTitle => 'Off route?';
+
+  @override
+  String get companionOffRouteBody =>
+      'Your position is far from the planned route. In free mode the assistant stays with you without calculating route km.';
+
+  @override
+  String get companionOffRouteBack => 'Back to route';
+
+  @override
+  String get companionFreeModeBtn => 'Free mode';
+
+  @override
+  String companionGroupSessionError(String error) {
+    return 'Could not create group session: $error';
+  }
+
+  @override
+  String get companionMealStopTitle => 'Change meal stop';
+
+  @override
+  String get companionMealStopDelayBody =>
+      'Do you want to delay the meal stop? We\'ll move it to the next service area.';
+
+  @override
+  String get settingsLogoutStep3 => '3/4 · Signing out…';
+
+  @override
+  String get settingsLogoutStep4 => '4/4 · Returning to start…';
+
+  @override
+  String get settingsNickTaken => 'Already taken';
+
+  @override
+  String get settingsNickHelper =>
+      'Your name in the route rankings. Choose a nick and your country — only visible in the Hall of Fame.';
+
+  @override
+  String get settingsNickEmpty => 'No nick yet';
+
+  @override
+  String get settingsCountrySearch => 'Search country...';
+
+  @override
+  String get settingsPremiumDevNote =>
+      'Will activate via purchase in production';
+
+  @override
+  String get settingsTierFeaturesPremium =>
+      '✓ AI Companion · Optimised tolls · Android Auto · Groups · Trip monitor';
+
+  @override
+  String get settingsTierFeaturesEssential =>
+      '✓ Optimal fuel stations · Basic tolls · Adverse alerts · Speed cameras';
+
+  @override
+  String get settingsTierFeaturesFree =>
+      'Basic planning only · No fuel or toll optimisation';
+
+  @override
+  String resultStationAdded(String name) {
+    return '$name added · tank estimate updated for the following days';
+  }
+
+  @override
+  String get resultRestStopFallback => 'Rest stop';
+
+  @override
+  String get resultTooltipProfile => 'Profile & vehicle';
+
+  @override
+  String get resultRecalculating => 'Recalculating with your new settings…';
+
+  @override
+  String resultPlanReady(int km, int h, int m) {
+    return 'Plan ready · $km km · ${h}h ${m}m';
+  }
+
+  @override
+  String get resultGenericConsumptionHint =>
+      'Calculated with generic fuel consumption. Set up your vehicle for better accuracy.';
+
+  @override
+  String resultFuelSavingsPct(int pct) {
+    return '$pct% of cost';
+  }
+
+  @override
+  String get resultChartAdded => '  added';
+
+  @override
+  String get resultSettingsChangedBody =>
+      'Your settings have changed. Recalculate with the new values?';
+
+  @override
+  String resultSummaryStops(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count stops',
+      one: '$count stop',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resultSummaryTolls(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count tolls skipped',
+      one: '$count toll skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resultSummaryHotels(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hotels',
+      one: '$count hotel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resultGyGError => 'Could not open GetYourGuide';
+
+  @override
+  String resultGyGActivities(String city) {
+    return 'See activities in $city';
+  }
 }

@@ -4401,4 +4401,161 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get wizardTollSavingsDemo => 'Spart €8';
+
+  @override
+  String companionNotifFuelBody(int km) {
+    return '$km km entfernt · Tippe \"Umweg\" um es zur Route hinzuzufügen';
+  }
+
+  @override
+  String get companionDemoNotifFuel =>
+      '3 km entfernt · Umweg in Maps zum Tanken';
+
+  @override
+  String get companionDemoNotifRoute =>
+      '18 km auf deiner Route · N-II in Betracht ziehen · Umweg in Maps';
+
+  @override
+  String get companionDemoNotifMeal =>
+      'Menü €12 · 4 km entfernt · Essen pause? Umweg in Maps';
+
+  @override
+  String get companionDemoNotifEta =>
+      'Ankunft in 10 min · 12 km · Keine Vorfälle';
+
+  @override
+  String get companionOffRouteTitle => 'Außerhalb der Route?';
+
+  @override
+  String get companionOffRouteBody =>
+      'Deine Position ist weit von der geplanten Route entfernt. Im freien Modus bleibt der Assistent bei dir ohne km zu berechnen.';
+
+  @override
+  String get companionOffRouteBack => 'Zurück zur Route';
+
+  @override
+  String get companionFreeModeBtn => 'Freier Modus';
+
+  @override
+  String companionGroupSessionError(String error) {
+    return 'Gruppensitzung konnte nicht erstellt werden: $error';
+  }
+
+  @override
+  String get companionMealStopTitle => 'Mahlzeitenstopp ändern';
+
+  @override
+  String get companionMealStopDelayBody =>
+      'Möchtest du den Mahlzeitenstopp verschieben? Wir verschieben ihn zum nächsten Rastplatz.';
+
+  @override
+  String get settingsLogoutStep3 => '3/4 · Abmelden…';
+
+  @override
+  String get settingsLogoutStep4 => '4/4 · Zurück zum Start…';
+
+  @override
+  String get settingsNickTaken => 'Bereits vergeben';
+
+  @override
+  String get settingsNickHelper =>
+      'Dein Name im Strecken-Ranking. Wähle einen Nick und dein Land — nur im Hall of Fame sichtbar.';
+
+  @override
+  String get settingsNickEmpty => 'Noch kein Nick';
+
+  @override
+  String get settingsCountrySearch => 'Land suchen...';
+
+  @override
+  String get settingsPremiumDevNote => 'Wird per Kauf in Produktion aktiviert';
+
+  @override
+  String get settingsTierFeaturesPremium =>
+      '✓ KI-Companion · Optimierte Maut · Android Auto · Gruppen · Reisemonitor';
+
+  @override
+  String get settingsTierFeaturesEssential =>
+      '✓ Optimale Tankstellen · Basismaut · Unwetterwarnungen · Blitzer';
+
+  @override
+  String get settingsTierFeaturesFree =>
+      'Nur Basisplanung · Keine Kraftstoff- oder Mautoptimierung';
+
+  @override
+  String resultStationAdded(String name) {
+    return '$name hinzugefügt · Tankschätzung für die nächsten Tage aktualisiert';
+  }
+
+  @override
+  String get resultRestStopFallback => 'Rastplatz';
+
+  @override
+  String get resultTooltipProfile => 'Profil & Fahrzeug';
+
+  @override
+  String get resultRecalculating =>
+      'Neuberechnung mit deinen neuen Einstellungen…';
+
+  @override
+  String resultPlanReady(int km, int h, int m) {
+    return 'Plan fertig · $km km · ${h}h ${m}m';
+  }
+
+  @override
+  String get resultGenericConsumptionHint =>
+      'Berechnung mit generischem Verbrauch. Fahrzeug einrichten für mehr Genauigkeit.';
+
+  @override
+  String resultFuelSavingsPct(int pct) {
+    return '$pct% der Kosten';
+  }
+
+  @override
+  String get resultChartAdded => '  hinzugefügt';
+
+  @override
+  String get resultSettingsChangedBody =>
+      'Deine Einstellungen haben sich geändert. Mit neuen Werten neu berechnen?';
+
+  @override
+  String resultSummaryStops(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Pausen',
+      one: '$count Pause',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resultSummaryTolls(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Mauten übersprungen',
+      one: '$count Maut übersprungen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String resultSummaryHotels(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count Hotels',
+      one: '$count Hotel',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get resultGyGError => 'GetYourGuide konnte nicht geöffnet werden';
+
+  @override
+  String resultGyGActivities(String city) {
+    return 'Aktivitäten in $city';
+  }
 }
