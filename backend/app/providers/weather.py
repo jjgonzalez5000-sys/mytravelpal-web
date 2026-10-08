@@ -79,12 +79,25 @@ class OpenMeteoWeatherProvider:
             return ()
         total_seconds = route.free_flow_duration.total_seconds()
 
-        events: list[AdverseEvent] = []
+        import asyncio
+
+        sample_meta = []
         for i, coord in enumerate(samples):
-            # Time this driver would be at this sample point.
             fraction = (i + 1) / (len(samples) + 1)
             target = now + timedelta(seconds=total_seconds * fraction)
-            wmo = await self._fetch_weather_code(coord, target)
+            sample_meta.append((coord, target))
+
+        wmo_results = await asyncio.gather(
+            *[self._fetch_weather_code(coord, target)
+              for coord, target in sample_meta],
+            return_exceptions=True,
+        )
+
+        events: list[AdverseEvent] = []
+        for (coord, _target), wmo_or_exc in zip(sample_meta, wmo_results):
+            if isinstance(wmo_or_exc, BaseException):
+                continue
+            wmo = wmo_or_exc
             if wmo is None or wmo not in _WMO_TO_EVENT:
                 continue
             etype, severity, label = _WMO_TO_EVENT[wmo]
@@ -129,7 +142,8 @@ class OpenMeteoWeatherProvider:
 
         hourly = body.get("hourly") or {}
         times = hourly.get("time") or []
-        codes = hourly.get("weathercode") or []
+        # Open-Meteo renamed "weathercode" → "weather_code"; support both.
+        codes = hourly.get("weather_code") or hourly.get("weathercode") or []
         if not times or not codes:
             return None
         target_utc = at.astimezone(timezone.utc) if at.tzinfo else at

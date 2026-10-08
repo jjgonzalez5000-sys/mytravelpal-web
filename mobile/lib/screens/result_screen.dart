@@ -2845,6 +2845,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     widget.request.tripProfile?.dailyDrivingCapHours ?? 8,
                 onDayTap: _replanning ? null : _openDayEditSheet,
                 loading: _replanning,
+                avgKmh: _response.route.freeFlowMinutes > 0
+                    ? _response.route.distanceKm /
+                        (_response.route.freeFlowMinutes / 60.0)
+                    : 90.0,
               ),
             ],
             if (_addedStops.isNotEmpty ||

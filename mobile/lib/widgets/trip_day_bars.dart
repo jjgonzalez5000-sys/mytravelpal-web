@@ -23,6 +23,7 @@ class TripDayBars extends StatefulWidget {
     required this.profileCapHours,
     this.onDayTap,
     this.loading = false,
+    this.avgKmh = 90.0,
   });
 
   final List<DayPlan> days;
@@ -32,6 +33,11 @@ class TripDayBars extends StatefulWidget {
 
   /// Default cap from the user's profile (fallback when no override).
   final int profileCapHours;
+
+  /// Route average speed (km/h) used to estimate actual driving hours
+  /// from km instead of wall-clock time (wall-clock includes meal/rest
+  /// stops and makes all days look red even on a fresh calculation).
+  final double avgKmh;
 
   /// Called with the day's index when a bar row is tapped.
   /// Null while replanning to prevent concurrent edits.
@@ -89,10 +95,19 @@ class _TripDayBarsState extends State<TripDayBars> {
       );
     }
 
-    // For each day compute [actualHours, capHours]
+    // For each day compute [actualDrivingHours, capHours].
+    // Use km / avgSpeed to estimate DRIVING hours (excludes meal/rest
+    // stop overhead) rather than wall-clock time (endAt - startAt).
+    // Wall-clock inflates by ~20-30 % on savour/steady plans and makes
+    // every freshly-planned day look red even when the backend respected
+    // the cap. Fall back to wall-clock only when km range is zero.
+    final avgKmh = widget.avgKmh > 0 ? widget.avgKmh : 90.0;
     final data = days.map((d) {
-      final actual = d.endAt.toLocal()
-          .difference(d.startAt.toLocal()).inMinutes / 60.0;
+      final dayKm = d.toKm - d.fromKm;
+      final actual = dayKm > 0
+          ? dayKm / avgKmh
+          : d.endAt.toLocal()
+                .difference(d.startAt.toLocal()).inMinutes / 60.0;
       final override = widget.dayOverrides[d.dayIndex];
       final cap = (override?.dailyDrivingCapHours as int?) ??
           widget.profileCapHours;
