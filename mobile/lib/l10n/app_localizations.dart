@@ -5222,6 +5222,60 @@ abstract class AppLocalizations {
   /// **'Next station in 58 km costs 1.79 €/L.\nYour current tank will get you there easily.'**
   String get onboardCompanionFuelAdvice;
 
+  /// No description provided for @onboardFuelStation1.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell · km 387'**
+  String get onboardFuelStation1;
+
+  /// No description provided for @onboardFuelStation2.
+  ///
+  /// In en, this message translates to:
+  /// **'BP Motorway · km 412'**
+  String get onboardFuelStation2;
+
+  /// No description provided for @onboardFuelStation3.
+  ///
+  /// In en, this message translates to:
+  /// **'Shell M1 · km 445'**
+  String get onboardFuelStation3;
+
+  /// No description provided for @onboardHotelName.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel Palace ★★★'**
+  String get onboardHotelName;
+
+  /// No description provided for @onboardHotelMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'€85/night · 0.8 km'**
+  String get onboardHotelMeta;
+
+  /// No description provided for @onboardHotelAttrs.
+  ///
+  /// In en, this message translates to:
+  /// **'Parking ✓  Dogs ✓'**
+  String get onboardHotelAttrs;
+
+  /// No description provided for @onboardRestaurantName.
+  ///
+  /// In en, this message translates to:
+  /// **'The Old Mill'**
+  String get onboardRestaurantName;
+
+  /// No description provided for @onboardRestaurantMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'€14/menu · 2 min'**
+  String get onboardRestaurantMeta;
+
+  /// No description provided for @onboardRestaurantAttrs.
+  ///
+  /// In en, this message translates to:
+  /// **'Terrace ✓  Dogs ✓'**
+  String get onboardRestaurantAttrs;
+
   /// No description provided for @multiDaySleepLabel.
   ///
   /// In en, this message translates to:
@@ -7774,6 +7828,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} models available'**
   String wizardModelsAvailable(int count);
+
+  /// No description provided for @wizardModelsMore.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} — search by name'**
+  String wizardModelsMore(int count);
+
+  /// No description provided for @wizardTollSavingsDemo.
+  ///
+  /// In en, this message translates to:
+  /// **'Saves €8'**
+  String get wizardTollSavingsDemo;
 }
 
 class _AppLocalizationsDelegate

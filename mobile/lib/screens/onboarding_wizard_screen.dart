@@ -1786,7 +1786,7 @@ class _ModelContentState extends ConsumerState<_ModelContent> {
           Padding(
             padding: const EdgeInsets.only(top: 4),
             child: Text(
-              '+${filtered.length - 8} — busca por nombre',
+              l.wizardModelsMore(filtered.length - 8),
               style: TextStyle(color: Colors.white38, fontSize: 11),
               textAlign: TextAlign.center,
             ),
@@ -1909,7 +1909,7 @@ class _TollVisual extends StatelessWidget {
                       icon: Icons.alt_route,
                       label: lc.wizardTollFreeDetour,
                       value: '+12 min',
-                      savings: 'Ahorro €8',
+                      savings: lc.wizardTollSavingsDemo,
                       selected: avoidTolls,
                       highlight: hl,
                     ),

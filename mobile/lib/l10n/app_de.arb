@@ -1740,6 +1740,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "Die nächste Station in 58 km kostet 1,79 €/L.\nMit Ihrem aktuellen Tank kommen Sie problemlos hin.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Aral · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "BP Autobahn · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell A1 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hotel Adler ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/Nacht · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Hunde ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "Zur alten Mühle",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/Menü · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Terrasse ✓  Hunde ✓",
+  "@onboardRestaurantAttrs": {},
   "multiDaySleepLabel": "Du übernachtest in",
   "multiDaySleepNoHotel": "Übernachtungsstopp — kein Hotel verfügbar",
   "resumeTripTitle": "Fahrt fortsetzen?",
@@ -2669,5 +2687,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — nach Name suchen",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Spart €8",
+  "@wizardTollSavingsDemo": {}
 }

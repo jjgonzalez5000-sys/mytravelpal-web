@@ -792,6 +792,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "A próxima estação a 58 km custa 1,79 €/L.\nO seu depósito atual chega mais que suficiente.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Galp · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "BP Auto-estrada · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell A1 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hotel Lisboa ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/noite · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Cães ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "O Velho Moinho",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/menu · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Esplanada ✓  Cães ✓",
+  "@onboardRestaurantAttrs": {},
   "drivingWindowNightStart": "Condução nocturna no início",
   "@drivingWindowNightStart": {},
   "drivingWindowNightEnd": "Condução nocturna no final",
@@ -817,5 +835,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — pesquisar por nome",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Poupa €8",
+  "@wizardTollSavingsDemo": {}
 }

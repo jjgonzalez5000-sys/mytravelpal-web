@@ -2918,6 +2918,33 @@ class AppLocalizationsCa extends AppLocalizations {
       'La propera estació a 58 km costa 1,79 €/L.\nAmb el teu dipòsit actual hi arribes de sobres.';
 
   @override
+  String get onboardFuelStation1 => 'Repsol · km 387';
+
+  @override
+  String get onboardFuelStation2 => 'BP Autopista · km 412';
+
+  @override
+  String get onboardFuelStation3 => 'Shell AP-7 · km 445';
+
+  @override
+  String get onboardHotelName => 'Hotel Gaudí ★★★';
+
+  @override
+  String get onboardHotelMeta => '€85/nit · 0.8 km';
+
+  @override
+  String get onboardHotelAttrs => 'Parking ✓  Gossos ✓';
+
+  @override
+  String get onboardRestaurantName => 'El Molí Vell';
+
+  @override
+  String get onboardRestaurantMeta => '€14/menú · 2 min';
+
+  @override
+  String get onboardRestaurantAttrs => 'Terrassa ✓  Gossos ✓';
+
+  @override
   String get multiDaySleepLabel => 'You\'ll sleep at';
 
   @override
@@ -4354,4 +4381,12 @@ class AppLocalizationsCa extends AppLocalizations {
   String wizardModelsAvailable(int count) {
     return '$count models disponibles';
   }
+
+  @override
+  String wizardModelsMore(int count) {
+    return '+$count — cerca per nom';
+  }
+
+  @override
+  String get wizardTollSavingsDemo => 'Estalvia €8';
 }

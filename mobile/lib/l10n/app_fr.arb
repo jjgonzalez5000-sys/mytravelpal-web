@@ -1740,6 +1740,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "La prochaine station à 58 km coûte 1,79 €/L.\nVotre réservoir actuel est amplement suffisant.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Total · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "Total Autoroute · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell A-9 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hôtel Lumière ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/nuit · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Chiens ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "Le Vieux Moulin",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/menu · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Terrasse ✓  Chiens ✓",
+  "@onboardRestaurantAttrs": {},
   "multiDaySleepLabel": "Vous dormirez à",
   "multiDaySleepNoHotel": "Étape nuit — aucun hôtel disponible",
   "resumeTripTitle": "Reprendre votre trajet ?",
@@ -2669,5 +2687,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — chercher par nom",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Économise €8",
+  "@wizardTollSavingsDemo": {}
 }

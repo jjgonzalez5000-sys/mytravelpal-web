@@ -1741,6 +1741,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "La siguiente estación en 58 km cuesta 1.79 €/L.\nCon tu depósito actual llegas de sobra.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Eroski · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "BP Autovía · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell A-1 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hotel Castilla ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/noche · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Perros ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "La Posada del Oso",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/menú · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Terraza ✓  Perros ✓",
+  "@onboardRestaurantAttrs": {},
   "multiDaySleepLabel": "Dormirás en",
   "multiDaySleepNoHotel": "Punto de pernocta sin hotel disponible",
   "resumeTripTitle": "¿Retomamos tu viaje?",
@@ -2670,5 +2688,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — busca por nombre",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Ahorro €8",
+  "@wizardTollSavingsDemo": {}
 }

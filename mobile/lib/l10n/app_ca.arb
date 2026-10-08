@@ -836,6 +836,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "La propera estació a 58 km costa 1,79 €/L.\nAmb el teu dipòsit actual hi arribes de sobres.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Repsol · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "BP Autopista · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell AP-7 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hotel Gaudí ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/nit · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Gossos ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "El Molí Vell",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/menú · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Terrassa ✓  Gossos ✓",
+  "@onboardRestaurantAttrs": {},
   "drivingWindowNightStart": "Conducció nocturna a l'inici",
   "@drivingWindowNightStart": {},
   "drivingWindowNightEnd": "Conducció nocturna al final",
@@ -861,5 +879,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — cerca per nom",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Estalvia €8",
+  "@wizardTollSavingsDemo": {}
 }

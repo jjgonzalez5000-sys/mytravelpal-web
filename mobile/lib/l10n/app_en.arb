@@ -1740,6 +1740,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "Next station in 58 km costs 1.79 €/L.\nYour current tank will get you there easily.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Shell · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "BP Motorway · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell M1 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hotel Palace ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/night · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Dogs ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "The Old Mill",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/menu · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Terrace ✓  Dogs ✓",
+  "@onboardRestaurantAttrs": {},
   "multiDaySleepLabel": "You'll sleep at",
   "multiDaySleepNoHotel": "Overnight stop — no hotel available",
   "resumeTripTitle": "Resume your trip?",
@@ -2669,5 +2687,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — search by name",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Saves €8",
+  "@wizardTollSavingsDemo": {}
 }

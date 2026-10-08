@@ -543,9 +543,9 @@ class _TollsFuelWidget extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               for (final s in [
-                ('Eroski · km 387', '1.52 €/L', true),
-                ('BP Autovía · km 412', '1.79 €/L', false),
-                ('Shell A-1 · km 445', '1.84 €/L', false),
+                (l.onboardFuelStation1, '1.52 €/L', true),
+                (l.onboardFuelStation2, '1.79 €/L', false),
+                (l.onboardFuelStation3, '1.84 €/L', false),
               ])
                 Padding(
                   padding: const EdgeInsets.only(bottom: 6),
@@ -678,8 +678,8 @@ class _ProfileWidget extends StatelessWidget {
         const SizedBox(height: 16),
         // Filtered results
         for (final (name, details, extra, delay, isHotel) in [
-          ('Hotel Castilla ★★★', '€85/noche · 0.8 km', 'Parking ✓  Perros ✓', 500.ms, true),
-          ('La Posada del Oso', '€14/menú · 2 min', 'Terraza ✓  Perros ✓', 650.ms, false),
+          (l.onboardHotelName, l.onboardHotelMeta, l.onboardHotelAttrs, 500.ms, true),
+          (l.onboardRestaurantName, l.onboardRestaurantMeta, l.onboardRestaurantAttrs, 650.ms, false),
         ])
           Padding(
             padding: const EdgeInsets.only(bottom: 8),

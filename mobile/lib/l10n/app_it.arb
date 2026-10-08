@@ -1740,6 +1740,24 @@
   "@onboardCompanionFuelStation": {},
   "onboardCompanionFuelAdvice": "La prossima stazione a 58 km costa 1,79 €/L.\nIl tuo serbatoio attuale è più che sufficiente.",
   "@onboardCompanionFuelAdvice": {},
+  "onboardFuelStation1": "Eni · km 387",
+  "@onboardFuelStation1": {},
+  "onboardFuelStation2": "IP Autostrada · km 412",
+  "@onboardFuelStation2": {},
+  "onboardFuelStation3": "Shell A1 · km 445",
+  "@onboardFuelStation3": {},
+  "onboardHotelName": "Hotel Roma ★★★",
+  "@onboardHotelName": {},
+  "onboardHotelMeta": "€85/notte · 0.8 km",
+  "@onboardHotelMeta": {},
+  "onboardHotelAttrs": "Parking ✓  Cani ✓",
+  "@onboardHotelAttrs": {},
+  "onboardRestaurantName": "Il Vecchio Mulino",
+  "@onboardRestaurantName": {},
+  "onboardRestaurantMeta": "€14/menù · 2 min",
+  "@onboardRestaurantMeta": {},
+  "onboardRestaurantAttrs": "Terrazza ✓  Cani ✓",
+  "@onboardRestaurantAttrs": {},
   "multiDaySleepLabel": "Dormirai a",
   "multiDaySleepNoHotel": "Sosta notte — nessun hotel disponibile",
   "resumeTripTitle": "Riprendere il viaggio?",
@@ -2669,5 +2687,13 @@
         "type": "int"
       }
     }
-  }
+  },
+  "wizardModelsMore": "+{count} — cerca per nome",
+  "@wizardModelsMore": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "wizardTollSavingsDemo": "Risparmia €8",
+  "@wizardTollSavingsDemo": {}
 }

@@ -2932,6 +2932,33 @@ class AppLocalizationsEs extends AppLocalizations {
       'La siguiente estación en 58 km cuesta 1.79 €/L.\nCon tu depósito actual llegas de sobra.';
 
   @override
+  String get onboardFuelStation1 => 'Eroski · km 387';
+
+  @override
+  String get onboardFuelStation2 => 'BP Autovía · km 412';
+
+  @override
+  String get onboardFuelStation3 => 'Shell A-1 · km 445';
+
+  @override
+  String get onboardHotelName => 'Hotel Castilla ★★★';
+
+  @override
+  String get onboardHotelMeta => '€85/noche · 0.8 km';
+
+  @override
+  String get onboardHotelAttrs => 'Parking ✓  Perros ✓';
+
+  @override
+  String get onboardRestaurantName => 'La Posada del Oso';
+
+  @override
+  String get onboardRestaurantMeta => '€14/menú · 2 min';
+
+  @override
+  String get onboardRestaurantAttrs => 'Terraza ✓  Perros ✓';
+
+  @override
   String get multiDaySleepLabel => 'Dormirás en';
 
   @override
@@ -4369,4 +4396,12 @@ class AppLocalizationsEs extends AppLocalizations {
   String wizardModelsAvailable(int count) {
     return '$count modelos disponibles';
   }
+
+  @override
+  String wizardModelsMore(int count) {
+    return '+$count — busca por nombre';
+  }
+
+  @override
+  String get wizardTollSavingsDemo => 'Ahorro €8';
 }
