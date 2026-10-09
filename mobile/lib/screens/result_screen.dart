@@ -1326,6 +1326,53 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         .fold<double>(0.0, (sum, h) => sum + h.priceEurPerNight * rooms);
   }
 
+  /// Hotels the driver actually picked: the per-night picks, or the
+  /// suggested sleep stop if they pinned that one. `cost` is null when
+  /// nothing is picked, so the receipt reads "no expense".
+  ({double? cost, int nights}) get _pickedHotels {
+    if (_selectedNightHotels.isNotEmpty) {
+      return (
+        cost: _selectedHotelsCostEur,
+        nights: _selectedNightHotels.length,
+      );
+    }
+    final sleep = _response.optimizations?.sleepStop;
+    final price = sleep?.hotelPriceEurPerNight;
+    if (sleep != null &&
+        price != null &&
+        _addedStops.containsKey(_sleepStopKey(sleep))) {
+      final pax = widget.request.tripProfile?.travellers ?? 1;
+      final rooms = (pax.clamp(1, 20) / 2).ceil();
+      return (cost: price * rooms, nights: 1);
+    }
+    return (cost: null, nights: 0);
+  }
+
+  /// Meals the driver picked: pinned meal stops from the optimisation
+  /// plus any restaurant added with "+". `cost` is already × travellers.
+  ({double cost, int count}) get _pickedMeals {
+    final pax = (widget.request.tripProfile?.travellers ?? 1).clamp(1, 20);
+    var perPerson = 0.0;
+    var count = 0;
+    for (final m in _response.optimizations?.mealStops ??
+        const <MealStopOpt>[]) {
+      if (_addedStops.containsKey(_mealStopKey(m))) {
+        perPerson += m.restaurantPriceEurPerMeal ?? 15.0;
+        count++;
+      }
+    }
+    for (final r in _response.restaurants) {
+      final key = 'restaurant:${r.name}:'
+          '${r.coordinate.lat.toStringAsFixed(4)},'
+          '${r.coordinate.lon.toStringAsFixed(4)}';
+      if (_addedStops.containsKey(key)) {
+        perPerson += r.priceEurPerMeal;
+        count++;
+      }
+    }
+    return (cost: perPerson * pax, count: count);
+  }
+
   /// Return the cheapest `limit` fuel stations that have both a
   /// known price and a coordinate we can plot. Sorted ascending
   /// by price. Used to seed the fuel map layer without drowning
@@ -2924,10 +2971,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 tollSkipSavingsEur: _tollSkipSavingsEur,
                 travellers: widget.request.tripProfile?.travellers ?? 1,
                 tripDays: _response.days.length,
-                pickedHotelsCostEur: _selectedNightHotels.isEmpty
-                    ? null
-                    : _selectedHotelsCostEur,
-                pickedHotelsNights: _selectedNightHotels.length,
+                pickedHotelsCostEur: _pickedHotels.cost,
+                pickedHotelsNights: _pickedHotels.nights,
+                pickedMealsCostEur:
+                    _pickedMeals.count > 0 ? _pickedMeals.cost : null,
+                pickedMealsCount: _pickedMeals.count,
                 savings: _response.savings.copyWith(
                   fuelSavingsEur: _addedFuelSavingsEur > 0
                       ? _addedFuelSavingsEur
@@ -4196,6 +4244,8 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.tripDays = 1,
     this.pickedHotelsCostEur,
     this.pickedHotelsNights = 0,
+    this.pickedMealsCostEur,
+    this.pickedMealsCount = 0,
     this.savings,
     this.tollSkipPenaltyMinutes = 0,
     this.intraSectionSkips = const [],
@@ -4307,6 +4357,13 @@ class _TotalTripCostCard extends ConsumerWidget {
   /// so the driver sees the picks reflected in the receipt.
   final int pickedHotelsNights;
 
+  /// Total cost (already × travellers) of the meals the driver picked,
+  /// or null when none are picked yet. Drives the meals row.
+  final double? pickedMealsCostEur;
+
+  /// How many meals are picked; drives the "Meals (N × pax)" label.
+  final int pickedMealsCount;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
@@ -4315,28 +4372,15 @@ class _TotalTripCostCard extends ConsumerWidget {
     final ccy = ref.watch(currencyCodeProvider);
 
     final pax = travellers.clamp(1, 20);
-    final lunchCostPerPerson = mealStops.fold<double>(
-      0.0, (sum, m) => sum + (m.restaurantPriceEurPerMeal ?? 15.0),
-    );
-    final extraMealsPerDay = tripDays > 1 ? 2 : 0;
-    final extraMealsCostPerPerson = extraMealsPerDay * 12.0 * (tripDays - 1);
-    final mealsCost = (lunchCostPerPerson + extraMealsCostPerPerson) * pax;
-    // Hotel line: user picks (multi-night) override the
-    // algorithmic single-night sleep_stop. Falls back to the
-    // sleep_stop estimate when the user hasn't picked anything —
-    // that way the receipt shows a plausible night even before
-    // they interact.
+    // Meals and hotels only count once the driver has picked them:
+    // an unpicked suggestion is not a spend, so those rows read
+    // "no expense" until something is selected.
+    final mealsCost = pickedMealsCostEur ?? 0.0;
+    final mealsApplicable = mealStops.isNotEmpty || tripDays > 1;
     final rooms = (pax / 2).ceil();
-    final double hotelCost;
-    final int hotelNights;
-    if (pickedHotelsCostEur != null) {
-      hotelCost = pickedHotelsCostEur!;
-      hotelNights = pickedHotelsNights;
-    } else {
-      final hotelPerNight = sleepStop?.hotelPriceEurPerNight ?? 0.0;
-      hotelCost = hotelPerNight * rooms;
-      hotelNights = hotelPerNight > 0 ? 1 : 0;
-    }
+    final hotelCost = pickedHotelsCostEur ?? 0.0;
+    final hotelNights = pickedHotelsNights;
+    final hotelApplicable = tripDays > 1 || sleepStop != null;
     final effectiveTolls = (tollCostEur - tollSkipSavingsEur).clamp(0.0, tollCostEur);
     final total = fuelCostEur + effectiveTolls + mealsCost + hotelCost;
 
@@ -4377,24 +4421,23 @@ class _TotalTripCostCard extends ConsumerWidget {
             originalValue:
                 tollSkipSavingsEur > 0 ? tollCostEur : null,
           ),
-          if (mealsCost > 0)
+          if (mealsApplicable)
             _CostRow(
               label: () {
-                final totalMeals = mealStops.length +
-                    (tripDays > 1 ? extraMealsPerDay * (tripDays - 1) : 0);
+                if (pickedMealsCount == 0) return l.tripCostMeals;
                 return pax > 1
-                    ? '${l.tripCostMeals} ($totalMeals × $pax)'
-                    : '${l.tripCostMeals} (×$totalMeals)';
+                    ? '${l.tripCostMeals} ($pickedMealsCount × $pax)'
+                    : '${l.tripCostMeals} (×$pickedMealsCount)';
               }(),
               value: mealsCost, scheme: scheme, t: t,
+              placeholder:
+                  pickedMealsCount == 0 ? l.tripCostNoExpense : null,
             ),
-          if (hotelCost > 0)
+          if (hotelApplicable)
             _CostRow(
               label: () {
                 // Multi-night picks: "Hoteles (×N nights [× R rooms])".
-                // Single algorithmic pick: keep the existing rooms-only
-                // label so the copy is stable when the user hasn't
-                // interacted yet.
+                if (pickedHotelsCostEur == null) return l.tripCostHotel;
                 if (hotelNights > 1) {
                   final base = rooms > 1
                       ? '${l.tripCostHotel} (×$hotelNights × $rooms)'
@@ -4406,6 +4449,8 @@ class _TotalTripCostCard extends ConsumerWidget {
                     : l.tripCostHotel;
               }(),
               value: hotelCost, scheme: scheme, t: t,
+              placeholder:
+                  pickedHotelsCostEur == null ? l.tripCostNoExpense : null,
             ),
           const SizedBox(height: Tokens.space8),
           Divider(color: scheme.outlineVariant),
@@ -6545,7 +6590,11 @@ class _CostRow extends ConsumerWidget {
     required this.t,
     this.originalValue,
     this.pending = false,
+    this.placeholder,
   });
+  /// When non-null the row shows this muted text instead of an amount
+  /// (e.g. "No expense" for meals/hotels the driver hasn't picked).
+  final String? placeholder;
   final String label;
   final double value;
   final ColorScheme scheme;
@@ -6563,6 +6612,24 @@ class _CostRow extends ConsumerWidget {
     final ccy = ref.watch(currencyCodeProvider);
     final hasStrike = !pending &&
         originalValue != null && originalValue! > value + 0.001;
+    if (placeholder != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: t.bodyMedium),
+            Text(
+              placeholder!,
+              style: t.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (pending) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),

@@ -1801,6 +1801,7 @@
   "tripCostMeals": "Repas",
   "tripCostHotel": "Hôtel",
   "tripCostTotal": "Total estimé",
+  "tripCostNoExpense": "Aucune dépense",
   "tripCostPerPerson": "{amount} / personne",
   "@tripCostPerPerson": {
     "placeholders": {

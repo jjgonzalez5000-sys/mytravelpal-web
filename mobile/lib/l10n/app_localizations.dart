@@ -5474,6 +5474,12 @@ abstract class AppLocalizations {
   /// **'Total estimated'**
   String get tripCostTotal;
 
+  /// No description provided for @tripCostNoExpense.
+  ///
+  /// In en, this message translates to:
+  /// **'No expense'**
+  String get tripCostNoExpense;
+
   /// No description provided for @tripCostPerPerson.
   ///
   /// In en, this message translates to:

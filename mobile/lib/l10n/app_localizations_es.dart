@@ -3063,6 +3063,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tripCostTotal => 'Total estimado';
 
   @override
+  String get tripCostNoExpense => 'Sin gasto';
+
+  @override
   String tripCostPerPerson(String amount) {
     return '$amount / persona';
   }

@@ -1801,6 +1801,7 @@
   "tripCostMeals": "Mahlzeiten",
   "tripCostHotel": "Hotel",
   "tripCostTotal": "Geschätzte Gesamtkosten",
+  "tripCostNoExpense": "Keine Ausgaben",
   "tripCostPerPerson": "{amount} / Person",
   "@tripCostPerPerson": {
     "placeholders": {

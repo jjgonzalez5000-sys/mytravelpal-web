@@ -3059,6 +3059,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tripCostTotal => 'Total estimé';
 
   @override
+  String get tripCostNoExpense => 'Aucune dépense';
+
+  @override
   String tripCostPerPerson(String amount) {
     return '$amount / personne';
   }
