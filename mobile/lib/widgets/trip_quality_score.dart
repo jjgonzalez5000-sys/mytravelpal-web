@@ -239,17 +239,23 @@ class _TripQualityScoreState extends State<TripQualityScore> {
 
     // ---- Route geometry (max 20) ----------------------------------------
     final hasGeometry = r.route.geometry.length > 10;
-    // Stops needed: EU reg requires break every 4.5h. Check day duration
-    // OR restStops populated (whichever arrives first in the response).
+    // Stops planned: backend provides restStopsCountTarget per day.
+    // Route is only ok when added stops >= required stops for the trip.
     final hasMealStops = r.optimizations?.mealStops.isNotEmpty == true;
-    final hasRestStops = r.days.any((d) => d.restStops.isNotEmpty);
-    // A day > 4.5h driving always needs at least one rest stop (EU 561/2006).
+    final requiredStops = r.days.fold(0, (s, d) => s + d.restStopsCountTarget);
+    // Fallback: any day > 4.5h wall-clock needs at least 1 stop (EU 561/2006).
     final hasLongDay = r.days.any((d) =>
-        d.endAt.difference(d.startAt).inMinutes > 270); // 4.5h = 270 min
+        d.endAt.difference(d.startAt).inMinutes > 270);
+    final totalNeeded = requiredStops > 0 ? requiredStops
+        : hasLongDay ? 1 : 0;
     final pace = profile?.travelPace;
-    final stopsNeeded = hasRestStops || hasLongDay ||
-        (hasMealStops && pace != TravelPace.push);
-    final stopsPlanned = !stopsNeeded || addedStopKeys.isNotEmpty;
+    final mealStopsNeeded = hasMealStops && pace != TravelPace.push;
+    final stopsNeeded = totalNeeded > 0 || mealStopsNeeded;
+    // Stops planned when added count satisfies required, or no stops needed.
+    final stopsPlanned = !stopsNeeded ||
+        (totalNeeded > 0
+            ? addedStopKeys.length >= totalNeeded
+            : addedStopKeys.isNotEmpty);
 
     // ---- Fuel prices (max 15 — EV: auto full-score, not applicable) ------
     final isElectric =
