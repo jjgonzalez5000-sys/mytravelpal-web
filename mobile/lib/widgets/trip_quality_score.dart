@@ -242,7 +242,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     // Stops planned: backend provides restStopsCountTarget per day.
     // Route is only ok when added stops >= required stops for the trip.
     final hasMealStops = r.optimizations?.mealStops.isNotEmpty == true;
-    final requiredStops = r.days.fold(0, (s, d) => s + d.restStopsCountTarget);
+    final requiredStops = r.recommendationScope?.restStopsCountTarget ?? 0;
     // Fallback: any day > 4.5h wall-clock needs at least 1 stop (EU 561/2006).
     final hasLongDay = r.days.any((d) =>
         d.endAt.difference(d.startAt).inMinutes > 270);
