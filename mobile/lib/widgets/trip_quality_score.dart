@@ -310,16 +310,16 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         ok: isElectric || (hasFuelPrices && pickedFuelCount > 0),
       ),
 
-      // Hotels — max 15 (overnight=never or not expected: auto full-score)
+      // Hotels — max 15, excluded (max=0) when hotels not applicable.
       _QFactor(
         icon: Icons.hotel_outlined,
         label: l.tripQualityFactorHotels,
         score: !hotelExpected
-            ? 15
+            ? 0
             : hasHotels
                 ? (selectedHotelCount == 0 ? 8 : 15)
                 : 0,
-        max: 15,
+        max: !hotelExpected ? 0 : 15,
         ok: !hotelExpected || (hasHotels && selectedHotelCount > 0),
       ),
 

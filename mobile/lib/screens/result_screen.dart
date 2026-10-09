@@ -6284,6 +6284,13 @@ class _WindowChip extends StatelessWidget {
     final hasSaving = savedMinutes >= 1;
     final isLate = savedMinutes <= -1;
     final timeLabel = DateFormat.Hm().format(window.departureAt.toLocal());
+    // Traffic dot color based on factor
+    final tf = window.trafficFactor;
+    final trafficColor = tf <= 1.05
+        ? const Color(0xFF4ADE80)   // light → green
+        : tf <= 1.20
+            ? const Color(0xFFFB923C)  // moderate → orange
+            : const Color(0xFFF87171); // heavy → red
     return Material(
       color: bg,
       borderRadius: BorderRadius.circular(999),
@@ -6295,6 +6302,16 @@ class _WindowChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Traffic dot
+              Container(
+                width: 6,
+                height: 6,
+                margin: const EdgeInsets.only(right: 5),
+                decoration: BoxDecoration(
+                  color: trafficColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
               Icon(
                 isYourTime
                     ? Icons.check_rounded   // ✓ = this is what's selected
