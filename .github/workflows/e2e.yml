@@ -87,3 +87,16 @@ jobs:
           name: e2e-reports
           path: mobile/maestro/reports/
           retention-days: 7
+          if-no-files-found: ignore
+
+      # Maestro writes a screenshot and the UI hierarchy for every failed
+      # step under ~/.maestro/tests; without them a failure only says
+      # "element not found" and not what the screen actually showed.
+      - name: Upload Maestro debug output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-debug
+          path: ~/.maestro/tests/
+          retention-days: 7
+          if-no-files-found: ignore
