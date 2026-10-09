@@ -796,3 +796,31 @@ class TestFuelPriceBelievability:
             {"type": "Unleaded 95", "price": 1.79, "currency": "EUR"},
         ]}}}
         assert _extract_price(item) == pytest.approx(1.79)
+
+
+class TestCompanionJoinCode:
+    """The passenger join code is the only protection of a live trip, so it
+    must come from a CSPRNG, be 6 characters and avoid look-alike glyphs."""
+
+    def test_length_and_alphabet(self):
+        from app.api.v1.companion_session import _JOIN_CODE_CHARS, _gen_join_code
+
+        for _ in range(200):
+            code = _gen_join_code()
+            assert len(code) == 6
+            assert set(code) <= set(_JOIN_CODE_CHARS)
+
+    def test_no_lookalike_characters(self):
+        from app.api.v1.companion_session import _JOIN_CODE_CHARS
+
+        assert not set("IO01") & set(_JOIN_CODE_CHARS)
+
+    def test_codes_are_drawn_from_secrets_not_random(self):
+        from app.api.v1 import companion_session
+
+        with patch.object(
+            companion_session.secrets, "choice", side_effect=lambda seq: seq[0],
+        ) as spy:
+            code = companion_session._gen_join_code()
+        assert spy.call_count == 6
+        assert code == companion_session._JOIN_CODE_CHARS[0] * 6

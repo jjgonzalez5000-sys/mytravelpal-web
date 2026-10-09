@@ -5546,6 +5546,264 @@ abstract class AppLocalizations {
   /// **'Remove km limit'**
   String get styleKmCapRemove;
 
+  /// No description provided for @purchaseBetaNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed beta: tapping a plan simulates the subscription. Nothing is charged.'**
+  String get purchaseBetaNote;
+
+  /// No description provided for @purchaseBetaApplied.
+  ///
+  /// In en, this message translates to:
+  /// **'Beta: {plan} plan applied (simulated)'**
+  String purchaseBetaApplied(String plan);
+
+  /// No description provided for @settingsBetaAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'BETA ACCESS'**
+  String get settingsBetaAccess;
+
+  /// No description provided for @settingsTierFreeName.
+  ///
+  /// In en, this message translates to:
+  /// **'Free'**
+  String get settingsTierFreeName;
+
+  /// No description provided for @myPlacesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My places'**
+  String get myPlacesTitle;
+
+  /// No description provided for @myPlacesSettingsRow.
+  ///
+  /// In en, this message translates to:
+  /// **'My places ({count})'**
+  String myPlacesSettingsRow(int count);
+
+  /// No description provided for @myPlacesSettingsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Places you like to stop at'**
+  String get myPlacesSettingsSub;
+
+  /// No description provided for @myPlacesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Save the places you like to stop at. When a route passes near one, we will suggest it.'**
+  String get myPlacesEmpty;
+
+  /// No description provided for @myPlacesAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a place'**
+  String get myPlacesAdd;
+
+  /// No description provided for @myPlacesSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search a place or paste a map link'**
+  String get myPlacesSearchHint;
+
+  /// No description provided for @myPlacesSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get myPlacesSearch;
+
+  /// No description provided for @myPlacesNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing found. Try another name, or paste a link that contains coordinates.'**
+  String get myPlacesNoResults;
+
+  /// No description provided for @myPlacesNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get myPlacesNameLabel;
+
+  /// No description provided for @myPlacesNoteLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Note (optional)'**
+  String get myPlacesNoteLabel;
+
+  /// No description provided for @myPlacesCategoryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get myPlacesCategoryLabel;
+
+  /// No description provided for @myPlacesSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save place'**
+  String get myPlacesSave;
+
+  /// No description provided for @myPlacesRemoved.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} removed'**
+  String myPlacesRemoved(String name);
+
+  /// No description provided for @myPlacesUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get myPlacesUndo;
+
+  /// No description provided for @myPlacesLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'You can save up to {max} places.'**
+  String myPlacesLimit(int max);
+
+  /// No description provided for @myPlacesFromLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Place from link'**
+  String get myPlacesFromLink;
+
+  /// No description provided for @myPlacesCatFood.
+  ///
+  /// In en, this message translates to:
+  /// **'Food'**
+  String get myPlacesCatFood;
+
+  /// No description provided for @myPlacesCatViewpoint.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewpoint'**
+  String get myPlacesCatViewpoint;
+
+  /// No description provided for @myPlacesCatCulture.
+  ///
+  /// In en, this message translates to:
+  /// **'Culture'**
+  String get myPlacesCatCulture;
+
+  /// No description provided for @myPlacesCatNature.
+  ///
+  /// In en, this message translates to:
+  /// **'Nature'**
+  String get myPlacesCatNature;
+
+  /// No description provided for @myPlacesCatKids.
+  ///
+  /// In en, this message translates to:
+  /// **'With kids'**
+  String get myPlacesCatKids;
+
+  /// No description provided for @myPlacesCatOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get myPlacesCatOther;
+
+  /// No description provided for @myPlacesOnRouteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your places on this route'**
+  String get myPlacesOnRouteTitle;
+
+  /// No description provided for @myPlacesOffRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} km off route · ~{min} min'**
+  String myPlacesOffRoute(String km, int min);
+
+  /// No description provided for @myPlacesAddToRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get myPlacesAddToRoute;
+
+  /// No description provided for @myPlacesRemoveFromRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get myPlacesRemoveFromRoute;
+
+  /// No description provided for @companionJoinTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Join as passenger'**
+  String get companionJoinTitle;
+
+  /// No description provided for @companionJoinHint.
+  ///
+  /// In en, this message translates to:
+  /// **'6-character code'**
+  String get companionJoinHint;
+
+  /// No description provided for @companionJoinButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Join'**
+  String get companionJoinButton;
+
+  /// No description provided for @companionJoinCodeInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'The code must have 6 characters'**
+  String get companionJoinCodeInvalid;
+
+  /// No description provided for @passengerViewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Companion — Passenger'**
+  String get passengerViewTitle;
+
+  /// No description provided for @passengerViewCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Code: {code}'**
+  String passengerViewCode(String code);
+
+  /// No description provided for @passengerViewSpeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Driver speed'**
+  String get passengerViewSpeed;
+
+  /// No description provided for @passengerViewNextStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Next stop'**
+  String get passengerViewNextStop;
+
+  /// No description provided for @passengerViewDestination.
+  ///
+  /// In en, this message translates to:
+  /// **'Destination'**
+  String get passengerViewDestination;
+
+  /// No description provided for @passengerViewRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating every 5 s'**
+  String get passengerViewRefresh;
+
+  /// No description provided for @passengerViewRadarBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed camera in {meters} m'**
+  String passengerViewRadarBanner(String meters);
+
+  /// No description provided for @passengerViewSlowDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Slow down'**
+  String get passengerViewSlowDown;
+
+  /// No description provided for @passengerViewRadarAhead.
+  ///
+  /// In en, this message translates to:
+  /// **'Speed camera in {distance}'**
+  String passengerViewRadarAhead(String distance);
+
   /// No description provided for @replanLostConfirm.
   ///
   /// In en, this message translates to:

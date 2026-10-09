@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
-import random
+import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
@@ -51,7 +51,11 @@ _JOIN_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 
 def _gen_join_code(length: int = 6) -> str:
-    return "".join(random.choices(_JOIN_CODE_CHARS, k=length))
+    # `secrets`, not `random`: the code is the only thing protecting a live
+    # trip's state, and `random` (Mersenne Twister) is predictable from its
+    # outputs. The alphabet leaves out I, O, 0 and 1 so codes read aloud
+    # or typed from a screen are not misread.
+    return "".join(secrets.choice(_JOIN_CODE_CHARS) for _ in range(length))
 
 
 # --- Pydantic models ---

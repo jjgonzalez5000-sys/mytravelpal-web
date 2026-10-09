@@ -1831,6 +1831,73 @@
     "placeholders": { "km": { "type": "int" } }
   },
   "styleKmCapRemove": "Remove km limit",
+  "purchaseBetaNote": "Closed beta: tapping a plan simulates the subscription. Nothing is charged.",
+  "purchaseBetaApplied": "Beta: {plan} plan applied (simulated)",
+  "@purchaseBetaApplied": {
+    "placeholders": { "plan": { "type": "String" } }
+  },
+  "settingsBetaAccess": "BETA ACCESS",
+  "settingsTierFreeName": "Free",
+  "myPlacesTitle": "My places",
+  "myPlacesSettingsRow": "My places ({count})",
+  "@myPlacesSettingsRow": {
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "myPlacesSettingsSub": "Places you like to stop at",
+  "myPlacesEmpty": "Save the places you like to stop at. When a route passes near one, we will suggest it.",
+  "myPlacesAdd": "Add a place",
+  "myPlacesSearchHint": "Search a place or paste a map link",
+  "myPlacesSearch": "Search",
+  "myPlacesNoResults": "Nothing found. Try another name, or paste a link that contains coordinates.",
+  "myPlacesNameLabel": "Name",
+  "myPlacesNoteLabel": "Note (optional)",
+  "myPlacesCategoryLabel": "Category",
+  "myPlacesSave": "Save place",
+  "myPlacesRemoved": "{name} removed",
+  "@myPlacesRemoved": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "myPlacesUndo": "Undo",
+  "myPlacesLimit": "You can save up to {max} places.",
+  "@myPlacesLimit": {
+    "placeholders": { "max": { "type": "int" } }
+  },
+  "myPlacesFromLink": "Place from link",
+  "myPlacesCatFood": "Food",
+  "myPlacesCatViewpoint": "Viewpoint",
+  "myPlacesCatCulture": "Culture",
+  "myPlacesCatNature": "Nature",
+  "myPlacesCatKids": "With kids",
+  "myPlacesCatOther": "Other",
+  "myPlacesOnRouteTitle": "Your places on this route",
+  "myPlacesOffRoute": "{km} km off route · ~{min} min",
+  "@myPlacesOffRoute": {
+    "placeholders": { "km": { "type": "String" }, "min": { "type": "int" } }
+  },
+  "myPlacesAddToRoute": "Add",
+  "myPlacesRemoveFromRoute": "Remove",
+  "companionJoinTitle": "Join as passenger",
+  "companionJoinHint": "6-character code",
+  "companionJoinButton": "Join",
+  "companionJoinCodeInvalid": "The code must have 6 characters",
+  "passengerViewTitle": "Companion — Passenger",
+  "passengerViewCode": "Code: {code}",
+  "@passengerViewCode": {
+    "placeholders": { "code": { "type": "String" } }
+  },
+  "passengerViewSpeed": "Driver speed",
+  "passengerViewNextStop": "Next stop",
+  "passengerViewDestination": "Destination",
+  "passengerViewRefresh": "Updating every 5 s",
+  "passengerViewRadarBanner": "Speed camera in {meters} m",
+  "@passengerViewRadarBanner": {
+    "placeholders": { "meters": { "type": "String" } }
+  },
+  "passengerViewSlowDown": "Slow down",
+  "passengerViewRadarAhead": "Speed camera in {distance}",
+  "@passengerViewRadarAhead": {
+    "placeholders": { "distance": { "type": "String" } }
+  },
   "replanLostConfirm": "Continue and deselect",
   "replanLostCancel": "Keep current plan",
   "tripCostPerPerson": "{amount} / person",

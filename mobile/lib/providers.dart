@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'api/api_client.dart';
 import 'api/models.dart';
+import 'config/beta_access.dart';
 import 'domain/auth_user.dart';
 import 'domain/emergency_contact.dart';
 import 'domain/favorite_place.dart';
 import 'domain/garage_vehicle.dart';
+import 'domain/my_place.dart';
 import 'domain/trip_profile.dart';
 import 'domain/units.dart';
 import 'domain/vehicle_model.dart';
@@ -221,6 +223,10 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
   /// would keep painting with the boot-time defaults.
   void Function()? onAppSettingsApplied;
 
+  /// Called after `syncFromServer` replaced the local "My places" list, so
+  /// the provider that holds it can reload.
+  void Function()? onMyPlacesRestored;
+
   Future<void> set(TripProfile? profile) async {
     state = profile;
     await _prefs.setTripProfile(profile);
@@ -273,6 +279,10 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
     final country = _prefs.hallCountry;
     if (country != null && country.isNotEmpty) {
       profileJson['_hall_country'] = country;
+    }
+    if (_prefs.myPlacesTouched) {
+      profileJson['_my_places'] =
+          _prefs.myPlaces.map((p) => p.toJson()).toList();
     }
     api!.saveProfile(profileJson);
   }
@@ -334,6 +344,23 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
       if (hallCountry is String && hallCountry.isNotEmpty) {
         try { await _prefs.setHallCountry(hallCountry); } catch (_) {}
       }
+      // "My places": every change is pushed as it happens, so the server
+      // copy is the account's truth; adopt it (an empty list included, it
+      // means the driver deleted them all).
+      final rawPlaces = profileData['_my_places'];
+      if (rawPlaces is List) {
+        final restored = <MyPlace>[];
+        for (final e in rawPlaces) {
+          if (e is! Map<String, dynamic>) continue;
+          try {
+            restored.add(MyPlace.fromJson(e));
+          } catch (_) {}
+        }
+        try {
+          await _prefs.setMyPlaces(restored);
+          onMyPlacesRestored?.call();
+        } catch (_) {}
+      }
       if (recents is List && recents.isNotEmpty) {
         for (final r in recents) {
           if (r is Map<String, dynamic>) {
@@ -358,7 +385,9 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
   Future<void> clear() => set(null);
 }
 
-final tripProfileProvider =
+// Explicit type: this provider and `myPlacesProvider` refer to each other.
+final StateNotifierProvider<TripProfileNotifier, TripProfile?>
+    tripProfileProvider =
     StateNotifierProvider<TripProfileNotifier, TripProfile?>((ref) {
   final notifier = TripProfileNotifier(ref.watch(appPrefsProvider));
   final auth = ref.watch(authProvider);
@@ -379,7 +408,47 @@ final tripProfileProvider =
     ref.invalidate(unitSystemProvider);
     ref.invalidate(currencyCodeProvider);
   };
+  notifier.onMyPlacesRestored = () => ref.invalidate(myPlacesProvider);
   return notifier;
+});
+
+/// The driver's saved stops ("My places"). Every change is written to prefs
+/// and pushed to the account profile so the list survives a reinstall.
+class MyPlacesNotifier extends StateNotifier<List<MyPlace>> {
+  MyPlacesNotifier(this._prefs, this._onChanged) : super(_prefs.myPlaces);
+
+  final AppPrefs _prefs;
+  final void Function() _onChanged;
+
+  /// Cap that keeps the account profile blob small.
+  static const int maxPlaces = 100;
+
+  /// Adds [place] at the top. False (and nothing added) when the list is full.
+  Future<bool> add(MyPlace place) async {
+    if (state.length >= maxPlaces) return false;
+    state = [place, ...state.where((p) => p.id != place.id)];
+    await _save();
+    return true;
+  }
+
+  Future<void> remove(String id) async {
+    state = state.where((p) => p.id != id).toList(growable: false);
+    await _save();
+  }
+
+  Future<void> _save() async {
+    await _prefs.setMyPlaces(state);
+    await _prefs.markMyPlacesTouched();
+    _onChanged();
+  }
+}
+
+final StateNotifierProvider<MyPlacesNotifier, List<MyPlace>> myPlacesProvider =
+    StateNotifierProvider<MyPlacesNotifier, List<MyPlace>>((ref) {
+  return MyPlacesNotifier(
+    ref.watch(appPrefsProvider),
+    () => ref.read(tripProfileProvider.notifier).pushSettingsChange(),
+  );
 });
 
 /// Subscription tier for the current session.
@@ -391,10 +460,19 @@ final tripProfileProvider =
 /// receipt with the backend. The legacy [premiumProvider] below
 /// is an alias kept for backwards compatibility with all existing
 /// gate checks.
-// Closed beta: default to 'premium' so all testers have full access.
-// Revert to 'free' + enable Play Billing flow before open beta launch.
-// TODO(pre-open-beta): change default back to 'free'.
-final subscriptionTierProvider = StateProvider<String>((ref) => 'premium');
+// Closed beta (kBetaAccess, the default) starts everyone on 'premium'. A
+// production build passes --dart-define=BETA_ACCESS=false and starts on 'free'.
+final subscriptionTierProvider = StateProvider<String>(
+  (ref) => defaultTierFor(betaAccess: kBetaAccess),
+);
+
+/// Sets the tier AND the legacy premium flag together. The flag is what the
+/// API client sends to the server (`X-MyTravelPal-Premium`), so changing only
+/// the tier left server-side premium gates stuck on the old value.
+Future<void> applySubscriptionTier(WidgetRef ref, String tier) async {
+  ref.read(subscriptionTierProvider.notifier).state = tier;
+  await ref.read(premiumProvider.notifier).set(premiumFlagForTier(tier));
+}
 
 /// True when the user has an Essential or Premium subscription.
 final isEssentialOrAboveProvider = Provider<bool>((ref) {

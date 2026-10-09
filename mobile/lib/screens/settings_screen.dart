@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../app.dart' show rootNavigatorKey;
+import '../config/beta_access.dart';
 import '../design/tokens.dart';
 import '../domain/units.dart';
 import '../l10n/app_localizations.dart';
@@ -22,6 +23,7 @@ import 'attributions_screen.dart';
 import 'inspire_history_screen.dart';
 import 'emergency_contacts_screen.dart';
 import 'garage_screen.dart';
+import 'my_places_screen.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 
@@ -71,7 +73,9 @@ class SettingsScreen extends ConsumerWidget {
         ),
         children: [
           // ── Tier de acceso (dev / closed beta) ───────────────
-          _PremiumTierToggle(),
+          // Closed beta only: lets a tester pick the tier. A production
+          // build (BETA_ACCESS=false) must not offer a free upgrade.
+          if (kBetaAccess) const _PremiumTierToggle(),
           // ── AI learning bar ──────────────────────────────────
           const AiLearningBar(),
           // ── Vehículo y ruta ──────────────────────────────────
@@ -114,6 +118,28 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const GarageScreen(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Saved stops: places worth pulling over for, offered when a
+              // route passes near them.
+              Consumer(
+                builder: (context, ref, _) {
+                  final places = ref.watch(myPlacesProvider);
+                  return ListTile(
+                    leading: const Icon(Icons.place_outlined),
+                    title: Text(l.myPlacesSettingsRow(places.length)),
+                    subtitle: Text(
+                      l.myPlacesSettingsSub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const MyPlacesScreen(),
                       ),
                     ),
                   );
@@ -1638,7 +1664,7 @@ class _PremiumTierToggle extends ConsumerWidget {
     final l = AppLocalizations.of(context);
 
     final tiers = [
-      ('free', 'Gratuito', Icons.lock_outline),
+      ('free', l.settingsTierFreeName, Icons.lock_outline),
       ('essential', 'Essential', Icons.star_half),
       ('premium', 'Premium', Icons.star_rounded),
     ];
@@ -1666,7 +1692,7 @@ class _PremiumTierToggle extends ConsumerWidget {
                   color: tierColor(tier)),
               const SizedBox(width: 6),
               Text(
-                'ACCESO BETA',
+                l.settingsBetaAccess,
                 style: TextStyle(
                   color: tierColor(tier),
                   fontSize: 11,
@@ -1690,9 +1716,7 @@ class _PremiumTierToggle extends ConsumerWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 6),
                     child: GestureDetector(
-                      onTap: () => ref
-                          .read(subscriptionTierProvider.notifier)
-                          .state = value,
+                      onTap: () => applySubscriptionTier(ref, value),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(

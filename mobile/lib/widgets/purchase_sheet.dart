@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
+import '../l10n/app_localizations.dart';
+
 /// Three-tier subscription picker bottom-sheet.
 ///
 /// Shows Free / Essential / Premium cards. Prices come from Play Console
@@ -14,7 +16,12 @@ class PurchaseSheet extends StatefulWidget {
     required this.onBuyPremiumMonthly,
     required this.onBuyPremiumYearly,
     required this.onRestore,
+    this.simulated = false,
   });
+
+  /// True in closed-beta builds: a plan tap grants the plan without
+  /// charging, and the sheet says so.
+  final bool simulated;
 
   final List<ProductDetails> productDetails;
   final VoidCallback onBuyEssential;
@@ -96,6 +103,21 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
                 style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
+              if (widget.simulated) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: scheme.tertiaryContainer.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    AppLocalizations.of(context).purchaseBetaNote,
+                    style: text.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ],
               const SizedBox(height: 24),
 
               // Free tier

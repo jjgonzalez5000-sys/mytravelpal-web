@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../design/tokens.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 
 /// Simplified Companion screen for passengers joining a group session.
@@ -77,6 +78,7 @@ class _PassengerCompanionScreenState
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final data = _state;
 
     final nextStop = data?['next_stop_name'] as String?;
@@ -91,13 +93,13 @@ class _PassengerCompanionScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Companion — Pasajero'),
+        title: Text(l.passengerViewTitle),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: Tokens.space12),
             child: Chip(
               avatar: const Icon(Icons.wifi, size: 16),
-              label: Text('Codigo: ${widget.joinCode}'),
+              label: Text(l.passengerViewCode(widget.joinCode)),
               labelStyle: t.labelSmall,
             ),
           ),
@@ -115,7 +117,7 @@ class _PassengerCompanionScreenState
                 // Speed tile — minimal info for passengers.
                 _StatTile(
                   icon: Icons.speed,
-                  label: 'Velocidad conductor',
+                  label: l.passengerViewSpeed,
                   value: '${speedKmh.clamp(0, 300).toStringAsFixed(0)} km/h',
                   color: scheme.primary,
                 ),
@@ -125,7 +127,7 @@ class _PassengerCompanionScreenState
                 if (nextStop != null)
                   _EtaCard(
                     icon: Icons.restaurant,
-                    label: 'Proxima parada',
+                    label: l.passengerViewNextStop,
                     place: nextStop,
                     etaMinutes: etaMin,
                     color: scheme.secondary,
@@ -136,7 +138,7 @@ class _PassengerCompanionScreenState
                 if (destName != null)
                   _EtaCard(
                     icon: Icons.flag,
-                    label: 'Destino',
+                    label: l.passengerViewDestination,
                     place: destName,
                     etaMinutes: destEtaMin,
                     color: scheme.tertiary,
@@ -150,7 +152,7 @@ class _PassengerCompanionScreenState
 
                 const SizedBox(height: Tokens.space32),
                 Text(
-                  'Actualizando cada 5 s',
+                  l.passengerViewRefresh,
                   style: t.bodySmall
                       ?.copyWith(color: scheme.onSurfaceVariant),
                   textAlign: TextAlign.center,
@@ -281,6 +283,7 @@ class _RadarBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: Tokens.space12),
       padding: const EdgeInsets.all(Tokens.space16),
@@ -297,14 +300,15 @@ class _RadarBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Radar a ${(radarKm * 1000).toStringAsFixed(0)} m',
+                  l.passengerViewRadarBanner(
+                      (radarKm * 1000).toStringAsFixed(0)),
                   style: t.titleMedium?.copyWith(
                     color: scheme.onError,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 Text(
-                  'Reduce la velocidad',
+                  l.passengerViewSlowDown,
                   style: t.bodySmall?.copyWith(color: scheme.onError),
                 ),
               ],
@@ -324,6 +328,7 @@ class _RadarInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final l = AppLocalizations.of(context);
     final distText = radarKm < 1.0
         ? '${(radarKm * 1000).round()} m'
         : '${radarKm.toStringAsFixed(1)} km';
@@ -332,7 +337,7 @@ class _RadarInfoRow extends StatelessWidget {
         Icon(Icons.camera_alt_outlined,
             color: scheme.onSurfaceVariant, size: 20),
         const SizedBox(width: Tokens.space8),
-        Text('Radar en $distText',
+        Text(l.passengerViewRadarAhead(distText),
             style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant)),
       ],
     );

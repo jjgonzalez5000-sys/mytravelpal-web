@@ -56,7 +56,7 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
     final code = _joinCodeController.text.trim().toUpperCase();
     if (code.length != 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('El codigo debe tener 6 caracteres')),
+        SnackBar(content: Text(AppLocalizations.of(context).companionJoinCodeInvalid)),
       );
       return;
     }
@@ -113,8 +113,7 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
                     Icon(Icons.group_add_outlined,
                         color: scheme.secondary, size: 22),
                     const SizedBox(width: Tokens.space8),
-                    Text('Unirme como pasajero',
-                        style: t.titleSmall),
+                    Text(l.companionJoinTitle, style: t.titleSmall),
                   ],
                 ),
                 const SizedBox(height: Tokens.space12),
@@ -123,11 +122,11 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
                     Expanded(
                       child: TextField(
                         controller: _joinCodeController,
-                        decoration: const InputDecoration(
-                          hintText: 'Codigo de 6 caracteres',
+                        decoration: InputDecoration(
+                          hintText: l.companionJoinHint,
                           isDense: true,
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(
+                          border: const OutlineInputBorder(),
+                          contentPadding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 10),
                         ),
                         textCapitalization: TextCapitalization.characters,
@@ -138,7 +137,7 @@ class _CompanionScreenState extends ConsumerState<CompanionScreen> {
                     const SizedBox(width: Tokens.space8),
                     FilledButton.tonal(
                       onPressed: _joinAsPassenger,
-                      child: const Text('Unirme'),
+                      child: Text(l.companionJoinButton),
                     ),
                   ],
                 ),

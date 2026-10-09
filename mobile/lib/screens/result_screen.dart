@@ -31,7 +31,10 @@ import '../services/plan_foreground_task.dart';
 import '../services/trip_foreground.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
+import '../services/my_places_match.dart';
 import '../services/selection_check.dart';
+import '../widgets/my_place_category.dart';
+import '../widgets/my_places_on_route.dart';
 import '../services/toll_detour_waypoints.dart';
 import '../widgets/toll_summary_sheet.dart';
 import '../widgets/trip_day_bars.dart';
@@ -599,6 +602,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
       _markDirty();
     });
+  }
+
+  /// Adds or removes one of the driver's saved places as a stop. The time
+  /// counted is the detour to reach it plus the time assumed for visiting.
+  void _toggleMyPlace(PlaceOnRoute m) {
+    _toggleStop(
+      'place:${m.place.id}',
+      m.detourMinutes + kMyPlaceVisitMinutes,
+      coord: m.place.coordinate,
+      label: m.place.name,
+    );
   }
 
   /// Build sorted waypoints from added routeable stops to include in replan.
@@ -1726,6 +1740,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ));
       }
     }
+    for (final p in ref.read(myPlacesProvider)) {
+      final key = 'place:${p.id}';
+      if (!_addedStops.containsKey(key)) continue;
+      out.add(AddedStop(
+        kind: AddedStopKind.place,
+        label: p.name,
+        subtitle: myPlaceCategoryLabel(AppLocalizations.of(context), p.category),
+        coordinate: p.coordinate,
+        distanceFromOriginKm: _kmFromOrigin(p.coordinate),
+        onRemove: () => _removeByKey(key),
+      ));
+    }
     // Meal + sleep stops the user pinned from the "Optimizado" section.
     for (final m in _response.optimizations?.mealStops
         ?? const <MealStopOpt>[]) {
@@ -2311,6 +2337,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         }
       }
     }
+    // The driver's own saved places, by id. A place added as a stop is also
+    // a request waypoint, so it is routed through whether or not it is still
+    // within reach of the new plan; restore it as an added stop.
+    final placeIds = selections['picked_place_ids'];
+    if (placeIds is List) {
+      final saved = ref.read(myPlacesProvider);
+      for (final id in placeIds.whereType<String>()) {
+        for (final p in saved) {
+          if (p.id != id) continue;
+          final hit = matchPlacesToRoute(
+            [p],
+            _response.route.geometry,
+            maxKm: double.infinity,
+          );
+          final detour = hit.isEmpty ? 0.0 : hit.first.detourMinutes;
+          _addedStops['place:$id'] = detour + kMyPlaceVisitMinutes;
+          _addedRouteWaypoints['place:$id'] = (p.coordinate, p.name);
+          break;
+        }
+      }
+    }
     // Per-night hotels: keyed by dayIndex string → {name,lat,lon}.
     // Fuzzy match on name + coord tolerance since the enrich pass
     // may not return the identical hotel object on a re-plan.
@@ -2362,7 +2409,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         if (o.dailyKmCap != null) 'daily_km_cap': o.dailyKmCap,
       };
     });
+    final placeIds = _addedStops.keys
+        .where((k) => k.startsWith('place:'))
+        .map((k) => k.substring(6))
+        .toList(growable: false);
     final map = <String, dynamic>{
+      if (placeIds.isNotEmpty) 'picked_place_ids': placeIds,
       if (fuelKeys.isNotEmpty) 'picked_fuel_keys': fuelKeys,
       if (restaurantKeys.isNotEmpty) 'picked_restaurant_keys': restaurantKeys,
       if (hotelsByDay.isNotEmpty) 'picked_hotel_keys_by_day': hotelsByDay,
@@ -3044,6 +3096,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     : 90.0,
               ),
             ],
+            // Saved places that lie near this route.
+            Consumer(builder: (context, ref, _) {
+              final matches = matchPlacesToRoute(
+                ref.watch(myPlacesProvider),
+                _response.route.geometry,
+              );
+              if (matches.isEmpty) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(top: Tokens.space12),
+                child: MyPlacesOnRoute(
+                  matches: matches,
+                  addedIds: {
+                    for (final k in _addedStops.keys)
+                      if (k.startsWith('place:')) k.substring(6),
+                  },
+                  onToggle: _toggleMyPlace,
+                ),
+              );
+            }),
             if (_addedStops.isNotEmpty ||
                 _selectedNightHotels.isNotEmpty ||
                 _response.partialTollSkips.length >

@@ -5,6 +5,9 @@
 ///   flutter test test/regression_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/config/beta_access.dart';
+import 'package:mytravelpal/domain/my_place.dart';
+import 'package:mytravelpal/services/my_places_match.dart';
 import 'package:mytravelpal/services/selection_check.dart';
 import 'package:mytravelpal/widgets/trip_quality_score.dart'
     show tollSkipTimeScore;
@@ -489,6 +492,103 @@ void main() {
           isTrue);
       expect(hotelMatches(hotel('New name', 45.5, 4.0), 'Hotel A', 46.0, 4.0),
           isFalse);
+    });
+  });
+
+  // ── 8. MY PLACES: SAVED STOPS THAT LIE NEAR THE ROUTE ────────────────────────
+  group('test_my_places_match_route', () {
+    // An east-west route at 45N from 4E to 6E, about 157 km long.
+    final route = [LatLon(lat: 45.0, lon: 4.0), LatLon(lat: 45.0, lon: 6.0)];
+
+    MyPlace place(String id, double lat, double lon) => MyPlace(
+          id: id,
+          name: 'Place $id',
+          coordinate: LatLon(lat: lat, lon: lon),
+          createdAt: DateTime.utc(2026, 10, 9),
+        );
+
+    test('a place a few km off the route is offered, with its distance', () {
+      final m = matchPlacesToRoute([place('a', 45.05, 5.0)], route);
+      expect(m, hasLength(1));
+      expect(m.single.distanceKm, closeTo(5.6, 0.3));
+      expect(m.single.alongKm, closeTo(78.6, 1.0));
+    });
+
+    test('a place far from the route is not offered', () {
+      expect(matchPlacesToRoute([place('far', 46.0, 5.0)], route), isEmpty);
+    });
+
+    test('a place beyond the end of the route is measured to the end point', () {
+      expect(matchPlacesToRoute([place('past', 45.0, 7.0)], route), isEmpty);
+    });
+
+    test('places come out in the order the route meets them', () {
+      final m = matchPlacesToRoute([
+        place('late', 45.02, 5.5),
+        place('early', 45.02, 4.5),
+      ], route);
+      expect(m.map((e) => e.place.id), ['early', 'late']);
+    });
+
+    test('detour time is out-and-back at off-route speed, never under 2 min', () {
+      final on = matchPlacesToRoute([place('on', 45.0, 5.0)], route).single;
+      expect(on.detourMinutes, 2.0);
+      final off = matchPlacesToRoute([place('off', 45.1, 5.0)], route).single;
+      expect(off.detourMinutes, closeTo(2 * off.distanceKm / 50 * 60, 0.01));
+    });
+
+    test('no route points or no places gives nothing', () {
+      expect(matchPlacesToRoute([place('a', 45.0, 5.0)], const []), isEmpty);
+      expect(matchPlacesToRoute(const [], route), isEmpty);
+    });
+
+    test('coordinates are read out of a pasted map link', () {
+      final c = parseCoordinates(
+          'https://www.google.com/maps/place/Foo/@40.4168,-3.7038,15z');
+      expect(c, isNotNull);
+      expect(c!.lat, closeTo(40.4168, 1e-9));
+      expect(c.lon, closeTo(-3.7038, 1e-9));
+      expect(parseCoordinates('40.4168, -3.7038'), isNotNull);
+    });
+
+    test('a short link without coordinates, or an impossible pair, is rejected', () {
+      expect(parseCoordinates('https://maps.app.goo.gl/AbCdEf'), isNull);
+      expect(parseCoordinates('95.0000, 10.0000'), isNull);
+      expect(parseCoordinates('Toledo'), isNull);
+    });
+
+    test('a place survives a JSON round trip', () {
+      final p = place('x', 45.5, 4.5).copyWith(
+        category: MyPlaceCategory.viewpoint,
+        note: 'sunset',
+      );
+      final back = MyPlace.fromJson(p.toJson());
+      expect(back.id, 'x');
+      expect(back.category, MyPlaceCategory.viewpoint);
+      expect(back.note, 'sunset');
+      expect(back.coordinate.lat, 45.5);
+      expect(back.createdAt.toUtc(), DateTime.utc(2026, 10, 9));
+    });
+
+    test('an unknown category falls back to other; a broken entry throws', () {
+      final json = place('y', 1, 1).toJson()..['category'] = 'spaceport';
+      expect(MyPlace.fromJson(json).category, MyPlaceCategory.other);
+      expect(() => MyPlace.fromJson({'id': 'z', 'name': 'No position'}),
+          throwsFormatException);
+    });
+  });
+
+  // ── 9. BETA ACCESS: TIER SIMULATION MUST NOT LEAK INTO PRODUCTION ────────────
+  group('test_beta_access_tiers', () {
+    test('a closed-beta install starts on premium, production on free', () {
+      expect(defaultTierFor(betaAccess: true), 'premium');
+      expect(defaultTierFor(betaAccess: false), 'free');
+    });
+
+    test('essential and premium unlock the server premium flag, free does not', () {
+      expect(premiumFlagForTier('free'), isFalse);
+      expect(premiumFlagForTier('essential'), isTrue);
+      expect(premiumFlagForTier('premium'), isTrue);
     });
   });
 }

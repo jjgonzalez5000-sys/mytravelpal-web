@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/models.dart';
+import '../config/beta_access.dart';
 import '../domain/auth_user.dart';
 import '../domain/emergency_contact.dart';
 import '../domain/favorite_place.dart';
+import '../domain/my_place.dart';
 import '../domain/trip_profile.dart';
 import '../domain/units.dart';
 import '../widgets/hotel_preferences.dart';
@@ -60,6 +62,8 @@ class AppPrefs {
   static const _favoriteHotelsKey = 'favorite_hotels.v1';
   static const _favoriteRestaurantsKey = 'favorite_restaurants.v1';
   static const _favoritePlacesKey = 'favorite_places.v1';
+  static const _myPlacesKey = 'my_places.v1';
+  static const _myPlacesTouchedKey = 'my_places_touched.v1';
   static const _emergencyContactsKey = 'emergency_contacts.v1';
   static const _currencyCodeKey = 'currency_code.v1';
   // Trip planning prefs — persisted so hotel/restaurant search
@@ -339,7 +343,9 @@ class AppPrefs {
   // (App Store / Play Billing). During the closed beta every feature
   // is unlocked so users can exercise the full planner. Flip the
   // default when the paywall lands.
-  bool get isPremium => _prefs.getBool(_premiumKey) ?? true;
+  bool get isPremium =>
+      _prefs.getBool(_premiumKey) ??
+      premiumFlagForTier(defaultTierFor(betaAccess: kBetaAccess));
   Future<void> setPremium(bool value) => _prefs.setBool(_premiumKey, value);
 
   String? get authToken => _prefs.getString(_authTokenKey);
@@ -502,6 +508,33 @@ class AppPrefs {
     );
   }
 
+  // -- My places (stops worth making) -----------------------------------
+
+  /// Places the driver saved to be offered when a route passes near them.
+  /// Corrupt entries are skipped rather than failing the whole list.
+  List<MyPlace> get myPlaces {
+    final raw = _prefs.getStringList(_myPlacesKey) ?? const <String>[];
+    final out = <MyPlace>[];
+    for (final s in raw) {
+      try {
+        out.add(MyPlace.fromJson(jsonDecode(s) as Map<String, dynamic>));
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  Future<void> setMyPlaces(List<MyPlace> places) => _prefs.setStringList(
+        _myPlacesKey,
+        places.map((p) => jsonEncode(p.toJson())).toList(),
+      );
+
+  /// True once the driver has added or removed a place on this device.
+  /// Only then is the list pushed to the server: a fresh install must not
+  /// overwrite the account's places with an empty list before the first sync.
+  bool get myPlacesTouched => _prefs.getBool(_myPlacesTouchedKey) ?? false;
+  Future<void> markMyPlacesTouched() =>
+      _prefs.setBool(_myPlacesTouchedKey, true);
+
   /// Emergency contacts for crash detection. Up to
   /// [_emergencyContactsLimit] persons receive an SMS with the
   /// impact location when the Companion detects a crash.
@@ -585,6 +618,8 @@ class AppPrefs {
     await _prefs.remove(_favoriteRestaurantsKey);
     await _prefs.remove(_favoritePlacesKey);
     await _prefs.remove(_emergencyContactsKey);
+    await _prefs.remove(_myPlacesKey);
+    await _prefs.remove(_myPlacesTouchedKey);
     await _prefs.remove(_hallNickKey);
     await _prefs.remove(_hallCountryKey);
   }

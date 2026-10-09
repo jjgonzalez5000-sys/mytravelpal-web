@@ -10,7 +10,7 @@ import 'osm_attribution.dart';
 /// Icon + colour signal for each supported stop type. Kept in one
 /// place so the marker on the map matches the tile / detail sheet the
 /// user tapped from.
-enum AddedStopKind { hotel, restaurant, fuel }
+enum AddedStopKind { hotel, restaurant, fuel, place }
 
 class AddedStop {
   const AddedStop({
@@ -40,6 +40,7 @@ class AddedStop {
         AddedStopKind.hotel => Icons.hotel_outlined,
         AddedStopKind.restaurant => Icons.restaurant_outlined,
         AddedStopKind.fuel => Icons.local_gas_station,
+        AddedStopKind.place => Icons.place_outlined,
       };
 }
 
@@ -216,6 +217,7 @@ class _AddedStopsMapSheetState extends State<_AddedStopsMapSheet> {
       AddedStopKind.hotel => scheme.tertiary,
       AddedStopKind.restaurant => scheme.tertiary,
       AddedStopKind.fuel => scheme.onSurfaceVariant,
+      AddedStopKind.place => scheme.primary,
     };
     return Marker(
       point: LatLng(stop.coordinate.lat, stop.coordinate.lon),

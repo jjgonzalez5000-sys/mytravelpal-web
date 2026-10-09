@@ -3097,6 +3097,154 @@ class AppLocalizationsCa extends AppLocalizations {
   String get styleKmCapRemove => 'Remove km limit';
 
   @override
+  String get purchaseBetaNote =>
+      'Closed beta: tapping a plan simulates the subscription. Nothing is charged.';
+
+  @override
+  String purchaseBetaApplied(String plan) {
+    return 'Beta: $plan plan applied (simulated)';
+  }
+
+  @override
+  String get settingsBetaAccess => 'BETA ACCESS';
+
+  @override
+  String get settingsTierFreeName => 'Free';
+
+  @override
+  String get myPlacesTitle => 'My places';
+
+  @override
+  String myPlacesSettingsRow(int count) {
+    return 'My places ($count)';
+  }
+
+  @override
+  String get myPlacesSettingsSub => 'Places you like to stop at';
+
+  @override
+  String get myPlacesEmpty =>
+      'Save the places you like to stop at. When a route passes near one, we will suggest it.';
+
+  @override
+  String get myPlacesAdd => 'Add a place';
+
+  @override
+  String get myPlacesSearchHint => 'Search a place or paste a map link';
+
+  @override
+  String get myPlacesSearch => 'Search';
+
+  @override
+  String get myPlacesNoResults =>
+      'Nothing found. Try another name, or paste a link that contains coordinates.';
+
+  @override
+  String get myPlacesNameLabel => 'Name';
+
+  @override
+  String get myPlacesNoteLabel => 'Note (optional)';
+
+  @override
+  String get myPlacesCategoryLabel => 'Category';
+
+  @override
+  String get myPlacesSave => 'Save place';
+
+  @override
+  String myPlacesRemoved(String name) {
+    return '$name removed';
+  }
+
+  @override
+  String get myPlacesUndo => 'Undo';
+
+  @override
+  String myPlacesLimit(int max) {
+    return 'You can save up to $max places.';
+  }
+
+  @override
+  String get myPlacesFromLink => 'Place from link';
+
+  @override
+  String get myPlacesCatFood => 'Food';
+
+  @override
+  String get myPlacesCatViewpoint => 'Viewpoint';
+
+  @override
+  String get myPlacesCatCulture => 'Culture';
+
+  @override
+  String get myPlacesCatNature => 'Nature';
+
+  @override
+  String get myPlacesCatKids => 'With kids';
+
+  @override
+  String get myPlacesCatOther => 'Other';
+
+  @override
+  String get myPlacesOnRouteTitle => 'Your places on this route';
+
+  @override
+  String myPlacesOffRoute(String km, int min) {
+    return '$km km off route · ~$min min';
+  }
+
+  @override
+  String get myPlacesAddToRoute => 'Add';
+
+  @override
+  String get myPlacesRemoveFromRoute => 'Remove';
+
+  @override
+  String get companionJoinTitle => 'Join as passenger';
+
+  @override
+  String get companionJoinHint => '6-character code';
+
+  @override
+  String get companionJoinButton => 'Join';
+
+  @override
+  String get companionJoinCodeInvalid => 'The code must have 6 characters';
+
+  @override
+  String get passengerViewTitle => 'Companion — Passenger';
+
+  @override
+  String passengerViewCode(String code) {
+    return 'Code: $code';
+  }
+
+  @override
+  String get passengerViewSpeed => 'Driver speed';
+
+  @override
+  String get passengerViewNextStop => 'Next stop';
+
+  @override
+  String get passengerViewDestination => 'Destination';
+
+  @override
+  String get passengerViewRefresh => 'Updating every 5 s';
+
+  @override
+  String passengerViewRadarBanner(String meters) {
+    return 'Speed camera in $meters m';
+  }
+
+  @override
+  String get passengerViewSlowDown => 'Slow down';
+
+  @override
+  String passengerViewRadarAhead(String distance) {
+    return 'Speed camera in $distance';
+  }
+
+  @override
   String get replanLostConfirm => 'Continue and deselect';
 
   @override

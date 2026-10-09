@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:in_app_purchase/in_app_purchase.dart';
 
 import '../api/api_client.dart';
+import '../config/beta_access.dart';
+import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../widgets/purchase_sheet.dart';
 
@@ -88,14 +90,45 @@ class BillingService {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => PurchaseSheet(
+      builder: (sheetContext) => PurchaseSheet(
         productDetails: _productDetails,
-        onBuyEssential: () => _launchPurchase(_kEssentialYearly, ref),
-        onBuyPremiumMonthly: () => _launchPurchase(_kPremiumMonthly, ref),
-        onBuyPremiumYearly: () => _launchPurchase(_kPremiumYearly, ref),
+        simulated: kBetaAccess,
+        // Closed beta: a price tap grants the plan. Production builds
+        // (BETA_ACCESS=false) always go through Play Billing.
+        onBuyEssential: () => kBetaAccess
+            ? _simulate(context, sheetContext, ref, 'essential')
+            : _launchPurchase(_kEssentialYearly, ref),
+        onBuyPremiumMonthly: () => kBetaAccess
+            ? _simulate(context, sheetContext, ref, 'premium')
+            : _launchPurchase(_kPremiumMonthly, ref),
+        onBuyPremiumYearly: () => kBetaAccess
+            ? _simulate(context, sheetContext, ref, 'premium')
+            : _launchPurchase(_kPremiumYearly, ref),
         onRestore: () => restorePurchases(_api),
       ),
     );
+  }
+
+  /// Closed beta only: grants [tier] as if it had been bought, closes the
+  /// sheet and says so. No Play Billing involved and nothing is charged.
+  static Future<void> _simulate(
+    BuildContext outer,
+    BuildContext sheet,
+    WidgetRef ref,
+    String tier,
+  ) async {
+    await applySubscriptionTier(ref, tier);
+    if (sheet.mounted) Navigator.of(sheet).pop();
+    if (outer.mounted) {
+      final l = AppLocalizations.of(outer);
+      ScaffoldMessenger.of(outer).showSnackBar(
+        SnackBar(
+          content: Text(
+            l.purchaseBetaApplied(tier == 'premium' ? 'Premium' : 'Essential'),
+          ),
+        ),
+      );
+    }
   }
 
   /// Trigger the Play Billing purchase flow for a single SKU.
@@ -163,10 +196,7 @@ class BillingService {
       // Persist tier both in the subscription tier provider and in the
       // legacy premiumProvider alias so all gates stay consistent.
       if (ref != null) {
-        ref.read(subscriptionTierProvider.notifier).state = tier;
-        if (tier != 'free') {
-          await ref.read(premiumProvider.notifier).set(true);
-        }
+        await applySubscriptionTier(ref, tier);
       }
 
       if (purchase.pendingCompletePurchase) {
