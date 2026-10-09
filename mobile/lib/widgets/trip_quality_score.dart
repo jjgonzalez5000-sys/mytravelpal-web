@@ -24,6 +24,7 @@ class TripQualityScore extends StatefulWidget {
     this.addedStopKeys = const {},
     this.selectedHotelCount = 0,
     this.pickedFuelCount = 0,
+    this.enrichPending = false,
   });
   final TripPlanResponse response;
 
@@ -40,6 +41,10 @@ class TripQualityScore extends StatefulWidget {
 
   /// Number of fuel stations the user has added to the route.
   final int pickedFuelCount;
+
+  /// True while enrichment is still running — toll factor gets full score
+  /// to avoid false penalties before the data is complete.
+  final bool enrichPending;
 
   @override
   State<TripQualityScore> createState() => _TripQualityScoreState();
@@ -62,6 +67,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
       addedStopKeys: widget.addedStopKeys,
       selectedHotelCount: widget.selectedHotelCount,
       pickedFuelCount: widget.pickedFuelCount,
+      enrichPending: widget.enrichPending,
     );
     final factors = allFactors.where((f) => f.max > 0).toList();
 
@@ -71,6 +77,43 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     final score = rawMax > 0 ? (rawScore * 100 ~/ rawMax) : 100;
     final color = _color(score);
     final label = _label(score, l);
+
+    // During enrichment show an indeterminate pulsing bar.
+    if (widget.enrichPending) {
+      return Container(
+        padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space12, vertical: Tokens.space12),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(Tokens.radiusMd),
+          border: Border.all(color: scheme.outlineVariant.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.star_rounded, color: scheme.onSurfaceVariant, size: 18),
+            const SizedBox(width: Tokens.space8),
+            Expanded(
+              child: Text(
+                l.tripQualityTitle,
+                style: t.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            SizedBox(
+              width: 80,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  minHeight: 5,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      scheme.primary.withValues(alpha: 0.5)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return InkWell(
       onTap: () => setState(() => _expanded = !_expanded),
@@ -190,6 +233,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     Set<String> addedStopKeys = const {},
     int selectedHotelCount = 0,
     int pickedFuelCount = 0,
+    bool enrichPending = false,
   }) {
     final profile = req?.tripProfile;
 
@@ -301,12 +345,13 @@ class _TripQualityScoreState extends State<TripQualityScore> {
       // No tolls on route → full score (clean trip).
       // Has tolls + bypass detail → full (data available to optimise).
       // Has tolls, no detail → partial (data missing).
+      // enrichPending → full score (toll data not yet complete).
       _QFactor(
         icon: Icons.toll_outlined,
         label: l.tripQualityFactorTolls,
-        score: (!routeHasTolls || hasTollDetail) ? 10 : 5,
+        score: (enrichPending || !routeHasTolls || hasTollDetail) ? 10 : 5,
         max: 10,
-        ok: !routeHasTolls || hasTollDetail,
+        ok: enrichPending || !routeHasTolls || hasTollDetail,
       ),
 
       // Rest / meal stops — max varies by pace (max 0 = factor excluded)

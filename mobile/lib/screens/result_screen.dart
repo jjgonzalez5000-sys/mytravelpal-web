@@ -2804,8 +2804,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 }),
                 _HeroStatTile(
                   label: l.resultStatTolls,
-                  value: formatMoney(_heroTollTotal(route, ccy), ccy),
-                  onTap: _response.partialTollSkips.isNotEmpty
+                  value: _enrichPending
+                      ? '—'
+                      : formatMoney(_heroTollTotal(route, ccy), ccy),
+                  onTap: !_enrichPending && _response.partialTollSkips.isNotEmpty
                       ? () => showTollSummarySheet(
                             context: context,
                             partialTollSkips: _response.partialTollSkips,
@@ -2834,16 +2836,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               ],
             ),
             const SizedBox(height: Tokens.space12),
-            if (!_enrichPending)
-              TripQualityScore(
-                response: _response,
-                request: widget.request,
-                addedStopKeys: _addedStops.keys.toSet(),
-                selectedHotelCount: _selectedNightHotels.length,
-                pickedFuelCount: _pickedFuelSavings.keys
-                    .where(_addedStops.containsKey)
-                    .length,
-              ),
+            TripQualityScore(
+              response: _response,
+              request: widget.request,
+              addedStopKeys: _addedStops.keys.toSet(),
+              selectedHotelCount: _selectedNightHotels.length,
+              pickedFuelCount: _pickedFuelSavings.keys
+                  .where(_addedStops.containsKey)
+                  .length,
+              enrichPending: _enrichPending,
+            ),
             if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space8),
               TripDayBars(
