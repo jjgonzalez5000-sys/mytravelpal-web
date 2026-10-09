@@ -4295,6 +4295,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripQualityFactorStops => 'Stops';
 
   @override
+  String get tripQualityExplainRoute =>
+      'Measures whether the route has valid geometry and whether required rest stops have been planned (EU regulation: break every 4.5h).';
+
+  @override
+  String get tripQualityExplainFuel =>
+      'Shows whether fuel prices are available on your route and if you\'ve added the optimal station. Penalises if stations are available but none selected.';
+
+  @override
+  String get tripQualityExplainHotels =>
+      'Evaluates whether hotels are available for overnight stays and if you\'ve selected where to sleep. An unselected hotel means an unbooked night.';
+
+  @override
+  String get tripQualityExplainWeather =>
+      'Analyses weather conditions along the route. Green = favourable. Yellow = rain or fog. Red = storm or snow.';
+
+  @override
+  String get tripQualityExplainAlerts =>
+      'Counts active adverse events on or near your route: fires, storms, earthquakes, road closures. Zero alerts = maximum score.';
+
+  @override
+  String get tripQualityExplainTolls =>
+      'Evaluates whether toll data is available for your route and whether you can optimise which tolls to pay or skip. No toll data = partial penalty.';
+
+  @override
+  String get tripQualityExplainStops =>
+      'Measures whether you\'ve planned meal and rest stops. For \'savour\' pace or with kids/pets, stops are important for trip comfort.';
+
+  @override
   String get wizardModelConsumption => 'Consumption';
 
   @override

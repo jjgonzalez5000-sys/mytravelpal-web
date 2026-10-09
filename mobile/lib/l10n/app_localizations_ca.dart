@@ -4308,6 +4308,34 @@ class AppLocalizationsCa extends AppLocalizations {
   String get tripQualityFactorStops => 'Paradas';
 
   @override
+  String get tripQualityExplainRoute =>
+      'Mesura si la ruta té geometria vàlida i si s\'han planificat les parades de descans obligatòries (normativa UE: pausa cada 4,5h).';
+
+  @override
+  String get tripQualityExplainFuel =>
+      'Indica si hi ha preus de gasolina disponibles a la teva ruta i si has afegit la gasolinera òptima.';
+
+  @override
+  String get tripQualityExplainHotels =>
+      'Avalua si hi ha hotels disponibles per a les nits del viatge i si has seleccionat on dormir.';
+
+  @override
+  String get tripQualityExplainWeather =>
+      'Analitza les condicions meteorològiques al llarg de la ruta. Verd = favorables. Groc = pluja o boira. Vermell = tempesta o neu.';
+
+  @override
+  String get tripQualityExplainAlerts =>
+      'Compta els events adversos actius a o prop de la teva ruta: incendis, tempestes, terratrèmols, tancaments de carretera.';
+
+  @override
+  String get tripQualityExplainTolls =>
+      'Avalua si hi ha dades de peatges disponibles per a la teva ruta i si pots optimitzar quins peatges pagar o saltar.';
+
+  @override
+  String get tripQualityExplainStops =>
+      'Mesura si has planificat les parades de menjar i descans. Per al ritme \'saveur\' o amb nens/animals, les parades són importants.';
+
+  @override
   String get wizardModelConsumption => 'Consumo';
 
   @override

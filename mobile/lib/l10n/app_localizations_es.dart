@@ -4323,6 +4323,34 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tripQualityFactorStops => 'Paradas';
 
   @override
+  String get tripQualityExplainRoute =>
+      'Mide si la ruta tiene geometría válida y si se han planificado las paradas de descanso obligatorias (normativa EU: pausa cada 4,5h).';
+
+  @override
+  String get tripQualityExplainFuel =>
+      'Indica si hay precios de gasolina disponibles en tu ruta y si has añadido la gasolinera óptima. Penaliza si hay estaciones disponibles pero no has seleccionado ninguna.';
+
+  @override
+  String get tripQualityExplainHotels =>
+      'Evalúa si hay hoteles disponibles para las noches del viaje y si has seleccionado dónde dormir. Un hotel sin seleccionar es una noche sin reservar.';
+
+  @override
+  String get tripQualityExplainWeather =>
+      'Analiza las condiciones meteorológicas a lo largo de la ruta. Verde = condiciones favorables. Amarillo = lluvia o niebla. Rojo = tormenta o nieve.';
+
+  @override
+  String get tripQualityExplainAlerts =>
+      'Cuenta los eventos adversos activos en o cerca de tu ruta: incendios, tormentas, terremotos, cierres de carretera. Cero alertas = puntuación máxima.';
+
+  @override
+  String get tripQualityExplainTolls =>
+      'Evalúa si hay datos de peajes disponibles para tu ruta y si puedes optimizar qué peajes pagar o saltarte. Sin datos de peajes = penalización parcial.';
+
+  @override
+  String get tripQualityExplainStops =>
+      'Mide si has planificado las paradas de comida y descanso. Para el ritmo \'saveur\' o con niños/mascotas, las paradas son importantes para el confort del viaje.';
+
+  @override
   String get wizardModelConsumption => 'Consumo';
 
   @override

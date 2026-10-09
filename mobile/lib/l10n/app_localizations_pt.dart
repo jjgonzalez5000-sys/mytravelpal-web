@@ -4308,6 +4308,34 @@ class AppLocalizationsPt extends AppLocalizations {
   String get tripQualityFactorStops => 'Paradas';
 
   @override
+  String get tripQualityExplainRoute =>
+      'Mede se a rota tem geometria válida e se as paragens de descanso obrigatórias foram planeadas (regulamento UE: pausa a cada 4,5h).';
+
+  @override
+  String get tripQualityExplainFuel =>
+      'Indica se há preços de combustível disponíveis na sua rota e se adicionou o posto ótimo.';
+
+  @override
+  String get tripQualityExplainHotels =>
+      'Avalia se há hotéis disponíveis para as noites da viagem e se selecionou onde dormir.';
+
+  @override
+  String get tripQualityExplainWeather =>
+      'Analisa as condições meteorológicas ao longo da rota. Verde = favorável. Amarelo = chuva ou nevoeiro. Vermelho = tempestade ou neve.';
+
+  @override
+  String get tripQualityExplainAlerts =>
+      'Conta os eventos adversos ativos na ou perto da sua rota: incêndios, tempestades, terramotos, encerramentos de estradas.';
+
+  @override
+  String get tripQualityExplainTolls =>
+      'Avalia se há dados de portagens disponíveis e se pode otimizar quais portagens pagar ou ignorar.';
+
+  @override
+  String get tripQualityExplainStops =>
+      'Mede se planeou as paragens de refeição e descanso. Para o ritmo \'saveur\' ou com crianças/animais, as paragens são importantes.';
+
+  @override
   String get wizardModelConsumption => 'Consumo';
 
   @override

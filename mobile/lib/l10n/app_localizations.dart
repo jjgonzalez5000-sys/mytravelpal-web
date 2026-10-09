@@ -7697,6 +7697,48 @@ abstract class AppLocalizations {
   /// **'Stops'**
   String get tripQualityFactorStops;
 
+  /// No description provided for @tripQualityExplainRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Measures whether the route has valid geometry and whether required rest stops have been planned (EU regulation: break every 4.5h).'**
+  String get tripQualityExplainRoute;
+
+  /// No description provided for @tripQualityExplainFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shows whether fuel prices are available on your route and if you\'ve added the optimal station. Penalises if stations are available but none selected.'**
+  String get tripQualityExplainFuel;
+
+  /// No description provided for @tripQualityExplainHotels.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluates whether hotels are available for overnight stays and if you\'ve selected where to sleep. An unselected hotel means an unbooked night.'**
+  String get tripQualityExplainHotels;
+
+  /// No description provided for @tripQualityExplainWeather.
+  ///
+  /// In en, this message translates to:
+  /// **'Analyses weather conditions along the route. Green = favourable. Yellow = rain or fog. Red = storm or snow.'**
+  String get tripQualityExplainWeather;
+
+  /// No description provided for @tripQualityExplainAlerts.
+  ///
+  /// In en, this message translates to:
+  /// **'Counts active adverse events on or near your route: fires, storms, earthquakes, road closures. Zero alerts = maximum score.'**
+  String get tripQualityExplainAlerts;
+
+  /// No description provided for @tripQualityExplainTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluates whether toll data is available for your route and whether you can optimise which tolls to pay or skip. No toll data = partial penalty.'**
+  String get tripQualityExplainTolls;
+
+  /// No description provided for @tripQualityExplainStops.
+  ///
+  /// In en, this message translates to:
+  /// **'Measures whether you\'ve planned meal and rest stops. For \'savour\' pace or with kids/pets, stops are important for trip comfort.'**
+  String get tripQualityExplainStops;
+
   /// No description provided for @wizardModelConsumption.
   ///
   /// In en, this message translates to:

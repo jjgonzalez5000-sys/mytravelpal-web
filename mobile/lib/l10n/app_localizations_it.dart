@@ -4312,6 +4312,34 @@ class AppLocalizationsIt extends AppLocalizations {
   String get tripQualityFactorStops => 'Soste';
 
   @override
+  String get tripQualityExplainRoute =>
+      'Misura se il percorso ha una geometria valida e se le soste obbligatorie sono pianificate (normativa UE: pausa ogni 4,5h).';
+
+  @override
+  String get tripQualityExplainFuel =>
+      'Indica se i prezzi del carburante sono disponibili sul percorso e se hai aggiunto la stazione ottimale.';
+
+  @override
+  String get tripQualityExplainHotels =>
+      'Valuta se sono disponibili hotel per le notti del viaggio e se hai selezionato dove dormire.';
+
+  @override
+  String get tripQualityExplainWeather =>
+      'Analizza le condizioni meteorologiche lungo il percorso. Verde = favorevoli. Giallo = pioggia o nebbia. Rosso = tempesta o neve.';
+
+  @override
+  String get tripQualityExplainAlerts =>
+      'Conta gli eventi avversi attivi sulla o vicino alla tua route: incendi, tempeste, terremoti, chiusure stradali.';
+
+  @override
+  String get tripQualityExplainTolls =>
+      'Valuta se i dati sui pedaggi sono disponibili e se puoi ottimizzare quali pedaggi pagare o saltare.';
+
+  @override
+  String get tripQualityExplainStops =>
+      'Misura se hai pianificato le soste per i pasti e il riposo. Per il ritmo \'savour\' o con bambini/animali, le soste sono importanti.';
+
+  @override
   String get wizardModelConsumption => 'Consumo';
 
   @override

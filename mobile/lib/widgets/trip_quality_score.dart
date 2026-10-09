@@ -239,6 +239,11 @@ class _TripQualityScoreState extends State<TripQualityScore> {
 
     // ---- Route geometry (max 20) ----------------------------------------
     final hasGeometry = r.route.geometry.length > 10;
+    // Stops planned: if there are meal/rest stops suggested, driver must add them
+    final hasMealStops = r.optimizations?.mealStops.isNotEmpty == true;
+    final pace = profile?.travelPace;
+    final stopsNeeded = hasMealStops && pace != TravelPace.push;
+    final stopsPlanned = !stopsNeeded || addedStopKeys.isNotEmpty;
 
     // ---- Fuel prices (max 15 — EV: auto full-score, not applicable) ------
     final isElectric =
@@ -273,8 +278,6 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     // savour → stops are important  → max 15.
     // no kids/pets, steady           → max 5.
     // kids or pets present, steady   → max 10.
-    final hasMealStops = r.optimizations?.mealStops.isNotEmpty == true;
-    final pace = profile?.travelPace;
     final hasKids = profile?.hasKids ?? false;
     final hasPets = profile?.hasPets ?? false;
     final stopsMax = pace == TravelPace.push
@@ -290,9 +293,12 @@ class _TripQualityScoreState extends State<TripQualityScore> {
       _QFactor(
         icon: Icons.route,
         label: l.tripQualityFactorRoute,
-        score: hasGeometry ? 20 : 10,
+        score: hasGeometry
+            ? (stopsPlanned ? 20 : 14) // 14 if stops suggested but none added
+            : 10,
         max: 20,
-        ok: hasGeometry,
+        ok: hasGeometry && stopsPlanned,
+        explanation: l.tripQualityExplainRoute,
       ),
 
       // Fuel prices — max 15 (EV: auto full-score, not applicable)
@@ -308,6 +314,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
                     : 0,
         max: 15,
         ok: isElectric || (hasFuelPrices && pickedFuelCount > 0),
+        explanation: l.tripQualityExplainFuel,
       ),
 
       // Hotels — max 15, excluded (max=0) when hotels not applicable.
@@ -321,6 +328,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
                 : 0,
         max: !hotelExpected ? 0 : 15,
         ok: !hotelExpected || (hasHotels && selectedHotelCount > 0),
+        explanation: l.tripQualityExplainHotels,
       ),
 
       // Weather — max 15 (computed from segment severity; empty = perfect)
@@ -330,6 +338,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         score: weatherScore,
         max: 15,
         ok: weatherOk,
+        explanation: l.tripQualityExplainWeather,
       ),
 
       // Alerts / adverse events — max 15
@@ -339,6 +348,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         score: adverseCount == 0 ? 15 : adverseCount <= 2 ? 8 : 3,
         max: 15,
         ok: adverseCount == 0,
+        explanation: l.tripQualityExplainAlerts,
       ),
 
       // Tolls — max 10
@@ -352,6 +362,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         score: (enrichPending || !routeHasTolls || hasTollDetail) ? 10 : 5,
         max: 10,
         ok: enrichPending || !routeHasTolls || hasTollDetail,
+        explanation: l.tripQualityExplainTolls,
       ),
 
       // Rest / meal stops — max varies by pace (max 0 = factor excluded)
@@ -365,6 +376,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
                 : 0,
         max: stopsMax,
         ok: pace == TravelPace.push || (hasMealStops && addedStopKeys.isNotEmpty),
+        explanation: l.tripQualityExplainStops,
       ),
     ];
   }
@@ -411,12 +423,14 @@ class _QFactor {
     required this.score,
     required this.max,
     required this.ok,
+    required this.explanation,
   });
   final IconData icon;
   final String label;
   final int score;
   final int max;
   final bool ok;
+  final String explanation;
 }
 
 class _ScoreChip extends StatelessWidget {
@@ -434,36 +448,51 @@ class _ScoreChip extends StatelessWidget {
             ? const Color(0xFFFBBF24)
             : const Color(0xFFF87171);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(Tokens.radiusSm),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+    return GestureDetector(
+      onTap: () => showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Row(
+            children: [
+              Icon(factor.icon, size: 18),
+              const SizedBox(width: 8),
+              Text(factor.label),
+            ],
+          ),
+          content: Text(factor.explanation),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(_),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            factor.ok ? Icons.check : Icons.remove,
-            size: 11,
-            color: color,
-          ),
-          const SizedBox(width: 4),
-          Icon(factor.icon, size: 12, color: color.withValues(alpha: 0.8)),
-          const SizedBox(width: 4),
-          Text(
-            factor.label,
-            style: t.labelSmall?.copyWith(
-                color: color, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            '${factor.score}/${factor.max}',
-            style: t.labelSmall
-                ?.copyWith(color: color.withValues(alpha: 0.7)),
-          ),
-        ],
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(Tokens.radiusSm),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              factor.ok ? Icons.check : Icons.remove,
+              size: 11,
+              color: color,
+            ),
+            const SizedBox(width: 4),
+            Icon(factor.icon, size: 12, color: color.withValues(alpha: 0.8)),
+            const SizedBox(width: 4),
+            Text(
+              factor.label,
+              style: t.labelSmall?.copyWith(
+                  color: color, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -4326,6 +4326,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tripQualityFactorStops => 'Arrêts';
 
   @override
+  String get tripQualityExplainRoute =>
+      'Mesure si l\'itinéraire a une géométrie valide et si les pauses obligatoires sont planifiées (réglementation UE : pause toutes les 4,5h).';
+
+  @override
+  String get tripQualityExplainFuel =>
+      'Indique si des prix de carburant sont disponibles sur votre route et si vous avez ajouté la station optimale. Pénalise si des stations sont disponibles mais aucune sélectionnée.';
+
+  @override
+  String get tripQualityExplainHotels =>
+      'Évalue si des hôtels sont disponibles pour les nuits du voyage et si vous avez sélectionné où dormir.';
+
+  @override
+  String get tripQualityExplainWeather =>
+      'Analyse les conditions météo le long de l\'itinéraire. Vert = favorable. Jaune = pluie ou brouillard. Rouge = tempête ou neige.';
+
+  @override
+  String get tripQualityExplainAlerts =>
+      'Compte les événements adverses actifs sur ou près de votre itinéraire : incendies, tempêtes, séismes, fermetures de routes.';
+
+  @override
+  String get tripQualityExplainTolls =>
+      'Évalue si des données de péages sont disponibles et si vous pouvez optimiser quels péages payer ou éviter.';
+
+  @override
+  String get tripQualityExplainStops =>
+      'Mesure si vous avez planifié les arrêts repas et repos. Pour le rythme \'saveur\' ou avec enfants/animaux, les arrêts sont importants.';
+
+  @override
   String get wizardModelConsumption => 'Consommation';
 
   @override
