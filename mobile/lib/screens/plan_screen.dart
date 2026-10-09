@@ -10,6 +10,7 @@ import '../api/api_client.dart';
 import '../api/models.dart';
 import '../design/components.dart';
 import '../design/tokens.dart';
+import '../domain/plan_gates.dart';
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
 import '../domain/garage_vehicle.dart';
@@ -173,7 +174,30 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   // standalone user-facing selector is removed from the UI so
   // there's one less checkbox on the plan screen — the report
   // still ships in the result when premium/enabled.
-  bool get _hourlyTollEnabled => _tollAlternativeEnabled;
+  bool get _hourlyTollEnabled => _tollAlternativeOn;
+
+  /// What the request really carries: the toggle AND a plan that includes
+  /// it. A stored "on" default must not reach the server for a free user,
+  /// which answers 402.
+  bool get _tollAlternativeOn => effectiveTollFree(
+        wanted: _tollAlternativeEnabled,
+        paid: ref.read(isEssentialOrAboveProvider),
+      );
+
+  void _showTollFreeLocked() {
+    final l = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(l.planOptTollFreeLocked),
+          action: SnackBarAction(
+            label: l.planOptSeePlans,
+            onPressed: () => BillingService.showPurchaseSheet(context, ref),
+          ),
+        ),
+      );
+  }
   bool _routeComparisonEnabled = false;
   bool _activitiesEnabled = false;
   // Kept as fields (not consts) so the request builder keeps its
@@ -653,7 +677,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         if (_hotelPrefs.enabled) PlanStep.hotels,
         if (_restaurantPrefs.enabled) PlanStep.restaurants,
         if (_alertsEnabled) PlanStep.alerts,
-        if (_tollAlternativeEnabled || _hourlyTollEnabled)
+        if (_tollAlternativeOn)
           PlanStep.tolls,
       ];
       unawaited(showDialog<void>(
@@ -713,7 +737,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             ? cuisineOsmTagsFor(_restaurantPrefs.cuisines).toList()
             : null,
         includeAdverseEvents: _alertsEnabled,
-        includeTollAlternative: _tollAlternativeEnabled,
+        includeTollAlternative: _tollAlternativeOn,
         includeParking: _parkingEnabled,
         includeActivities: _activitiesEnabled,
         includeRouteComparison: _routeComparisonEnabled,
@@ -763,7 +787,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               ? _restaurantPrefs.geoapifyConditions
               : null,
           includeAdverseEvents: _alertsEnabled,
-          includeTollAlternative: _tollAlternativeEnabled,
+          includeTollAlternative: _tollAlternativeOn,
           includeParking: _parkingEnabled,
           includeActivities: _activitiesEnabled,
           includeRouteComparison: _routeComparisonEnabled,
@@ -1546,9 +1570,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     alertsEnabled: _alertsEnabled,
                     onAlertsChanged: (v) =>
                         setState(() => _alertsEnabled = v),
-                    tollAlternativeEnabled: _tollAlternativeEnabled,
+                    tollAlternativeEnabled: _tollAlternativeOn,
                     onTollAlternativeChanged: (v) =>
                         setState(() => _tollAlternativeEnabled = v),
+                    onTollFreeLockedTap:
+                        ref.watch(isEssentialOrAboveProvider)
+                            ? null
+                            : _showTollFreeLocked,
                     routeComparisonEnabled: _routeComparisonEnabled,
                     onRouteComparisonChanged: (v) =>
                         setState(() => _routeComparisonEnabled = v),
@@ -1633,6 +1661,7 @@ class _CompactToggle extends StatelessWidget {
     required this.subtitle,
     required this.value,
     required this.onChanged,
+    this.onLockedTap,
   });
   final IconData icon;
   final String title;
@@ -1640,12 +1669,19 @@ class _CompactToggle extends StatelessWidget {
   final bool value;
   final ValueChanged<bool> onChanged;
 
+  /// Non-null = the option is not included in the driver's plan: the
+  /// switch shows off and disabled with a lock, and tapping the row calls
+  /// this instead of toggling.
+  final VoidCallback? onLockedTap;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    final locked = onLockedTap != null;
+    final shown = locked ? false : value;
     return InkWell(
-      onTap: () => onChanged(!value),
+      onTap: locked ? onLockedTap : () => onChanged(!value),
       child: Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 4, vertical: Tokens.space8,
@@ -1653,7 +1689,7 @@ class _CompactToggle extends StatelessWidget {
         child: Row(
           children: [
             Icon(icon, size: 20,
-                color: value ? scheme.primary : scheme.onSurfaceVariant),
+                color: shown ? scheme.primary : scheme.onSurfaceVariant),
             const SizedBox(width: Tokens.space12),
             Expanded(
               child: Column(
@@ -1671,11 +1707,19 @@ class _CompactToggle extends StatelessWidget {
               ),
             ),
             const SizedBox(width: Tokens.space8),
-            Transform.scale(
-              scale: 0.85,
-              child: Switch.adaptive(
-                value: value,
-                onChanged: onChanged,
+            if (locked) ...[
+              Icon(Icons.lock_outline,
+                  size: 16, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Tokens.space4),
+            ],
+            IgnorePointer(
+              ignoring: locked,
+              child: Transform.scale(
+                scale: 0.85,
+                child: Switch.adaptive(
+                  value: shown,
+                  onChanged: locked ? null : onChanged,
+                ),
               ),
             ),
           ],
@@ -1776,7 +1820,12 @@ class _OnRoutePicker extends StatefulWidget {
     required this.onRouteComparisonChanged,
     required this.activitiesEnabled,
     required this.onActivitiesChanged,
+    this.onTollFreeLockedTap,
   });
+
+  /// Non-null when the driver's plan does not include the toll-free
+  /// options: the toggle shows locked and a tap calls this.
+  final VoidCallback? onTollFreeLockedTap;
 
   final HotelPreferences hotelPrefs;
   final ValueChanged<HotelPreferences> onHotelChanged;
@@ -2060,6 +2109,7 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
                           subtitle: l.planOptTollFreeSub,
                           value: widget.tollAlternativeEnabled,
                           onChanged: widget.onTollAlternativeChanged,
+                          onLockedTap: widget.onTollFreeLockedTap,
                         ),
                         _CompactToggle(
                           icon: Icons.alt_route,

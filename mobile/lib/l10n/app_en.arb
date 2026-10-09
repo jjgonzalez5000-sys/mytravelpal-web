@@ -1927,6 +1927,8 @@
   "paywallPremiumF6": "Early access to new features",
   "paywallGetPremium": "Get Premium",
   "paywallRestore": "Restore purchases",
+  "planOptTollFreeLocked": "Toll-free options require Premium",
+  "planOptSeePlans": "See plans",
   "paywallPerYear": "{amount}/yr",
   "@paywallPerYear": {
     "placeholders": { "amount": { "type": "String" } }

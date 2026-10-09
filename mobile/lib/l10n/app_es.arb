@@ -1886,6 +1886,8 @@
   "paywallPremiumF6": "Acceso anticipado a las novedades",
   "paywallGetPremium": "Obtener Premium",
   "paywallRestore": "Restaurar compras",
+  "planOptTollFreeLocked": "Las opciones sin peajes requieren Premium",
+  "planOptSeePlans": "Ver planes",
   "paywallPerYear": "{amount}/año",
   "paywallPerMonth": "{amount}/mes",
   "paywallLegal": "El pago se cargará a tu cuenta de Google Play al confirmar la compra. Las suscripciones se renuevan automáticamente salvo que las canceles al menos 24 horas antes del final del periodo actual. Gestiona o cancela en Ajustes de Play Store > Suscripciones.",

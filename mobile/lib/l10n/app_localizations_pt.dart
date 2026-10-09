@@ -3332,6 +3332,12 @@ class AppLocalizationsPt extends AppLocalizations {
   String get paywallRestore => 'Restore purchases';
 
   @override
+  String get planOptTollFreeLocked => 'Toll-free options require Premium';
+
+  @override
+  String get planOptSeePlans => 'See plans';
+
+  @override
   String paywallPerYear(String amount) {
     return '$amount/yr';
   }

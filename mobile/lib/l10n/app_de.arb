@@ -1885,6 +1885,8 @@
   "paywallPremiumF6": "Frühzeitiger Zugriff auf neue Funktionen",
   "paywallGetPremium": "Premium holen",
   "paywallRestore": "Käufe wiederherstellen",
+  "planOptTollFreeLocked": "Mautfreie Optionen erfordern Premium",
+  "planOptSeePlans": "Tarife ansehen",
   "paywallPerYear": "{amount}/Jahr",
   "paywallPerMonth": "{amount}/Monat",
   "paywallLegal": "Die Zahlung wird bei Bestätigung des Kaufs deinem Google-Play-Konto belastet. Abos verlängern sich automatisch, sofern sie nicht mindestens 24 Stunden vor Ende des aktuellen Zeitraums gekündigt werden. Verwalten oder kündigen unter Play Store-Einstellungen > Abos.",

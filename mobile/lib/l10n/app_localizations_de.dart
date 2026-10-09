@@ -3344,6 +3344,12 @@ class AppLocalizationsDe extends AppLocalizations {
   String get paywallRestore => 'Käufe wiederherstellen';
 
   @override
+  String get planOptTollFreeLocked => 'Mautfreie Optionen erfordern Premium';
+
+  @override
+  String get planOptSeePlans => 'Tarife ansehen';
+
+  @override
   String paywallPerYear(String amount) {
     return '$amount/Jahr';
   }

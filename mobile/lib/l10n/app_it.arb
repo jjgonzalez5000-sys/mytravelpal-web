@@ -1885,6 +1885,8 @@
   "paywallPremiumF6": "Accesso anticipato alle novità",
   "paywallGetPremium": "Passa a Premium",
   "paywallRestore": "Ripristina acquisti",
+  "planOptTollFreeLocked": "Le opzioni senza pedaggi richiedono Premium",
+  "planOptSeePlans": "Vedi i piani",
   "paywallPerYear": "{amount}/anno",
   "paywallPerMonth": "{amount}/mese",
   "paywallLegal": "Il pagamento verrà addebitato sul tuo account Google Play alla conferma dell'acquisto. Gli abbonamenti si rinnovano automaticamente salvo disdetta almeno 24 ore prima della fine del periodo in corso. Gestisci o annulla in Impostazioni del Play Store > Abbonamenti.",

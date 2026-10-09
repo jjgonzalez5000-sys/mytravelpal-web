@@ -3347,6 +3347,13 @@ class AppLocalizationsFr extends AppLocalizations {
   String get paywallRestore => 'Restaurer les achats';
 
   @override
+  String get planOptTollFreeLocked =>
+      'Les options sans péage nécessitent Premium';
+
+  @override
+  String get planOptSeePlans => 'Voir les offres';
+
+  @override
   String paywallPerYear(String amount) {
     return '$amount/an';
   }

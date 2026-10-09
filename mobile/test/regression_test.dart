@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
 import 'package:mytravelpal/config/beta_access.dart';
 import 'package:mytravelpal/domain/my_place.dart';
+import 'package:mytravelpal/domain/plan_gates.dart';
 import 'package:mytravelpal/services/my_places_match.dart';
 import 'package:mytravelpal/services/selection_check.dart';
 import 'package:mytravelpal/widgets/trip_quality_score.dart'
@@ -589,6 +590,23 @@ void main() {
       expect(premiumFlagForTier('free'), isFalse);
       expect(premiumFlagForTier('essential'), isTrue);
       expect(premiumFlagForTier('premium'), isTrue);
+    });
+  });
+
+  // ── 10. TOLL-FREE OPTIONS ARE NOT PART OF THE FREE PLAN ──────────────────────
+  //
+  // Bug: a free user could switch the toll-free options on (and they were on
+  // by default), so every plan request was rejected with 402. A free plan must
+  // never send them, whatever the stored default says.
+  group('test_toll_free_not_in_free_plan', () {
+    test('a free plan never carries the toll-free options', () {
+      expect(effectiveTollFree(wanted: true, paid: false), isFalse);
+      expect(effectiveTollFree(wanted: false, paid: false), isFalse);
+    });
+
+    test('a paid plan carries them only when asked', () {
+      expect(effectiveTollFree(wanted: true, paid: true), isTrue);
+      expect(effectiveTollFree(wanted: false, paid: true), isFalse);
     });
   });
 }

@@ -3349,6 +3349,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get paywallRestore => 'Restaurar compras';
 
   @override
+  String get planOptTollFreeLocked =>
+      'Las opciones sin peajes requieren Premium';
+
+  @override
+  String get planOptSeePlans => 'Ver planes';
+
+  @override
   String paywallPerYear(String amount) {
     return '$amount/año';
   }

@@ -5978,6 +5978,18 @@ abstract class AppLocalizations {
   /// **'Restore purchases'**
   String get paywallRestore;
 
+  /// No description provided for @planOptTollFreeLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Toll-free options require Premium'**
+  String get planOptTollFreeLocked;
+
+  /// No description provided for @planOptSeePlans.
+  ///
+  /// In en, this message translates to:
+  /// **'See plans'**
+  String get planOptSeePlans;
+
   /// No description provided for @paywallPerYear.
   ///
   /// In en, this message translates to:
