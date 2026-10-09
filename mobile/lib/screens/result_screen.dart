@@ -2804,10 +2804,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 }),
                 _HeroStatTile(
                   label: l.resultStatTolls,
-                  value: _enrichPending
+                  value: (_enrichPending || _replanning)
                       ? '—'
                       : formatMoney(_heroTollTotal(route, ccy), ccy),
-                  onTap: !_enrichPending && _response.partialTollSkips.isNotEmpty
+                  onTap: !_enrichPending && !_replanning && _response.partialTollSkips.isNotEmpty
                       ? () => showTollSummarySheet(
                             context: context,
                             partialTollSkips: _response.partialTollSkips,
@@ -2966,7 +2966,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     FuelType.electric,
                 fuelSavingsEur: _addedFuelSavingsEur,
                 fuelLitersFilled: _addedFuelLitersFilled,
-
+                dayBoundariesKm: [
+                  for (int i = 0; i < _daysForRender.length - 1; i++)
+                    _daysForRender[i].toKm,
+                ],
               ),
             ],
           ],
@@ -4213,6 +4216,7 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.isEv = false,
     this.fuelSavingsEur = 0.0,
     this.fuelLitersFilled = 0.0,
+    this.dayBoundariesKm = const [],
   });
 
   /// How many cheap fuel stations the driver added via the day
@@ -4266,6 +4270,9 @@ class _TotalTripCostCard extends ConsumerWidget {
   /// Actual litres filled across all picked stations (cascade-computed).
   /// Used in the savings breakdown instead of the full tank capacity.
   final double fuelLitersFilled;
+  /// Km offsets where day boundaries fall (excludes final destination).
+  /// Passed through to the fuel chart to draw day-separator lines.
+  final List<double> dayBoundariesKm;
 
   /// Keys of fuel stations already added by the driver (from
   /// `_pickedFuelSavings`). Used to render each chip as selected.
@@ -4695,6 +4702,7 @@ class _TotalTripCostCard extends ConsumerWidget {
             totalSavingsEur: fuelSavingsEur,
             fuelCostEur: fuelCostEur,
             isEv: isEv,
+            dayBoundariesKm: dayBoundariesKm,
           ),
           // Per-person / per-day breakdown — only when the numbers
           // actually add information (multi-traveller or multi-day
@@ -4866,6 +4874,7 @@ class _FuelSavingsSection extends StatefulWidget {
     required this.totalSavingsEur,
     this.fuelCostEur = 0.0,
     this.isEv = false,
+    this.dayBoundariesKm = const [],
   });
 
   final List<FuelPrice> fuelPrices;
@@ -4879,6 +4888,8 @@ class _FuelSavingsSection extends StatefulWidget {
   /// Gross fuel cost before savings — used to display the savings % badge.
   final double fuelCostEur;
   final bool isEv;
+  /// Km offsets of day boundaries (excludes final destination).
+  final List<double> dayBoundariesKm;
 
   static String _keyFor(FuelPrice p) {
     if (p.coordinate == null) return '';
@@ -4893,24 +4904,20 @@ class _FuelSavingsSection extends StatefulWidget {
 
 class _FuelSavingsSectionState extends State<_FuelSavingsSection> {
   int _selectedStationIndex = -1;
-  final ScrollController _scrollController = ScrollController();
 
-  // Approximate row height used to scroll the list to the selected item.
-  static const double _rowH = 56.0;
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+  /// One GlobalKey per station row; populated lazily in the ListView builder
+  /// so we can call Scrollable.ensureVisible when a chart dot is tapped.
+  final Map<int, GlobalKey> _rowKeys = {};
 
   void _selectStation(int index) {
     setState(() => _selectedStationIndex = index);
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        index * _rowH,
+    final key = _rowKeys[index];
+    if (key?.currentContext != null) {
+      Scrollable.ensureVisible(
+        key!.currentContext!,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
+        alignment: 0.2,
       );
     }
   }
@@ -5007,10 +5014,10 @@ class _FuelSavingsSectionState extends State<_FuelSavingsSection> {
             addedKeys: widget.addedFuelKeys,
             selectedIndex: _selectedStationIndex,
             onTapStation: _selectStation,
+            dayBoundariesKm: widget.dayBoundariesKm,
           ),
           const SizedBox(height: Tokens.space12),
           ListView.builder(
-            controller: _scrollController,
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: cheapStations.length,
@@ -5018,6 +5025,7 @@ class _FuelSavingsSectionState extends State<_FuelSavingsSection> {
               final s = cheapStations[i];
               final isSelected = _selectedStationIndex == i;
               return GestureDetector(
+                key: _rowKeys.putIfAbsent(i, () => GlobalKey()),
                 onTap: () => _selectStation(i),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -5059,6 +5067,7 @@ class _FuelRouteMinimap extends StatelessWidget {
     this.addedKeys = const {},
     this.selectedIndex = -1,
     this.onTapStation,
+    this.dayBoundariesKm = const [],
   });
 
   final List<FuelPrice> stations;
@@ -5071,6 +5080,8 @@ class _FuelRouteMinimap extends StatelessWidget {
   final Set<String> addedKeys;
   final int selectedIndex;
   final ValueChanged<int>? onTapStation;
+  /// Km positions where day boundaries fall (excludes final destination).
+  final List<double> dayBoundariesKm;
 
   @override
   Widget build(BuildContext context) {
@@ -5124,6 +5135,7 @@ class _FuelRouteMinimap extends StatelessWidget {
                 addedKeys: addedKeys,
                 selectedIndex: selectedIndex,
                 addedLabel: l.resultChartAdded,
+                dayBoundariesKm: dayBoundariesKm,
           ),
             ),
           );
@@ -5152,6 +5164,7 @@ class _FuelRouteMinimapPainter extends CustomPainter {
     this.addedKeys = const {},
     this.selectedIndex = -1,
     this.addedLabel = '  added',
+    this.dayBoundariesKm = const [],
   });
 
   final List<FuelPrice> stations;
@@ -5166,6 +5179,9 @@ class _FuelRouteMinimapPainter extends CustomPainter {
   final int selectedIndex;
   /// Localized label for the "added" legend entry.
   final String addedLabel;
+  /// X-positions (km from origin) where day boundaries fall.
+  /// Drawn as thin dashed vertical lines. Excludes the final destination.
+  final List<double> dayBoundariesKm;
 
   static const double _routeY = 68.0;
   static const double _topPad = 8.0;
@@ -5211,12 +5227,52 @@ class _FuelRouteMinimapPainter extends CustomPainter {
         '${s.coordinate!.lon.toStringAsFixed(4)}';
   }
 
+  /// Draws a vertical dashed line from [top] to [bottom] at [x].
+  void _drawDashedVertLine(
+    Canvas canvas,
+    double x,
+    double top,
+    double bottom,
+    Paint paint,
+  ) {
+    const dashLen = 4.0;
+    const gapLen = 3.0;
+    double y = top;
+    while (y < bottom) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x, (y + dashLen).clamp(top, bottom)),
+        paint,
+      );
+      y += dashLen + gapLen;
+    }
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     if (totalKm <= 0 || size.width <= 0) return;
 
     final sorted = List<FuelPrice>.from(stations)
       ..sort((a, b) => a.distanceFromOriginKm.compareTo(b.distanceFromOriginKm));
+
+    // --- Day boundary dashed lines ---
+    if (dayBoundariesKm.isNotEmpty) {
+      final dayLinePaint = Paint()
+        ..color = scheme.onSurfaceVariant.withValues(alpha: 0.35)
+        ..strokeWidth = 1.0
+        ..style = PaintingStyle.stroke;
+      final labelStyle = TextStyle(
+        fontSize: 8,
+        color: scheme.onSurfaceVariant.withValues(alpha: 0.55),
+        fontWeight: FontWeight.w500,
+      );
+      for (int i = 0; i < dayBoundariesKm.length; i++) {
+        final km = dayBoundariesKm[i].clamp(0.0, totalKm);
+        final x = (km / totalKm) * size.width;
+        _drawDashedVertLine(canvas, x, _topPad, _routeY, dayLinePaint);
+        _textAt(canvas, 'D${i + 2}', x + 2, _topPad, labelStyle);
+      }
+    }
 
     // --- Layer 1: "optimal" curve (all cheap stops, green) ---
     // This is always visible and shows what happens if you follow
@@ -5377,7 +5433,8 @@ class _FuelRouteMinimapPainter extends CustomPainter {
       old.consumptionL100 != consumptionL100 ||
       old.initTankPct != initTankPct ||
       old.selectedIndex != selectedIndex ||
-      old.addedKeys != addedKeys;
+      old.addedKeys != addedKeys ||
+      old.dayBoundariesKm != dayBoundariesKm;
 }
 
 /// Single row in the expanded fuel savings list: station name, km, price,
