@@ -61,9 +61,15 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
 
-    final essentialPrice = _priceFor('mytravelpal_essential_yearly', '19.99 EUR/yr');
-    final premiumMonthlyPrice = _priceFor('mytravelpal_premium_monthly', '4.99 EUR/mo');
-    final premiumYearlyPrice = _priceFor('mytravelpal_premium_yearly', '39.99 EUR/yr');
+    final l = AppLocalizations.of(context);
+    // Real prices come from Play (already localised); these only show when
+    // the store did not answer.
+    final essentialPrice = _priceFor(
+        'mytravelpal_essential_yearly', l.paywallPerYear('19.99 EUR'));
+    final premiumMonthlyPrice = _priceFor(
+        'mytravelpal_premium_monthly', l.paywallPerMonth('4.99 EUR'));
+    final premiumYearlyPrice = _priceFor(
+        'mytravelpal_premium_yearly', l.paywallPerYear('39.99 EUR'));
 
     return DraggableScrollableSheet(
       initialChildSize: 0.92,
@@ -99,7 +105,7 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Choose the plan that fits your trips',
+                l.paywallSubtitle,
                 style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
@@ -122,18 +128,18 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
 
               // Free tier
               _TierCard(
-                title: 'Free',
-                price: 'Always free',
-                subtitle: 'Basic trip planning',
-                features: const [
-                  'Route + toll estimate',
-                  'Fuel prices along route',
-                  'Hotel + restaurant suggestions',
-                  '3 saved trips',
+                title: l.settingsTierFreeName,
+                price: l.paywallFreePrice,
+                subtitle: l.paywallFreeSubtitle,
+                features: [
+                  l.paywallFreeF1,
+                  l.paywallFreeF2,
+                  l.paywallFreeF3,
+                  l.paywallFreeF4,
                 ],
                 accent: scheme.outline,
                 isCurrent: true,
-                cta: 'Current plan',
+                cta: l.paywallCurrentPlan,
                 onTap: null,
               ),
               const SizedBox(height: 12),
@@ -142,18 +148,18 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
               _TierCard(
                 title: 'Essential',
                 price: essentialPrice,
-                subtitle: 'Best for occasional travelers',
-                features: const [
-                  'Everything in Free',
-                  'Unlimited saved trips',
-                  'Weather along route',
-                  'Adverse events (fires, floods)',
-                  'Trip cost breakdown',
-                  '14-day free trial',
+                subtitle: l.paywallEssentialSubtitle,
+                features: [
+                  l.paywallEssentialF1,
+                  l.paywallEssentialF2,
+                  l.paywallEssentialF3,
+                  l.paywallEssentialF4,
+                  l.paywallEssentialF5,
+                  l.paywallEssentialF6,
                 ],
                 accent: scheme.primary,
                 isCurrent: false,
-                cta: _buying ? 'Opening...' : 'Start 14-day trial',
+                cta: _buying ? l.paywallOpening : l.paywallStartTrial,
                 onTap: _buying ? null : () => _tap(widget.onBuyEssential),
               ),
               const SizedBox(height: 12),
@@ -165,7 +171,7 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Monthly'),
+                      Text(l.paywallMonthly),
                       const SizedBox(width: 8),
                       Switch(
                         value: _yearlyPremium,
@@ -175,9 +181,9 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Yearly'),
+                          Text(l.paywallYearly),
                           Text(
-                            'Save 33%',
+                            l.paywallSave33,
                             style: TextStyle(
                               fontSize: 11,
                               color: scheme.primary,
@@ -192,18 +198,18 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
                   _TierCard(
                     title: 'Premium',
                     price: _yearlyPremium ? premiumYearlyPrice : premiumMonthlyPrice,
-                    subtitle: 'For road-trip enthusiasts',
-                    features: const [
-                      'Everything in Essential',
-                      'AI Trip Companion (in-drive)',
-                      'AI trip inspiration',
-                      'Real-time hotel price alerts',
-                      'Priority customer support',
-                      'Early access to new features',
+                    subtitle: l.paywallPremiumSubtitle,
+                    features: [
+                      l.paywallPremiumF1,
+                      l.paywallPremiumF2,
+                      l.paywallPremiumF3,
+                      l.paywallPremiumF4,
+                      l.paywallPremiumF5,
+                      l.paywallPremiumF6,
                     ],
                     accent: const Color(0xFFD4A017), // gold
                     isCurrent: false,
-                    cta: _buying ? 'Opening...' : 'Get Premium',
+                    cta: _buying ? l.paywallOpening : l.paywallGetPremium,
                     onTap: _buying
                         ? null
                         : () => _tap(
@@ -219,16 +225,12 @@ class _PurchaseSheetState extends State<PurchaseSheet> {
               Center(
                 child: TextButton(
                   onPressed: widget.onRestore,
-                  child: const Text('Restore purchases'),
+                  child: Text(l.paywallRestore),
                 ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Payment will be charged to your Google Play account at '
-                'confirmation of purchase. Subscriptions automatically '
-                'renew unless cancelled at least 24 hours before the end '
-                'of the current period. Manage or cancel in Play Store '
-                'Settings > Subscriptions.',
+                l.paywallLegal,
                 style: text.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                   fontSize: 11,

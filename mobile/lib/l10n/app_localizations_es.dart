@@ -3261,6 +3261,108 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
+  String get paywallSubtitle => 'Elige el plan que mejor encaja con tus viajes';
+
+  @override
+  String get paywallFreePrice => 'Siempre gratis';
+
+  @override
+  String get paywallFreeSubtitle => 'Planificación básica de viajes';
+
+  @override
+  String get paywallFreeF1 => 'Ruta + estimación de peajes';
+
+  @override
+  String get paywallFreeF2 => 'Precios de combustible en la ruta';
+
+  @override
+  String get paywallFreeF3 => 'Sugerencias de hoteles y restaurantes';
+
+  @override
+  String get paywallFreeF4 => '3 viajes guardados';
+
+  @override
+  String get paywallCurrentPlan => 'Plan actual';
+
+  @override
+  String get paywallEssentialSubtitle => 'Ideal para viajeros ocasionales';
+
+  @override
+  String get paywallEssentialF1 => 'Todo lo de Gratuito';
+
+  @override
+  String get paywallEssentialF2 => 'Viajes guardados ilimitados';
+
+  @override
+  String get paywallEssentialF3 => 'Clima en la ruta';
+
+  @override
+  String get paywallEssentialF4 => 'Eventos adversos (incendios, inundaciones)';
+
+  @override
+  String get paywallEssentialF5 => 'Desglose del coste del viaje';
+
+  @override
+  String get paywallEssentialF6 => '14 días de prueba gratis';
+
+  @override
+  String get paywallStartTrial => 'Empezar prueba de 14 días';
+
+  @override
+  String get paywallOpening => 'Abriendo...';
+
+  @override
+  String get paywallMonthly => 'Mensual';
+
+  @override
+  String get paywallYearly => 'Anual';
+
+  @override
+  String get paywallSave33 => 'Ahorra 33%';
+
+  @override
+  String get paywallPremiumSubtitle =>
+      'Para los apasionados de los viajes por carretera';
+
+  @override
+  String get paywallPremiumF1 => 'Todo lo de Essential';
+
+  @override
+  String get paywallPremiumF2 => 'Companion de IA durante el viaje';
+
+  @override
+  String get paywallPremiumF3 => 'Inspiración de viajes con IA';
+
+  @override
+  String get paywallPremiumF4 => 'Alertas de precios de hoteles en tiempo real';
+
+  @override
+  String get paywallPremiumF5 => 'Atención al cliente prioritaria';
+
+  @override
+  String get paywallPremiumF6 => 'Acceso anticipado a las novedades';
+
+  @override
+  String get paywallGetPremium => 'Obtener Premium';
+
+  @override
+  String get paywallRestore => 'Restaurar compras';
+
+  @override
+  String paywallPerYear(String amount) {
+    return '$amount/año';
+  }
+
+  @override
+  String paywallPerMonth(String amount) {
+    return '$amount/mes';
+  }
+
+  @override
+  String get paywallLegal =>
+      'El pago se cargará a tu cuenta de Google Play al confirmar la compra. Las suscripciones se renuevan automáticamente salvo que las canceles al menos 24 horas antes del final del periodo actual. Gestiona o cancela en Ajustes de Play Store > Suscripciones.';
+
+  @override
   String get replanLostConfirm => 'Continuar y desmarcar';
 
   @override

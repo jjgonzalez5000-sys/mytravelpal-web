@@ -5804,6 +5804,198 @@ abstract class AppLocalizations {
   /// **'Speed camera in {distance}'**
   String passengerViewRadarAhead(String distance);
 
+  /// No description provided for @paywallSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the plan that fits your trips'**
+  String get paywallSubtitle;
+
+  /// No description provided for @paywallFreePrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Always free'**
+  String get paywallFreePrice;
+
+  /// No description provided for @paywallFreeSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Basic trip planning'**
+  String get paywallFreeSubtitle;
+
+  /// No description provided for @paywallFreeF1.
+  ///
+  /// In en, this message translates to:
+  /// **'Route + toll estimate'**
+  String get paywallFreeF1;
+
+  /// No description provided for @paywallFreeF2.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel prices along route'**
+  String get paywallFreeF2;
+
+  /// No description provided for @paywallFreeF3.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel + restaurant suggestions'**
+  String get paywallFreeF3;
+
+  /// No description provided for @paywallFreeF4.
+  ///
+  /// In en, this message translates to:
+  /// **'3 saved trips'**
+  String get paywallFreeF4;
+
+  /// No description provided for @paywallCurrentPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Current plan'**
+  String get paywallCurrentPlan;
+
+  /// No description provided for @paywallEssentialSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Best for occasional travelers'**
+  String get paywallEssentialSubtitle;
+
+  /// No description provided for @paywallEssentialF1.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in Free'**
+  String get paywallEssentialF1;
+
+  /// No description provided for @paywallEssentialF2.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlimited saved trips'**
+  String get paywallEssentialF2;
+
+  /// No description provided for @paywallEssentialF3.
+  ///
+  /// In en, this message translates to:
+  /// **'Weather along route'**
+  String get paywallEssentialF3;
+
+  /// No description provided for @paywallEssentialF4.
+  ///
+  /// In en, this message translates to:
+  /// **'Adverse events (fires, floods)'**
+  String get paywallEssentialF4;
+
+  /// No description provided for @paywallEssentialF5.
+  ///
+  /// In en, this message translates to:
+  /// **'Trip cost breakdown'**
+  String get paywallEssentialF5;
+
+  /// No description provided for @paywallEssentialF6.
+  ///
+  /// In en, this message translates to:
+  /// **'14-day free trial'**
+  String get paywallEssentialF6;
+
+  /// No description provided for @paywallStartTrial.
+  ///
+  /// In en, this message translates to:
+  /// **'Start 14-day trial'**
+  String get paywallStartTrial;
+
+  /// No description provided for @paywallOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening...'**
+  String get paywallOpening;
+
+  /// No description provided for @paywallMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly'**
+  String get paywallMonthly;
+
+  /// No description provided for @paywallYearly.
+  ///
+  /// In en, this message translates to:
+  /// **'Yearly'**
+  String get paywallYearly;
+
+  /// No description provided for @paywallSave33.
+  ///
+  /// In en, this message translates to:
+  /// **'Save 33%'**
+  String get paywallSave33;
+
+  /// No description provided for @paywallPremiumSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'For road-trip enthusiasts'**
+  String get paywallPremiumSubtitle;
+
+  /// No description provided for @paywallPremiumF1.
+  ///
+  /// In en, this message translates to:
+  /// **'Everything in Essential'**
+  String get paywallPremiumF1;
+
+  /// No description provided for @paywallPremiumF2.
+  ///
+  /// In en, this message translates to:
+  /// **'AI Trip Companion (in-drive)'**
+  String get paywallPremiumF2;
+
+  /// No description provided for @paywallPremiumF3.
+  ///
+  /// In en, this message translates to:
+  /// **'AI trip inspiration'**
+  String get paywallPremiumF3;
+
+  /// No description provided for @paywallPremiumF4.
+  ///
+  /// In en, this message translates to:
+  /// **'Real-time hotel price alerts'**
+  String get paywallPremiumF4;
+
+  /// No description provided for @paywallPremiumF5.
+  ///
+  /// In en, this message translates to:
+  /// **'Priority customer support'**
+  String get paywallPremiumF5;
+
+  /// No description provided for @paywallPremiumF6.
+  ///
+  /// In en, this message translates to:
+  /// **'Early access to new features'**
+  String get paywallPremiumF6;
+
+  /// No description provided for @paywallGetPremium.
+  ///
+  /// In en, this message translates to:
+  /// **'Get Premium'**
+  String get paywallGetPremium;
+
+  /// No description provided for @paywallRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore purchases'**
+  String get paywallRestore;
+
+  /// No description provided for @paywallPerYear.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount}/yr'**
+  String paywallPerYear(String amount);
+
+  /// No description provided for @paywallPerMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'{amount}/mo'**
+  String paywallPerMonth(String amount);
+
+  /// No description provided for @paywallLegal.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Play Store Settings > Subscriptions.'**
+  String get paywallLegal;
+
   /// No description provided for @replanLostConfirm.
   ///
   /// In en, this message translates to:

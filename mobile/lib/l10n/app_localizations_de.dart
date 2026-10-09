@@ -3256,6 +3256,108 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
+  String get paywallSubtitle => 'Wähle den Tarif, der zu deinen Reisen passt';
+
+  @override
+  String get paywallFreePrice => 'Immer kostenlos';
+
+  @override
+  String get paywallFreeSubtitle => 'Grundlegende Reiseplanung';
+
+  @override
+  String get paywallFreeF1 => 'Route + Mautschätzung';
+
+  @override
+  String get paywallFreeF2 => 'Kraftstoffpreise entlang der Route';
+
+  @override
+  String get paywallFreeF3 => 'Hotel- und Restaurantvorschläge';
+
+  @override
+  String get paywallFreeF4 => '3 gespeicherte Reisen';
+
+  @override
+  String get paywallCurrentPlan => 'Aktueller Tarif';
+
+  @override
+  String get paywallEssentialSubtitle => 'Ideal für Gelegenheitsreisende';
+
+  @override
+  String get paywallEssentialF1 => 'Alles aus Kostenlos';
+
+  @override
+  String get paywallEssentialF2 => 'Unbegrenzt gespeicherte Reisen';
+
+  @override
+  String get paywallEssentialF3 => 'Wetter entlang der Route';
+
+  @override
+  String get paywallEssentialF4 =>
+      'Gefahrenereignisse (Brände, Überschwemmungen)';
+
+  @override
+  String get paywallEssentialF5 => 'Aufschlüsselung der Reisekosten';
+
+  @override
+  String get paywallEssentialF6 => '14 Tage kostenlos testen';
+
+  @override
+  String get paywallStartTrial => '14-Tage-Test starten';
+
+  @override
+  String get paywallOpening => 'Wird geöffnet...';
+
+  @override
+  String get paywallMonthly => 'Monatlich';
+
+  @override
+  String get paywallYearly => 'Jährlich';
+
+  @override
+  String get paywallSave33 => '33 % sparen';
+
+  @override
+  String get paywallPremiumSubtitle => 'Für Roadtrip-Fans';
+
+  @override
+  String get paywallPremiumF1 => 'Alles aus Essential';
+
+  @override
+  String get paywallPremiumF2 => 'KI-Companion während der Fahrt';
+
+  @override
+  String get paywallPremiumF3 => 'KI-Reiseinspiration';
+
+  @override
+  String get paywallPremiumF4 => 'Hotelpreis-Alarme in Echtzeit';
+
+  @override
+  String get paywallPremiumF5 => 'Bevorzugter Kundensupport';
+
+  @override
+  String get paywallPremiumF6 => 'Frühzeitiger Zugriff auf neue Funktionen';
+
+  @override
+  String get paywallGetPremium => 'Premium holen';
+
+  @override
+  String get paywallRestore => 'Käufe wiederherstellen';
+
+  @override
+  String paywallPerYear(String amount) {
+    return '$amount/Jahr';
+  }
+
+  @override
+  String paywallPerMonth(String amount) {
+    return '$amount/Monat';
+  }
+
+  @override
+  String get paywallLegal =>
+      'Die Zahlung wird bei Bestätigung des Kaufs deinem Google-Play-Konto belastet. Abos verlängern sich automatisch, sofern sie nicht mindestens 24 Stunden vor Ende des aktuellen Zeitraums gekündigt werden. Verwalten oder kündigen unter Play Store-Einstellungen > Abos.';
+
+  @override
   String get replanLostConfirm => 'Fortfahren und abwählen';
 
   @override

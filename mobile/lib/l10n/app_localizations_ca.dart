@@ -3245,6 +3245,107 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String get paywallSubtitle => 'Choose the plan that fits your trips';
+
+  @override
+  String get paywallFreePrice => 'Always free';
+
+  @override
+  String get paywallFreeSubtitle => 'Basic trip planning';
+
+  @override
+  String get paywallFreeF1 => 'Route + toll estimate';
+
+  @override
+  String get paywallFreeF2 => 'Fuel prices along route';
+
+  @override
+  String get paywallFreeF3 => 'Hotel + restaurant suggestions';
+
+  @override
+  String get paywallFreeF4 => '3 saved trips';
+
+  @override
+  String get paywallCurrentPlan => 'Current plan';
+
+  @override
+  String get paywallEssentialSubtitle => 'Best for occasional travelers';
+
+  @override
+  String get paywallEssentialF1 => 'Everything in Free';
+
+  @override
+  String get paywallEssentialF2 => 'Unlimited saved trips';
+
+  @override
+  String get paywallEssentialF3 => 'Weather along route';
+
+  @override
+  String get paywallEssentialF4 => 'Adverse events (fires, floods)';
+
+  @override
+  String get paywallEssentialF5 => 'Trip cost breakdown';
+
+  @override
+  String get paywallEssentialF6 => '14-day free trial';
+
+  @override
+  String get paywallStartTrial => 'Start 14-day trial';
+
+  @override
+  String get paywallOpening => 'Opening...';
+
+  @override
+  String get paywallMonthly => 'Monthly';
+
+  @override
+  String get paywallYearly => 'Yearly';
+
+  @override
+  String get paywallSave33 => 'Save 33%';
+
+  @override
+  String get paywallPremiumSubtitle => 'For road-trip enthusiasts';
+
+  @override
+  String get paywallPremiumF1 => 'Everything in Essential';
+
+  @override
+  String get paywallPremiumF2 => 'AI Trip Companion (in-drive)';
+
+  @override
+  String get paywallPremiumF3 => 'AI trip inspiration';
+
+  @override
+  String get paywallPremiumF4 => 'Real-time hotel price alerts';
+
+  @override
+  String get paywallPremiumF5 => 'Priority customer support';
+
+  @override
+  String get paywallPremiumF6 => 'Early access to new features';
+
+  @override
+  String get paywallGetPremium => 'Get Premium';
+
+  @override
+  String get paywallRestore => 'Restore purchases';
+
+  @override
+  String paywallPerYear(String amount) {
+    return '$amount/yr';
+  }
+
+  @override
+  String paywallPerMonth(String amount) {
+    return '$amount/mo';
+  }
+
+  @override
+  String get paywallLegal =>
+      'Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Play Store Settings > Subscriptions.';
+
+  @override
   String get replanLostConfirm => 'Continue and deselect';
 
   @override

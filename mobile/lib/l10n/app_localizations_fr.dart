@@ -3258,6 +3258,109 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
+  String get paywallSubtitle => 'Choisissez le plan qui convient à vos voyages';
+
+  @override
+  String get paywallFreePrice => 'Toujours gratuit';
+
+  @override
+  String get paywallFreeSubtitle => 'Planification de base';
+
+  @override
+  String get paywallFreeF1 => 'Itinéraire + estimation des péages';
+
+  @override
+  String get paywallFreeF2 => 'Prix du carburant sur l\'itinéraire';
+
+  @override
+  String get paywallFreeF3 => 'Suggestions d\'hôtels et de restaurants';
+
+  @override
+  String get paywallFreeF4 => '3 voyages enregistrés';
+
+  @override
+  String get paywallCurrentPlan => 'Plan actuel';
+
+  @override
+  String get paywallEssentialSubtitle =>
+      'Idéal pour les voyageurs occasionnels';
+
+  @override
+  String get paywallEssentialF1 => 'Tout ce qui est dans Gratuit';
+
+  @override
+  String get paywallEssentialF2 => 'Voyages enregistrés illimités';
+
+  @override
+  String get paywallEssentialF3 => 'Météo sur l\'itinéraire';
+
+  @override
+  String get paywallEssentialF4 =>
+      'Événements défavorables (incendies, inondations)';
+
+  @override
+  String get paywallEssentialF5 => 'Détail du coût du voyage';
+
+  @override
+  String get paywallEssentialF6 => '14 jours d\'essai gratuit';
+
+  @override
+  String get paywallStartTrial => 'Commencer l\'essai de 14 jours';
+
+  @override
+  String get paywallOpening => 'Ouverture...';
+
+  @override
+  String get paywallMonthly => 'Mensuel';
+
+  @override
+  String get paywallYearly => 'Annuel';
+
+  @override
+  String get paywallSave33 => 'Économisez 33 %';
+
+  @override
+  String get paywallPremiumSubtitle => 'Pour les passionnés de road trip';
+
+  @override
+  String get paywallPremiumF1 => 'Tout ce qui est dans Essential';
+
+  @override
+  String get paywallPremiumF2 => 'Companion IA pendant le trajet';
+
+  @override
+  String get paywallPremiumF3 => 'Inspiration de voyage par IA';
+
+  @override
+  String get paywallPremiumF4 => 'Alertes de prix d\'hôtels en temps réel';
+
+  @override
+  String get paywallPremiumF5 => 'Support client prioritaire';
+
+  @override
+  String get paywallPremiumF6 => 'Accès anticipé aux nouveautés';
+
+  @override
+  String get paywallGetPremium => 'Passer à Premium';
+
+  @override
+  String get paywallRestore => 'Restaurer les achats';
+
+  @override
+  String paywallPerYear(String amount) {
+    return '$amount/an';
+  }
+
+  @override
+  String paywallPerMonth(String amount) {
+    return '$amount/mois';
+  }
+
+  @override
+  String get paywallLegal =>
+      'Le paiement sera débité de votre compte Google Play à la confirmation de l\'achat. Les abonnements se renouvellent automatiquement, sauf annulation au moins 24 heures avant la fin de la période en cours. Gérez ou annulez dans Paramètres du Play Store > Abonnements.';
+
+  @override
   String get replanLostConfirm => 'Continuer et désélectionner';
 
   @override
