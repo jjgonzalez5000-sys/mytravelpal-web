@@ -25,6 +25,7 @@ class TripQualityScore extends StatefulWidget {
     this.selectedHotelCount = 0,
     this.pickedFuelCount = 0,
     this.enrichPending = false,
+    this.unselectedStopCount = 0,
   });
   final TripPlanResponse response;
 
@@ -45,6 +46,9 @@ class TripQualityScore extends StatefulWidget {
   /// True while enrichment is still running — toll factor gets full score
   /// to avoid false penalties before the data is complete.
   final bool enrichPending;
+
+  /// Same count shown in the "N stop(s) not added" badge in day bars.
+  final int unselectedStopCount;
 
   @override
   State<TripQualityScore> createState() => _TripQualityScoreState();
@@ -68,6 +72,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
       selectedHotelCount: widget.selectedHotelCount,
       pickedFuelCount: widget.pickedFuelCount,
       enrichPending: widget.enrichPending,
+      unselectedStopCount: widget.unselectedStopCount,
     );
     final factors = allFactors.where((f) => f.max > 0).toList();
 
@@ -234,28 +239,18 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     int selectedHotelCount = 0,
     int pickedFuelCount = 0,
     bool enrichPending = false,
+    int unselectedStopCount = 0,
   }) {
     final profile = req?.tripProfile;
 
     // ---- Route geometry (max 20) ----------------------------------------
     final hasGeometry = r.route.geometry.length > 10;
-    // Stops planned: backend provides restStopsCountTarget per day.
-    // Route is only ok when added stops >= required stops for the trip.
+    // Same source as the "N stop(s) not added" badge in day bars.
     final hasMealStops = r.optimizations?.mealStops.isNotEmpty == true;
-    final requiredStops = r.recommendationScope?.restStopsCountTarget ?? 0;
-    // Fallback: any day > 4.5h wall-clock needs at least 1 stop (EU 561/2006).
-    final hasLongDay = r.days.any((d) =>
-        d.endAt.difference(d.startAt).inMinutes > 270);
-    final totalNeeded = requiredStops > 0 ? requiredStops
-        : hasLongDay ? 1 : 0;
     final pace = profile?.travelPace;
-    final mealStopsNeeded = hasMealStops && pace != TravelPace.push;
-    final stopsNeeded = totalNeeded > 0 || mealStopsNeeded;
-    // Stops planned when added count satisfies required, or no stops needed.
-    final stopsPlanned = !stopsNeeded ||
-        (totalNeeded > 0
-            ? addedStopKeys.length >= totalNeeded
-            : addedStopKeys.isNotEmpty);
+    final stopsNeeded = unselectedStopCount > 0 ||
+        (hasMealStops && pace != TravelPace.push);
+    final stopsPlanned = !stopsNeeded;
 
     // ---- Fuel prices (max 15 — EV: auto full-score, not applicable) ------
     final isElectric =

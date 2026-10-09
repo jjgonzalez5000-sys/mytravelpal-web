@@ -2845,6 +2845,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   .where(_addedStops.containsKey)
                   .length,
               enrichPending: _enrichPending,
+              unselectedStopCount: _response.days.expand((d) => d.restStops)
+                  .where((r) => !_addedStops.containsKey(
+                      'reststop:${r.name ?? "noname"}:'
+                      '${r.coordinate.lat.toStringAsFixed(4)},'
+                      '${r.coordinate.lon.toStringAsFixed(4)}'))
+                  .length,
             ),
             if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space8),
