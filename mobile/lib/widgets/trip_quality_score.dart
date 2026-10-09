@@ -239,12 +239,16 @@ class _TripQualityScoreState extends State<TripQualityScore> {
 
     // ---- Route geometry (max 20) ----------------------------------------
     final hasGeometry = r.route.geometry.length > 10;
-    // Stops planned: rest stops are mandatory (EU regs) regardless of pace.
-    // Meal stops depend on pace preference.
+    // Stops needed: EU reg requires break every 4.5h. Check day duration
+    // OR restStops populated (whichever arrives first in the response).
     final hasMealStops = r.optimizations?.mealStops.isNotEmpty == true;
     final hasRestStops = r.days.any((d) => d.restStops.isNotEmpty);
+    // A day > 4.5h driving always needs at least one rest stop (EU 561/2006).
+    final hasLongDay = r.days.any((d) =>
+        d.endAt.difference(d.startAt).inMinutes > 270); // 4.5h = 270 min
     final pace = profile?.travelPace;
-    final stopsNeeded = hasRestStops || (hasMealStops && pace != TravelPace.push);
+    final stopsNeeded = hasRestStops || hasLongDay ||
+        (hasMealStops && pace != TravelPace.push);
     final stopsPlanned = !stopsNeeded || addedStopKeys.isNotEmpty;
 
     // ---- Fuel prices (max 15 — EV: auto full-score, not applicable) ------
