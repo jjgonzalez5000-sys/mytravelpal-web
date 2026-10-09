@@ -220,23 +220,21 @@ e2e:
 e2e-flow:
 	maestro test $(MOBILE_DIR)/maestro/flows/$(FLOW).yaml
 
-# --- Admin dashboard (Grafana + Fly proxy) ------------------------
+# --- Admin dashboard (Grafana + Fly proxy, one compose stack) ------
 #
 # Prereqs: `dashboard/.env` filled from `.env.example` with the
-# Postgres user + password (fetch via `flyctl postgres users list
-# -a mytravelpal-db`). See `dashboard/README.md` for the full flow.
+# Postgres user + password and a FLY_API_TOKEN. The stack runs the
+# `flyctl proxy` tunnel itself (service `fly-proxy`), so there is no
+# separate proxy to start. See `dashboard/README.md`.
 #
-# `dashboard-up` refuses to start unless a flyctl proxy on port 5432
-# is already running against mytravelpal-db — the container has
-# nowhere to connect otherwise. Start the proxy first:
-#
-#   flyctl proxy 5432 -a mytravelpal-db
+# Port 5432 on localhost must be free: do not run `flyctl proxy 5432`
+# by hand at the same time.
 #
 .PHONY: dashboard-up dashboard-down dashboard-logs
 dashboard-up:
-	@if ! ss -tln 2>/dev/null | grep -q ':5432 '; then \
-	  echo "No listener on localhost:5432 — start the proxy first:"; \
-	  echo "  flyctl proxy 5432 -a mytravelpal-db"; \
+	@if ss -tln 2>/dev/null | grep -q ':5432 ' && \
+	   ! docker ps --format '{{.Names}}' | grep -q '^mytravelpal-db-proxy$$'; then \
+	  echo "localhost:5432 is already in use (a manual 'flyctl proxy'?). Stop it first."; \
 	  exit 1; \
 	fi
 	cd dashboard && docker compose up -d
@@ -246,7 +244,7 @@ dashboard-down:
 	cd dashboard && docker compose down
 
 dashboard-logs:
-	cd dashboard && docker compose logs -f --tail=100 grafana
+	cd dashboard && docker compose logs -f --tail=100
 
 .PHONY: clean
 clean:
