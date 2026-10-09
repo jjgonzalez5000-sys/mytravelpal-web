@@ -6322,21 +6322,33 @@ class _WindowChip extends StatelessWidget {
                   ),
                 )
               else if (hasSaving)
-                Text(
-                  '-${durationCompact(savedMinutes)}',
-                  style: t.labelSmall?.copyWith(
-                    color: recommended
-                        ? scheme.primary
-                        : Colors.green.shade700,
-                    fontWeight: FontWeight.w700,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF4ADE80).withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '-${durationCompact(savedMinutes)}',
+                    style: t.labelSmall?.copyWith(
+                      color: const Color(0xFF16A34A),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 )
               else if (isLate)
-                Text(
-                  '+${durationCompact(-savedMinutes)}',
-                  style: t.labelSmall?.copyWith(
-                    color: scheme.error,
-                    fontWeight: FontWeight.w700,
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: scheme.error.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    '+${durationCompact(-savedMinutes)}',
+                    style: t.labelSmall?.copyWith(
+                      color: scheme.error,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
             ],
