@@ -931,7 +931,14 @@ class RouteInfo {
     this.geometry = const [],
     this.vignetteCostEur = 0,
     this.vignetteCountries = const [],
+    this.tollVerified = false,
   });
+
+  /// True when [tollCostEur] / [vignetteCostEur] come from the booth-level
+  /// quote (enrich phase). The core phase only has a provisional
+  /// route-level estimate, so a merge must prefer verified figures — even
+  /// a verified 0 for a genuinely toll-free route.
+  final bool tollVerified;
 
   final double distanceKm;
   final double freeFlowMinutes;
@@ -977,6 +984,21 @@ class RouteInfo {
             (json['vignette_countries'] as List<dynamic>? ?? const [])
                 .whereType<String>()
                 .toList(growable: false),
+        tollVerified: json['toll_verified'] as bool? ?? false,
+      );
+
+  /// This route with the toll figures of [verified] (an enrich-phase
+  /// route) swapped in. Distance, duration and geometry stay as they are.
+  RouteInfo withVerifiedTolls(RouteInfo verified) => RouteInfo(
+        distanceKm: distanceKm,
+        freeFlowMinutes: freeFlowMinutes,
+        polyline: polyline,
+        tollCostEur: verified.tollCostEur,
+        countriesCrossed: countriesCrossed,
+        geometry: geometry,
+        vignetteCostEur: verified.vignetteCostEur,
+        vignetteCountries: verified.vignetteCountries,
+        tollVerified: true,
       );
 }
 
@@ -2089,8 +2111,14 @@ class TripPlanResponse {
     required TripPlanResponse enrich,
   }) =>
       TripPlanResponse(
-        // -- core-owned --
-        route: core.route,
+        // -- core-owned, except the toll total --
+        // Core's toll figure is a provisional route-level estimate; the
+        // enrich phase holds the booth-level quote the per-booth list
+        // comes from. Taking core's total here made the header (sum of
+        // booths) and the cost card (core total) disagree.
+        route: enrich.route.tollVerified
+            ? core.route.withVerifiedTolls(enrich.route)
+            : core.route,
         timeWindows: core.timeWindows,
         // Days come from enrich when non-empty — enrich's per-day
         // rest_stops carry the Overpass POI names + types + reasons

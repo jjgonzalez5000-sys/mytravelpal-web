@@ -4339,6 +4339,13 @@ class AppLocalizationsIt extends AppLocalizations {
       'Valuta se i dati sui pedaggi sono disponibili e se puoi ottimizzare quali pedaggi pagare o saltare.';
 
   @override
+  String get tripQualityFactorTollTime => 'Tempo extra';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Confronta i soldi risparmiati saltando i pedaggi con il tempo extra che aggiungono. Scende quando perdi molto tempo per poco denaro: meno di 25 € risparmiati per ogni ora in più.';
+
+  @override
   String get tripQualityExplainStops =>
       'Misura se hai pianificato le soste per i pasti e il riposo. Per il ritmo \'savour\' o con bambini/animali, le soste sono importanti.';
 

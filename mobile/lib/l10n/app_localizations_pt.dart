@@ -4335,6 +4335,13 @@ class AppLocalizationsPt extends AppLocalizations {
       'Avalia se há dados de portagens disponíveis e se pode otimizar quais portagens pagar ou ignorar.';
 
   @override
+  String get tripQualityFactorTollTime => 'Extra time';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Compares the money you save by skipping tolls with the extra time they add. It drops when you lose a lot of time for little money: under 25 EUR saved per extra hour.';
+
+  @override
   String get tripQualityExplainStops =>
       'Mede se planeou as paragens de refeição e descanso. Para o ritmo \'saveur\' ou com crianças/animais, as paragens são importantes.';
 

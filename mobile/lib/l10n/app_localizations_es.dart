@@ -4350,6 +4350,13 @@ class AppLocalizationsEs extends AppLocalizations {
       'Evalúa si hay datos de peajes disponibles para tu ruta y si puedes optimizar qué peajes pagar o saltarte. Sin datos de peajes = penalización parcial.';
 
   @override
+  String get tripQualityFactorTollTime => 'Tiempo extra';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Compara el dinero que ahorras al saltarte peajes con el tiempo extra que añaden. Baja cuando pierdes mucho tiempo por poco dinero: menos de 25 € ahorrados por cada hora extra.';
+
+  @override
   String get tripQualityExplainStops =>
       'Mide si has planificado las paradas de comida y descanso. Para el ritmo \'saveur\' o con niños/mascotas, las paradas son importantes para el confort del viaje.';
 

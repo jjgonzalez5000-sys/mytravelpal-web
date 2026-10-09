@@ -6,6 +6,29 @@ import '../design/tokens.dart';
 import '../domain/trip_profile.dart';
 import '../l10n/app_localizations.dart';
 
+/// A skipped toll only pays off when the money saved justifies the extra
+/// driving time. Below this saving per extra hour the skip is penalised.
+const double kTollSkipMinEurPerHour = 25.0;
+
+/// Extra time up to this many minutes is ignored: leaving and rejoining
+/// the motorway always costs a little.
+const double kTollSkipFreeMinutes = 10.0;
+
+/// 0-15 score for the tolls the driver chose to skip. 15 = every skipped
+/// toll saves enough per extra hour (or costs almost no time). Each hour
+/// lost on a skip that saves too little takes 5 points off, so e.g. 43 EUR
+/// saved for 3 extra hours (14 EUR/h) scores 0.
+int tollSkipTimeScore(List<({double eur, double minutes})> skipped) {
+  var wastedHours = 0.0;
+  for (final s in skipped) {
+    if (s.minutes <= kTollSkipFreeMinutes) continue;
+    final hours = s.minutes / 60.0;
+    if (s.eur / hours >= kTollSkipMinEurPerHour) continue;
+    wastedHours += hours;
+  }
+  return (15 - (wastedHours * 5).round()).clamp(0, 15);
+}
+
 /// Compact score card shown in the result screen below the hero stats.
 /// Computes a 0-100 score from the trip response quality signals:
 /// route completeness, fuel/hotel/weather data availability, alerts.
@@ -26,8 +49,13 @@ class TripQualityScore extends StatefulWidget {
     this.pickedFuelCount = 0,
     this.enrichPending = false,
     this.unselectedStopCount = 0,
+    this.skippedTolls = const [],
   });
   final TripPlanResponse response;
+
+  /// The tolls the driver chose to skip: money saved and extra minutes
+  /// each one adds. Drives the "extra time vs savings" factor.
+  final List<({double eur, double minutes})> skippedTolls;
 
   /// Original request that produced [response]. When provided, factor
   /// weights are adapted to the user's profile and trip options.
@@ -73,6 +101,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
       pickedFuelCount: widget.pickedFuelCount,
       enrichPending: widget.enrichPending,
       unselectedStopCount: widget.unselectedStopCount,
+      skippedTolls: widget.skippedTolls,
     );
     final factors = allFactors.where((f) => f.max > 0).toList();
 
@@ -240,8 +269,10 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     int pickedFuelCount = 0,
     bool enrichPending = false,
     int unselectedStopCount = 0,
+    List<({double eur, double minutes})> skippedTolls = const [],
   }) {
     final profile = req?.tripProfile;
+    final tollTimeScore = tollSkipTimeScore(skippedTolls);
 
     // ---- Route geometry (max 20) ----------------------------------------
     final hasGeometry = r.route.geometry.length > 10;
@@ -371,6 +402,18 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         ok: enrichPending || !routeHasTolls || hasTollDetail,
         explanation: l.tripQualityExplainTolls,
       ),
+
+      // Extra time vs money saved by the tolls the driver chose to skip.
+      // Only present once at least one toll is skipped.
+      if (skippedTolls.isNotEmpty)
+        _QFactor(
+          icon: Icons.timer_outlined,
+          label: l.tripQualityFactorTollTime,
+          score: tollTimeScore,
+          max: 15,
+          ok: tollTimeScore == 15,
+          explanation: l.tripQualityExplainTollTime,
+        ),
 
       // Rest / meal stops — max varies by pace (max 0 = factor excluded)
       _QFactor(

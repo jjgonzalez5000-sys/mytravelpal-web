@@ -4322,6 +4322,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Evaluates whether toll data is available for your route and whether you can optimise which tolls to pay or skip. No toll data = partial penalty.';
 
   @override
+  String get tripQualityFactorTollTime => 'Extra time';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Compares the money you save by skipping tolls with the extra time they add. It drops when you lose a lot of time for little money: under 25 EUR saved per extra hour.';
+
+  @override
   String get tripQualityExplainStops =>
       'Measures whether you\'ve planned meal and rest stops. For \'savour\' pace or with kids/pets, stops are important for trip comfort.';
 

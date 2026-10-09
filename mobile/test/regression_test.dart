@@ -5,6 +5,8 @@
 ///   flutter test test/regression_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/widgets/trip_quality_score.dart'
+    show tollSkipTimeScore;
 
 void main() {
   // ── 1. DAY BARS OFF-BY-ONE ───────────────────────────────────────────────────
@@ -225,6 +227,99 @@ void main() {
 
     test('fmtDuration(90 min) returns "1h 30min"', () {
       expect(fmtDuration(90), '1h 30min');
+    });
+  });
+
+  // ── 5. TOLL SKIP: TIME LOST VS MONEY SAVED ───────────────────────────────────
+  //
+  // Bug: skipping a 43 EUR toll that added 3 extra hours left the trip quality
+  // untouched (and the trip time unchanged). The score must drop when a skip
+  // loses a lot of time for little money.
+  group('test_toll_skip_time_vs_savings', () {
+    test('43 EUR saved for 3 extra hours scores 0', () {
+      expect(tollSkipTimeScore([(eur: 43.0, minutes: 180.0)]), 0);
+    });
+
+    test('a skip that saves plenty per hour keeps the full score', () {
+      // 20 EUR for 30 min = 40 EUR/h, above the 25 EUR/h reference.
+      expect(tollSkipTimeScore([(eur: 20.0, minutes: 30.0)]), 15);
+    });
+
+    test('a few minutes of extra time is ignored', () {
+      expect(tollSkipTimeScore([(eur: 1.0, minutes: 8.0)]), 15);
+    });
+
+    test('nothing skipped keeps the full score', () {
+      expect(tollSkipTimeScore(const []), 15);
+    });
+
+    test('one bad skip is not hidden by a good one', () {
+      final score = tollSkipTimeScore([
+        (eur: 30.0, minutes: 20.0), // 90 EUR/h: fine
+        (eur: 43.0, minutes: 180.0), // 14 EUR/h: bad
+      ]);
+      expect(score, 0);
+    });
+
+    test('a short inefficient skip loses only a little', () {
+      // 5 EUR for 1 h = 5 EUR/h: wastes 1 h -> 15 - 5 = 10.
+      expect(tollSkipTimeScore([(eur: 5.0, minutes: 60.0)]), 10);
+    });
+  });
+
+  // ── 6. TOLL TOTAL MUST COME FROM THE BOOTH QUOTE ─────────────────────────────
+  //
+  // Bug: Basel -> Madrid showed 110 EUR in the header (sum of the real HERE
+  // booths) and 292 EUR in the cost card. The merge kept core's provisional
+  // route-level toll total instead of the verified one from enrich.
+  group('test_toll_total_from_booth_quote', () {
+    const core = RouteInfo(
+      distanceKm: 1573,
+      freeFlowMinutes: 900,
+      polyline: 'p',
+      tollCostEur: 292,
+      countriesCrossed: [],
+    );
+
+    RouteInfo enrichRoute(double toll, {double vignette = 0}) =>
+        RouteInfo.fromJson({
+          'distance_km': 0,
+          'free_flow_minutes': 0,
+          'polyline': '',
+          'toll_cost_eur': toll,
+          'countries_crossed': <String>[],
+          'vignette_cost_eur': vignette,
+          'toll_verified': true,
+        });
+
+    test('toll_verified is read from the wire and defaults to false', () {
+      expect(enrichRoute(110).tollVerified, isTrue);
+      final plain = RouteInfo.fromJson({
+        'distance_km': 1,
+        'free_flow_minutes': 1,
+        'polyline': 'p',
+        'toll_cost_eur': 5,
+        'countries_crossed': <String>[],
+      });
+      expect(plain.tollVerified, isFalse);
+    });
+
+    test('verified toll figures replace the provisional total', () {
+      final merged = core.withVerifiedTolls(enrichRoute(110, vignette: 40));
+      expect(merged.tollCostEur, 110);
+      expect(merged.vignetteCostEur, 40);
+      expect(merged.tollVerified, isTrue);
+    });
+
+    test('distance and duration are untouched by the swap', () {
+      final merged = core.withVerifiedTolls(enrichRoute(110));
+      expect(merged.distanceKm, 1573);
+      expect(merged.freeFlowMinutes, 900);
+      expect(merged.polyline, 'p');
+    });
+
+    test('a verified zero replaces a non-zero estimate', () {
+      expect(core.withVerifiedTolls(enrichRoute(0)).tollCostEur, 0);
     });
   });
 }

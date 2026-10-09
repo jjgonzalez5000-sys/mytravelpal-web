@@ -4345,6 +4345,13 @@ class AppLocalizationsDe extends AppLocalizations {
       'Bewertet ob Mautdaten für deine Route verfügbar sind und ob du optimieren kannst welche Maut du zahlst oder überspringst.';
 
   @override
+  String get tripQualityFactorTollTime => 'Zeitverlust';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Vergleicht das gesparte Geld beim Umfahren von Mautstellen mit der zusätzlichen Fahrzeit. Sinkt, wenn du viel Zeit für wenig Geld verlierst: weniger als 25 € gespart pro zusätzlicher Stunde.';
+
+  @override
   String get tripQualityExplainStops =>
       'Misst ob du Pausen für Mahlzeiten und Ruhe geplant hast. Für \'entspanntes\' Tempo oder mit Kindern/Tieren sind Pausen wichtig.';
 

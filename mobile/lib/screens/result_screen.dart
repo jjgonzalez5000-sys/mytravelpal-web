@@ -2868,13 +2868,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       acc + d.endAt.difference(d.startAt).inMinutes);
                     return _HeroStatTile(
                       label: l.resultStatPlanned,
-                      value: _hhmm(totalMin + _addedMinutesTotal),
+                      value: _hhmm(totalMin +
+                          _addedMinutesTotal +
+                          _tollSkipPenaltyMinutes),
                     );
                   }
                   return _HeroStatTile(
                     label: l.resultStatFreeFlow,
                     value: _hhmm(
-                      route.freeFlowMinutes + _addedMinutesTotal,
+                      route.freeFlowMinutes +
+                          _addedMinutesTotal +
+                          _tollSkipPenaltyMinutes,
                     ),
                   );
                 }),
@@ -2921,6 +2925,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   .where(_addedStops.containsKey)
                   .length,
               enrichPending: _enrichPending,
+              skippedTolls: [
+                for (var i = 0; i < _response.partialTollSkips.length; i++)
+                  if (!_tollSkipEnabled.contains(i))
+                    (
+                      eur: _response.partialTollSkips[i].savingsEur,
+                      minutes: _response.partialTollSkips[i].timePenaltyMinutes,
+                    ),
+              ],
               unselectedStopCount: _response.days.expand((d) => d.restStops)
                   .where((r) => !_addedStops.containsKey(
                       'reststop:${r.name ?? "noname"}:'

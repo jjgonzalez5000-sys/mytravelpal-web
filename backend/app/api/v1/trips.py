@@ -651,6 +651,11 @@ class RouteOut(BaseModel):
     # country crossed OR HERE didn't classify one.
     vignette_cost_eur: float = 0.0
     vignette_countries: list[str] = Field(default_factory=list)
+    # True when `toll_cost_eur` / `vignette_*` come from a booth-level
+    # quote (the enrich phase). The core phase only has a provisional
+    # route-level estimate, so a merge must prefer the verified figures
+    # (even when they are 0 — a genuinely toll-free route).
+    toll_verified: bool = False
 
 
 class TollAlternativeOut(BaseModel):
@@ -1405,6 +1410,27 @@ def _empty_route() -> RouteOut:
         countries_crossed=[],
         geometry=[],
     )
+
+
+def _enrich_route(*, toll_total_eur: float | None, real_tolls: tuple) -> RouteOut:
+    """Route for the enrich-slice payload: empty except for the toll
+    figures. The core phase ships a provisional toll estimate; the real
+    total comes from the booth-level quote that only enrich runs, and
+    without sending it back the client would show the estimate next to
+    per-booth numbers that do not add up to it."""
+
+    out = _empty_route()
+    if toll_total_eur is None:
+        return out  # no quote: leave toll_verified False
+    vignettes = [t for t in real_tolls if t.is_vignette]
+    return out.model_copy(update={
+        "toll_cost_eur": round(toll_total_eur, 2),
+        "vignette_cost_eur": round(sum(t.cost_eur for t in vignettes), 2),
+        "vignette_countries": sorted({
+            _guess_country_from_operator(t.operator) for t in vignettes
+        } - {""}),
+        "toll_verified": True,
+    })
 
 
 def _fuel_type_value(profile: TripProfile | None) -> str | None:
@@ -3203,7 +3229,12 @@ async def _plan_enrich_impl(
     )
 
     return TripPlanResponse(
-        route=_empty_route(),
+        route=_enrich_route(
+            toll_total_eur=(
+                _toll_quote.total_eur if _toll_quote is not None else None
+            ),
+            real_tolls=real_tolls,
+        ),
         time_windows=[],
         fuel_prices=[
             FuelPriceOut(
@@ -3260,6 +3291,22 @@ async def _plan_enrich_impl(
     )
 
 
+def _merge_route(core: RouteOut, enrich: RouteOut) -> RouteOut:
+    """Core owns the route geometry/duration, but its toll total is a
+    provisional route-level estimate. When enrich ran a booth-level quote
+    (``toll_verified``) its figures replace the estimate, so the total and
+    the per-booth list describe the same toll."""
+
+    if not enrich.toll_verified:
+        return core
+    return core.model_copy(update={
+        "toll_cost_eur": enrich.toll_cost_eur,
+        "vignette_cost_eur": enrich.vignette_cost_eur,
+        "vignette_countries": enrich.vignette_countries,
+        "toll_verified": True,
+    })
+
+
 def _merge_full(
     core: TripPlanResponse,
     enrich: TripPlanResponse,
@@ -3275,6 +3322,7 @@ def _merge_full(
     """
 
     return core.model_copy(update={
+        "route": _merge_route(core.route, enrich.route),
         "hotels": enrich.hotels,
         "restaurants": enrich.restaurants,
         "parkings": enrich.parkings,
@@ -3425,8 +3473,10 @@ async def plan_trip_enrich(
     # core.optimizations whose meal_stops all have `restaurant=null` —
     # which is the "no restaurants" bug tester reported on 2026-09-29
     # for the Toledo → Murcia single-day trip.
+    # `route` is NOT blanked here: `_plan_enrich_impl` already returns it
+    # empty except for the booth-level toll figures (`toll_verified`), and
+    # the client needs those to replace core's provisional toll total.
     resp = resp.model_copy(update={
-        "route": _empty_route(),
         "time_windows": [],
         "recommendation_scope": None,
         "consistency_issues": [],

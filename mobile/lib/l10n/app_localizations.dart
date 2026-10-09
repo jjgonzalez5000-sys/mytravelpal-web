@@ -7739,6 +7739,18 @@ abstract class AppLocalizations {
   /// **'Evaluates whether toll data is available for your route and whether you can optimise which tolls to pay or skip. No toll data = partial penalty.'**
   String get tripQualityExplainTolls;
 
+  /// No description provided for @tripQualityFactorTollTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Extra time'**
+  String get tripQualityFactorTollTime;
+
+  /// No description provided for @tripQualityExplainTollTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Compares the money you save by skipping tolls with the extra time they add. It drops when you lose a lot of time for little money: under 25 EUR saved per extra hour.'**
+  String get tripQualityExplainTollTime;
+
   /// No description provided for @tripQualityExplainStops.
   ///
   /// In en, this message translates to:

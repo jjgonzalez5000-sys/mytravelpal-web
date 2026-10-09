@@ -4335,6 +4335,13 @@ class AppLocalizationsCa extends AppLocalizations {
       'Avalua si hi ha dades de peatges disponibles per a la teva ruta i si pots optimitzar quins peatges pagar o saltar.';
 
   @override
+  String get tripQualityFactorTollTime => 'Extra time';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Compares the money you save by skipping tolls with the extra time they add. It drops when you lose a lot of time for little money: under 25 EUR saved per extra hour.';
+
+  @override
   String get tripQualityExplainStops =>
       'Mesura si has planificat les parades de menjar i descans. Per al ritme \'saveur\' o amb nens/animals, les parades són importants.';
 

@@ -4353,6 +4353,13 @@ class AppLocalizationsFr extends AppLocalizations {
       'Évalue si des données de péages sont disponibles et si vous pouvez optimiser quels péages payer ou éviter.';
 
   @override
+  String get tripQualityFactorTollTime => 'Temps perdu';
+
+  @override
+  String get tripQualityExplainTollTime =>
+      'Compare l\'argent économisé en évitant des péages avec le temps supplémentaire qu\'ils ajoutent. Le score baisse quand vous perdez beaucoup de temps pour peu d\'argent : moins de 25 € économisés par heure en plus.';
+
+  @override
   String get tripQualityExplainStops =>
       'Mesure si vous avez planifié les arrêts repas et repos. Pour le rythme \'saveur\' ou avec enfants/animaux, les arrêts sont importants.';
 

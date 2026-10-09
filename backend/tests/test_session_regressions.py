@@ -666,3 +666,75 @@ class TestLongTollStretchMeasuredOverWholeSpan:
             self._route(), (self._skip(), barrier),
         ))
         assert [s.label for s in out] == ["Barrier"]
+
+
+class TestTollTotalComesFromTheBoothQuote:
+    """Basel -> Madrid showed 110 EUR in the header (sum of the real HERE
+    booths) and 292 EUR in the cost card. Core ships a provisional
+    route-level toll estimate; enrich holds the booth-level quote, but its
+    route was blanked on the wire and every merge kept core's route. The
+    verified toll figures must reach the merged route."""
+
+    @staticmethod
+    def _route(toll, **extra):
+        from app.api.v1.trips import RouteOut
+
+        return RouteOut(
+            distance_km=1573.0, free_flow_minutes=900.0, polyline="p",
+            toll_cost_eur=toll, countries_crossed=[], **extra,
+        )
+
+    def test_unverified_enrich_keeps_the_core_route(self):
+        from app.api.v1.trips import _empty_route, _merge_route
+
+        core = self._route(292.0)
+        assert _merge_route(core, _empty_route()) == core
+
+    def test_verified_enrich_replaces_the_provisional_toll_total(self):
+        from app.api.v1.trips import _merge_route
+
+        core = self._route(292.0)
+        enrich = self._route(
+            110.0, vignette_cost_eur=40.0, vignette_countries=["CH"],
+            toll_verified=True,
+        )
+        merged = _merge_route(core, enrich)
+        assert merged.toll_cost_eur == 110.0
+        assert merged.vignette_cost_eur == 40.0
+        assert merged.vignette_countries == ["CH"]
+        assert merged.toll_verified is True
+        # Everything else still comes from core.
+        assert merged.distance_km == 1573.0
+        assert merged.free_flow_minutes == 900.0
+
+    def test_verified_zero_beats_a_nonzero_estimate(self):
+        """A genuinely toll-free route must not keep core's guess."""
+        from app.api.v1.trips import _merge_route
+
+        merged = _merge_route(
+            self._route(292.0), self._route(0.0, toll_verified=True),
+        )
+        assert merged.toll_cost_eur == 0.0
+
+    def test_enrich_route_without_a_quote_is_unverified(self):
+        from app.api.v1.trips import _enrich_route
+
+        out = _enrich_route(toll_total_eur=None, real_tolls=())
+        assert out.toll_verified is False
+        assert out.toll_cost_eur == 0.0
+
+    def test_enrich_route_carries_total_and_vignettes(self):
+        from app.api.v1.trips import _enrich_route
+        from app.providers.tollguru import TollBooth
+
+        booths = (
+            TollBooth(name="A", cost_eur=70.0, lat=1.0, lon=1.0),
+            TollBooth(
+                name="Vignette", cost_eur=40.0, lat=2.0, lon=2.0,
+                operator="Vignette (Switzerland)", is_vignette=True,
+            ),
+        )
+        out = _enrich_route(toll_total_eur=110.0, real_tolls=booths)
+        assert out.toll_verified is True
+        assert out.toll_cost_eur == 110.0
+        assert out.vignette_cost_eur == 40.0
