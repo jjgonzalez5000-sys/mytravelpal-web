@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.api.premium import is_premium
 from app.auth.dependency import current_user_optional
@@ -395,6 +395,31 @@ class TripPlanRequest(BaseModel):
     # 10 total coordinates; we cap at 8 stops + origin +
     # destination.
     waypoints: list[WaypointIn] = Field(default_factory=list, max_length=8)
+
+    @field_validator("waypoints", mode="before")
+    @classmethod
+    def _drop_duplicate_waypoints(cls, value: object) -> object:
+        """Collapse repeated stops (same position to ~10 m) before the
+        8-waypoint limit is applied, so a client that replans with stops
+        it already sent is not rejected for exceeding the limit."""
+        if not isinstance(value, list):
+            return value
+        seen: set[tuple[float, float]] = set()
+        out: list[object] = []
+        for item in value:
+            lat = item.get("lat") if isinstance(item, dict) else getattr(item, "lat", None)
+            lon = item.get("lon") if isinstance(item, dict) else getattr(item, "lon", None)
+            try:
+                key = (round(float(lat), 4), round(float(lon), 4))
+            except (TypeError, ValueError):
+                out.append(item)  # let normal validation report it
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(item)
+        return out
+
     desired_departure_at: datetime
     countries: list[Country] | None = Field(
         default=None,

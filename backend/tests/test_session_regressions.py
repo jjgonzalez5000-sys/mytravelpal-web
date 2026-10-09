@@ -505,3 +505,164 @@ class TestE85ExcludedFromFuelFallback:
         from app.providers.fuel_here import _extract_price
 
         assert _extract_price({}) is None
+
+
+class TestDuplicateWaypointsCollapsed:
+    """Changing the departure on a trip that already has stops re-sent
+    every stop twice (once from the request, once from the restored
+    selections). Five stops became ten and tripped the 8-waypoint limit,
+    so the replan failed. Repeated stops must collapse to one."""
+
+    @staticmethod
+    def _payload(waypoints):
+        return {
+            "origin": {"lat": 47.17, "lon": 8.59},
+            "destination": {"lat": 39.86, "lon": -4.02},
+            "desired_departure_at": "2026-10-16T10:00:00",
+            "waypoints": waypoints,
+        }
+
+    def test_repeated_stops_collapse_and_do_not_hit_the_cap(self):
+        from app.api.v1.trips import TripPlanRequest
+
+        stops = [{"lat": 45.0 - i, "lon": 4.0} for i in range(5)]
+        req = TripPlanRequest.model_validate(self._payload(stops + stops))
+        assert len(req.waypoints) == 5
+
+    def test_first_occurrence_order_is_kept(self):
+        from app.api.v1.trips import TripPlanRequest
+
+        a = {"lat": 45.0, "lon": 4.0}
+        b = {"lat": 43.0, "lon": 3.0}
+        req = TripPlanRequest.model_validate(self._payload([a, b, a, b]))
+        assert [(w.lat, w.lon) for w in req.waypoints] == [(45.0, 4.0), (43.0, 3.0)]
+
+    def test_nearly_identical_positions_count_as_the_same_stop(self):
+        from app.api.v1.trips import TripPlanRequest
+
+        req = TripPlanRequest.model_validate(self._payload([
+            {"lat": 45.00001, "lon": 4.00001},
+            {"lat": 45.00002, "lon": 4.00002},
+        ]))
+        assert len(req.waypoints) == 1
+
+    def test_nine_distinct_stops_are_still_rejected(self):
+        from pydantic import ValidationError
+
+        from app.api.v1.trips import TripPlanRequest
+
+        stops = [{"lat": 45.0 - i, "lon": 4.0} for i in range(9)]
+        with pytest.raises(ValidationError):
+            TripPlanRequest.model_validate(self._payload(stops))
+
+
+class TestLongTollStretchMeasuredOverWholeSpan:
+    """A closed-system toll (ticket in at Valence, out at Le Boulou) is one
+    fare for ~340 km of motorway. Its detour was measured only on a 30 km
+    window around the entry gate and came out as the 2 min / 0.5 km floor
+    ("+3 min, +0.5 km" for a 45 EUR skip). It must be measured entry to
+    exit, against the same span on the tolled route."""
+
+    MOD = "app.providers.here_toll_alternatives"
+
+    @staticmethod
+    def _skip(**over):
+        from app.domain import Coordinate
+        from app.services.partial_toll_skips import PartialTollSkip
+
+        base = dict(
+            label="Valence -> Le Boulou", kind="named", index=1, total=None,
+            distance_from_origin_km=120.0, savings_eur=45.7,
+            time_penalty_minutes=5.0, extra_distance_km=2.5, worth_it=True,
+            coordinate=Coordinate(lat=44.93, lon=4.89),
+            exit_coordinate=Coordinate(lat=42.52, lon=2.83),
+            end_distance_from_origin_km=460.0,
+        )
+        base.update(over)
+        return PartialTollSkip(**base)
+
+    @staticmethod
+    def _route():
+        from app.domain import Coordinate
+
+        route = MagicMock()
+        route.geometry = (
+            Coordinate(lat=44.0, lon=4.0), Coordinate(lat=43.0, lon=3.0),
+        )
+        return route
+
+    def test_long_span_detection(self):
+        from app.providers.here_toll_alternatives import _is_long_span
+
+        assert _is_long_span(self._skip())
+        assert not _is_long_span(self._skip(exit_coordinate=None))
+        assert not _is_long_span(self._skip(end_distance_from_origin_km=None))
+        # 20 km between gates: a normal barrier-sized window is enough.
+        assert not _is_long_span(self._skip(end_distance_from_origin_km=140.0))
+
+    def test_penalty_is_alternative_minus_tolled_baseline_over_the_span(
+        self, monkeypatch,
+    ):
+        import asyncio
+
+        from app.domain import Coordinate
+        from app.providers import here_toll_alternatives as mod
+
+        monkeypatch.setenv("MYTRAVELPAL_HERE_API_KEY", "test-key")
+        calls = []
+
+        async def fake_fetch(client, a, b, key, *, avoid_tolls=True):
+            calls.append((a, b, avoid_tolls))
+            if avoid_tolls:
+                return (400.0, 380.0, (Coordinate(lat=43.5, lon=3.5),))
+            return (240.0, 340.0, ())
+
+        with patch(f"{self.MOD}._fetch_alternative", new=fake_fetch):
+            out = asyncio.run(mod.enrich_skips_with_alternatives(
+                self._route(), (self._skip(),),
+            ))
+
+        assert len(out) == 1
+        assert out[0].time_penalty_minutes == pytest.approx(160.0)
+        assert out[0].extra_distance_km == pytest.approx(40.0)
+        assert out[0].worth_it is False  # 160 min is not worth 45 EUR
+        # Measured between the real entry and exit gates, both variants.
+        assert {c[2] for c in calls} == {True, False}
+        for a, b, _ in calls:
+            assert (a.lat, a.lon) == (44.93, 4.89)
+            assert (b.lat, b.lon) == (42.52, 2.83)
+
+    def test_unmeasurable_long_stretch_is_dropped_not_guessed(
+        self, monkeypatch,
+    ):
+        import asyncio
+
+        from app.providers import here_toll_alternatives as mod
+
+        monkeypatch.setenv("MYTRAVELPAL_HERE_API_KEY", "test-key")
+
+        async def failing_fetch(*args, **kwargs):
+            return None
+
+        with patch(f"{self.MOD}._fetch_alternative", new=failing_fetch):
+            out = asyncio.run(mod.enrich_skips_with_alternatives(
+                self._route(), (self._skip(),),
+            ))
+        assert out == ()
+
+    def test_without_here_key_long_stretch_dropped_but_barrier_kept(
+        self, monkeypatch,
+    ):
+        import asyncio
+
+        from app.providers import here_toll_alternatives as mod
+
+        monkeypatch.delenv("MYTRAVELPAL_HERE_API_KEY", raising=False)
+        barrier = self._skip(
+            label="Barrier", exit_coordinate=None,
+            end_distance_from_origin_km=None, savings_eur=4.0,
+        )
+        out = asyncio.run(mod.enrich_skips_with_alternatives(
+            self._route(), (self._skip(), barrier),
+        ))
+        assert [s.label for s in out] == ["Barrier"]

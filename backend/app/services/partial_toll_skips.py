@@ -64,6 +64,12 @@ class PartialTollSkip:
     # falls back to just placing a pin at `coordinate` without
     # drawing an alternate route on the map.
     alternative_geometry: tuple[Coordinate, ...] = ()
+    # Closed-system tolls (ticket in, ticket out) cover a whole stretch,
+    # not a single barrier. `coordinate` is the entry gate; these two
+    # describe the exit gate so the detour can be measured over the
+    # WHOLE stretch instead of a small window around the entry.
+    exit_coordinate: Coordinate | None = None
+    end_distance_from_origin_km: float | None = None
 
 
 def compute(
@@ -167,6 +173,18 @@ def _compute_from_real_tolls(
         )
         fraction = nearest_idx / max(1, len(reference) - 1)
         distance_from_origin = round(fraction * total_km, 1)
+        # Closed-system toll: also locate the exit gate along the route.
+        exit_coord: Coordinate | None = None
+        end_distance: float | None = None
+        if booth.exit_lat or booth.exit_lon:
+            exit_coord = Coordinate(lat=booth.exit_lat, lon=booth.exit_lon)
+            exit_idx = min(
+                range(len(reference)),
+                key=lambda k: _crow(reference[k], exit_coord),
+            )
+            end_distance = round(
+                exit_idx / max(1, len(reference) - 1) * total_km, 1,
+            )
         savings = round(booth.cost_eur, 2)
         # A real exit + parallel road + re-entry near a single booth
         # costs ~5 min on average — much less than the whole-route
@@ -186,6 +204,8 @@ def _compute_from_real_tolls(
                 worth_it=(savings >= _WORTH_IT_MIN_SAVINGS_EUR
                           and penalty <= _WORTH_IT_MAX_PENALTY_MINUTES),
                 coordinate=booth_coord,
+                exit_coordinate=exit_coord,
+                end_distance_from_origin_km=end_distance,
             )
         )
     skips.sort(key=lambda s: (not s.worth_it, -s.savings_eur))

@@ -31,12 +31,18 @@ from typing import Any
 import httpx
 
 from app.domain import Coordinate, Route
-from app.services.partial_toll_skips import PartialTollSkip
+from app.services.partial_toll_skips import (
+    _WORTH_IT_MAX_PENALTY_MINUTES,
+    _WORTH_IT_MIN_SAVINGS_EUR,
+    PartialTollSkip,
+)
 
 _log = logging.getLogger(__name__)
 
 _ENDPOINT = "https://router.hereapi.com/v8/routes"
 _TIMEOUT_S = 8.0
+# Routing a few hundred km with toll avoidance takes noticeably longer.
+_TIMEOUT_LONG_S = 20.0
 
 # How far before / after the skip point to anchor the alternative
 # routing request. 15 km is enough to include the exit + re-entry
@@ -110,18 +116,27 @@ class _PolylineWalker:
         return max(0.0, self._cum[i1] - self._cum[i0])
 
 
-def _cache_key(a: Coordinate, b: Coordinate) -> tuple[float, float, float, float]:
-    return (round(a.lat, 3), round(a.lon, 3), round(b.lat, 3), round(b.lon, 3))
+def _cache_key(
+    a: Coordinate, b: Coordinate, avoid_tolls: bool = True,
+) -> tuple[float, float, float, float, bool]:
+    return (
+        round(a.lat, 3), round(a.lon, 3),
+        round(b.lat, 3), round(b.lon, 3),
+        avoid_tolls,
+    )
 
 
-def _cached(a: Coordinate, b: Coordinate) -> tuple | None:
+def _cached(
+    a: Coordinate, b: Coordinate, avoid_tolls: bool = True,
+) -> tuple | None:
     import time
-    entry = _CACHE.get(_cache_key(a, b))
+    ck = _cache_key(a, b, avoid_tolls)
+    entry = _CACHE.get(ck)
     if entry is None:
         return None
     duration_min, distance_km, geom, ts = entry
     if time.time() - ts > _CACHE_TTL_S:
-        _CACHE.pop(_cache_key(a, b), None)
+        _CACHE.pop(ck, None)
         return None
     return (duration_min, distance_km, geom)
 
@@ -132,9 +147,29 @@ def _remember(
     duration_min: float,
     distance_km: float,
     geom: tuple[Coordinate, ...],
+    avoid_tolls: bool = True,
 ) -> None:
     import time
-    _CACHE[_cache_key(a, b)] = (duration_min, distance_km, geom, time.time())
+    _CACHE[_cache_key(a, b, avoid_tolls)] = (
+        duration_min, distance_km, geom, time.time(),
+    )
+
+
+# A long alternative route can carry thousands of points; the client only
+# draws it as a preview line, so keep it light.
+_MAX_ALT_POINTS = 600
+
+
+def _decimate(
+    coords: list[Coordinate], limit: int = _MAX_ALT_POINTS,
+) -> list[Coordinate]:
+    if len(coords) <= limit:
+        return coords
+    step = -(-len(coords) // limit)  # ceil division
+    thinned = coords[::step]
+    if thinned[-1] != coords[-1]:
+        thinned.append(coords[-1])
+    return thinned
 
 
 async def _fetch_alternative(
@@ -142,21 +177,26 @@ async def _fetch_alternative(
     anchor_before: Coordinate,
     anchor_after: Coordinate,
     key: str,
+    *,
+    avoid_tolls: bool = True,
 ) -> tuple[float, float, tuple[Coordinate, ...]] | None:
-    """One HERE request between two anchors avoiding tolls. Returns
+    """One HERE request between two anchors. With ``avoid_tolls`` it
+    returns the non-toll alternative; without it, the normal route over
+    the same span (the baseline to compare against). Returns
     (duration_min, distance_km, polyline_coords) or None on failure.
     """
-    cached = _cached(anchor_before, anchor_after)
+    cached = _cached(anchor_before, anchor_after, avoid_tolls)
     if cached is not None:
         return cached
     params: dict[str, Any] = {
         "transportMode": "car",
         "origin": f"{anchor_before.lat:.5f},{anchor_before.lon:.5f}",
         "destination": f"{anchor_after.lat:.5f},{anchor_after.lon:.5f}",
-        "return": "summary,polyline",
-        "avoid[features]": "tollRoad",
+        "return": "summary,polyline" if avoid_tolls else "summary",
         "apiKey": key,
     }
+    if avoid_tolls:
+        params["avoid[features]"] = "tollRoad"
     try:
         r = await client.get(_ENDPOINT, params=params)
     except Exception as exc:  # noqa: BLE001
@@ -186,12 +226,16 @@ async def _fetch_alternative(
             decoded = _decode_flexpolyline(poly)
             if decoded:
                 coords.extend(decoded)
-    if not coords:
+    if avoid_tolls and not coords:
         return None
+    if total_duration_s <= 0 or total_length_m <= 0:
+        return None
+    coords = _decimate(coords)
     duration_min = total_duration_s / 60.0
     distance_km = total_length_m / 1000.0
     _remember(
-        anchor_before, anchor_after, duration_min, distance_km, tuple(coords),
+        anchor_before, anchor_after, duration_min, distance_km,
+        tuple(coords), avoid_tolls,
     )
     return (duration_min, distance_km, tuple(coords))
 
@@ -223,7 +267,7 @@ def _decode_flexpolyline(encoded: str) -> list[Coordinate]:
     return out
 
 
-async def enrich_skips_with_alternatives(
+async def _enrich_skips(
     route: Route,
     skips: tuple[PartialTollSkip, ...],
     *,
@@ -252,8 +296,22 @@ async def enrich_skips_with_alternatives(
 
     async def _for_skip(skip: PartialTollSkip) -> PartialTollSkip:
         km0 = skip.distance_from_origin_km
-        anchor_before = walker.anchor(km0 - _ANCHOR_KM)
-        anchor_after = walker.anchor(km0 + _ANCHOR_KM)
+        long_span = _is_long_span(skip)
+        if long_span:
+            # Closed-system toll (ticket in, ticket out): the fare covers
+            # the whole stretch between the two gates, so the detour has
+            # to be measured over that stretch. A window around the entry
+            # says nothing about it (it produced "+3 min" for a 340 km
+            # motorway section).
+            anchor_before = skip.coordinate
+            anchor_after = skip.exit_coordinate
+            span_from_km = km0
+            span_to_km = skip.end_distance_from_origin_km or km0
+        else:
+            anchor_before = walker.anchor(km0 - _ANCHOR_KM)
+            anchor_after = walker.anchor(km0 + _ANCHOR_KM)
+            span_from_km = km0 - _ANCHOR_KM
+            span_to_km = km0 + _ANCHOR_KM
         if anchor_before is None or anchor_after is None:
             return skip
         # Deduplicate anchors that landed on the same coord (short
@@ -261,23 +319,39 @@ async def enrich_skips_with_alternatives(
         if anchor_before.lat == anchor_after.lat and \
                 anchor_before.lon == anchor_after.lon:
             return skip
-        async with httpx.AsyncClient(timeout=_TIMEOUT_S) as client:
+        timeout = _TIMEOUT_LONG_S if long_span else _TIMEOUT_S
+        async with httpx.AsyncClient(timeout=timeout) as client:
             result = await _fetch_alternative(
                 client, anchor_before, anchor_after, key,
             )
+            baseline = None
+            if long_span and result is not None:
+                # Same span on the normal (tolled) route, from HERE too,
+                # so both numbers use the same speed model.
+                baseline = await _fetch_alternative(
+                    client, anchor_before, anchor_after, key,
+                    avoid_tolls=False,
+                )
         if result is None:
             return skip
+        if long_span and baseline is None:
+            return skip  # cannot verify → dropped by the caller
         alt_duration_min, alt_distance_km, geom = result
-        # Real polyline distance for the ORIGINAL toll leg between
-        # the anchors — curvy roads are longer than the great-circle
-        # `2 * _ANCHOR_KM` estimate. Missing → fall back to the
-        # 30 km straight-line default.
-        original_distance_km = walker.distance_between(
-            km0 - _ANCHOR_KM, km0 + _ANCHOR_KM,
-        )
-        if original_distance_km <= 0:
-            original_distance_km = 2.0 * _ANCHOR_KM
-        original_duration_min = (original_distance_km / average_kmh) * 60.0
+        if baseline is not None:
+            original_duration_min, original_distance_km, _ = baseline
+        else:
+            # Real polyline distance for the ORIGINAL toll leg between
+            # the anchors — curvy roads are longer than the great-circle
+            # `2 * _ANCHOR_KM` estimate. Missing → fall back to the
+            # 30 km straight-line default.
+            original_distance_km = walker.distance_between(
+                span_from_km, span_to_km,
+            )
+            if original_distance_km <= 0:
+                original_distance_km = 2.0 * _ANCHOR_KM
+            original_duration_min = (
+                original_distance_km / average_kmh
+            ) * 60.0
         # Guard against negative deltas (a shorter alt route wraps
         # to 0). A FLOOR of ~2 min / 0.5 km reflects the real cost
         # of exiting + re-entering the motorway even when the
@@ -290,11 +364,47 @@ async def enrich_skips_with_alternatives(
             0.5,
             alt_distance_km - original_distance_km,
         )
+        penalty_rounded = round(penalty_min, 1)
         return replace(
             skip,
-            time_penalty_minutes=round(penalty_min, 1),
+            time_penalty_minutes=penalty_rounded,
             extra_distance_km=round(extra_km, 1),
             alternative_geometry=geom,
+            # The heuristic flagged this before the real penalty was
+            # known; decide again with the measured number.
+            worth_it=(
+                skip.savings_eur >= _WORTH_IT_MIN_SAVINGS_EUR
+                and penalty_rounded <= _WORTH_IT_MAX_PENALTY_MINUTES
+            ),
         )
 
     return tuple(await asyncio.gather(*(_for_skip(s) for s in skips)))
+
+
+def _is_long_span(skip: PartialTollSkip) -> bool:
+    """True for a closed-system toll whose gates are far apart, i.e.
+    one fare covering a whole motorway stretch."""
+    if skip.exit_coordinate is None or skip.end_distance_from_origin_km is None:
+        return False
+    return (
+        skip.end_distance_from_origin_km - skip.distance_from_origin_km
+        > 2.0 * _ANCHOR_KM
+    )
+
+
+async def enrich_skips_with_alternatives(
+    route: Route,
+    skips: tuple[PartialTollSkip, ...],
+    *,
+    average_kmh: float = 125.0,
+) -> tuple[PartialTollSkip, ...]:
+    """Attach real HERE detour numbers to each skip (see ``_enrich_skips``)
+    and drop the long closed-system stretches whose detour could not be
+    measured. The generic "+5 min / +2.5 km" default only makes sense for
+    a single barrier; showing it for a stretch of hundreds of km would be
+    a made-up number, so those are not offered at all."""
+    enriched = await _enrich_skips(route, skips, average_kmh=average_kmh)
+    return tuple(
+        s for s in enriched
+        if not (_is_long_span(s) and not s.alternative_geometry)
+    )
