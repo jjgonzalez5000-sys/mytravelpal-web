@@ -25,6 +25,20 @@ jobs:
           channel: 'stable'
           cache: true
 
+      # android/gradle.properties is tuned for a big dev machine (24 GB
+      # heap, 12 GB Kotlin daemon, 16 workers). A hosted runner has ~7 GB
+      # and 2 cores, so that starves it and the job gets cancelled mid
+      # build. User-level properties win over the project ones.
+      - name: Limit Gradle memory for the runner
+        run: |
+          mkdir -p ~/.gradle
+          cat >> ~/.gradle/gradle.properties <<'EOF'
+          org.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8 --add-opens=java.base/java.lang.ref=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED
+          kotlin.daemon.jvmargs=-Xmx1536m
+          org.gradle.workers.max=2
+          org.gradle.vfs.watch=false
+          EOF
+
       - name: Build release APK
         working-directory: mobile
         run: |
@@ -33,6 +47,12 @@ jobs:
             --dart-define=API_KEY=${{ secrets.MYTRAVELPAL_API_KEY }} \
             --dart-define=SENTRY_DSN=${{ secrets.SENTRY_DSN }} \
             --dart-define=APP_VERSION=0.0.0+ci
+
+      # Free the daemon's memory before the emulator needs it.
+      - name: Stop Gradle daemons
+        if: always()
+        working-directory: mobile/android
+        run: ./gradlew --stop || true
 
       - name: Install Maestro
         run: curl -Ls "https://get.maestro.mobile.dev" | bash
