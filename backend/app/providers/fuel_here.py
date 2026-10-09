@@ -243,7 +243,7 @@ class HereFuelProvider:
                 if lat is None or lon is None:
                     continue
                 price = _extract_price(item)
-                price_ok = price is not None and _price_plausible(price)
+                price_ok = price is not None and _price_plausible(price, country)
                 if not price_ok:
                     # HERE didn't return price data for this station
                     # (typical when the Browse endpoint has no price feed
@@ -402,22 +402,36 @@ def _extract_price(item: dict[str, Any]) -> float | None:
                 cur = str(p.get("currency", "EUR")).upper()
                 if isinstance(val, (int, float)):
                     return _to_eur(float(val), cur)
-    # Fallback: first road-fuel entry. Exclude alternative fuels whose
-    # per-litre price is incompatible with petrol/diesel benchmarks:
-    # E85 (~0.70 €/L), CNG, LPG, hydrogen. Using their price as a
-    # "petrol price" inflates the savings delta and breaks the display.
-    _EXCLUDE_FALLBACK = {"e85", "cng", "lpg", "lng", "hydrogen", "h2",
-                         "adblue", "autogas"}
+    # Fallback: first entry that is positively a petrol/diesel type. An
+    # allow-list, not a block-list: a block-list lets every fuel nobody
+    # thought of (GPLc, bio-ethanol, a local blend) through, and their
+    # per-litre price is far below petrol/diesel, which fakes a saving.
     for p in prices:
-        if not isinstance(p, dict):
-            continue
-        if str(p.get("type", "")).lower() in _EXCLUDE_FALLBACK:
+        if not isinstance(p, dict) or not _is_road_fuel(str(p.get("type", ""))):
             continue
         val = p.get("price")
         cur = str(p.get("currency", "EUR")).upper()
         if isinstance(val, (int, float)):
             return _to_eur(float(val), cur)
     return None
+
+
+_ROAD_FUEL_KEYWORDS = (
+    "diesel", "gasoil", "gazole", "petrol", "gasoline", "unleaded",
+    "super", "sp95", "sp98", "e10", "benz",
+)
+_NON_ROAD_FUEL_KEYWORDS = (
+    "e85", "lpg", "gpl", "cng", "lng", "hydrogen", "h2", "adblue",
+    "autogas", "ethanol", "bio", "electric",
+)
+
+
+def _is_road_fuel(type_name: str) -> bool:
+    """True when a HERE fuel `type` name is positively petrol or diesel."""
+    t = type_name.lower()
+    if any(k in t for k in _NON_ROAD_FUEL_KEYWORDS):
+        return False
+    return any(k in t for k in _ROAD_FUEL_KEYWORDS)
 
 
 _FUEL_PRICES_ENDPOINT = "https://fuel.hereapi.com/v3/stations"
@@ -474,9 +488,35 @@ _MAX_PLAUSIBLE_EUR_PER_L = 4.00
 _MAX_PRICE_AGE_DAYS = 7
 
 
-def _price_plausible(eur_per_l: float) -> bool:
-    """Return True when the price is within physically realistic bounds."""
-    return _MIN_PLAUSIBLE_EUR_PER_L <= eur_per_l <= _MAX_PLAUSIBLE_EUR_PER_L
+# A road-fuel price this far below the country's usual pump price is not a
+# discount, it is another fuel (LPG, E85, CNG) or bad data. 0.969 EUR/L in
+# France (usual ~1.75) passed the flat 0.90 floor and was shown as a 42 EUR
+# saving.
+_COUNTRY_FLOOR_FRACTION = 0.65
+
+
+def _country_floor(country: Any) -> float:
+    """Lowest believable EUR/L for `country`: the flat floor, raised to a
+    fraction of the country's reference petrol price when we know it."""
+    try:
+        from app.data.countries import COUNTRIES
+
+        ref = COUNTRIES.get(getattr(country, "value", country))
+        if ref is not None and ref.fuel_petrol_anchor_eur:
+            return max(
+                _MIN_PLAUSIBLE_EUR_PER_L,
+                _COUNTRY_FLOOR_FRACTION * ref.fuel_petrol_anchor_eur,
+            )
+    except Exception:  # noqa: BLE001 - never let a lookup break pricing
+        pass
+    return _MIN_PLAUSIBLE_EUR_PER_L
+
+
+def _price_plausible(eur_per_l: float, country: Any = None) -> bool:
+    """Return True when the price is within realistic bounds, tightened by
+    the country's usual price level when `country` is given."""
+    floor = _country_floor(country) if country is not None else _MIN_PLAUSIBLE_EUR_PER_L
+    return floor <= eur_per_l <= _MAX_PLAUSIBLE_EUR_PER_L
 
 
 def _extract_fuel_price_from_prices_api(
@@ -506,17 +546,15 @@ def _extract_fuel_price_from_prices_api(
     if not isinstance(prices, list):
         return None, None
 
-    # Liquid fuel codes only — skip LPG/CNG/hydrogen
-    _SKIP_CODES = {"21", "72", "14", "73", "70", "71", "80", "81"}
+    # Only the codes listed below are ever read, so LPG/CNG/hydrogen
+    # (21, 72, 14, ...) can never be picked.
     ft_lower = (fuel_type or "").lower()
     is_petrol = ft_lower in ("petrol", "gasoline", "sp95", "sp98")
     is_hybrid = ft_lower in ("hybrid",)
-    is_diesel = ft_lower in ("diesel",)
 
     if is_hybrid:
         # Hybrids use petrol only — never suggest diesel stations.
         preferred_codes = ("55", "1", "59", "11", "40")
-        _SKIP_CODES = _SKIP_CODES | {"53", "54", "69"}  # exclude diesel codes
     elif is_petrol:
         # Pure petrol: petrol first, diesel as last fallback for coverage.
         preferred_codes = ("55", "1", "59", "11", "40", "53", "54")
@@ -538,20 +576,9 @@ def _extract_fuel_price_from_prices_api(
                         label = _FUEL_TYPE_LABELS.get(ft)
                         return eur, label
 
-    # Fallback: cheapest plausible price not in skip list.
-    candidates = [
-        p for p in prices
-        if isinstance(p, dict)
-        and str(p.get("fuelType", "")) not in _SKIP_CODES
-        and isinstance(p.get("price"), (int, float))
-    ]
-    if candidates:
-        best = min(candidates, key=lambda p: float(p["price"]))
-        ft = str(best.get("fuelType", ""))
-        eur = _to_eur(float(best["price"]), str(best.get("currency", "EUR")).upper())
-        if _price_plausible(eur):
-            label = _FUEL_TYPE_LABELS.get(ft)
-            return eur, label
+    # No fallback to "the cheapest price with any other code": an unlisted
+    # code can be LPG, E85 or a local fuel, and the cheapest one is exactly
+    # the one that looks like a bargain. Better no price than a wrong one.
     return None, None
 
 
@@ -694,6 +721,10 @@ class HereFuelPricesProvider:
                     except (ValueError, TypeError):
                         pass
                 raw_price, fuel_label = _extract_fuel_price_from_prices_api(station, fuel_type)
+                if raw_price is not None and not _price_plausible(raw_price, country):
+                    # Far below this country's pump prices: another fuel or
+                    # bad data. Show the station without a price instead.
+                    raw_price, fuel_label = None, None
                 price_ok = raw_price is not None
                 if raw_price is None:
                     # No live price from HERE for this station. Use the

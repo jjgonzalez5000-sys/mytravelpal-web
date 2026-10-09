@@ -738,3 +738,61 @@ class TestTollTotalComesFromTheBoothQuote:
         assert out.toll_verified is True
         assert out.toll_cost_eur == 110.0
         assert out.vignette_cost_eur == 40.0
+
+
+class TestFuelPriceBelievability:
+    """A station in France showed 0.969 EUR/L (usual ~1.75) as a 42 EUR
+    saving. The flat 0.90 floor let it through and a fallback picked the
+    cheapest price of any unlisted fuel code, which is how LPG/E85-like
+    prices pass for petrol."""
+
+    def test_flat_floor_applies_without_a_country(self):
+        from app.providers.fuel_here import _price_plausible
+
+        assert _price_plausible(0.969)
+        assert not _price_plausible(0.85)
+
+    def test_country_floor_rejects_a_price_far_below_the_usual_level(self):
+        from app.domain import Country
+        from app.providers.fuel_here import _price_plausible
+
+        assert not _price_plausible(0.969, Country.FR)
+        assert _price_plausible(1.699, Country.FR)
+        assert _price_plausible(1.20, Country.FR)  # a real bargain still passes
+
+    def test_v3_price_with_only_an_unlisted_code_is_not_used(self):
+        from app.providers.fuel_here import _extract_fuel_price_from_prices_api
+
+        station = {"prices": [
+            {"fuelType": "99", "price": 0.969, "currency": "EUR"},
+        ]}
+        assert _extract_fuel_price_from_prices_api(station, "petrol") == (None, None)
+
+    def test_v3_listed_code_is_still_priced_and_labelled(self):
+        from app.providers.fuel_here import _extract_fuel_price_from_prices_api
+
+        station = {"prices": [
+            {"fuelType": "21", "price": 0.969, "currency": "EUR"},  # LPG
+            {"fuelType": "55", "price": 1.789, "currency": "EUR"},
+        ]}
+        price, label = _extract_fuel_price_from_prices_api(station, "petrol")
+        assert price == pytest.approx(1.789)
+        assert label == "Super 95"
+
+    def test_browse_fallback_is_an_allow_list(self):
+        from app.providers.fuel_here import _extract_price
+
+        item = {"extended": {"fuelStation": {"prices": [
+            {"type": "GPLc", "price": 0.969, "currency": "EUR"},
+            {"type": "bioethanol", "price": 0.72, "currency": "EUR"},
+        ]}}}
+        assert _extract_price(item) is None
+
+    def test_browse_fallback_accepts_a_known_petrol_name(self):
+        from app.providers.fuel_here import _extract_price
+
+        item = {"extended": {"fuelStation": {"prices": [
+            {"type": "GPLc", "price": 0.969, "currency": "EUR"},
+            {"type": "Unleaded 95", "price": 1.79, "currency": "EUR"},
+        ]}}}
+        assert _extract_price(item) == pytest.approx(1.79)
