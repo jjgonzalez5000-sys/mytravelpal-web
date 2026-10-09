@@ -456,9 +456,9 @@ class _ScoreChip extends StatelessWidget {
             : const Color(0xFFF87171);
 
     return GestureDetector(
-      onTap: () => showDialog(
+      onTap: () => showDialog<void>(
         context: context,
-        builder: (_) => AlertDialog(
+        builder: (dialogCtx) => AlertDialog(
           title: Row(
             children: [
               Icon(factor.icon, size: 18),
@@ -469,7 +469,7 @@ class _ScoreChip extends StatelessWidget {
           content: Text(factor.explanation),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(_),
+              onPressed: () => Navigator.pop(dialogCtx),
               child: const Text('OK'),
             ),
           ],

@@ -13,10 +13,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup \
+            /usr/local/share/boost /usr/share/swift /usr/local/share/powershell
+          df -h /
+
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.x'
           channel: 'stable'
           cache: true
 
@@ -32,6 +37,7 @@ jobs:
           api-level: 33
           arch: x86_64
           profile: Nexus 6
+          disk-size: 4096M
           script: |
             cd mobile
             flutter build apk --release --no-shrink --no-tree-shake-icons \

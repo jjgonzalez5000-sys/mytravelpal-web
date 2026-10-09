@@ -12,6 +12,6 @@ if [ ! -f "$PYTHON" ]; then PYTHON="python3"; fi
 
 echo "=== Mobile analyze (errors only) ==="
 cd "$REPO_ROOT/mobile"
-flutter analyze --no-pub --no-fatal-warnings --no-fatal-infos lib/ || true
+flutter analyze --no-pub --no-fatal-warnings --no-fatal-infos lib/
 
 echo "=== All checks passed ==="

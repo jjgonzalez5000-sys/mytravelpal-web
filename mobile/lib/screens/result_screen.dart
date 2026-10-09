@@ -2918,6 +2918,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               _TotalTripCostCard(
                 fuelCostEur: _response.optimizations!.fuelCost.totalCostEur,
                 tollCostEur: route.tollCostEur,
+                tollsPending: _enrichPending || _replanning,
                 mealStops: _response.optimizations!.mealStops,
                 sleepStop: _response.optimizations!.sleepStop,
                 tollSkipSavingsEur: _tollSkipSavingsEur,
@@ -4217,7 +4218,13 @@ class _TotalTripCostCard extends ConsumerWidget {
     this.fuelSavingsEur = 0.0,
     this.fuelLitersFilled = 0.0,
     this.dayBoundariesKm = const [],
+    this.tollsPending = false,
   });
+
+  /// True while the toll figure can still change (enrich or replan in
+  /// flight). The toll row shows a progress line and the total is
+  /// withheld, since it would otherwise include a provisional number.
+  final bool tollsPending;
 
   /// How many cheap fuel stations the driver added via the day
   /// cards. Rendered as "N gasolineras" alongside the assumed
@@ -4362,6 +4369,7 @@ class _TotalTripCostCard extends ConsumerWidget {
           _CostRow(
             label: l.tripCostTolls,
             value: effectiveTolls,
+            pending: tollsPending,
             scheme: scheme, t: t,
             // Strikethrough the original toll when the driver
             // has skipped at least one booth. Concrete visual
@@ -4408,7 +4416,7 @@ class _TotalTripCostCard extends ConsumerWidget {
               Text(l.tripCostTotal,
                   style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
               Text(
-                formatMoney(total, ccy),
+                tollsPending ? '—' : formatMoney(total, ccy),
                 style: t.titleMedium?.copyWith(
                   fontWeight: FontWeight.w800,
                   color: scheme.primary,
@@ -4416,7 +4424,7 @@ class _TotalTripCostCard extends ConsumerWidget {
               ),
             ],
           ),
-          if (savings != null) ...[
+          if (savings != null && !tollsPending) ...[
             () {
               // Time-savings only count once the driver has actively
               // picked a departure window (`timeSavedIsClaimed`).
@@ -6536,6 +6544,7 @@ class _CostRow extends ConsumerWidget {
     required this.scheme,
     required this.t,
     this.originalValue,
+    this.pending = false,
   });
   final String label;
   final double value;
@@ -6545,12 +6554,38 @@ class _CostRow extends ConsumerWidget {
   /// original amount struck through next to the discounted new
   /// value. Used by the toll row when the driver skipped booths.
   final double? originalValue;
+  /// True while the figure is still being computed: shows a thin
+  /// progress line instead of a number that may still change.
+  final bool pending;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ccy = ref.watch(currencyCodeProvider);
-    final hasStrike =
+    final hasStrike = !pending &&
         originalValue != null && originalValue! > value + 0.001;
+    if (pending) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 3),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: t.bodyMedium),
+            SizedBox(
+              width: 56,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  minHeight: 3,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                      scheme.primary.withValues(alpha: 0.5)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: Row(
