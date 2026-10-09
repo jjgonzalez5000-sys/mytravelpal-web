@@ -2108,6 +2108,9 @@ class AppLocalizationsFr extends AppLocalizations {
   String get fuelTypeLpg => 'GPL';
 
   @override
+  String get fuelTypeE85 => 'E85 / Éthanol';
+
+  @override
   String get routeVariantFastest => 'Plus rapide';
 
   @override
@@ -3060,6 +3063,56 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tripCostNoExpense => 'Aucune dépense';
+
+  @override
+  String get replanLostTitle =>
+      'Certains choix ne correspondent plus au nouvel itinéraire';
+
+  @override
+  String get replanLostBody =>
+      'Comme la distance change, ces choix ne correspondent plus à l\'itinéraire. Si vous continuez, ils seront désélectionnés et nous vous proposerons d\'autres options. Si vous annulez, votre plan actuel reste inchangé.';
+
+  @override
+  String replanLostHotel(String name, int day) {
+    return 'Hôtel : $name · jour $day';
+  }
+
+  @override
+  String replanLostRestaurant(String name) {
+    return 'Restaurant : $name';
+  }
+
+  @override
+  String replanLostFuel(String name) {
+    return 'Station-service : $name';
+  }
+
+  @override
+  String replanLostMeal(String name) {
+    return 'Arrêt repas : $name';
+  }
+
+  @override
+  String replanLostSleep(String name) {
+    return 'Arrêt pour la nuit : $name';
+  }
+
+  @override
+  String get styleKmCapNone => 'Km max/jour : sans limite';
+
+  @override
+  String styleKmCapValue(int km) {
+    return 'Km max/jour : $km km';
+  }
+
+  @override
+  String get styleKmCapRemove => 'Supprimer la limite de km';
+
+  @override
+  String get replanLostConfirm => 'Continuer et désélectionner';
+
+  @override
+  String get replanLostCancel => 'Garder le plan actuel';
 
   @override
   String tripCostPerPerson(String amount) {

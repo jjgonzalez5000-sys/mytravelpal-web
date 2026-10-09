@@ -11,6 +11,7 @@ import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart' show appPrefsProvider, currencyCodeProvider;
 import '../services/currency_service.dart' show formatMoney;
+import '../services/selection_check.dart' show kMaxHotelKmFromSleep;
 import 'added_stops_map_sheet.dart';
 import 'consistency_banner.dart' show DayConsistencyChip;
 import 'hotel_preferences.dart';
@@ -598,7 +599,7 @@ class DayPlanSection extends StatelessWidget {
   // endpoints and the mid-corridor sleep stop falls outside 90 km.
   // 150 km keeps "cerca del punto de pernocta" meaningful while
   // catching one-exit-away options on long driving days.
-  static const double _maxHotelKmFromSleep = 150.0;
+  static const double _maxHotelKmFromSleep = kMaxHotelKmFromSleep;
 
   /// Returns `(fromLabel, toLabel)` for the day-header summary strip.
   /// Falls back through reverse-geocoded city → trip endpoint (day 1 /

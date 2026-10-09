@@ -5,6 +5,7 @@
 ///   flutter test test/regression_test.dart
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart';
+import 'package:mytravelpal/services/selection_check.dart';
 import 'package:mytravelpal/widgets/trip_quality_score.dart'
     show tollSkipTimeScore;
 
@@ -320,6 +321,174 @@ void main() {
 
     test('a verified zero replaces a non-zero estimate', () {
       expect(core.withVerifiedTolls(enrichRoute(0)).tollCostEur, 0);
+    });
+  });
+
+  // ── 7. PICKS THAT DO NOT SURVIVE A REPLAN MUST BE REPORTED ───────────────────
+  //
+  // Bug: when a replan moved the stops (the distance changed), hotel,
+  // restaurant and fuel picks that no longer fit were dropped without a
+  // word. The driver must be told and must confirm before they are lost.
+  group('test_selections_lost_on_replan', () {
+    const route = RouteInfo(
+      distanceKm: 100,
+      freeFlowMinutes: 60,
+      polyline: '',
+      tollCostEur: 0,
+      countriesCrossed: [],
+    );
+
+    Hotel hotel(String name, double lat, double lon) => Hotel(
+          name: name,
+          country: Country.fr,
+          priceEurPerNight: 80,
+          priceBand: PriceBand.mid,
+          detourMinutes: 5,
+          detourKm: 2,
+          distanceFromRouteKm: 1,
+          coordinate: LatLon(lat: lat, lon: lon),
+        );
+
+    DayPlan day(int index, {LatLon? sleep}) => DayPlan(
+          dayIndex: index,
+          startAt: DateTime(2026, 10, 16, 8),
+          endAt: DateTime(2026, 10, 16, 18),
+          fromKm: 0,
+          toKm: 100,
+          mealStops: const [],
+          restStops: const [],
+          sleepCoord: sleep,
+        );
+
+    TripPlanResponse plan({
+      List<Hotel> hotels = const [],
+      List<FuelPrice> fuel = const [],
+      List<Restaurant> restaurants = const [],
+      List<DayPlan> days = const [],
+    }) =>
+        TripPlanResponse(
+          route: route,
+          timeWindows: const [],
+          fuelPrices: fuel,
+          hotels: hotels,
+          restaurants: restaurants,
+          restStops: const [],
+          adverseEvents: const [],
+          days: days,
+        );
+
+    FuelPrice station(String name, double lat, double lon) => FuelPrice(
+          stationName: name,
+          country: Country.fr,
+          priceEurPerL: 1.7,
+          distanceFromOriginKm: 10,
+          coordinate: LatLon(lat: lat, lon: lon),
+        );
+
+    test('no selections means nothing is lost', () {
+      expect(lostSelections(null, plan()), isEmpty);
+      expect(lostSelections(const {}, plan()), isEmpty);
+    });
+
+    test('a fuel pick that is still listed survives', () {
+      final lost = lostSelections(
+        {'picked_fuel_keys': ['fuel:Total:45.0000,4.0000']},
+        plan(fuel: [station('Total', 45.0, 4.0)]),
+      );
+      expect(lost, isEmpty);
+    });
+
+    test('a fuel pick that disappeared is reported by name', () {
+      final lost = lostSelections(
+        {'picked_fuel_keys': ['fuel:Total:45.0000,4.0000']},
+        plan(fuel: [station('Shell', 46.0, 4.5)]),
+      );
+      expect(lost.single.kind, SelectionKind.fuel);
+      expect(lost.single.name, 'Total');
+    });
+
+    test('a stop the route is forced through is not reported', () {
+      final lost = lostSelections(
+        {'picked_fuel_keys': ['fuel:Total:45.0000,4.0000']},
+        plan(),
+        routedThrough: {'45.0000,4.0000'},
+      );
+      expect(lost, isEmpty);
+    });
+
+    test('a restaurant pick that disappeared is reported', () {
+      final lost = lostSelections(
+        {'picked_restaurant_keys': ['restaurant:Chez Paul:45.0000,4.0000']},
+        plan(),
+      );
+      expect(lost.single.kind, SelectionKind.restaurant);
+      expect(lost.single.name, 'Chez Paul');
+    });
+
+    test('a hotel near the night\'s new sleep point survives', () {
+      final lost = lostSelections(
+        {
+          'picked_hotel_keys_by_day': {
+            '1': {'name': 'Hotel A', 'lat': 45.5, 'lon': 4.0},
+          },
+        },
+        plan(
+          hotels: [hotel('Hotel A', 45.5, 4.0)],
+          days: [day(1, sleep: LatLon(lat: 45.0, lon: 4.0))],
+        ),
+      );
+      expect(lost, isEmpty);
+    });
+
+    test('a hotel left far from where the night moved is reported', () {
+      // The stretch changed: night 1 now ends ~220 km from this hotel.
+      final lost = lostSelections(
+        {
+          'picked_hotel_keys_by_day': {
+            '1': {'name': 'Hotel A', 'lat': 47.0, 'lon': 4.0},
+          },
+        },
+        plan(
+          hotels: [hotel('Hotel A', 47.0, 4.0)],
+          days: [day(1, sleep: LatLon(lat: 45.0, lon: 4.0))],
+        ),
+      );
+      expect(lost.single.kind, SelectionKind.hotel);
+      expect(lost.single.day, 1);
+    });
+
+    test('a hotel for a night that no longer exists is reported', () {
+      final lost = lostSelections(
+        {
+          'picked_hotel_keys_by_day': {
+            '2': {'name': 'Hotel A', 'lat': 45.5, 'lon': 4.0},
+          },
+        },
+        plan(
+          hotels: [hotel('Hotel A', 45.5, 4.0)],
+          days: [day(1, sleep: LatLon(lat: 45.0, lon: 4.0))],
+        ),
+      );
+      expect(lost.single.day, 2);
+    });
+
+    test('a hotel no longer offered at all is reported', () {
+      final lost = lostSelections(
+        {
+          'picked_hotel_keys_by_day': {
+            '1': {'name': 'Hotel A', 'lat': 45.5, 'lon': 4.0},
+          },
+        },
+        plan(days: [day(1, sleep: LatLon(lat: 45.0, lon: 4.0))]),
+      );
+      expect(lost.single.name, 'Hotel A');
+    });
+
+    test('a renamed hotel at the same spot still matches', () {
+      expect(hotelMatches(hotel('New name', 45.5, 4.0), 'Hotel A', 45.5004, 4.0004),
+          isTrue);
+      expect(hotelMatches(hotel('New name', 45.5, 4.0), 'Hotel A', 46.0, 4.0),
+          isFalse);
     });
   });
 }

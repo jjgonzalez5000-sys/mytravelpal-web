@@ -3829,6 +3829,12 @@ abstract class AppLocalizations {
   /// **'LPG'**
   String get fuelTypeLpg;
 
+  /// No description provided for @fuelTypeE85.
+  ///
+  /// In en, this message translates to:
+  /// **'E85 / Ethanol'**
+  String get fuelTypeE85;
+
   /// No description provided for @routeVariantFastest.
   ///
   /// In en, this message translates to:
@@ -5479,6 +5485,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No expense'**
   String get tripCostNoExpense;
+
+  /// No description provided for @replanLostTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Some picks no longer fit the new route'**
+  String get replanLostTitle;
+
+  /// No description provided for @replanLostBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Because the distance changes, these picks no longer match the route. If you continue they will be deselected and we will offer other options. If you cancel, your current plan stays as it is.'**
+  String get replanLostBody;
+
+  /// No description provided for @replanLostHotel.
+  ///
+  /// In en, this message translates to:
+  /// **'Hotel: {name} · day {day}'**
+  String replanLostHotel(String name, int day);
+
+  /// No description provided for @replanLostRestaurant.
+  ///
+  /// In en, this message translates to:
+  /// **'Restaurant: {name}'**
+  String replanLostRestaurant(String name);
+
+  /// No description provided for @replanLostFuel.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel station: {name}'**
+  String replanLostFuel(String name);
+
+  /// No description provided for @replanLostMeal.
+  ///
+  /// In en, this message translates to:
+  /// **'Meal stop: {name}'**
+  String replanLostMeal(String name);
+
+  /// No description provided for @replanLostSleep.
+  ///
+  /// In en, this message translates to:
+  /// **'Overnight stop: {name}'**
+  String replanLostSleep(String name);
+
+  /// No description provided for @styleKmCapNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Max km/day: no limit'**
+  String get styleKmCapNone;
+
+  /// No description provided for @styleKmCapValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Max km/day: {km} km'**
+  String styleKmCapValue(int km);
+
+  /// No description provided for @styleKmCapRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove km limit'**
+  String get styleKmCapRemove;
+
+  /// No description provided for @replanLostConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue and deselect'**
+  String get replanLostConfirm;
+
+  /// No description provided for @replanLostCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep current plan'**
+  String get replanLostCancel;
 
   /// No description provided for @tripCostPerPerson.
   ///

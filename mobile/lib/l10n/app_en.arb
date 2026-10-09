@@ -1218,6 +1218,7 @@
   "fuelTypeHybrid": "Hybrid",
   "fuelTypeElectric": "Electric",
   "fuelTypeLpg": "LPG",
+  "fuelTypeE85": "E85 / Ethanol",
   "routeVariantFastest": "Fastest",
   "routeVariantTollFree": "Toll-free",
   "routeVariantScenic": "Scenic",
@@ -1802,6 +1803,36 @@
   "tripCostHotel": "Hotel",
   "tripCostTotal": "Total estimated",
   "tripCostNoExpense": "No expense",
+  "replanLostTitle": "Some picks no longer fit the new route",
+  "replanLostBody": "Because the distance changes, these picks no longer match the route. If you continue they will be deselected and we will offer other options. If you cancel, your current plan stays as it is.",
+  "replanLostHotel": "Hotel: {name} · day {day}",
+  "@replanLostHotel": {
+    "placeholders": { "name": { "type": "String" }, "day": { "type": "int" } }
+  },
+  "replanLostRestaurant": "Restaurant: {name}",
+  "@replanLostRestaurant": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "replanLostFuel": "Fuel station: {name}",
+  "@replanLostFuel": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "replanLostMeal": "Meal stop: {name}",
+  "@replanLostMeal": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "replanLostSleep": "Overnight stop: {name}",
+  "@replanLostSleep": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "styleKmCapNone": "Max km/day: no limit",
+  "styleKmCapValue": "Max km/day: {km} km",
+  "@styleKmCapValue": {
+    "placeholders": { "km": { "type": "int" } }
+  },
+  "styleKmCapRemove": "Remove km limit",
+  "replanLostConfirm": "Continue and deselect",
+  "replanLostCancel": "Keep current plan",
   "tripCostPerPerson": "{amount} / person",
   "@tripCostPerPerson": {
     "placeholders": {

@@ -31,6 +31,7 @@ import '../services/plan_foreground_task.dart';
 import '../services/trip_foreground.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
+import '../services/selection_check.dart';
 import '../services/toll_detour_waypoints.dart';
 import '../widgets/toll_summary_sheet.dart';
 import '../widgets/trip_day_bars.dart';
@@ -1889,6 +1890,80 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
+  /// Meal and sleep stops pinned from the "Optimizado" section. Unlike
+  /// fuel, restaurant and hotel picks they are not carried across a
+  /// replan, so they are always dropped by one; the driver must be told.
+  List<LostSelection> _pinnedOptimizationPicks() {
+    final out = <LostSelection>[];
+    final opt = _response.optimizations;
+    if (opt == null) return out;
+    for (final m in opt.mealStops) {
+      if (_addedStops.containsKey(_mealStopKey(m))) {
+        out.add(LostSelection(
+          kind: SelectionKind.mealStop,
+          name: m.restaurantName ?? m.cityHint ?? m.slot,
+        ));
+      }
+    }
+    final s = opt.sleepStop;
+    if (s != null && _addedStops.containsKey(_sleepStopKey(s))) {
+      out.add(LostSelection(
+        kind: SelectionKind.sleepStop,
+        name: s.hotelName ?? s.cityHint ?? '—',
+      ));
+    }
+    return out;
+  }
+
+  /// Lists the picks a replan would deselect and asks the driver to
+  /// confirm. Returns true only on an explicit "continue".
+  Future<bool> _confirmLostSelections(List<LostSelection> lost) async {
+    final l = AppLocalizations.of(context);
+    String line(LostSelection s) => switch (s.kind) {
+          SelectionKind.hotel => l.replanLostHotel(s.name, s.day ?? 0),
+          SelectionKind.restaurant => l.replanLostRestaurant(s.name),
+          SelectionKind.fuel => l.replanLostFuel(s.name),
+          SelectionKind.mealStop => l.replanLostMeal(s.name),
+          SelectionKind.sleepStop => l.replanLostSleep(s.name),
+        };
+    final ok = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.replanLostTitle),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(l.replanLostBody),
+              const SizedBox(height: Tokens.space12),
+              for (final s in lost)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: Tokens.space4),
+                  child: Text('• ${line(s)}'),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () =>
+                Navigator.of(ctx, rootNavigator: true).pop(false),
+            child: Text(l.replanLostCancel),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx, rootNavigator: true).pop(true),
+            child: Text(l.replanLostConfirm),
+          ),
+        ],
+      ),
+    );
+    return ok ?? false;
+  }
+
   Future<void> _replan({
     required DateTime newDeparture,
     required bool avoidMotorways,
@@ -1981,16 +2056,37 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         () => api.planTrip(replan, locale: Localizations.localeOf(context).languageCode),
       );
       if (!mounted) return;
-      if (dialogOpen) {
-        navigator.pop();
-        dialogOpen = false;
-      }
       // Snapshot current picks (fuel, restaurants, hotels per night,
       // per-day overrides) BEFORE the pushReplacement so the new
       // screen rehydrates instead of starting empty. Waypoints are
       // already merged into `replan.waypoints` above; this covers
       // the per-day / per-picks state that ISN'T on the request.
       final preserved = _currentSelections();
+      // The new plan is computed but not applied yet. If some of the
+      // driver's picks would not survive it (the distance moved the
+      // stops), say so and let them back out: confirming deselects those
+      // picks and the new plan offers other options; cancelling leaves
+      // the current plan exactly as it is.
+      final lost = [
+        ...lostSelections(
+          preserved,
+          fresh,
+          routedThrough: {
+            for (final w in replan.waypoints)
+              '${w.coordinate.lat.toStringAsFixed(4)},'
+                  '${w.coordinate.lon.toStringAsFixed(4)}',
+          },
+        ),
+        ..._pinnedOptimizationPicks(),
+      ];
+      if (dialogOpen) {
+        navigator.pop();
+        dialogOpen = false;
+      }
+      if (lost.isNotEmpty) {
+        final proceed = await _confirmLostSelections(lost);
+        if (!proceed || !mounted) return;
+      }
       navigator.pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => ResultScreen(
@@ -2189,10 +2285,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     if (fuelKeys is List) {
       for (final k in fuelKeys.whereType<String>()) {
         for (final p in _response.fuelPrices) {
-          if (p.coordinate == null) continue;
-          final key = 'fuel:${p.stationName}:'
-              '${p.coordinate!.lat.toStringAsFixed(4)},'
-              '${p.coordinate!.lon.toStringAsFixed(4)}';
+          final key = fuelPickKey(p);
+          if (key == null) continue;
           if (key == k) {
             _addedStops[key] = _fuelStopMinutes;
             _addedRouteWaypoints[key] = (p.coordinate!, p.stationName);
@@ -2208,9 +2302,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     if (restKeys is List) {
       for (final k in restKeys.whereType<String>()) {
         for (final r in _response.restaurants) {
-          final key = 'restaurant:${r.name}:'
-              '${r.coordinate.lat.toStringAsFixed(4)},'
-              '${r.coordinate.lon.toStringAsFixed(4)}';
+          final key = restaurantPickKey(r);
           if (key == k) {
             _addedStops[key] = 0;
             _addedRouteWaypoints[key] = (r.coordinate, r.name);
@@ -2232,11 +2324,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         final lon = (v['lon'] as num?)?.toDouble();
         if (name == null || lat == null || lon == null) return;
         for (final h in _response.hotels) {
-          final sameName = h.name == name;
-          final closeCoord =
-              (h.coordinate.lat - lat).abs() < 0.001 &&
-                  (h.coordinate.lon - lon).abs() < 0.001;
-          if (sameName || closeCoord) {
+          if (hotelMatches(h, name, lat, lon)) {
             _selectedNightHotels[day] = h;
             break;
           }

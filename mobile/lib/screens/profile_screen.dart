@@ -698,14 +698,14 @@ class _AdvancedStyleControls extends StatelessWidget {
                   Expanded(
                     child: Text(
                       kmCap == null
-                          ? 'Máx. km/día: sin límite'
-                          : 'Máx. km/día: $kmCap km',
+                          ? l.styleKmCapNone
+                          : l.styleKmCapValue(kmCap),
                     ),
                   ),
                   if (kmCap != null)
                     IconButton(
                       icon: const Icon(Icons.close, size: 16),
-                      tooltip: 'Quitar límite de km',
+                      tooltip: l.styleKmCapRemove,
                       visualDensity: VisualDensity.compact,
                       onPressed: () => onChanged(
                         profile.copyWith(dailyKmCap: null),
@@ -1177,12 +1177,12 @@ Future<({double tankL, double consumptionL100km, FuelType fuelType})?> _promptFo
 
 String _fuelTypeLabel(FuelType ft, AppLocalizations l) {
   switch (ft) {
-    case FuelType.petrol: return 'Gasolina';
-    case FuelType.diesel: return 'Diésel';
-    case FuelType.hybrid: return 'Híbrido';
-    case FuelType.electric: return 'Eléctrico';
-    case FuelType.lpg: return 'GLP';
-    case FuelType.e85: return 'E85 / Etanol';
+    case FuelType.petrol: return l.fuelTypePetrol;
+    case FuelType.diesel: return l.fuelTypeDiesel;
+    case FuelType.hybrid: return l.fuelTypeHybrid;
+    case FuelType.electric: return l.fuelTypeElectric;
+    case FuelType.lpg: return l.fuelTypeLpg;
+    case FuelType.e85: return l.fuelTypeE85;
   }
 }
 
