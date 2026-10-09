@@ -2800,6 +2800,10 @@
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
   },
+  "resultFuelStationsCount": "{count, plural, one{{count} gasolinera} other{{count} gasolineras}}",
+  "@resultFuelStationsCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "resultSummaryTolls": "{count, plural, one{{count} peaje saltado} other{{count} peajes saltados}}",
   "@resultSummaryTolls": {
     "placeholders": { "count": { "type": "int" } }

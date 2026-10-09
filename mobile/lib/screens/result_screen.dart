@@ -15,6 +15,7 @@ import 'package:latlong2/latlong.dart' as fmap show LatLng;
 import 'package:intl/intl.dart' as intl;
 import 'package:intl/intl.dart';
 
+import '../api/api_client.dart' show ApiException;
 import '../api/models.dart';
 import '../domain/trip_profile.dart' show FuelType, TripProfile, VehicleType;
 import 'vehicle_picker_screen.dart' show kCustomVehicleId;
@@ -633,10 +634,31 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         .toList();
   }
 
+  /// Appends [extra] to [base], skipping any waypoint already present
+  /// (same coordinate to ~10 m). Added stops are folded into the request
+  /// on every replan AND restored into `_addedRouteWaypoints` from the
+  /// carried-over selections, so on the next replan the same stop would
+  /// otherwise be sent twice and quickly exceed the server's 8-waypoint
+  /// limit.
+  List<TripWaypoint> _mergeWaypoints(
+    List<TripWaypoint> base,
+    List<TripWaypoint> extra,
+  ) {
+    String key(TripWaypoint w) =>
+        '${w.coordinate.lat.toStringAsFixed(4)},'
+        '${w.coordinate.lon.toStringAsFixed(4)}';
+    final seen = <String>{for (final w in base) key(w)};
+    return [
+      ...base,
+      for (final w in extra)
+        if (seen.add(key(w))) w,
+    ];
+  }
+
   Future<void> _replanWithAddedStops() async {
     final extra = _buildAddedWaypoints();
     if (extra.isEmpty) return;
-    final combined = [...widget.request.waypoints, ...extra];
+    final combined = _mergeWaypoints(widget.request.waypoints, extra);
     final replan = TripPlanRequest(
       origin: widget.request.origin,
       destination: widget.request.destination,
@@ -1911,10 +1933,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // vanish". Fix: fold them into the new request's waypoints
       // whenever we build the request ourselves (overrideRequest
       // path already handles this — see `_replanWithAddedStops`).
-      final mergedWaypoints = <TripWaypoint>[
-        ...widget.request.waypoints,
-        ..._buildAddedWaypoints(),
-      ];
+      final mergedWaypoints = _mergeWaypoints(
+        widget.request.waypoints,
+        _buildAddedWaypoints(),
+      );
       final replan = overrideRequest ?? TripPlanRequest(
         origin: widget.request.origin,
         destination: widget.request.destination,
@@ -1988,16 +2010,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ),
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (dialogOpen && mounted) navigator.pop();
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              AppLocalizations.of(context).planErrorNetwork,
-            ),
-          ),
-        );
+        // Only a real connectivity failure should say "couldn't reach
+        // the server"; an HTTP error from the backend is reported with
+        // its code (same mapping as the plan screen) so it can be
+        // diagnosed from a screenshot.
+        final l = AppLocalizations.of(context);
+        final message = e is ApiException
+            ? switch (e.statusCode) {
+                401 => l.planErrorAuth,
+                402 => l.planErrorPremium,
+                429 => l.planErrorRateLimit,
+                _ => l.planErrorGeneric(e.statusCode),
+              }
+            : l.planErrorNetwork;
+        messenger.showSnackBar(SnackBar(content: Text(message)));
       }
     }
   }
@@ -4617,8 +4646,8 @@ class _TotalTripCostCard extends ConsumerWidget {
                               child: Text(
                                 () {
                                   final parts = <String>[
-                                    '$pickedFuelStationsCount '
-                                    '${pickedFuelStationsCount == 1 ? "gasolinera" : "gasolineras"}',
+                                    l.resultFuelStationsCount(
+                                        pickedFuelStationsCount),
                                     if (fuelLitersFilled > 0.5)
                                       '${fuelLitersFilled.toStringAsFixed(0)} L',
                                     if (fuelCostEur > 0)

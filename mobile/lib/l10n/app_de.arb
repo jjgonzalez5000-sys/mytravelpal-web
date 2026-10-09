@@ -2799,6 +2799,10 @@
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
   },
+  "resultFuelStationsCount": "{count, plural, one{{count} Tankstelle} other{{count} Tankstellen}}",
+  "@resultFuelStationsCount": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "resultSummaryTolls": "{count, plural, one{{count} Maut übersprungen} other{{count} Mauten übersprungen}}",
   "@resultSummaryTolls": {
     "placeholders": { "count": { "type": "int" } }

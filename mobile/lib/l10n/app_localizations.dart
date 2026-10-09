@@ -8081,6 +8081,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, one{{count} stop} other{{count} stops}}'**
   String resultSummaryStops(int count);
 
+  /// No description provided for @resultFuelStationsCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} fuel station} other{{count} fuel stations}}'**
+  String resultFuelStationsCount(int count);
+
   /// No description provided for @resultSummaryTolls.
   ///
   /// In en, this message translates to:

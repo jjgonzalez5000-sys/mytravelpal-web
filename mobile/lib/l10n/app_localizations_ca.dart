@@ -4547,6 +4547,17 @@ class AppLocalizationsCa extends AppLocalizations {
   }
 
   @override
+  String resultFuelStationsCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count fuel stations',
+      one: '$count fuel station',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String resultSummaryTolls(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
