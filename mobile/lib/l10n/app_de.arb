@@ -2974,5 +2974,17 @@
   "planOptAiSuggestSub": "Sucht nach dem Plan echte Orte nahe deiner Route",
   "@planOptAiSuggestSub": {},
   "planOptAiSuggestLocked": "KI-Vorschläge sind ein Premium-Feature",
-  "@planOptAiSuggestLocked": {}
+  "@planOptAiSuggestLocked": {},
+  "tripCo2Label": "Geschätztes CO₂",
+  "@tripCo2Label": {},
+  "tripCo2Total": "{kg} kg",
+  "@tripCo2Total": {
+    "placeholders": { "kg": { "type": "int" } }
+  },
+  "tripCo2PerPerson": "{kg} kg pro Person",
+  "@tripCo2PerPerson": {
+    "placeholders": { "kg": { "type": "int" } }
+  },
+  "tripCo2EvNote": "Basierend auf dem durchschnittlichen EU-Strommix",
+  "@tripCo2EvNote": {}
 }

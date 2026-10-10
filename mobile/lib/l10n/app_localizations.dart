@@ -8806,6 +8806,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI suggestions are a Premium feature'**
   String get planOptAiSuggestLocked;
+
+  /// No description provided for @tripCo2Label.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimated CO₂'**
+  String get tripCo2Label;
+
+  /// No description provided for @tripCo2Total.
+  ///
+  /// In en, this message translates to:
+  /// **'{kg} kg'**
+  String tripCo2Total(int kg);
+
+  /// No description provided for @tripCo2PerPerson.
+  ///
+  /// In en, this message translates to:
+  /// **'{kg} kg per person'**
+  String tripCo2PerPerson(int kg);
+
+  /// No description provided for @tripCo2EvNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Based on the average EU electricity mix'**
+  String get tripCo2EvNote;
 }
 
 class _AppLocalizationsDelegate

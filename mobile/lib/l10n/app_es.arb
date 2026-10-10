@@ -2975,5 +2975,17 @@
   "planOptAiSuggestSub": "Al terminar el plan busca sitios reales cerca de tu ruta",
   "@planOptAiSuggestSub": {},
   "planOptAiSuggestLocked": "Las sugerencias con IA son de Premium",
-  "@planOptAiSuggestLocked": {}
+  "@planOptAiSuggestLocked": {},
+  "tripCo2Label": "CO₂ estimado",
+  "@tripCo2Label": {},
+  "tripCo2Total": "{kg} kg",
+  "@tripCo2Total": {
+    "placeholders": { "kg": { "type": "int" } }
+  },
+  "tripCo2PerPerson": "{kg} kg por persona",
+  "@tripCo2PerPerson": {
+    "placeholders": { "kg": { "type": "int" } }
+  },
+  "tripCo2EvNote": "Según el mix eléctrico medio de la UE",
+  "@tripCo2EvNote": {}
 }

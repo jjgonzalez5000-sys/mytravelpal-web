@@ -5004,4 +5004,21 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planOptAiSuggestLocked => 'KI-Vorschläge sind ein Premium-Feature';
+
+  @override
+  String get tripCo2Label => 'Geschätztes CO₂';
+
+  @override
+  String tripCo2Total(int kg) {
+    return '$kg kg';
+  }
+
+  @override
+  String tripCo2PerPerson(int kg) {
+    return '$kg kg pro Person';
+  }
+
+  @override
+  String get tripCo2EvNote =>
+      'Basierend auf dem durchschnittlichen EU-Strommix';
 }

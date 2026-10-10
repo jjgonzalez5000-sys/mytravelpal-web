@@ -4997,4 +4997,20 @@ class AppLocalizationsIt extends AppLocalizations {
   @override
   String get planOptAiSuggestLocked =>
       'I suggerimenti IA sono una funzione Premium';
+
+  @override
+  String get tripCo2Label => 'CO₂ stimata';
+
+  @override
+  String tripCo2Total(int kg) {
+    return '$kg kg';
+  }
+
+  @override
+  String tripCo2PerPerson(int kg) {
+    return '$kg kg a persona';
+  }
+
+  @override
+  String get tripCo2EvNote => 'In base al mix elettrico medio UE';
 }

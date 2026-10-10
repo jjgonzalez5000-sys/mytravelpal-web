@@ -2974,5 +2974,17 @@
   "planOptAiSuggestSub": "A piano pronto cerca luoghi reali vicino al percorso",
   "@planOptAiSuggestSub": {},
   "planOptAiSuggestLocked": "I suggerimenti IA sono una funzione Premium",
-  "@planOptAiSuggestLocked": {}
+  "@planOptAiSuggestLocked": {},
+  "tripCo2Label": "CO₂ stimata",
+  "@tripCo2Label": {},
+  "tripCo2Total": "{kg} kg",
+  "@tripCo2Total": {
+    "placeholders": { "kg": { "type": "int" } }
+  },
+  "tripCo2PerPerson": "{kg} kg a persona",
+  "@tripCo2PerPerson": {
+    "placeholders": { "kg": { "type": "int" } }
+  },
+  "tripCo2EvNote": "In base al mix elettrico medio UE",
+  "@tripCo2EvNote": {}
 }

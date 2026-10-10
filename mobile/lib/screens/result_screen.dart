@@ -36,6 +36,8 @@ import '../services/route_slice.dart';
 import '../services/selection_check.dart';
 import '../domain/my_place.dart';
 import '../domain/stop_suggestion.dart';
+import '../domain/trip_emissions.dart';
+import '../widgets/trip_co2_row.dart';
 import '../widgets/my_place_category.dart';
 import '../widgets/my_places_on_route.dart';
 import '../widgets/stop_suggestions_sheet.dart';
@@ -3440,6 +3442,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     _daysForRender[i].toKm,
                 ],
               ),
+              Builder(builder: (_) {
+                final travellers = widget.request.tripProfile?.travellers ?? 1;
+                final e = tripEmissions(
+                  fuelCost: _response.optimizations!.fuelCost,
+                  travellers: travellers,
+                );
+                return e == null
+                    ? const SizedBox.shrink()
+                    : TripCo2Row(emissions: e, travellers: travellers);
+              }),
             ],
           ],
         ),
