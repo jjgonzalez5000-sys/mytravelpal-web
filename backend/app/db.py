@@ -38,16 +38,14 @@ async def _connect_once(url: str) -> None:
     # closing the connection and we get `ConnectionResetError()`.
     # `ssl=False` skips negotiation entirely for the internal
     # flycast path. Public hostnames would need `ssl='require'`.
-    # Pool sizing: 20 base + 10 overflow gives ~30 concurrent conns
-    # of headroom, well above the ~5-15 we'd hit with 1000 active
-    # users on a `shared-cpu-2x` (2 uvicorn workers x 15 req in-
-    # flight max per plan). Fly Postgres flex `shared` tier caps at
-    # ~100 conns default, so we stay comfortably under. Bump both
-    # together if we ever exceed the 30-conn envelope.
+    # Pool sizing: the Postgres VM has 256 MB and every backend costs
+    # ~10 MB, so 2 machines x 30 connections starved it of memory and it
+    # stopped answering (2026-10-10). 4 + 4 per machine is plenty for one
+    # uvicorn worker; raise it together with the Postgres VM size.
     engine = create_async_engine(
         url, echo=False,
-        pool_size=20,
-        max_overflow=10,
+        pool_size=4,
+        max_overflow=4,
         pool_pre_ping=True,
         pool_recycle=1800,  # recycle every 30 min to avoid stale idle
         connect_args={"timeout": 10, "ssl": False},
