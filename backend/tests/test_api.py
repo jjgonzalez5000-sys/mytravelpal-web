@@ -10,7 +10,7 @@ client = TestClient(app)
 def test_health_endpoint() -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    assert response.json()["status"] == "ok"
 
 
 def test_plan_trip_paris_to_madrid_returns_windows_and_fuel() -> None:

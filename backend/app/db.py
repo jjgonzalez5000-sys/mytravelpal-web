@@ -19,20 +19,13 @@ _engine = None
 _sessionmaker = None
 
 
-async def init_db() -> None:
-    """Create tables if they don't exist. Called once at app startup."""
+_reconnect_task = None
+_RECONNECT_EVERY_S = 15.0
+
+
+async def _connect_once(url: str) -> None:
+    """Build the engine, create the tables, and publish it; raise on failure."""
     global _engine, _sessionmaker
-    if not _DATABASE_URL:
-        _log.info("DATABASE_URL not set — using in-memory stores")
-        return
-    url = _DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-    # Strip the query string — asyncpg reads TLS / timeout via
-    # `connect_args`, not URL params. Fly's default URL comes with
-    # `?sslmode=disable` (libpq-style) which asyncpg treats as a
-    # DSN kwarg it doesn't understand and rejects with a cryptic
-    # `ConnectionResetError()`. Handle TLS explicitly below.
-    if "?" in url:
-        url = url.split("?")[0]
     from sqlalchemy import text
     from sqlalchemy.ext.asyncio import (
         AsyncSession,
@@ -47,11 +40,11 @@ async def init_db() -> None:
     # flycast path. Public hostnames would need `ssl='require'`.
     # Pool sizing: 20 base + 10 overflow gives ~30 concurrent conns
     # of headroom, well above the ~5-15 we'd hit with 1000 active
-    # users on a `shared-cpu-2x` (2 uvicorn workers × 15 req in-
+    # users on a `shared-cpu-2x` (2 uvicorn workers x 15 req in-
     # flight max per plan). Fly Postgres flex `shared` tier caps at
     # ~100 conns default, so we stay comfortably under. Bump both
     # together if we ever exceed the 30-conn envelope.
-    _engine = create_async_engine(
+    engine = create_async_engine(
         url, echo=False,
         pool_size=20,
         max_overflow=10,
@@ -59,7 +52,48 @@ async def init_db() -> None:
         pool_recycle=1800,  # recycle every 30 min to avoid stale idle
         connect_args={"timeout": 10, "ssl": False},
     )
-    _sessionmaker = async_sessionmaker(_engine, class_=AsyncSession)
+    try:
+        async with engine.begin() as conn:
+            for stmt in _CREATE_STATEMENTS:
+                await conn.execute(text(stmt))
+    except BaseException:
+        await engine.dispose()
+        raise
+    _engine = engine
+    _sessionmaker = async_sessionmaker(engine, class_=AsyncSession)
+
+
+async def _reconnect_loop(url: str) -> None:
+    """Keep trying until the database answers.
+
+    A machine that boots while Postgres is down used to stay on the
+    in-memory stores for its whole life, silently dropping profiles,
+    saved trips and the shared place cache until someone restarted it."""
+    import asyncio
+    while _engine is None:
+        await asyncio.sleep(_RECONNECT_EVERY_S)
+        try:
+            await _connect_once(url)
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("Database reconnect failed: %r", exc)
+            continue
+        _log.info("Database reconnected at %s", url.split("@")[-1])
+
+
+async def init_db() -> None:
+    """Create tables if they don't exist. Called once at app startup."""
+    global _reconnect_task
+    if not _DATABASE_URL:
+        _log.info("DATABASE_URL not set — using in-memory stores")
+        return
+    url = _DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+    # Strip the query string — asyncpg reads TLS / timeout via
+    # `connect_args`, not URL params. Fly's default URL comes with
+    # `?sslmode=disable` (libpq-style) which asyncpg treats as a
+    # DSN kwarg it doesn't understand and rejects with a cryptic
+    # `ConnectionResetError()`. Handle TLS explicitly below.
+    if "?" in url:
+        url = url.split("?")[0]
     # Retry with short backoff: on Fly, the app machine and the
     # Postgres flycast target often race at boot — the first
     # connect drops with `ConnectionResetError()` before Postgres
@@ -69,9 +103,7 @@ async def init_db() -> None:
     last_exc: Exception | None = None
     for attempt in range(3):
         try:
-            async with _engine.begin() as conn:
-                for stmt in _CREATE_STATEMENTS:
-                    await conn.execute(text(stmt))
+            await _connect_once(url)
             _log.info("Database initialised at %s", url.split("@")[-1])
             return
         except Exception as exc:
@@ -80,9 +112,13 @@ async def init_db() -> None:
                 "Database init attempt %d failed: %r", attempt + 1, exc,
             )
             await asyncio.sleep(1.5 * (attempt + 1))
-    _log.error("Database init failed after 3 attempts: %r", last_exc)
-    _engine = None
-    _sessionmaker = None
+    _log.error(
+        "Database init failed after 3 attempts: %r; will keep retrying "
+        "in the background", last_exc,
+    )
+    _reconnect_task = asyncio.get_running_loop().create_task(
+        _reconnect_loop(url),
+    )
 
 
 def is_available() -> bool:

@@ -94,7 +94,14 @@ app.include_router(v1_router, prefix="/v1")
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:
-    return {"status": "ok"}
+    from app import db
+
+    # Liveness stays "ok" even without a database (the stores fall back
+    # to memory), but `db` makes a silent fallback visible.
+    state = "memory" if not db._DATABASE_URL else (
+        "up" if db.is_available() else "down"
+    )
+    return {"status": "ok", "db": state}
 
 
 
