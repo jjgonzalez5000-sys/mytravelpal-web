@@ -84,4 +84,50 @@ async def places_usage() -> dict:
     return poi_cache.stats()
 
 
+@router.get("/here-fuel-codes")
+async def here_fuel_codes(
+    lat: float = Query(48.137, ge=-90.0, le=90.0),
+    lon: float = Query(11.575, ge=-180.0, le=180.0),
+) -> dict:
+    """Ask HERE's Fuel Prices API what it knows around a point and list the
+    fuel codes it returns (with a sample price each), plus one raw station.
+
+    Use it to find out whether HERE carries a product we do not map yet
+    (AdBlue, HVO, ...), or why a country shows no prices: the HTTP status
+    and the start of the error body come back when the call fails."""
+    import httpx
+
+    from app.providers import fuel_here as fh
+
+    if not fh._api_key() and not fh._app_id():  # noqa: SLF001
+        return {"configured": False}
+    params = {"in": f"circle:{lat:.5f},{lon:.5f};r=15000"}
+    headers: dict[str, str] = {}
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        token = await fh._fetch_bearer_token(client) if fh._app_id() else None  # noqa: SLF001
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        else:
+            params["apiKey"] = fh._api_key() or ""  # noqa: SLF001
+        r = await client.get(fh._FUEL_PRICES_ENDPOINT, params=params, headers=headers)  # noqa: SLF001
+    if r.status_code != 200:
+        return {"configured": True, "status": r.status_code, "body": r.text[:300]}
+    stations = (r.json().get("stations") or [])
+    counts: dict[str, int] = {}
+    sample: dict[str, dict] = {}
+    for s in stations:
+        for p in s.get("prices") or []:
+            code = str(p.get("fuelType"))
+            counts[code] = counts.get(code, 0) + 1
+            sample.setdefault(code, p)
+    return {
+        "configured": True,
+        "status": 200,
+        "stations": len(stations),
+        "fuel_codes": dict(sorted(counts.items(), key=lambda kv: -kv[1])),
+        "sample_price_per_code": sample,
+        "example_station": stations[0] if stations else None,
+    }
+
+
 FiresProbeResult.model_rebuild()
