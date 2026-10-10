@@ -48,6 +48,9 @@ _TTL_SECONDS = 600
 # updated numbers.
 _ENRICH_TTL_SECONDS = 300
 _MEMORY_MAX = 200
+# Bump to throw away every cached plan at once (a Redis cache survives
+# deploys): old entries simply stop matching. 2026-10-10: toll estimate fix.
+_CACHE_VERSION = "2026-10-10a"
 
 
 class PlanCacheSlot(str, Enum):
@@ -216,7 +219,7 @@ class PlanCache:
         canonical = json.dumps(data, sort_keys=True, separators=(",", ":"))
         # Slot suffix keeps the three variants in distinct namespaces
         # without polluting the payload dict itself.
-        canonical = f"{canonical}|slot={slot.value}"
+        canonical = f"{canonical}|slot={slot.value}|v={_CACHE_VERSION}"
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     # ---- storage ops --------------------------------------------------

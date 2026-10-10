@@ -51,6 +51,7 @@ from app.providers.nominatim_poi import (
     _route_viewbox,
 )
 from app.providers.restaurants import _classify_meal_price
+from app.services import poi_cache
 
 _log = logging.getLogger(__name__)
 
@@ -111,11 +112,40 @@ async def _search(
     limit: int = _LIMIT,
     conditions: str | None = None,
 ) -> list[dict[str, Any]]:
-    """One Geoapify Places call. Returns the raw feature list;
-    caller normalises to domain models. Never raises on HTTP
-    error — logs and returns [] so a single failed chunk doesn't
-    kill the whole plan.
+    """One Geoapify Places query, answered from the shared cache when it can
+    be. Returns the (trimmed) feature list; caller normalises to domain
+    models. Never raises on HTTP error — logs and returns [] so a single
+    failed chunk doesn't kill the whole plan, and such a failure is not
+    cached.
+
+    The filter is snapped outwards to a coarse grid first (see
+    ``services.poi_cache``): callers already drop features that are not near
+    their own route, and nearby routes now share one request.
     """
+    snapped = poi_cache.snap_filter(filter_)
+
+    async def _fetch() -> poi_cache.FetchResult:
+        return await _search_uncached(
+            client, categories, snapped, key,
+            limit=limit, conditions=conditions,
+        )
+
+    return await poi_cache.get_or_fetch(
+        categories, snapped, limit, conditions, _fetch,
+    )
+
+
+async def _search_uncached(
+    client: httpx.AsyncClient,
+    categories: str,
+    filter_: str,
+    key: str,
+    *,
+    limit: int,
+    conditions: str | None,
+) -> poi_cache.FetchResult:
+    """The real HTTP call. ``(features, ok)``: ``ok`` is False for a timeout,
+    an HTTP error or an unreadable body, which must never be cached."""
     params = {
         "categories": categories,
         "filter": filter_,
@@ -127,34 +157,38 @@ async def _search(
     for attempt in range(2):
         try:
             response = await client.get(_URL, params=params)
+            poi_cache.record_call(
+                status=response.status_code, categories=categories,
+            )
             break
         except httpx.TimeoutException as exc:
+            poi_cache.record_call(status=None, categories=categories)
             if attempt == 0:
                 _log.warning("Geoapify %s timeout, retrying: %r", categories, exc)
                 continue
             _log.warning("Geoapify %s timeout after retry: %r", categories, exc)
-            return []
+            return [], False
         except httpx.HTTPError as exc:
             _log.warning("Geoapify %s failed: %r", categories, exc)
-            return []
+            return [], False
     else:
-        return []
+        return [], False
     if response.status_code >= 400:
         _log.warning(
             "Geoapify %s HTTP %d: %s",
             categories, response.status_code, response.text[:200],
         )
-        return []
+        return [], False
     try:
         body = response.json()
     except ValueError:
-        return []
+        return [], False
     features = list(body.get("features") or [])
     _log.info(
         "Geoapify %s filter=%s → %d features",
         categories, filter_[:60], len(features),
     )
-    return features
+    return features, True
 
 
 def _coord(feature: dict[str, Any]) -> Coordinate | None:

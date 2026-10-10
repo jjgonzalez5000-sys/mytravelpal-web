@@ -3232,9 +3232,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 }),
                 _HeroStatTile(
                   label: l.resultStatTolls,
+                  // "≈" when the booth-level quote never arrived: the figure
+                  // is then the server's rough estimate, not a real quote.
                   value: (_enrichPending || _replanning)
                       ? '—'
-                      : formatMoney(_heroTollTotal(route, ccy), ccy),
+                      : '${route.tollVerified ? '' : '≈ '}'
+                          '${formatMoney(_heroTollTotal(route, ccy), ccy)}',
                   // A trip with only vignettes (no toll booths) has no skips
                   // but still needs the breakdown and the purchase links.
                   onTap: !_enrichPending &&

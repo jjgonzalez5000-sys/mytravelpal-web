@@ -105,15 +105,19 @@ def _apply_toll_pricing(
     """
     from app.data.countries import COUNTRIES
 
-    per_km_sum = 0.0
+    # Each country only owns its share of the drive. Charging every crossed
+    # country's per-km rate over the WHOLE distance made a CH-FR-ES trip
+    # (1,670 km) cost about 300 EUR against a real quote of about 120.
+    share_km = distance_km / max(len(countries), 1)
+    per_km_total = 0.0
     vignette_sum = 0.0
     for c in countries:
         data = COUNTRIES.get(c.value)
         if data is None:
             continue
-        per_km_sum += data.toll_per_km_eur
+        per_km_total += data.toll_per_km_eur * share_km
         vignette_sum += data.vignette_eur
-    return per_km_sum * distance_km + vignette_sum
+    return per_km_total + vignette_sum
 
 
 class MockRoutingProvider:

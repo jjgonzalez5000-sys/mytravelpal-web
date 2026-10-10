@@ -74,4 +74,14 @@ async def fires_probe(
     )
 
 
+@router.get("/places-usage")
+async def places_usage() -> dict:
+    """Geoapify Places credits spent today and how well the shared cache is
+    working (hit rate, misses, calls that failed and were not cached). Read
+    it before the free allowance (3,000 a day) runs out."""
+    from app.services import poi_cache
+
+    return poi_cache.stats()
+
+
 FiresProbeResult.model_rebuild()

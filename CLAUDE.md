@@ -154,6 +154,15 @@ era stale — la implementación real vive en `providers/geocoding.py`
 
 ## Backlog (existing)
 
+- **Escalado de POIs (2026-10-10)**: la gratuita de Geoapify (3k/día) no aguanta
+  volumen. Hecho/en curso: caché compartida por zona + contador con alerta.
+  Backlog: (3) base propia de lugares: importar OSM + Overture de Europa a
+  Postgres/PostGIS (coste fijo, sin límite por llamada; ~días; sin valoraciones
+  ni precios reales, hay que refrescarla). (4) Alternativas de pago por llamada
+  si hace falta calidad: HERE (clave ya activa, cuota freemium amplia),
+  Foursquare Places (datos más ricos), Google Places (valoraciones reales, ~17
+  USD/1k, solo para enriquecer). Plan de pago de Geoapify: lo evalúa el usuario.
+
 - **Mercados / plataformas (2026-10-10)**: Europa primero. iOS (carpeta `ios/`,
   StoreKit, CarPlay, cuenta Apple 99 USD/año) cuando la suscripción convierta;
   antes, inglés pulido + páginas de ruta en inglés en mytravelpal.io para el

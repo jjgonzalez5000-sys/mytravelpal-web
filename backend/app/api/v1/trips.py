@@ -1408,6 +1408,13 @@ def _guess_country_from_operator(operator: str) -> str:
     return ""
 
 
+def _toll_quote_ok(resp: TripPlanResponse, providers: Providers) -> bool:
+    """True when the response is worth caching as far as tolls go: the
+    booth-level quote ran, or there is no toll-quote provider at all (then
+    no request can ever get one, and skipping the cache would only cost)."""
+    return bool(resp.route.toll_verified) or providers.tollguru is None
+
+
 def _vignette_lines(real_tolls: tuple) -> list[VignetteLine]:
     """Vignette price per country, summed when a country has several
     stickers. Vignettes whose country cannot be identified are skipped."""
@@ -3423,7 +3430,10 @@ async def plan_trip(
         ),
     )
     merged = _merge_full(core_resp, enrich_resp)
-    await cache.set(key, merged)
+    if _toll_quote_ok(merged, providers):
+        await cache.set(key, merged)
+    else:
+        _log.warning("plan_cache SKIP slot=full key=%s: toll quote not verified", key[:8])
     return merged
 
 
@@ -3515,8 +3525,14 @@ async def plan_trip_enrich(
         ),
     })
     # Enrich TTL is 5 min — POI prices and weather turn over faster
-    # than the core route.
-    await cache.set(key, resp, ttl_seconds=300)
+    # than the core route. A response whose booth-level toll quote failed
+    # (provider timeout / quota) is NOT stored: the client would keep the
+    # core's rough estimate and every repeat of the trip would get the same
+    # unverified answer for the next five minutes.
+    if _toll_quote_ok(resp, providers):
+        await cache.set(key, resp, ttl_seconds=300)
+    else:
+        _log.warning("plan_cache SKIP slot=enrich key=%s: toll quote not verified", key[:8])
     return resp
 
 

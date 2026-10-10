@@ -36,9 +36,13 @@ async def test_routing_mock_distance_is_reasonable_for_paris_madrid() -> None:
 @pytest.mark.asyncio
 async def test_routing_mock_adds_ch_vignette_component() -> None:
     provider = MockRoutingProvider()
-    route_no_ch = await provider.route(_PARIS, _MADRID, (Country.FR,))
+    from app.data.countries import COUNTRIES
+
     route_with_ch = await provider.route(_PARIS, _MADRID, (Country.FR, Country.CH))
-    assert route_with_ch.toll_cost_eur > route_no_ch.toll_cost_eur
+    # The Swiss sticker is a flat amount on top of the per-km tolls. (The
+    # per-km part is now shared between the crossed countries, so adding CH
+    # to the list no longer raises the total by itself.)
+    assert route_with_ch.toll_cost_eur >= COUNTRIES["CH"].vignette_eur
 
 
 @pytest.mark.asyncio

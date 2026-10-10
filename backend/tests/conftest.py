@@ -28,3 +28,14 @@ def _fresh_rate_limiter():
     rate_limit._hits.clear()
     yield
     rate_limit._hits.clear()
+
+
+@pytest.fixture(autouse=True)
+def _fresh_poi_cache():
+    """The Geoapify cache is process-wide; a hit from another test would
+    hide the HTTP call the test is about."""
+    from app.services import poi_cache
+
+    poi_cache.clear()
+    yield
+    poi_cache.clear()
