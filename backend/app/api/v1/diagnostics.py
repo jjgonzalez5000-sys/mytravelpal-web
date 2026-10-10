@@ -88,6 +88,7 @@ async def places_usage() -> dict:
 async def here_fuel_codes(
     lat: float = Query(48.137, ge=-90.0, le=90.0),
     lon: float = Query(11.575, ge=-180.0, le=180.0),
+    catalogue: str = Query("", max_length=20),
 ) -> dict:
     """Ask HERE's Fuel Prices API what it knows around a point and list the
     fuel codes it returns (with a sample price each), plus one raw station.
@@ -101,7 +102,15 @@ async def here_fuel_codes(
 
     if not fh._api_key() and not fh._app_id():  # noqa: SLF001
         return {"configured": False}
+    if catalogue not in ("", "fuelTypes", "fuel-types", "fuelProducts"):
+        return {"error": "unknown catalogue"}
     params = {"in": f"circle:{lat:.5f},{lon:.5f};r=15000"}
+    url = fh._FUEL_PRICES_ENDPOINT  # noqa: SLF001
+    if catalogue:
+        # Try HERE's own list of fuel codes (the exact path is not
+        # documented where we could read it, hence the few candidates).
+        params = {}
+        url = url.rsplit("/", 1)[0] + "/" + catalogue
     headers: dict[str, str] = {}
     async with httpx.AsyncClient(timeout=15.0) as client:
         token = await fh._fetch_bearer_token(client) if fh._app_id() else None  # noqa: SLF001
@@ -109,7 +118,9 @@ async def here_fuel_codes(
             headers["Authorization"] = f"Bearer {token}"
         else:
             params["apiKey"] = fh._api_key() or ""  # noqa: SLF001
-        r = await client.get(fh._FUEL_PRICES_ENDPOINT, params=params, headers=headers)  # noqa: SLF001
+        r = await client.get(url, params=params, headers=headers)
+    if catalogue:
+        return {"url": url, "status": r.status_code, "body": r.text[:3000]}
     if r.status_code != 200:
         return {"configured": True, "status": r.status_code, "body": r.text[:300]}
     stations = (r.json().get("stations") or [])
