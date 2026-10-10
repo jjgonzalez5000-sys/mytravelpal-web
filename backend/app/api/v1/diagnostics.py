@@ -120,7 +120,7 @@ async def here_fuel_codes(
             params["apiKey"] = fh._api_key() or ""  # noqa: SLF001
         r = await client.get(url, params=params, headers=headers)
     if catalogue:
-        return {"url": url, "status": r.status_code, "body": r.text[:3000]}
+        return {"url": url, "status": r.status_code, "body": r.text[:30000]}
     if r.status_code != 200:
         return {"configured": True, "status": r.status_code, "body": r.text[:300]}
     stations = (r.json().get("stations") or [])
