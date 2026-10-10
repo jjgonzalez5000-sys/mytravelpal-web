@@ -5103,4 +5103,149 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'NA ROTA';
+
+  @override
+  String get resultRecalculate => 'Recalcular a rota';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n paragens',
+      one: '1 paragem',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n portagens evitadas',
+      one: '1 portagem evitada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n dias ajustados',
+      one: '1 dia ajustado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Alterar a hora de fim';
+
+  @override
+  String get dayShiftApply => 'Aplicar';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km passam para o dia seguinte.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km passam para os dias seguintes.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km são antecipados dos dias seguintes.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'A viagem fica $n dias mais longa.',
+      one: 'A viagem fica 1 dia mais longa.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'A viagem fica $n dias mais curta.',
+      one: 'A viagem fica 1 dia mais curta.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle => 'Rota alterada para evitar portagens';
+
+  @override
+  String get tollRouteBannerBack => 'Voltar à rota com portagens';
+
+  @override
+  String get stopTagAi => 'IA';
+
+  @override
+  String get stopAddCustom => 'Adicionar paragem própria';
+
+  @override
+  String get stopSearchMore => 'Procurar mais paragens com IA';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n ideias',
+      one: '1 ideia',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Hora aproximada da paragem';
+
+  @override
+  String get stopVisitDuration => 'Tempo na paragem';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'Dos meus locais';
+
+  @override
+  String get stopSearchPlace => 'Procurar um local';
+
+  @override
+  String get stopNoMyPlaces => 'Ainda não tens locais guardados.';
+
+  @override
+  String get stopEditTime => 'Alterar hora';
+
+  @override
+  String get stopSaveToMyPlaces => 'Guardar nos meus locais';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Por volta das $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'Uma viagem admite até $n paragens.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'Não foi possível calcular uma rota sem portagens; é mostrada a rota com portagens.';
 }

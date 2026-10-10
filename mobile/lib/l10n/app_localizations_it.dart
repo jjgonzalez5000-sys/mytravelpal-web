@@ -5115,4 +5115,150 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'LUNGO IL PERCORSO';
+
+  @override
+  String get resultRecalculate => 'Ricalcola il percorso';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n soste',
+      one: '1 sosta',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n pedaggi evitati',
+      one: '1 pedaggio evitato',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n giorni modificati',
+      one: '1 giorno modificato',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Cambia l\'ora di fine';
+
+  @override
+  String get dayShiftApply => 'Applica';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km slitteranno al giorno successivo.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km slitteranno ai giorni successivi.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km verranno anticipati dai giorni successivi.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Il viaggio si allunga di $n giorni.',
+      one: 'Il viaggio si allunga di 1 giorno.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Il viaggio si accorcia di $n giorni.',
+      one: 'Il viaggio si accorcia di 1 giorno.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle =>
+      'Percorso modificato per evitare i pedaggi';
+
+  @override
+  String get tollRouteBannerBack => 'Torna al percorso con pedaggi';
+
+  @override
+  String get stopTagAi => 'IA';
+
+  @override
+  String get stopAddCustom => 'Aggiungi una sosta tua';
+
+  @override
+  String get stopSearchMore => 'Trova altre soste con l\'IA';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n idee',
+      one: '1 idea',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Ora indicativa della sosta';
+
+  @override
+  String get stopVisitDuration => 'Tempo alla sosta';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'Dai miei luoghi';
+
+  @override
+  String get stopSearchPlace => 'Cerca un luogo';
+
+  @override
+  String get stopNoMyPlaces => 'Non hai ancora luoghi salvati.';
+
+  @override
+  String get stopEditTime => 'Cambia ora';
+
+  @override
+  String get stopSaveToMyPlaces => 'Salva nei miei luoghi';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Verso le $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'Un viaggio ammette fino a $n soste.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'Impossibile calcolare un percorso senza pedaggi; viene mostrato quello con pedaggi.';
 }

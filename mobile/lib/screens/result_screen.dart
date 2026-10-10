@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart' show Geolocator, LocationAccuracy, LocationPermission, AndroidSettings;
 import 'dart:ui' as ui;
@@ -36,13 +37,18 @@ import '../services/my_places_match.dart';
 import '../services/route_slice.dart';
 import '../services/selection_check.dart';
 import '../domain/my_place.dart';
+import '../domain/day_shift.dart';
+import '../domain/stop_plan.dart';
 import '../domain/stop_suggestion.dart';
 import '../domain/trip_emissions.dart';
 import '../widgets/trip_co2_row.dart';
 import '../widgets/my_place_category.dart';
 import '../widgets/my_places_on_route.dart';
+import '../widgets/custom_stop_sheet.dart';
 import '../widgets/stop_suggestions_sheet.dart';
+import '../services/stop_slotting.dart';
 import '../services/toll_detour_waypoints.dart';
+import '../services/toll_replan.dart';
 import '../widgets/toll_summary_sheet.dart';
 import '../widgets/trip_day_bars.dart';
 import '../widgets/trip_quality_score.dart';
@@ -145,11 +151,16 @@ class ResultScreen extends ConsumerStatefulWidget {
     this.departureClaimed = false,
     this.initialSelections,
     this.autoSuggest = false,
+    this.initialSuggestions,
   });
 
   /// The driver ticked "suggest stops with AI" on the plan form (Premium):
   /// search once as soon as the route is known and show the best picks.
   final bool autoSuggest;
+
+  /// Suggestions already found for this trip, carried over a replan so the
+  /// search (and its daily quota) is not spent again.
+  final StopSuggestionsResult? initialSuggestions;
 
   /// Pre-populated user selections carried over from a `SavedTrip`
   /// (fuel picks, hotel picks, chosen departure, per-day overrides).
@@ -239,6 +250,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// the pencil icon on a day header). Keyed by 1-based day index.
   /// Sent to `/plan` on the next re-plan; empty on first render.
   Map<int, DayOverride> _dayOverrides = {};
+
+  /// JSON of the request the plan on screen was computed from. The single
+  /// "Recalculate" action shows only while the request the driver has built
+  /// (stops, day times, skipped tolls) differs from this.
+  late String _appliedRequestJson;
+
+  /// Localised note per edited day, e.g. "120 km move to the next day",
+  /// shown under that day's end time until the next recalculation.
+  final Map<int, String> _dayShiftNotes = {};
+
+  /// "Suggest stops with AI" as the driver left it (shared with the plan
+  /// form). Only effective for Premium.
+  late bool _aiPref;
+
+  /// AI, saved-place and hand-picked stops with their planned time, keyed
+  /// like [_addedStops].
+  final Map<String, StopPlan> _stopPlans = {};
 
   /// True while a re-plan triggered by a day override is in flight.
   /// Shown as a small progress overlay on the affected day card so
@@ -378,6 +406,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     _tollSkipEnabled = {
       for (var i = 0; i < _response.partialTollSkips.length; i++) i,
     };
+    _appliedRequestJson = jsonEncode(
+      widget.request
+          .copyWith(
+            desiredDepartureAt: widget.desiredDepartureAt,
+            dayOverrides: [...widget.request.dayOverrides]
+              ..sort((a, b) => a.dayIndex.compareTo(b.dayIndex)),
+          )
+          .toJson(),
+    );
+    _autoSuggestions = widget.initialSuggestions;
+    _aiPref = ref.read(appPrefsProvider).aiSuggestEnabled;
     // If this ResultScreen was opened from a SavedTrip, seed the
     // user-selections state from the persisted blob now for the
     // parts that don't need enrich data (day overrides). Fuel /
@@ -459,7 +498,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     Future.microtask(() {
       ReviewPrompter.instance.onPlanCompleted();
     });
-    if (widget.autoSuggest) {
+    if (widget.autoSuggest && _aiPref && widget.initialSuggestions == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _autoSuggestStops());
     }
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -609,6 +648,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (_addedStops.containsKey(key)) {
         _addedStops.remove(key);
         _addedRouteWaypoints.remove(key);
+        _stopPlans.remove(key);
       } else {
         _addedStops[key] = minutes;
         if (coord != null && label != null) {
@@ -622,12 +662,88 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// Adds or removes one of the driver's saved places as a stop. The time
   /// counted is the detour to reach it plus the time assumed for visiting.
   void _toggleMyPlace(PlaceOnRoute m) {
-    _toggleStop(
-      'place:${m.place.id}',
-      m.detourMinutes + kMyPlaceVisitMinutes,
-      coord: m.place.coordinate,
-      label: m.place.name,
+    final key = 'place:${m.place.id}';
+    if (_isAdded(key)) {
+      _removeByKey(key);
+      return;
+    }
+    _registerStop(StopPlan(
+      key: key,
+      name: m.place.name,
+      coordinate: m.place.coordinate,
+      source: StopSource.myPlace,
+      visitMinutes: kMyPlaceVisitMinutes.round(),
+      detourMinutes: m.detourMinutes.round(),
+      alongKm: _kmFromOrigin(m.place.coordinate) ?? m.alongKm,
+      category: m.place.category,
+    ));
+  }
+
+  /// Puts a stop on the trip: counts its minutes, makes it a routing
+  /// waypoint and gives it an approximate time in the gap that fits best.
+  void _registerStop(StopPlan plan) {
+    // The server routes through at most kMaxPlanWaypoints real stops; one
+    // more would make every recalculation fail.
+    final stopsNow = <String>{
+      for (final w in widget.request.waypoints)
+        if (!w.viaOnly)
+          '${w.coordinate.lat.toStringAsFixed(4)},'
+              '${w.coordinate.lon.toStringAsFixed(4)}',
+      for (final e in _addedRouteWaypoints.entries)
+        '${e.value.$1.lat.toStringAsFixed(4)},'
+            '${e.value.$1.lon.toStringAsFixed(4)}',
+    };
+    final newKey = '${plan.coordinate.lat.toStringAsFixed(4)},'
+        '${plan.coordinate.lon.toStringAsFixed(4)}';
+    if (!stopsNow.contains(newKey) && stopsNow.length >= kMaxPlanWaypoints) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            AppLocalizations.of(context).stopLimitReached(kMaxPlanWaypoints),
+          ),
+        ),
+      );
+      return;
+    }
+    final day = dayForKm(_daysForRender, plan.alongKm);
+    final planned = plan.plannedAt ??
+        (day == null
+            ? null
+            : bestSlotFor(
+                day: day,
+                alongKm: plan.alongKm,
+                visitMinutes: plan.visitMinutes,
+                isFood: plan.category == MyPlaceCategory.food,
+                others: _stopPlans.values.toList(),
+              ));
+    final stored = planned == null ? plan : plan.copyWith(plannedAt: planned);
+    setState(() {
+      _stopPlans[plan.key] = stored;
+      _addedStops[plan.key] = stored.totalMinutes.toDouble();
+      _addedRouteWaypoints[plan.key] = (stored.coordinate, stored.name);
+      _markDirty();
+    });
+  }
+
+  /// Lets the driver move an added stop to another time of its day.
+  Future<void> _editStopTime(String key) async {
+    final plan = _stopPlans[key];
+    if (plan == null || plan.plannedAt == null) return;
+    final at = plan.plannedAt!;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay(hour: at.hour, minute: at.minute),
+      helpText: AppLocalizations.of(context).stopPickTime,
     );
+    if (picked == null || !mounted) return;
+    setState(() {
+      _stopPlans[key] = plan.copyWith(
+        plannedAt:
+            DateTime(at.year, at.month, at.day, picked.hour, picked.minute),
+        userEdited: true,
+      );
+      _markDirty();
+    });
   }
 
   /// Result of the automatic search started when the plan form asked for
@@ -642,7 +758,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// One search over the whole route. A failure (quota, network, no
   /// places) is silent: the entry tile below still opens the sheet.
   Future<void> _autoSuggestStops() async {
-    if (!mounted || !ref.read(isPremiumProvider)) return;
+    if (!mounted || !_aiPref || !ref.read(isPremiumProvider)) return;
     final geometry = _response.route.geometry;
     if (geometry.length < 2) return;
     final profile = widget.request.tripProfile;
@@ -678,8 +794,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         for (final p in ref.read(myPlacesProvider))
           if (_addedStops.containsKey('place:${p.id}'))
             placeKey(p.name, p.coordinate),
-        // A suggestion that reused a saved place sitting a little off its
-        // own position would not match by coordinates alone.
+        // Stops added from an AI suggestion or by hand (they survive a
+        // replan through their saved plan, not through `_suggestionStopKeys`).
+        for (final plan in _stopPlans.values)
+          if (_addedStops.containsKey(plan.key))
+            placeKey(plan.name, plan.coordinate),
         for (final e in _suggestionStopKeys.entries)
           if (_addedStops.containsKey(e.value)) e.key,
       };
@@ -687,81 +806,203 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// suggestion key -> the `place:<id>` stop it was added as.
   final Map<String, String> _suggestionStopKeys = {};
 
-  Widget _autoSuggestionsCard(AppLocalizations l, ColorScheme scheme) {
-    final res = _autoSuggestions;
+  /// The AI suggestions inside the collapsible section: a progress line
+  /// while the search runs, then the cards.
+  Widget _suggestionCards(AppLocalizations l, ColorScheme scheme) {
+    final theme = Theme.of(context);
     if (_autoSuggestLoading) {
       return Padding(
-        padding: const EdgeInsets.only(top: Tokens.space12),
+        padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(children: [
-              Icon(Icons.auto_awesome, size: 18, color: scheme.primary),
-              const SizedBox(width: Tokens.space8),
-              Text(l.suggestEntryTitle,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(fontWeight: FontWeight.w700)),
-            ]),
-            const SizedBox(height: Tokens.space8),
             const LinearProgressIndicator(),
             const SizedBox(height: Tokens.space4),
             Text(
               l.suggestSearching,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
+              style: theme.textTheme.bodySmall
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ],
         ),
       );
     }
+    final res = _autoSuggestions;
     if (res == null || res.suggestions.isEmpty) return const SizedBox.shrink();
     final added = _addedPlaceKeys();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!res.ai)
+          Padding(
+            padding: const EdgeInsets.only(bottom: Tokens.space8),
+            child: Text(
+              l.suggestNoAiNote,
+              style: theme.textTheme.bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
+        for (final s in res.suggestions)
+          SuggestionCard(
+            suggestion: s,
+            added: added.contains(suggestionKey(s)),
+            onAdd: () => _addSuggestion(s),
+            onTap: () => showSuggestionDetail(
+              context,
+              suggestion: s,
+              geometry: _response.route.geometry,
+              added: added.contains(suggestionKey(s)),
+              onAdd: _addSuggestion,
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// One collapsible block for everything about extra stops: the AI
+  /// preference on top, the AI suggestions, the driver's own places near the
+  /// route and the way to add a stop of their own.
+  Widget _stopIdeasSection(AppLocalizations l, ColorScheme scheme) {
+    final premium = ref.watch(isPremiumProvider);
+    final aiActive = premium && _aiPref;
+    final count = _autoSuggestions?.suggestions.length ?? 0;
+    final subtitle = !aiActive
+        ? l.suggestEntrySubtitle
+        : _autoSuggestLoading
+            ? l.suggestSearching
+            : count > 0
+                ? l.stopIdeasCount(count)
+                : l.suggestEntrySubtitle;
     return Padding(
       padding: const EdgeInsets.only(top: Tokens.space12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(Icons.auto_awesome, size: 18, color: scheme.primary),
-            const SizedBox(width: Tokens.space8),
-            Text(l.suggestEntryTitle,
-                style: Theme.of(context)
-                    .textTheme
-                    .labelLarge
-                    ?.copyWith(fontWeight: FontWeight.w700)),
-          ]),
-          const SizedBox(height: Tokens.space8),
-          if (!res.ai)
-            Padding(
-              padding: const EdgeInsets.only(bottom: Tokens.space8),
-              child: Text(
-                l.suggestNoAiNote,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: scheme.onSurfaceVariant),
-              ),
+      child: Container(
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(Tokens.radiusMd),
+          border: Border.all(color: scheme.outlineVariant),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Theme(
+          data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+          child: ExpansionTile(
+            key: const PageStorageKey<String>('stop-ideas'),
+            maintainState: true,
+            leading: Icon(Icons.auto_awesome, color: scheme.primary),
+            title: Text(l.suggestEntryTitle),
+            subtitle: Text(subtitle),
+            childrenPadding: const EdgeInsets.fromLTRB(
+              Tokens.space12, 0, Tokens.space12, Tokens.space12,
             ),
-          for (final s in res.suggestions)
-            SuggestionCard(
-              suggestion: s,
-              added: added.contains(suggestionKey(s)),
-              onAdd: () => _addSuggestion(s),
-              onTap: () => showSuggestionDetail(
-                context,
-                suggestion: s,
-                geometry: _response.route.geometry,
-                added: added.contains(suggestionKey(s)),
-                onAdd: _addSuggestion,
+            expandedCrossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: Icon(
+                  premium ? Icons.tune : Icons.lock_outline,
+                  color: scheme.onSurfaceVariant,
+                ),
+                title: Text(l.planOptAiSuggestTitle),
+                subtitle: Text(l.planOptAiSuggestSub),
+                value: aiActive,
+                onChanged: (v) async {
+                  if (!premium) {
+                    await BillingService.showPurchaseSheet(context, ref);
+                    return;
+                  }
+                  setState(() => _aiPref = v);
+                  unawaited(
+                    ref.read(appPrefsProvider).setAiSuggestEnabled(v),
+                  );
+                  if (v &&
+                      _autoSuggestions == null &&
+                      !_autoSuggestLoading) {
+                    unawaited(_autoSuggestStops());
+                  }
+                },
               ),
-            ),
-        ],
+              if (aiActive) _suggestionCards(l, scheme),
+              Consumer(builder: (context, ref, _) {
+                final matches = matchPlacesToRoute(
+                  ref.watch(myPlacesProvider),
+                  _response.route.geometry,
+                );
+                if (matches.isEmpty) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.only(top: Tokens.space8),
+                  child: MyPlacesOnRoute(
+                    matches: matches,
+                    addedIds: {
+                      for (final k in _addedStops.keys)
+                        if (k.startsWith('place:')) k.substring(6),
+                    },
+                    onToggle: _toggleMyPlace,
+                  ),
+                );
+              }),
+              const SizedBox(height: Tokens.space8),
+              Wrap(
+                spacing: Tokens.space8,
+                runSpacing: Tokens.space8,
+                children: [
+                  if (aiActive)
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.auto_awesome, size: 18),
+                      label: Text(l.stopSearchMore),
+                      onPressed: _openSuggestions,
+                    ),
+                  FilledButton.tonalIcon(
+                    icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                    label: Text(l.stopAddCustom),
+                    onPressed: _addCustomStop,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  /// A stop of the driver's own: one of their places or a new one found by
+  /// search, with how long to stay and about when.
+  Future<void> _addCustomStop() async {
+    final choice = await showCustomStopSheet(
+      context,
+      suggestTime: (place, minutes) {
+        final along = _kmFromOrigin(place.coordinate);
+        if (along == null) return null;
+        final day = dayForKm(_daysForRender, along);
+        if (day == null) return null;
+        return bestSlotFor(
+          day: day,
+          alongKm: along,
+          visitMinutes: minutes,
+          isFood: place.category == MyPlaceCategory.food,
+          others: _stopPlans.values.toList(),
+        );
+      },
+    );
+    if (choice == null || !mounted) return;
+    final p = choice.place;
+    final key = 'place:${p.id}';
+    if (_isAdded(key)) _removeByKey(key);
+    final hit = matchPlacesToRoute(
+      [p],
+      _response.route.geometry,
+      maxKm: double.infinity,
+    );
+    _registerStop(StopPlan(
+      key: key,
+      name: p.name,
+      coordinate: p.coordinate,
+      source: StopSource.myPlace,
+      visitMinutes: choice.visitMinutes,
+      detourMinutes: hit.isEmpty ? 0 : hit.first.detourMinutes.round(),
+      alongKm: _kmFromOrigin(p.coordinate) ?? 0,
+      category: p.category,
+      plannedAt: choice.plannedAt,
+    ));
   }
 
   /// Opens the AI suggestions sheet (Premium); everyone else sees the plans.
@@ -781,48 +1022,29 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
-  /// Adds an AI suggestion as a stop. It is saved as one of the driver's
-  /// places (so it survives a replan and can be offered again), unless an
-  /// equivalent one already exists.
+  /// Adds an AI suggestion as a stop, tagged as AI-made and slotted into the
+  /// day where it fits. It is NOT saved into the driver's own places: those
+  /// are the ones they chose to keep.
   Future<bool> _addSuggestion(StopSuggestion s) async {
     final l = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
-    final notifier = ref.read(myPlacesProvider.notifier);
-    MyPlace? place;
-    for (final p in ref.read(myPlacesProvider)) {
-      if (p.name.toLowerCase() == s.name.toLowerCase() &&
-          _haversineStatic(p.coordinate, s.coordinate) < 0.2) {
-        place = p;
-        break;
-      }
-    }
-    if (place == null) {
-      final fresh = MyPlace(
-        id: DateTime.now().microsecondsSinceEpoch.toString(),
-        name: s.name,
-        coordinate: s.coordinate,
-        category: s.placeCategory,
-        note: s.why,
-        createdAt: DateTime.now(),
-      );
-      if (!await notifier.add(fresh)) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(l.myPlacesLimit(MyPlacesNotifier.maxPlaces))),
-        );
-        return false;
-      }
-      place = fresh;
-    }
-    if (!mounted) return false;
-    final key = 'place:${place.id}';
+    // The `c1..cN` id is only unique within one answer, so key on identity.
+    final key = 'ai:${suggestionKey(s)}';
     _suggestionStopKeys[suggestionKey(s)] = key;
     if (!_addedStops.containsKey(key)) {
-      _toggleStop(
-        key,
-        (s.detourMinutes + s.visitMinutes).toDouble(),
-        coord: s.coordinate,
-        label: s.name,
-      );
+      _registerStop(StopPlan(
+        key: key,
+        name: s.name,
+        coordinate: s.coordinate,
+        source: StopSource.ai,
+        visitMinutes: s.visitMinutes,
+        detourMinutes: s.detourMinutes,
+        // The per-day search reports km along its own slice; the stop plan
+        // needs km from the trip origin.
+        alongKm: _kmFromOrigin(s.coordinate) ?? s.alongKm,
+        category: s.placeCategory,
+        why: s.why,
+      ));
     }
     messenger.showSnackBar(
       SnackBar(content: Text(l.suggestAddedSnack(s.name))),
@@ -885,44 +1107,98 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     ];
   }
 
-  Future<void> _replanWithAddedStops() async {
-    final extra = _buildAddedWaypoints();
-    if (extra.isEmpty) return;
-    final combined = _mergeWaypoints(widget.request.waypoints, extra);
-    final replan = TripPlanRequest(
-      origin: widget.request.origin,
-      destination: widget.request.destination,
-      desiredDepartureAt: widget.desiredDepartureAt,
-      waypoints: combined,
-      countries: widget.request.countries,
-      hotelMaxDetourMinutes: widget.request.hotelMaxDetourMinutes,
-      hotelPriceBand: widget.request.hotelPriceBand,
-      hotelPriceBands: widget.request.hotelPriceBands,
-      hotelMinStars: widget.request.hotelMinStars,
-      hotelIncludeOther: widget.request.hotelIncludeOther,
-      hotelDestinationRadiusKm: widget.request.hotelDestinationRadiusKm,
-      hotelConditions: widget.request.hotelConditions,
-      restaurantMaxDetourMinutes: widget.request.restaurantMaxDetourMinutes,
-      restaurantPriceBand: widget.request.restaurantPriceBand,
-      restaurantPriceBands: widget.request.restaurantPriceBands,
-      restaurantCuisines: widget.request.restaurantCuisines,
-      restaurantConditions: widget.request.restaurantConditions,
-      includeAdverseEvents: widget.request.includeAdverseEvents,
-      adverseEventsMaxDistanceKm: widget.request.adverseEventsMaxDistanceKm,
-      includeTollAlternative: widget.request.includeTollAlternative,
-      includeRouteComparison: widget.request.includeRouteComparison,
-      includeHourlyTollAnalysis: widget.request.includeHourlyTollAnalysis,
+  /// The request for everything the driver has asked for on this screen:
+  /// the original trip plus the stops they added, the day times they
+  /// edited and the tolls they chose to skip. One builder feeds every
+  /// replan, so no path can forget a field (the old per-button copies
+  /// dropped day overrides, activities and the garage vehicle).
+  TripPlanRequest _buildRecalcRequest({
+    DateTime? departure,
+    bool? avoidMotorways,
+  }) {
+    final overrides = _dayOverrides.values.toList()
+      ..sort((a, b) => a.dayIndex.compareTo(b.dayIndex));
+    final base = widget.request.copyWith(
+      desiredDepartureAt: departure ?? widget.desiredDepartureAt,
+      avoidMotorways: avoidMotorways,
+      dayOverrides: overrides,
+    );
+    final added = _mergeWaypoints(base.waypoints, _buildAddedWaypoints())
+        .skip(base.waypoints.length)
+        .toList();
+    return buildTollReplanRequest(
+      base: base,
+      baselineSkips: _response.partialTollSkips,
+      kept: _tollSkipEnabled,
+      extraStops: added,
+    );
+  }
+
+  /// True while the request the driver has built differs from the one the
+  /// plan on screen was computed from.
+  bool get _pendingRecalc =>
+      jsonEncode(_buildRecalcRequest().toJson()) != _appliedRequestJson;
+
+  /// Parts of the pending change, for the button's subtitle.
+  String _pendingSummary(AppLocalizations l) {
+    final parts = <String>[];
+    final stops = _addedRouteWaypoints.length;
+    if (stops > 0) parts.add(l.recalcPartStops(stops));
+    final skipped = _response.partialTollSkips.length - _tollSkipEnabled.length;
+    if (skipped > 0) parts.add(l.recalcPartTolls(skipped));
+    final edited = _dayOverrides.length;
+    if (edited > 0) parts.add(l.recalcPartDays(edited));
+    return parts.join(' · ');
+  }
+
+  bool _sameRoute(TripPlanRequest a, TripPlanRequest b) =>
+      a.avoidTolls == b.avoidTolls &&
+      jsonEncode(a.waypoints.map((w) => w.toJson()).toList()) ==
+          jsonEncode(b.waypoints.map((w) => w.toJson()).toList());
+
+  /// The single recalculation. Day-time edits alone are applied in place
+  /// (scroll position and picks survive); a different set of stops or
+  /// tolls is a different road, so it replans the whole trip.
+  Future<void> _recalculate() async {
+    if (_replanning) return;
+    final request = _buildRecalcRequest();
+    if (_sameRoute(request, widget.request)) {
+      await _replanWithOverrides(request: request);
+      return;
+    }
+    await _replan(
+      newDeparture: widget.desiredDepartureAt,
       avoidMotorways: widget.request.avoidMotorways,
-      preferScenic: widget.request.preferScenic,
-      timeWindowSpanHours: widget.request.timeWindowSpanHours,
-      timeWindowTopN: widget.request.timeWindowTopN,
-      tripProfile: widget.request.tripProfile,
-      includeParking: widget.request.includeParking,
+      overrideRequest: request,
+    );
+  }
+
+  /// True when this trip was routed away from tolls (whole route or around
+  /// some booths), so the driver can be offered the way back.
+  bool get _routedAroundTolls =>
+      widget.request.avoidTolls ||
+      widget.request.waypoints.any((w) => w.viaOnly);
+
+  /// The driver asked to avoid every toll but the server could not (its
+  /// toll-avoiding router was unavailable), so the road still has tolls.
+  bool get _tollAvoidanceFailed =>
+      widget.request.avoidTolls && !_response.route.avoidTolls;
+
+  /// Back to the road with tolls: drop the toll-avoiding flag and the
+  /// via points that were only there to steer around booths.
+  Future<void> _restoreTollRoute() async {
+    final request = _buildRecalcRequest().copyWith(
+      avoidTolls: false,
+      waypoints: [
+        for (final w in _buildRecalcRequest().waypoints)
+          if (!w.viaOnly) w,
+      ],
     );
     await _replan(
-        newDeparture: widget.desiredDepartureAt,
-        avoidMotorways: widget.request.avoidMotorways,
-        overrideRequest: replan);
+      newDeparture: widget.desiredDepartureAt,
+      avoidMotorways: widget.request.avoidMotorways,
+      overrideRequest: request,
+    );
   }
 
   /// Opens the per-day override sheet (pencil icon on a day header).
@@ -956,8 +1232,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
   }
 
-  /// Time picker for the day's end time — converts the picked time into a
-  /// `dailyDrivingCapHours` override and re-plans immediately.
+  /// Time picker for the day's end time. The picked time is sent as the
+  /// wall-clock end of that day and the trip is replanned: stopping later
+  /// pulls km forward from the next days, stopping earlier pushes km to
+  /// them (and can add a day). The driver is told how many km move before
+  /// confirming, and the exact figure once the plan is back.
   Future<void> _openEndTimePicker(int dayIndex) async {
     final day = _response.days.where((d) => d.dayIndex == dayIndex).firstOrNull;
     if (day == null || !mounted) return;
@@ -973,48 +1252,102 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
     if (picked == null || !mounted) return;
 
-    final startHour = existingOverride?.startHour ?? startLocal.hour;
-    final capMinutes =
-        (picked.hour * 60 + picked.minute) - (startHour * 60);
-    if (capMinutes < 60) return;
-    final capHours = (capMinutes / 60).round().clamp(1, 14);
+    final startMinutes = startLocal.hour * 60 + startLocal.minute;
+    var endMinutes = picked.hour * 60 + picked.minute;
+    // A time at or before the start means the driver wants to stop after
+    // midnight (the server accepts up to 26:00).
+    if (endMinutes <= startMinutes) endMinutes += 24 * 60;
+    final probe = endTimeOverride(
+      dayIndex: dayIndex,
+      startHour: existingOverride?.startHour,
+      startMinutes: startMinutes,
+      endMinutes: endMinutes,
+      pullsKm: false,
+    );
+    if (probe == null) return;
 
-    // Actual driving hours for this day from the current plan.
-    final actualDrivingHours =
-        day.endAt.toLocal().difference(day.startAt.toLocal()).inMinutes / 60.0;
-    final currentDayKm = (day.toKm - day.fromKm).round();
-
-    // Offer to extend km only when the new cap meaningfully exceeds actual.
-    int? newKmCap = existingOverride?.dailyKmCap;
-    bool shouldReplan = true;
-    if (capHours > actualDrivingHours + 0.49 && mounted) {
-      final result = await _offerKmExtension(
-        day: day,
-        actualDrivingHours: actualDrivingHours,
-        newCapHours: capHours,
-        currentDayKm: currentDayKm,
-      );
-      if (result == null) {
-        // "Mantener" = user cancelled — keep everything as-is, no replan.
-        shouldReplan = false;
-      } else {
-        // "Ajustar" = apply new cap + extended km.
-        newKmCap = result;
-      }
-    }
-    if (!mounted || !shouldReplan) return;
-
-    setState(() {
-      _dayOverrides[dayIndex] = DayOverride(
+    final pickedEnd = DateTime(
+      startLocal.year, startLocal.month, startLocal.day,
+    ).add(Duration(minutes: endMinutes));
+    final estimate = estimateMovedKm(
+      day: day,
+      pickedEnd: pickedEnd,
+      routeTotalKm: _response.route.distanceKm,
+    );
+    if (estimate.abs() >= _kDayShiftConfirmKm) {
+      final ok = await _confirmDayShift(
         dayIndex: dayIndex,
-        startHour: startHour,
-        dailyDrivingCapHours: capHours,
-        dailyKmCap: newKmCap,
+        movedKm: estimate,
+        approximate: true,
       );
+      if (ok != true || !mounted) return;
+    }
+
+    final pullsKm = estimate < 0;
+    final previousOverrides = Map<int, DayOverride>.of(_dayOverrides);
+    setState(() {
+      _dayOverrides[dayIndex] = endTimeOverride(
+        dayIndex: dayIndex,
+        startHour: existingOverride?.startHour,
+        startMinutes: startMinutes,
+        endMinutes: endMinutes,
+        pullsKm: pullsKm,
+      )!;
       _markDirty();
       _activeReplanDayIndex = dayIndex;
     });
-    await _replanWithOverrides();
+    await _replanWithOverrides(
+      editedDay: dayIndex,
+      rollbackTo: previousOverrides,
+    );
+  }
+
+  /// Below this many km the move is not worth a confirmation.
+  static const double _kDayShiftConfirmKm = 30;
+
+  String _dayShiftText(
+    AppLocalizations l, {
+    required double movedKm,
+    required bool nextDayOnly,
+    required bool approximate,
+  }) {
+    final dist = ref.read(unitFormatterProvider).distance(movedKm.abs());
+    final km = '${approximate ? '~' : ''}$dist';
+    if (movedKm > 0) {
+      return nextDayOnly ? l.dayShiftPushNext(km) : l.dayShiftPushLater(km);
+    }
+    return l.dayShiftPull(km);
+  }
+
+  Future<bool?> _confirmDayShift({
+    required int dayIndex,
+    required double movedKm,
+    required bool approximate,
+  }) {
+    final l = AppLocalizations.of(context);
+    final nextDayOnly = dayIndex + 1 >= _response.days.length;
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.dayShiftConfirmTitle),
+        content: Text(_dayShiftText(
+          l,
+          movedKm: movedKm,
+          nextDayOnly: nextDayOnly,
+          approximate: approximate,
+        )),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(l.dayEditCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(l.dayShiftApply),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Asks the user whether to extend the day's km when they add more
@@ -1257,7 +1590,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                           dailyDrivingCapHours:
                               ((endMinutes - startMinutes) / 60)
                                   .round()
-                                  .clamp(1, 20),
+                                  .clamp(2, 14),
                           dailyKmCap: kmCap,
                         ),
                       ),
@@ -1324,6 +1657,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
     }
     if (!mounted) return;
+    final previousOverrides = Map<int, DayOverride>.of(_dayOverrides);
     setState(() {
       if (isReset) {
         _dayOverrides.remove(dayIndex);
@@ -1333,7 +1667,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       _markDirty();
       _activeReplanDayIndex = dayIndex;
     });
-    await _replanWithOverrides();
+    await _replanWithOverrides(
+      editedDay: dayIndex,
+      rollbackTo: previousOverrides,
+    );
   }
 
   /// Fire a full /plan with the current `_dayOverrides` map. In-place
@@ -1343,10 +1680,16 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   /// (~3-5 s) and enrichment (hotels, fuel, weather) runs in background.
   /// The previous enrichment data is preserved as a fallback while
   /// the new enrich is in flight — user sees updated days immediately.
-  Future<void> _replanWithOverrides() async {
+  Future<void> _replanWithOverrides({
+    TripPlanRequest? request,
+    int? editedDay,
+    Map<int, DayOverride>? rollbackTo,
+  }) async {
     final api = ref.read(apiClientWithPremiumProvider);
+    final daysBefore = _response.days;
     setState(() {
       _replanning = true;
+      _dayShiftNotes.clear();
       _enrichPending = false; // will flip to true once core lands
     });
     final l = AppLocalizations.of(context);
@@ -1356,8 +1699,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         title: l.planLoadingTitle, body: l.planLoadingRecalculating);
     });
     try {
-      final replan = widget.request
-          .withDayOverrides(_dayOverrides.values.toList());
+      // A day edit sends the day times ONLY. Pending stops or skipped tolls
+      // wait for the Recalculate button: applying them here would change the
+      // road behind the driver's back and leave the button offering to undo.
+      final overrides = _dayOverrides.values.toList()
+        ..sort((a, b) => a.dayIndex.compareTo(b.dayIndex));
+      final replan =
+          request ?? widget.request.copyWith(dayOverrides: overrides);
       // Phase 1: core plan (routing + day structure). Fast.
       final coreResponse = await runInForeground(
         context,
@@ -1366,18 +1714,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       );
       tipTimer.cancel();
       if (!mounted) return;
-      // Merge core result with PREVIOUS enrich data so UI doesn't
-      // blank while new enrich is still in flight.
+      // Merge core result with PREVIOUS enrich data so hotels, fuel and
+      // weather do not blank while the new enrich is in flight. Days and
+      // meal stops come from core, or the cards would keep showing the old
+      // plan until enrich lands.
       final previousEnrich = _response;
       setState(() {
         _response = TripPlanResponse.merge(
           core: coreResponse,
           enrich: previousEnrich,
+          coreDays: true,
         );
         _replanning = false;
         _activeReplanDayIndex = null;
         _enrichPending = true; // enrich starts now
+        _appliedRequestJson = jsonEncode(replan.toJson());
+        _reslotStops();
       });
+      if (editedDay != null) {
+        _announceDayShift(daysBefore, coreResponse.days, editedDay);
+      }
       // Phase 2: enrichment in background — updates hotels/fuel/weather.
       try {
         final enrichResponse = await api.planTripEnrich(replan, locale: locale);
@@ -1388,20 +1744,96 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             enrich: enrichResponse,
           );
           _enrichPending = false;
+          _reslotStops();
         });
       } catch (_) {
         if (!mounted) return;
         setState(() => _enrichPending = false);
       }
-    } catch (_) {
+    } catch (e) {
       tipTimer.cancel();
       if (!mounted) return;
       setState(() {
         _replanning = false;
         _activeReplanDayIndex = null;
         _enrichPending = false;
+        // The edit that failed must not stay in the request every later
+        // recalculation sends.
+        if (rollbackTo != null) _dayOverrides = Map.of(rollbackTo);
       });
+      final message = e is ApiException
+          ? switch (e.statusCode) {
+              401 => l.planErrorAuth,
+              402 => l.planErrorPremium,
+              429 => l.planErrorRateLimit,
+              _ => l.planErrorGeneric(e.statusCode),
+            }
+          : l.planErrorNetwork;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
     }
+  }
+
+  /// After the plan changed (a replan, or a saved trip reopening), puts each
+  /// added stop back where it belongs: its km along the NEW route, and a time
+  /// in the day that now contains it. A time the driver set by hand is kept
+  /// while it still falls inside that day.
+  void _reslotStops() {
+    if (_stopPlans.isEmpty) return;
+    final days = _daysForRender;
+    for (final key in _stopPlans.keys.toList()) {
+      final plan = _stopPlans[key]!;
+      final along = _kmFromOrigin(plan.coordinate) ?? plan.alongKm;
+      final day = dayForKm(days, along);
+      DateTime? planned = plan.plannedAt;
+      final keep = plan.userEdited &&
+          planned != null &&
+          day != null &&
+          !planned.isBefore(day.startAt) &&
+          !planned.isAfter(day.sleepAt ?? day.endAt);
+      if (!keep) {
+        planned = day == null
+            ? plan.plannedAt
+            : bestSlotFor(
+                day: day,
+                alongKm: along,
+                visitMinutes: plan.visitMinutes,
+                isFood: plan.category == MyPlaceCategory.food,
+                others: [
+                  for (final o in _stopPlans.values)
+                    if (o.key != key) o,
+                ],
+              );
+      }
+      _stopPlans[key] = plan.copyWith(alongKm: along, plannedAt: planned);
+    }
+  }
+
+  /// Tells the driver what their end-time edit did to the other days.
+  void _announceDayShift(
+    List<DayPlan> before,
+    List<DayPlan> after,
+    int editedDay,
+  ) {
+    final shift = computeDayShift(before, after, editedDay);
+    if (shift == null || !mounted) return;
+    final l = AppLocalizations.of(context);
+    final parts = <String>[
+      _dayShiftText(
+        l,
+        movedKm: shift.movedKm,
+        nextDayOnly: shift.nextDayOnly,
+        approximate: false,
+      ),
+      if (shift.daysDelta > 0) l.dayShiftAddsDays(shift.daysDelta),
+      if (shift.daysDelta < 0) l.dayShiftRemovesDays(-shift.daysDelta),
+    ];
+    final text = parts.join(' ');
+    setState(() => _dayShiftNotes[editedDay] = text);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text), duration: const Duration(seconds: 6)),
+    );
   }
 
   /// Toggle a night's picked hotel. Only one hotel per day — tapping
@@ -1655,6 +2087,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     setState(() {
       _addedStops.clear();
       _addedRouteWaypoints.clear();
+      _stopPlans.clear();
     });
   }
 
@@ -1662,6 +2095,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     setState(() {
       _addedStops.remove(key);
       _addedRouteWaypoints.remove(key);
+      _stopPlans.remove(key);
       _pickedFuelSavings.remove(key);
       _markDirty();
     });
@@ -1785,19 +2219,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   double? _kmFromOrigin(LatLon coord) {
     final geom = _response.route.geometry;
     final totalKm = _response.route.distanceKm;
-    if (geom.isEmpty || totalKm <= 0) return null;
-    var bestIndex = 0;
-    var bestDist = double.infinity;
-    for (var i = 0; i < geom.length; i++) {
-      final dlat = geom[i].lat - coord.lat;
-      final dlon = geom[i].lon - coord.lon;
-      final d = dlat * dlat + dlon * dlon; // squared — no need for sqrt
-      if (d < bestDist) {
-        bestDist = d;
-        bestIndex = i;
-      }
+    if (geom.length < 2 || totalKm <= 0) return null;
+    final cumulative = <double>[0.0];
+    for (var i = 1; i < geom.length; i++) {
+      cumulative.add(cumulative.last + haversineKm(geom[i - 1], geom[i]));
     }
-    return (bestIndex / (geom.length - 1)) * totalKm;
+    final length = cumulative.last;
+    if (length <= 0) return null;
+    final hit = nearestOnPolyline(coord, geom, cumulative);
+    return hit.alongKm / length * totalKm;
   }
 
   /// Days list rendered as the "origin → destination · hh:mm" strip
@@ -1955,16 +2385,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         ));
       }
     }
-    for (final p in ref.read(myPlacesProvider)) {
-      final key = 'place:${p.id}';
-      if (!_addedStops.containsKey(key)) continue;
+    final l = AppLocalizations.of(context);
+    for (final plan in _stopPlans.values) {
+      if (!_addedStops.containsKey(plan.key)) continue;
       out.add(AddedStop(
         kind: AddedStopKind.place,
-        label: p.name,
-        subtitle: myPlaceCategoryLabel(AppLocalizations.of(context), p.category),
-        coordinate: p.coordinate,
-        distanceFromOriginKm: _kmFromOrigin(p.coordinate),
-        onRemove: () => _removeByKey(key),
+        label: plan.name,
+        subtitle: myPlaceCategoryLabel(l, plan.category),
+        coordinate: plan.coordinate,
+        distanceFromOriginKm: plan.alongKm,
+        onRemove: () => _removeByKey(plan.key),
+        isAi: plan.isAi,
+        plannedAt: plan.plannedAt,
+        visitMinutes: plan.visitMinutes,
+        onEditTime:
+            plan.plannedAt == null ? null : () => _editStopTime(plan.key),
       ));
     }
     // Meal + sleep stops the user pinned from the "Optimizado" section.
@@ -2097,19 +2532,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  /// Flip `avoidMotorways` and replan. Same shape as
-  /// `_replanWithDeparture` — the toll toggle in the alternative
-  /// card fires this, and the driver lands on a fresh plan whose
-  /// route + toll cost + optimisations all reflect the new
-  /// choice.
-  Future<void> _replanWithSkipTolls(bool enabled) async {
-    if (enabled == widget.request.avoidMotorways) return;
-    await _replan(
-      newDeparture: widget.desiredDepartureAt,
-      avoidMotorways: enabled,
     );
   }
 
@@ -2249,43 +2671,11 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       // vanish". Fix: fold them into the new request's waypoints
       // whenever we build the request ourselves (overrideRequest
       // path already handles this — see `_replanWithAddedStops`).
-      final mergedWaypoints = _mergeWaypoints(
-        widget.request.waypoints,
-        _buildAddedWaypoints(),
-      );
-      final replan = overrideRequest ?? TripPlanRequest(
-        origin: widget.request.origin,
-        destination: widget.request.destination,
-        desiredDepartureAt: newDeparture,
-        waypoints: mergedWaypoints,
-        countries: widget.request.countries,
-        hotelMaxDetourMinutes: widget.request.hotelMaxDetourMinutes,
-        hotelPriceBand: widget.request.hotelPriceBand,
-        hotelPriceBands: widget.request.hotelPriceBands,
-        hotelMinStars: widget.request.hotelMinStars,
-        hotelIncludeOther: widget.request.hotelIncludeOther,
-        hotelDestinationRadiusKm: widget.request.hotelDestinationRadiusKm,
-        hotelConditions: widget.request.hotelConditions,
-        restaurantMaxDetourMinutes:
-            widget.request.restaurantMaxDetourMinutes,
-        restaurantPriceBand: widget.request.restaurantPriceBand,
-        restaurantPriceBands: widget.request.restaurantPriceBands,
-        restaurantCuisines: widget.request.restaurantCuisines,
-        restaurantConditions: widget.request.restaurantConditions,
-        includeAdverseEvents: widget.request.includeAdverseEvents,
-        adverseEventsMaxDistanceKm:
-            widget.request.adverseEventsMaxDistanceKm,
-        includeTollAlternative: widget.request.includeTollAlternative,
-        includeRouteComparison: widget.request.includeRouteComparison,
-        includeHourlyTollAnalysis:
-            widget.request.includeHourlyTollAnalysis,
-        avoidMotorways: avoidMotorways,
-        preferScenic: widget.request.preferScenic,
-        timeWindowSpanHours: widget.request.timeWindowSpanHours,
-        timeWindowTopN: widget.request.timeWindowTopN,
-        tripProfile: widget.request.tripProfile,
-        includeParking: widget.request.includeParking,
-      );
+      final replan = overrideRequest ??
+          _buildRecalcRequest(
+            departure: newDeparture,
+            avoidMotorways: avoidMotorways,
+          );
       // Foreground service pins the process so the user can
       // background the app mid-replan without Doze killing the
       // socket. Tray notification also flags "still working".
@@ -2344,7 +2734,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             // toggle after the user has already picked a window) so the
             // savings chip doesn't disappear on unrelated actions.
             departureClaimed: claimTimeSavings || widget.departureClaimed,
-            autoSuggest: widget.autoSuggest,
+            autoSuggest: widget.autoSuggest && _aiPref,
+            initialSuggestions: _autoSuggestions,
           ),
         ),
       );
@@ -2500,11 +2891,15 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (day == null || v is! Map) return;
       final startHour = (v['start_hour'] as num?)?.toInt();
       final cap = (v['cap_hours'] as num?)?.toInt();
-      if (startHour == null && cap == null) return;
+      final kmCap = (v['daily_km_cap'] as num?)?.toInt();
+      final endMinutes = (v['end_minutes'] as num?)?.toInt();
+      if (startHour == null && cap == null && endMinutes == null) return;
       restored[day] = DayOverride(
         dayIndex: day,
         startHour: startHour,
         dailyDrivingCapHours: cap,
+        dailyKmCap: kmCap,
+        endMinutes: endMinutes,
       );
     });
     if (restored.isNotEmpty) {
@@ -2556,10 +2951,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     // The driver's own saved places, by id. A place added as a stop is also
     // a request waypoint, so it is routed through whether or not it is still
     // within reach of the new plan; restore it as an added stop.
+    final plans = selections['stop_plans'];
+    if (plans is List) {
+      for (final raw in plans) {
+        if (raw is! Map<String, dynamic>) continue;
+        try {
+          final plan = StopPlan.fromJson(raw);
+          _stopPlans[plan.key] = plan;
+          _addedStops[plan.key] = plan.totalMinutes.toDouble();
+          _addedRouteWaypoints[plan.key] = (plan.coordinate, plan.name);
+        } on FormatException {
+          // A corrupt row must not stop the trip from opening.
+        }
+      }
+    }
     final placeIds = selections['picked_place_ids'];
     if (placeIds is List) {
       final saved = ref.read(myPlacesProvider);
       for (final id in placeIds.whereType<String>()) {
+        if (_stopPlans.containsKey('place:$id')) continue;
         for (final p in saved) {
           if (p.id != id) continue;
           final hit = matchPlacesToRoute(
@@ -2568,8 +2978,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             maxKm: double.infinity,
           );
           final detour = hit.isEmpty ? 0.0 : hit.first.detourMinutes;
-          _addedStops['place:$id'] = detour + kMyPlaceVisitMinutes;
-          _addedRouteWaypoints['place:$id'] = (p.coordinate, p.name);
+          // A trip saved before stop plans existed: give the place a plan so
+          // it shows in the day card with a time like any other stop.
+          final plan = StopPlan(
+            key: 'place:$id',
+            name: p.name,
+            coordinate: p.coordinate,
+            source: StopSource.myPlace,
+            visitMinutes: kMyPlaceVisitMinutes.round(),
+            detourMinutes: detour.round(),
+            alongKm: _kmFromOrigin(p.coordinate) ??
+                (hit.isEmpty ? 0 : hit.first.alongKm),
+            category: p.category,
+          );
+          _stopPlans[plan.key] = plan;
+          _addedStops[plan.key] = plan.totalMinutes.toDouble();
+          _addedRouteWaypoints[plan.key] = (p.coordinate, p.name);
           break;
         }
       }
@@ -2594,6 +3018,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         }
       });
     }
+    _reslotStops();
   }
 
   /// Snapshot of the driver's per-trip tweaks in the shape SavedTrip
@@ -2623,14 +3048,20 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         if (o.dailyDrivingCapHours != null)
           'cap_hours': o.dailyDrivingCapHours,
         if (o.dailyKmCap != null) 'daily_km_cap': o.dailyKmCap,
+        if (o.endMinutes != null) 'end_minutes': o.endMinutes,
       };
     });
     final placeIds = _addedStops.keys
         .where((k) => k.startsWith('place:'))
         .map((k) => k.substring(6))
         .toList(growable: false);
+    final stopPlans = [
+      for (final plan in _stopPlans.values)
+        if (_addedStops.containsKey(plan.key)) plan.toJson(),
+    ];
     final map = <String, dynamic>{
       if (placeIds.isNotEmpty) 'picked_place_ids': placeIds,
+      if (stopPlans.isNotEmpty) 'stop_plans': stopPlans,
       if (fuelKeys.isNotEmpty) 'picked_fuel_keys': fuelKeys,
       if (restaurantKeys.isNotEmpty) 'picked_restaurant_keys': restaurantKeys,
       if (hotelsByDay.isNotEmpty) 'picked_hotel_keys_by_day': hotelsByDay,
@@ -3152,26 +3583,6 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               textAlign: TextAlign.center,
             ),
           ),
-        if (_dirty) ...[
-          const SizedBox(height: Tokens.space8),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              icon: Icon(Icons.refresh, size: 18,
-                  color: scheme.primary),
-              label: Text(l.resultReplanWithChanges),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: scheme.primary,
-                side: BorderSide(color: scheme.primary.withValues(alpha: 0.5)),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: Tokens.space16, vertical: Tokens.space8),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Tokens.radiusMd)),
-              ),
-              onPressed: _replanning ? null : _replanWithOverrides,
-            ),
-          ),
-        ],
       ],
     );
     final Widget heroStatsCard = ClipRRect(
@@ -3306,6 +3717,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       '${r.coordinate.lon.toStringAsFixed(4)}'))
                   .length,
             ),
+            if (_routedAroundTolls) ...[
+              const SizedBox(height: Tokens.space8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Tokens.space12, vertical: Tokens.space8,
+                ),
+                decoration: BoxDecoration(
+                  color: scheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(Tokens.radiusMd),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.alt_route,
+                        size: 18, color: scheme.onSecondaryContainer),
+                    const SizedBox(width: Tokens.space8),
+                    Expanded(
+                      child: Text(
+                        _tollAvoidanceFailed
+                            ? l.tollRouteAvoidFailed
+                            : l.tollRouteBannerTitle,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              color: scheme.onSecondaryContainer,
+                            ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _replanning ? null : _restoreTollRoute,
+                      child: Text(l.tollRouteBannerBack),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             if (_response.days.isNotEmpty) ...[
               const SizedBox(height: Tokens.space8),
               TripDayBars(
@@ -3322,47 +3766,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     : 90.0,
               ),
             ],
-            // Saved places that lie near this route.
-            Consumer(builder: (context, ref, _) {
-              final matches = matchPlacesToRoute(
-                ref.watch(myPlacesProvider),
-                _response.route.geometry,
-              );
-              if (matches.isEmpty) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.only(top: Tokens.space12),
-                child: MyPlacesOnRoute(
-                  matches: matches,
-                  addedIds: {
-                    for (final k in _addedStops.keys)
-                      if (k.startsWith('place:')) k.substring(6),
-                  },
-                  onToggle: _toggleMyPlace,
-                ),
-              );
-            }),
-            if (widget.autoSuggest) _autoSuggestionsCard(l, scheme),
-            if (!_enrichPending && _response.route.geometry.length > 1) ...[
-              const SizedBox(height: Tokens.space12),
-              Material(
-                color: scheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(Tokens.radiusMd),
-                child: ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Tokens.radiusMd),
-                    side: BorderSide(color: scheme.outlineVariant),
-                  ),
-                  leading: Icon(Icons.auto_awesome, color: scheme.primary),
-                  title: Text(l.suggestEntryTitle),
-                  subtitle: Text(l.suggestEntrySubtitle),
-                  trailing: ref.watch(isPremiumProvider)
-                      ? const Icon(Icons.chevron_right)
-                      : Icon(Icons.lock_outline,
-                          size: 18, color: scheme.onSurfaceVariant),
-                  onTap: _openSuggestions,
-                ),
-              ),
-            ],
+            if (!_enrichPending && _response.route.geometry.length > 1)
+              _stopIdeasSection(l, scheme),
             if (_addedStops.isNotEmpty ||
                 _selectedNightHotels.isNotEmpty ||
                 _response.partialTollSkips.length >
@@ -3377,20 +3782,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 onClear: _clearAddedStops,
                 onTap: _openAddedStopsMap,
               ),
-              if (_addedRouteWaypoints.isNotEmpty ||
-                  _selectedNightHotels.isNotEmpty) ...[
-                const SizedBox(height: Tokens.space8),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _replanWithAddedStops,
-                    icon: const Icon(Icons.route, size: 18),
-                    label: Text(
-                      AppLocalizations.of(context).replanWithStops,
-                    ),
+            ],
+            if (_pendingRecalc) ...[
+              const SizedBox(height: Tokens.space8),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _replanning ? null : _recalculate,
+                  icon: const Icon(Icons.route, size: 18),
+                  label: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(l.resultRecalculate),
+                      if (_pendingSummary(l).isNotEmpty)
+                        Text(
+                          _pendingSummary(l),
+                          style: Theme.of(context).textTheme.labelSmall,
+                        ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ],
             // Day strip removed — days are shown in TripDayBars above.
             // Trip-cost breakdown moved into the hero card 2026-09-27
@@ -3566,6 +3978,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 (widget.request.hotelMaxDetourMinutes ?? 0) > 0,
             onEditDay: _replanning ? null : _openDayEditSheet,
             onEditDayEndTime: _replanning ? null : _openEndTimePicker,
+            dayShiftNotes: _dayShiftNotes,
             overriddenDayIndices: _dayOverrides.keys.toSet(),
             activeReplanDayIndex: _activeReplanDayIndex,
             fuelPrices: _response.fuelPrices,
@@ -3801,7 +4214,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       desiredDepartureAt: other.desiredDepartureAt,
                       currentLegLabel: other.label,
                       otherLeg: backLeg,
-                      autoSuggest: widget.autoSuggest,
+                      autoSuggest: widget.autoSuggest && _aiPref,
                     ),
                   ),
                 );

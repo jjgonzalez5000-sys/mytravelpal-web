@@ -95,13 +95,19 @@ class MyPlacesScreen extends ConsumerWidget {
   }
 
   void _openAddSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (_) => const _AddPlaceSheet(),
-    );
+    showAddPlaceSheet(context);
   }
+}
+
+/// Search (or paste a map link for) a place, name it and save it to the
+/// driver's places. Resolves to the saved place, or null when dismissed.
+Future<MyPlace?> showAddPlaceSheet(BuildContext context) {
+  return showModalBottomSheet<MyPlace>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (_) => const _AddPlaceSheet(),
+  );
 }
 
 class _AddPlaceSheet extends ConsumerStatefulWidget {
@@ -183,21 +189,22 @@ class _AddPlaceSheetState extends ConsumerState<_AddPlaceSheet> {
     final l = AppLocalizations.of(context);
     final messenger = ScaffoldMessenger.of(context);
     final navigator = Navigator.of(context);
-    final ok = await ref.read(myPlacesProvider.notifier).add(MyPlace(
-          id: DateTime.now().microsecondsSinceEpoch.toString(),
-          name: name,
-          coordinate: coord,
-          category: _category,
-          note: _note.text.trim(),
-          createdAt: DateTime.now(),
-        ));
+    final place = MyPlace(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: name,
+      coordinate: coord,
+      category: _category,
+      note: _note.text.trim(),
+      createdAt: DateTime.now(),
+    );
+    final ok = await ref.read(myPlacesProvider.notifier).add(place);
     if (!ok) {
       messenger.showSnackBar(
         SnackBar(content: Text(l.myPlacesLimit(MyPlacesNotifier.maxPlaces))),
       );
       return;
     }
-    navigator.pop();
+    navigator.pop(place);
   }
 
   @override

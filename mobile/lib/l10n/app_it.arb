@@ -3052,5 +3052,69 @@
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   },
   "planSectionRoute": "PERCORSO",
-  "planSectionOnRoute": "LUNGO IL PERCORSO"
+  "planSectionOnRoute": "LUNGO IL PERCORSO",
+  "resultRecalculate": "Ricalcola il percorso",
+  "recalcPartStops": "{n, plural, one{1 sosta} other{{n} soste}}",
+  "@recalcPartStops": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartTolls": "{n, plural, one{1 pedaggio evitato} other{{n} pedaggi evitati}}",
+  "@recalcPartTolls": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartDays": "{n, plural, one{1 giorno modificato} other{{n} giorni modificati}}",
+  "@recalcPartDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftConfirmTitle": "Cambia l'ora di fine",
+  "dayShiftApply": "Applica",
+  "dayShiftPushNext": "{km} slitteranno al giorno successivo.",
+  "@dayShiftPushNext": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPushLater": "{km} slitteranno ai giorni successivi.",
+  "@dayShiftPushLater": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPull": "{km} verranno anticipati dai giorni successivi.",
+  "@dayShiftPull": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftAddsDays": "{n, plural, one{Il viaggio si allunga di 1 giorno.} other{Il viaggio si allunga di {n} giorni.}}",
+  "@dayShiftAddsDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftRemovesDays": "{n, plural, one{Il viaggio si accorcia di 1 giorno.} other{Il viaggio si accorcia di {n} giorni.}}",
+  "@dayShiftRemovesDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteBannerTitle": "Percorso modificato per evitare i pedaggi",
+  "tollRouteBannerBack": "Torna al percorso con pedaggi",
+  "stopTagAi": "IA",
+  "stopAddCustom": "Aggiungi una sosta tua",
+  "stopSearchMore": "Trova altre soste con l'IA",
+  "stopIdeasCount": "{n, plural, one{1 idea} other{{n} idee}}",
+  "@stopIdeasCount": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopPickTime": "Ora indicativa della sosta",
+  "stopVisitDuration": "Tempo alla sosta",
+  "stopMinutes": "{n} min",
+  "@stopMinutes": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopFromMyPlaces": "Dai miei luoghi",
+  "stopSearchPlace": "Cerca un luogo",
+  "stopNoMyPlaces": "Non hai ancora luoghi salvati.",
+  "stopEditTime": "Cambia ora",
+  "stopSaveToMyPlaces": "Salva nei miei luoghi",
+  "stopAtTime": "Verso le {time}",
+  "@stopAtTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "stopLimitReached": "Un viaggio ammette fino a {n} soste.",
+  "@stopLimitReached": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteAvoidFailed": "Impossibile calcolare un percorso senza pedaggi; viene mostrato quello con pedaggi."
 }

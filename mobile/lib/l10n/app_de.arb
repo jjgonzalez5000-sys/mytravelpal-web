@@ -3052,5 +3052,69 @@
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   },
   "planSectionRoute": "ROUTE",
-  "planSectionOnRoute": "AUF DER STRECKE"
+  "planSectionOnRoute": "AUF DER STRECKE",
+  "resultRecalculate": "Route neu berechnen",
+  "recalcPartStops": "{n, plural, one{1 Stopp} other{{n} Stopps}}",
+  "@recalcPartStops": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartTolls": "{n, plural, one{1 Maut umgangen} other{{n} Mautstellen umgangen}}",
+  "@recalcPartTolls": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartDays": "{n, plural, one{1 Tag angepasst} other{{n} Tage angepasst}}",
+  "@recalcPartDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftConfirmTitle": "Endzeit ändern",
+  "dayShiftApply": "Anwenden",
+  "dayShiftPushNext": "{km} verschieben sich auf den nächsten Tag.",
+  "@dayShiftPushNext": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPushLater": "{km} verschieben sich auf die folgenden Tage.",
+  "@dayShiftPushLater": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPull": "{km} werden von den folgenden Tagen vorgezogen.",
+  "@dayShiftPull": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftAddsDays": "{n, plural, one{Die Reise dauert 1 Tag länger.} other{Die Reise dauert {n} Tage länger.}}",
+  "@dayShiftAddsDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftRemovesDays": "{n, plural, one{Die Reise dauert 1 Tag kürzer.} other{Die Reise dauert {n} Tage kürzer.}}",
+  "@dayShiftRemovesDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteBannerTitle": "Route zur Mautvermeidung geändert",
+  "tollRouteBannerBack": "Zurück zur Route mit Maut",
+  "stopTagAi": "KI",
+  "stopAddCustom": "Eigenen Stopp hinzufügen",
+  "stopSearchMore": "Mehr Stopps mit KI finden",
+  "stopIdeasCount": "{n, plural, one{1 Idee} other{{n} Ideen}}",
+  "@stopIdeasCount": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopPickTime": "Ungefähre Uhrzeit am Stopp",
+  "stopVisitDuration": "Zeit am Stopp",
+  "stopMinutes": "{n} Min.",
+  "@stopMinutes": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopFromMyPlaces": "Aus meinen Orten",
+  "stopSearchPlace": "Ort suchen",
+  "stopNoMyPlaces": "Du hast noch keine gespeicherten Orte.",
+  "stopEditTime": "Uhrzeit ändern",
+  "stopSaveToMyPlaces": "In meinen Orten speichern",
+  "stopAtTime": "Gegen {time}",
+  "@stopAtTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "stopLimitReached": "Eine Reise erlaubt bis zu {n} Stopps.",
+  "@stopLimitReached": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteAvoidFailed": "Eine mautfreie Route konnte nicht berechnet werden; die Route mit Maut wird angezeigt."
 }

@@ -1818,21 +1818,21 @@
   "purchaseBetaApplied": "Beta: plan {plan} aplicado (simulado)",
   "settingsBetaAccess": "ACCESO BETA",
   "settingsTierFreeName": "Gratuito",
-  "myPlacesTitle": "Mis sitios",
-  "myPlacesSettingsRow": "Mis sitios ({count})",
+  "myPlacesTitle": "Mis lugares",
+  "myPlacesSettingsRow": "Mis lugares ({count})",
   "myPlacesSettingsSub": "Sitios donde te gusta parar",
-  "myPlacesEmpty": "Guarda los sitios donde te gusta parar. Cuando una ruta pase cerca de uno, te lo sugeriremos.",
-  "myPlacesAdd": "Añadir un sitio",
-  "myPlacesSearchHint": "Busca un sitio o pega un enlace de mapa",
+  "myPlacesEmpty": "Guarda los lugares donde te gusta parar. Cuando una ruta pase cerca de uno, te lo sugeriremos.",
+  "myPlacesAdd": "Añadir un lugar",
+  "myPlacesSearchHint": "Busca un lugar o pega un enlace de mapa",
   "myPlacesSearch": "Buscar",
   "myPlacesNoResults": "No hemos encontrado nada. Prueba con otro nombre o pega un enlace que incluya coordenadas.",
   "myPlacesNameLabel": "Nombre",
   "myPlacesNoteLabel": "Nota (opcional)",
   "myPlacesCategoryLabel": "Categoría",
-  "myPlacesSave": "Guardar sitio",
+  "myPlacesSave": "Guardar lugar",
   "myPlacesRemoved": "{name} eliminado",
   "myPlacesUndo": "Deshacer",
-  "myPlacesLimit": "Puedes guardar hasta {max} sitios.",
+  "myPlacesLimit": "Puedes guardar hasta {max} lugares.",
   "myPlacesFromLink": "Sitio del enlace",
   "myPlacesCatFood": "Comida",
   "myPlacesCatViewpoint": "Mirador",
@@ -1840,7 +1840,7 @@
   "myPlacesCatNature": "Naturaleza",
   "myPlacesCatKids": "Con niños",
   "myPlacesCatOther": "Otro",
-  "myPlacesOnRouteTitle": "Tus sitios en esta ruta",
+  "myPlacesOnRouteTitle": "Tus lugares en esta ruta",
   "myPlacesOffRoute": "A {km} km de la ruta · ~{min} min",
   "myPlacesAddToRoute": "Añadir",
   "myPlacesRemoveFromRoute": "Quitar",
@@ -2972,7 +2972,7 @@
   },
   "planOptAiSuggestTitle": "Sugerir paradas y lugares con IA",
   "@planOptAiSuggestTitle": {},
-  "planOptAiSuggestSub": "Al terminar el plan busca sitios reales cerca de tu ruta",
+  "planOptAiSuggestSub": "Al terminar el plan busca lugares reales cerca de tu ruta",
   "@planOptAiSuggestSub": {},
   "planOptAiSuggestLocked": "Las sugerencias con IA son de Premium",
   "@planOptAiSuggestLocked": {},
@@ -3053,5 +3053,69 @@
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   },
   "planSectionRoute": "RUTA",
-  "planSectionOnRoute": "EN RUTA"
+  "planSectionOnRoute": "EN RUTA",
+  "resultRecalculate": "Recalcular ruta",
+  "recalcPartStops": "{n, plural, one{1 parada} other{{n} paradas}}",
+  "@recalcPartStops": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartTolls": "{n, plural, one{1 peaje evitado} other{{n} peajes evitados}}",
+  "@recalcPartTolls": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartDays": "{n, plural, one{1 día ajustado} other{{n} días ajustados}}",
+  "@recalcPartDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftConfirmTitle": "Cambiar la hora de fin",
+  "dayShiftApply": "Aplicar",
+  "dayShiftPushNext": "{km} se moverán al día siguiente.",
+  "@dayShiftPushNext": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPushLater": "{km} se moverán a los días siguientes.",
+  "@dayShiftPushLater": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPull": "{km} se adelantarán desde los días siguientes.",
+  "@dayShiftPull": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftAddsDays": "{n, plural, one{El viaje se alarga 1 día.} other{El viaje se alarga {n} días.}}",
+  "@dayShiftAddsDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftRemovesDays": "{n, plural, one{El viaje se acorta 1 día.} other{El viaje se acorta {n} días.}}",
+  "@dayShiftRemovesDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteBannerTitle": "Ruta cambiada para evitar peajes",
+  "tollRouteBannerBack": "Volver a la ruta con peajes",
+  "stopTagAi": "IA",
+  "stopAddCustom": "Añadir parada propia",
+  "stopSearchMore": "Buscar más paradas con IA",
+  "stopIdeasCount": "{n, plural, one{1 idea} other{{n} ideas}}",
+  "@stopIdeasCount": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopPickTime": "Hora aproximada de la parada",
+  "stopVisitDuration": "Tiempo en la parada",
+  "stopMinutes": "{n} min",
+  "@stopMinutes": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopFromMyPlaces": "De mis lugares",
+  "stopSearchPlace": "Buscar un lugar",
+  "stopNoMyPlaces": "Aún no tienes lugares guardados.",
+  "stopEditTime": "Cambiar hora",
+  "stopSaveToMyPlaces": "Guardar en mis lugares",
+  "stopAtTime": "Hacia las {time}",
+  "@stopAtTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "stopLimitReached": "Un viaje admite hasta {n} paradas.",
+  "@stopLimitReached": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteAvoidFailed": "No se pudo calcular una ruta sin peajes; se muestra la ruta con peajes."
 }

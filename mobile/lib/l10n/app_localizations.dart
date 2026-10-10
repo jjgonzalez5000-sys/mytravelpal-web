@@ -9010,6 +9010,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ON THE ROUTE'**
   String get planSectionOnRoute;
+
+  /// No description provided for @resultRecalculate.
+  ///
+  /// In en, this message translates to:
+  /// **'Recalculate route'**
+  String get resultRecalculate;
+
+  /// No description provided for @recalcPartStops.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{1 stop} other{{n} stops}}'**
+  String recalcPartStops(int n);
+
+  /// No description provided for @recalcPartTolls.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{1 toll skipped} other{{n} tolls skipped}}'**
+  String recalcPartTolls(int n);
+
+  /// No description provided for @recalcPartDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{1 day adjusted} other{{n} days adjusted}}'**
+  String recalcPartDays(int n);
+
+  /// No description provided for @dayShiftConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Change the end time'**
+  String get dayShiftConfirmTitle;
+
+  /// No description provided for @dayShiftApply.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply'**
+  String get dayShiftApply;
+
+  /// No description provided for @dayShiftPushNext.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} will move to the next day.'**
+  String dayShiftPushNext(String km);
+
+  /// No description provided for @dayShiftPushLater.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} will move to the following days.'**
+  String dayShiftPushLater(String km);
+
+  /// No description provided for @dayShiftPull.
+  ///
+  /// In en, this message translates to:
+  /// **'{km} will be brought forward from the following days.'**
+  String dayShiftPull(String km);
+
+  /// No description provided for @dayShiftAddsDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{The trip gets 1 day longer.} other{The trip gets {n} days longer.}}'**
+  String dayShiftAddsDays(int n);
+
+  /// No description provided for @dayShiftRemovesDays.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{The trip gets 1 day shorter.} other{The trip gets {n} days shorter.}}'**
+  String dayShiftRemovesDays(int n);
+
+  /// No description provided for @tollRouteBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Route changed to avoid tolls'**
+  String get tollRouteBannerTitle;
+
+  /// No description provided for @tollRouteBannerBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to the route with tolls'**
+  String get tollRouteBannerBack;
+
+  /// No description provided for @stopTagAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI'**
+  String get stopTagAi;
+
+  /// No description provided for @stopAddCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your own stop'**
+  String get stopAddCustom;
+
+  /// No description provided for @stopSearchMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Find more stops with AI'**
+  String get stopSearchMore;
+
+  /// No description provided for @stopIdeasCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{1 idea} other{{n} ideas}}'**
+  String stopIdeasCount(int n);
+
+  /// No description provided for @stopPickTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Approximate time at the stop'**
+  String get stopPickTime;
+
+  /// No description provided for @stopVisitDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Time at the stop'**
+  String get stopVisitDuration;
+
+  /// No description provided for @stopMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{n} min'**
+  String stopMinutes(int n);
+
+  /// No description provided for @stopFromMyPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'From my places'**
+  String get stopFromMyPlaces;
+
+  /// No description provided for @stopSearchPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Search a place'**
+  String get stopSearchPlace;
+
+  /// No description provided for @stopNoMyPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'You have no saved places yet.'**
+  String get stopNoMyPlaces;
+
+  /// No description provided for @stopEditTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Change time'**
+  String get stopEditTime;
+
+  /// No description provided for @stopSaveToMyPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Save to my places'**
+  String get stopSaveToMyPlaces;
+
+  /// No description provided for @stopAtTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Around {time}'**
+  String stopAtTime(String time);
+
+  /// No description provided for @stopLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'A trip can have up to {n} stops.'**
+  String stopLimitReached(int n);
+
+  /// No description provided for @tollRouteAvoidFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not compute a toll-free route; the route with tolls is shown.'**
+  String get tollRouteAvoidFailed;
 }
 
 class _AppLocalizationsDelegate

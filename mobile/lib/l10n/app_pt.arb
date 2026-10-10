@@ -961,5 +961,69 @@
     "placeholders": { "city": { "type": "String" } }
   },
   "planSectionRoute": "ROTA",
-  "planSectionOnRoute": "NA ROTA"
+  "planSectionOnRoute": "NA ROTA",
+  "resultRecalculate": "Recalcular a rota",
+  "recalcPartStops": "{n, plural, one{1 paragem} other{{n} paragens}}",
+  "@recalcPartStops": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartTolls": "{n, plural, one{1 portagem evitada} other{{n} portagens evitadas}}",
+  "@recalcPartTolls": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartDays": "{n, plural, one{1 dia ajustado} other{{n} dias ajustados}}",
+  "@recalcPartDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftConfirmTitle": "Alterar a hora de fim",
+  "dayShiftApply": "Aplicar",
+  "dayShiftPushNext": "{km} passam para o dia seguinte.",
+  "@dayShiftPushNext": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPushLater": "{km} passam para os dias seguintes.",
+  "@dayShiftPushLater": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPull": "{km} são antecipados dos dias seguintes.",
+  "@dayShiftPull": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftAddsDays": "{n, plural, one{A viagem fica 1 dia mais longa.} other{A viagem fica {n} dias mais longa.}}",
+  "@dayShiftAddsDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftRemovesDays": "{n, plural, one{A viagem fica 1 dia mais curta.} other{A viagem fica {n} dias mais curta.}}",
+  "@dayShiftRemovesDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteBannerTitle": "Rota alterada para evitar portagens",
+  "tollRouteBannerBack": "Voltar à rota com portagens",
+  "stopTagAi": "IA",
+  "stopAddCustom": "Adicionar paragem própria",
+  "stopSearchMore": "Procurar mais paragens com IA",
+  "stopIdeasCount": "{n, plural, one{1 ideia} other{{n} ideias}}",
+  "@stopIdeasCount": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopPickTime": "Hora aproximada da paragem",
+  "stopVisitDuration": "Tempo na paragem",
+  "stopMinutes": "{n} min",
+  "@stopMinutes": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopFromMyPlaces": "Dos meus locais",
+  "stopSearchPlace": "Procurar um local",
+  "stopNoMyPlaces": "Ainda não tens locais guardados.",
+  "stopEditTime": "Alterar hora",
+  "stopSaveToMyPlaces": "Guardar nos meus locais",
+  "stopAtTime": "Por volta das {time}",
+  "@stopAtTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "stopLimitReached": "Uma viagem admite até {n} paragens.",
+  "@stopLimitReached": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteAvoidFailed": "Não foi possível calcular uma rota sem portagens; é mostrada a rota com portagens."
 }

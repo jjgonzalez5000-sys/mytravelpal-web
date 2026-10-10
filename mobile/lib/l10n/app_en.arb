@@ -3100,5 +3100,69 @@
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   },
   "planSectionRoute": "ROUTE",
-  "planSectionOnRoute": "ON THE ROUTE"
+  "planSectionOnRoute": "ON THE ROUTE",
+  "resultRecalculate": "Recalculate route",
+  "recalcPartStops": "{n, plural, one{1 stop} other{{n} stops}}",
+  "@recalcPartStops": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartTolls": "{n, plural, one{1 toll skipped} other{{n} tolls skipped}}",
+  "@recalcPartTolls": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartDays": "{n, plural, one{1 day adjusted} other{{n} days adjusted}}",
+  "@recalcPartDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftConfirmTitle": "Change the end time",
+  "dayShiftApply": "Apply",
+  "dayShiftPushNext": "{km} will move to the next day.",
+  "@dayShiftPushNext": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPushLater": "{km} will move to the following days.",
+  "@dayShiftPushLater": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPull": "{km} will be brought forward from the following days.",
+  "@dayShiftPull": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftAddsDays": "{n, plural, one{The trip gets 1 day longer.} other{The trip gets {n} days longer.}}",
+  "@dayShiftAddsDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftRemovesDays": "{n, plural, one{The trip gets 1 day shorter.} other{The trip gets {n} days shorter.}}",
+  "@dayShiftRemovesDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteBannerTitle": "Route changed to avoid tolls",
+  "tollRouteBannerBack": "Back to the route with tolls",
+  "stopTagAi": "AI",
+  "stopAddCustom": "Add your own stop",
+  "stopSearchMore": "Find more stops with AI",
+  "stopIdeasCount": "{n, plural, one{1 idea} other{{n} ideas}}",
+  "@stopIdeasCount": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopPickTime": "Approximate time at the stop",
+  "stopVisitDuration": "Time at the stop",
+  "stopMinutes": "{n} min",
+  "@stopMinutes": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopFromMyPlaces": "From my places",
+  "stopSearchPlace": "Search a place",
+  "stopNoMyPlaces": "You have no saved places yet.",
+  "stopEditTime": "Change time",
+  "stopSaveToMyPlaces": "Save to my places",
+  "stopAtTime": "Around {time}",
+  "@stopAtTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "stopLimitReached": "A trip can have up to {n} stops.",
+  "@stopLimitReached": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteAvoidFailed": "Could not compute a toll-free route; the route with tolls is shown."
 }

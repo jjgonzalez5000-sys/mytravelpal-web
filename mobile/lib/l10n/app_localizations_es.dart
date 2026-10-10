@@ -3128,11 +3128,11 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settingsTierFreeName => 'Gratuito';
 
   @override
-  String get myPlacesTitle => 'Mis sitios';
+  String get myPlacesTitle => 'Mis lugares';
 
   @override
   String myPlacesSettingsRow(int count) {
-    return 'Mis sitios ($count)';
+    return 'Mis lugares ($count)';
   }
 
   @override
@@ -3140,13 +3140,13 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get myPlacesEmpty =>
-      'Guarda los sitios donde te gusta parar. Cuando una ruta pase cerca de uno, te lo sugeriremos.';
+      'Guarda los lugares donde te gusta parar. Cuando una ruta pase cerca de uno, te lo sugeriremos.';
 
   @override
-  String get myPlacesAdd => 'Añadir un sitio';
+  String get myPlacesAdd => 'Añadir un lugar';
 
   @override
-  String get myPlacesSearchHint => 'Busca un sitio o pega un enlace de mapa';
+  String get myPlacesSearchHint => 'Busca un lugar o pega un enlace de mapa';
 
   @override
   String get myPlacesSearch => 'Buscar';
@@ -3165,7 +3165,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get myPlacesCategoryLabel => 'Categoría';
 
   @override
-  String get myPlacesSave => 'Guardar sitio';
+  String get myPlacesSave => 'Guardar lugar';
 
   @override
   String myPlacesRemoved(String name) {
@@ -3177,7 +3177,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String myPlacesLimit(int max) {
-    return 'Puedes guardar hasta $max sitios.';
+    return 'Puedes guardar hasta $max lugares.';
   }
 
   @override
@@ -3202,7 +3202,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get myPlacesCatOther => 'Otro';
 
   @override
-  String get myPlacesOnRouteTitle => 'Tus sitios en esta ruta';
+  String get myPlacesOnRouteTitle => 'Tus lugares en esta ruta';
 
   @override
   String myPlacesOffRoute(String km, int min) {
@@ -5002,7 +5002,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planOptAiSuggestSub =>
-      'Al terminar el plan busca sitios reales cerca de tu ruta';
+      'Al terminar el plan busca lugares reales cerca de tu ruta';
 
   @override
   String get planOptAiSuggestLocked => 'Las sugerencias con IA son de Premium';
@@ -5124,4 +5124,149 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'EN RUTA';
+
+  @override
+  String get resultRecalculate => 'Recalcular ruta';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n paradas',
+      one: '1 parada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n peajes evitados',
+      one: '1 peaje evitado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n días ajustados',
+      one: '1 día ajustado',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Cambiar la hora de fin';
+
+  @override
+  String get dayShiftApply => 'Aplicar';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km se moverán al día siguiente.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km se moverán a los días siguientes.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km se adelantarán desde los días siguientes.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'El viaje se alarga $n días.',
+      one: 'El viaje se alarga 1 día.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'El viaje se acorta $n días.',
+      one: 'El viaje se acorta 1 día.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle => 'Ruta cambiada para evitar peajes';
+
+  @override
+  String get tollRouteBannerBack => 'Volver a la ruta con peajes';
+
+  @override
+  String get stopTagAi => 'IA';
+
+  @override
+  String get stopAddCustom => 'Añadir parada propia';
+
+  @override
+  String get stopSearchMore => 'Buscar más paradas con IA';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n ideas',
+      one: '1 idea',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Hora aproximada de la parada';
+
+  @override
+  String get stopVisitDuration => 'Tiempo en la parada';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'De mis lugares';
+
+  @override
+  String get stopSearchPlace => 'Buscar un lugar';
+
+  @override
+  String get stopNoMyPlaces => 'Aún no tienes lugares guardados.';
+
+  @override
+  String get stopEditTime => 'Cambiar hora';
+
+  @override
+  String get stopSaveToMyPlaces => 'Guardar en mis lugares';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Hacia las $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'Un viaje admite hasta $n paradas.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'No se pudo calcular una ruta sin peajes; se muestra la ruta con peajes.';
 }

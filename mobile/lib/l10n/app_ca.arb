@@ -1005,5 +1005,69 @@
     "placeholders": { "city": { "type": "String" } }
   },
   "planSectionRoute": "RUTA",
-  "planSectionOnRoute": "A LA RUTA"
+  "planSectionOnRoute": "A LA RUTA",
+  "resultRecalculate": "Recalcula la ruta",
+  "recalcPartStops": "{n, plural, one{1 parada} other{{n} parades}}",
+  "@recalcPartStops": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartTolls": "{n, plural, one{1 peatge evitat} other{{n} peatges evitats}}",
+  "@recalcPartTolls": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "recalcPartDays": "{n, plural, one{1 dia ajustat} other{{n} dies ajustats}}",
+  "@recalcPartDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftConfirmTitle": "Canvia l'hora de fi",
+  "dayShiftApply": "Aplica",
+  "dayShiftPushNext": "{km} es mouran al dia següent.",
+  "@dayShiftPushNext": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPushLater": "{km} es mouran als dies següents.",
+  "@dayShiftPushLater": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftPull": "{km} s'avançaran des dels dies següents.",
+  "@dayShiftPull": {
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "dayShiftAddsDays": "{n, plural, one{El viatge s'allarga 1 dia.} other{El viatge s'allarga {n} dies.}}",
+  "@dayShiftAddsDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "dayShiftRemovesDays": "{n, plural, one{El viatge s'escurça 1 dia.} other{El viatge s'escurça {n} dies.}}",
+  "@dayShiftRemovesDays": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteBannerTitle": "Ruta canviada per evitar peatges",
+  "tollRouteBannerBack": "Torna a la ruta amb peatges",
+  "stopTagAi": "IA",
+  "stopAddCustom": "Afegeix una parada pròpia",
+  "stopSearchMore": "Cerca més parades amb IA",
+  "stopIdeasCount": "{n, plural, one{1 idea} other{{n} idees}}",
+  "@stopIdeasCount": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopPickTime": "Hora aproximada de la parada",
+  "stopVisitDuration": "Temps a la parada",
+  "stopMinutes": "{n} min",
+  "@stopMinutes": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "stopFromMyPlaces": "Dels meus llocs",
+  "stopSearchPlace": "Cerca un lloc",
+  "stopNoMyPlaces": "Encara no tens llocs desats.",
+  "stopEditTime": "Canvia l'hora",
+  "stopSaveToMyPlaces": "Desa als meus llocs",
+  "stopAtTime": "Cap a les {time}",
+  "@stopAtTime": {
+    "placeholders": { "time": { "type": "String" } }
+  },
+  "stopLimitReached": "Un viatge admet fins a {n} parades.",
+  "@stopLimitReached": {
+    "placeholders": { "n": { "type": "int" } }
+  },
+  "tollRouteAvoidFailed": "No s'ha pogut calcular una ruta sense peatges; es mostra la ruta amb peatges."
 }

@@ -346,6 +346,7 @@ class DayPlanSection extends StatelessWidget {
     this.hotelsRequested = true,
     this.onEditDay,
     this.onEditDayEndTime,
+    this.dayShiftNotes = const {},
     this.overriddenDayIndices = const {},
     this.activeReplanDayIndex,
     this.fuelPrices = const [],
@@ -444,6 +445,10 @@ class DayPlanSection extends StatelessWidget {
   /// strip — parent shows a time picker and re-plans with a new cap.
   /// `null` = not tappable.
   final void Function(int dayIndex)? onEditDayEndTime;
+
+  /// Note under a day's end time after the driver edited it, e.g. how many
+  /// km moved to the next day. Keyed by 1-based day index.
+  final Map<int, String> dayShiftNotes;
 
   /// 1-based day indices that currently carry an active override.
   /// Used to highlight the pencil icon on those days so the driver
@@ -2169,14 +2174,44 @@ class DayPlanSection extends StatelessWidget {
                     );
                   }),
                 ],
-                // User-added stops (hotels, restaurants, fuel)
-                // that fall within this day's km range.
+                if (dayShiftNotes[d.dayIndex] != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: Tokens.space4),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(Icons.swap_vert, size: 14, color: scheme.tertiary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            dayShiftNotes[d.dayIndex]!,
+                            style: t.labelMedium?.copyWith(
+                              color: scheme.tertiary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // User-added stops (hotels, restaurants, fuel, places and
+                // AI suggestions) that fall within this day, in time order.
                 Builder(builder: (context) {
-                  final dayAdded = addedStops.where((s) =>
-                    s.distanceFromOriginKm != null &&
-                    s.distanceFromOriginKm! >= d.fromKm &&
-                    s.distanceFromOriginKm! <= d.toKm,
-                  ).toList();
+                  final dayAdded = addedStops.where((s) {
+                    final km = s.distanceFromOriginKm;
+                    if (km == null) return false;
+                    // A km exactly on a boundary belongs to the day that
+                    // ends there, so no stop is listed twice.
+                    return (km > d.fromKm || (d.dayIndex == 1 && km >= 0)) &&
+                        km <= d.toKm;
+                  }).toList()
+                    ..sort((a, b) {
+                      final ta = a.plannedAt;
+                      final tb = b.plannedAt;
+                      if (ta != null && tb != null) return ta.compareTo(tb);
+                      return (a.distanceFromOriginKm ?? 0)
+                          .compareTo(b.distanceFromOriginKm ?? 0);
+                    });
                   if (dayAdded.isEmpty) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(top: Tokens.space8),
@@ -2188,10 +2223,40 @@ class DayPlanSection extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 4),
                             child: Row(
                               children: [
-                                Icon(s.icon, size: 14,
-                                    color: scheme.primary),
+                                if (s.plannedAt != null)
+                                  InkWell(
+                                    onTap: s.onEditTime,
+                                    borderRadius:
+                                        BorderRadius.circular(Tokens.radiusSm),
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4, vertical: 2,
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            timeFormat
+                                                .format(s.plannedAt!.toLocal()),
+                                            style: t.labelMedium?.copyWith(
+                                              color: scheme.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          if (s.onEditTime != null)
+                                            Icon(
+                                              Icons.edit_outlined,
+                                              size: 12,
+                                              color: scheme.onSurfaceVariant
+                                                  .withValues(alpha: 0.6),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                Icon(s.icon, size: 14, color: scheme.primary),
                                 const SizedBox(width: 6),
-                                Expanded(
+                                Flexible(
                                   child: Text(
                                     s.label,
                                     style: t.bodySmall?.copyWith(
@@ -2201,6 +2266,48 @@ class DayPlanSection extends StatelessWidget {
                                     overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
+                                if (s.isAi) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: scheme.primaryContainer,
+                                      borderRadius: BorderRadius.circular(
+                                          Tokens.radiusPill),
+                                    ),
+                                    child: Text(
+                                      l.stopTagAi,
+                                      style: t.labelSmall?.copyWith(
+                                        color: scheme.onPrimaryContainer,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                                if (s.visitMinutes != null) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    l.stopMinutes(s.visitMinutes!),
+                                    style: t.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                                const Spacer(),
+                                if (s.onRemove != null)
+                                  InkWell(
+                                    onTap: s.onRemove,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(4),
+                                      child: Icon(
+                                        Icons.close,
+                                        size: 14,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),

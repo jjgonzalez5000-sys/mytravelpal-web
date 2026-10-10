@@ -400,11 +400,16 @@ class TripWaypoint {
     required this.coordinate,
     this.dwellNights = 0,
     this.label,
+    this.viaOnly = false,
   });
 
   final LatLon coordinate;
   final int dwellNights;
   final String? label;
+
+  /// A routing hint only (used to steer the road away from a toll booth):
+  /// the route passes through it but it is not a stop in the plan.
+  final bool viaOnly;
 
   factory TripWaypoint.fromJson(Map<String, dynamic> j) => TripWaypoint(
         coordinate: LatLon(
@@ -413,6 +418,7 @@ class TripWaypoint {
         ),
         dwellNights: (j['dwell_nights'] as int?) ?? 0,
         label: j['label'] as String?,
+        viaOnly: (j['via_only'] as bool?) ?? false,
       );
 
   Map<String, dynamic> toJson() => {
@@ -420,12 +426,14 @@ class TripWaypoint {
         'lon': coordinate.lon,
         'dwell_nights': dwellNights,
         if (label != null && label!.isNotEmpty) 'label': label,
+        if (viaOnly) 'via_only': true,
       };
 
   TripWaypoint copyWith({int? dwellNights, String? label}) => TripWaypoint(
         coordinate: coordinate,
         dwellNights: dwellNights ?? this.dwellNights,
         label: label ?? this.label,
+        viaOnly: viaOnly,
       );
 }
 
@@ -454,6 +462,7 @@ class TripPlanRequest {
     this.includeRouteComparison = false,
     this.includeHourlyTollAnalysis = false,
     this.avoidMotorways = false,
+    this.avoidTolls = false,
     this.preferScenic = false,
     this.timeWindowSpanHours = 3,
     this.timeWindowTopN = 5,
@@ -543,6 +552,10 @@ class TripPlanRequest {
 
   /// Routing options: skip motorways / bias to scenic routes.
   final bool avoidMotorways;
+
+  /// Ask the server for a toll-free route: every stop, day and POI is then
+  /// computed on the road actually driven.
+  final bool avoidTolls;
   final bool preferScenic;
 
   /// Half-width of the departure-time window in hours (±). Default 3.
@@ -616,6 +629,7 @@ class TripPlanRequest {
       includeHourlyTollAnalysis:
           (j['include_hourly_toll_analysis'] as bool?) ?? false,
       avoidMotorways: (j['avoid_motorways'] as bool?) ?? false,
+      avoidTolls: (j['avoid_tolls'] as bool?) ?? false,
       preferScenic: (j['prefer_scenic'] as bool?) ?? false,
       timeWindowSpanHours: (j['time_window_span_hours'] as int?) ?? 3,
       timeWindowTopN: (j['time_window_top_n'] as int?) ?? 5,
@@ -672,6 +686,7 @@ class TripPlanRequest {
         if (includeRouteComparison) 'include_route_comparison': true,
         if (includeHourlyTollAnalysis) 'include_hourly_toll_analysis': true,
         if (avoidMotorways) 'avoid_motorways': true,
+        if (avoidTolls) 'avoid_tolls': true,
         if (preferScenic) 'prefer_scenic': true,
         if (timeWindowSpanHours != 3)
           'time_window_span_hours': timeWindowSpanHours,
@@ -683,16 +698,21 @@ class TripPlanRequest {
           'day_overrides': dayOverrides.map((o) => o.toJson()).toList(),
       };
 
-  /// Returns a new request with the same fields plus the given
-  /// [overrides] applied. Convenience for the ResultScreen re-plan
-  /// flow — pass the mutated overrides map through the same request
-  /// otherwise unchanged.
-  TripPlanRequest copyWith({TripProfile? tripProfile}) =>
+  /// Same request with the given fields replaced. One place copies every
+  /// field, so a new request field cannot be silently dropped by a replan.
+  TripPlanRequest copyWith({
+    TripProfile? tripProfile,
+    List<TripWaypoint>? waypoints,
+    List<DayOverride>? dayOverrides,
+    bool? avoidTolls,
+    bool? avoidMotorways,
+    DateTime? desiredDepartureAt,
+  }) =>
       TripPlanRequest(
         origin: origin,
         destination: destination,
-        desiredDepartureAt: desiredDepartureAt,
-        waypoints: waypoints,
+        desiredDepartureAt: desiredDepartureAt ?? this.desiredDepartureAt,
+        waypoints: waypoints ?? this.waypoints,
         countries: countries,
         hotelMaxDetourMinutes: hotelMaxDetourMinutes,
         hotelPriceBand: hotelPriceBand,
@@ -711,7 +731,8 @@ class TripPlanRequest {
         includeTollAlternative: includeTollAlternative,
         includeRouteComparison: includeRouteComparison,
         includeHourlyTollAnalysis: includeHourlyTollAnalysis,
-        avoidMotorways: avoidMotorways,
+        avoidMotorways: avoidMotorways ?? this.avoidMotorways,
+        avoidTolls: avoidTolls ?? this.avoidTolls,
         preferScenic: preferScenic,
         timeWindowSpanHours: timeWindowSpanHours,
         timeWindowTopN: timeWindowTopN,
@@ -719,43 +740,11 @@ class TripPlanRequest {
         includeParking: includeParking,
         includeActivities: includeActivities,
         garageVehicleId: garageVehicleId,
-        dayOverrides: dayOverrides,
+        dayOverrides: dayOverrides ?? this.dayOverrides,
       );
 
   TripPlanRequest withDayOverrides(List<DayOverride> overrides) =>
-      TripPlanRequest(
-        origin: origin,
-        destination: destination,
-        desiredDepartureAt: desiredDepartureAt,
-        waypoints: waypoints,
-        countries: countries,
-        hotelMaxDetourMinutes: hotelMaxDetourMinutes,
-        hotelPriceBand: hotelPriceBand,
-        hotelPriceBands: hotelPriceBands,
-        hotelMinStars: hotelMinStars,
-        restaurantMaxDetourMinutes: restaurantMaxDetourMinutes,
-        restaurantPriceBand: restaurantPriceBand,
-        restaurantPriceBands: restaurantPriceBands,
-        restaurantCuisines: restaurantCuisines,
-        hotelIncludeOther: hotelIncludeOther,
-        hotelDestinationRadiusKm: hotelDestinationRadiusKm,
-        hotelConditions: hotelConditions,
-        restaurantConditions: restaurantConditions,
-        includeAdverseEvents: includeAdverseEvents,
-        adverseEventsMaxDistanceKm: adverseEventsMaxDistanceKm,
-        includeTollAlternative: includeTollAlternative,
-        includeRouteComparison: includeRouteComparison,
-        includeHourlyTollAnalysis: includeHourlyTollAnalysis,
-        avoidMotorways: avoidMotorways,
-        preferScenic: preferScenic,
-        timeWindowSpanHours: timeWindowSpanHours,
-        timeWindowTopN: timeWindowTopN,
-        tripProfile: tripProfile,
-        includeParking: includeParking,
-        includeActivities: includeActivities,
-        garageVehicleId: garageVehicleId,
-        dayOverrides: overrides,
-      );
+      copyWith(dayOverrides: overrides);
 }
 
 /// Per-day override for a single day in the multi-day plan. `dayIndex`
@@ -769,17 +758,24 @@ class DayOverride {
     this.startHour,
     this.dailyDrivingCapHours,
     this.dailyKmCap,
+    this.endMinutes,
   });
   final int dayIndex;
   final int? startHour;
   final int? dailyDrivingCapHours;
   final int? dailyKmCap;
 
+  /// Wall-clock time the driver wants to stop that day, in minutes after
+  /// local midnight. When set it wins over [dailyDrivingCapHours], which
+  /// can only express whole hours of pure driving.
+  final int? endMinutes;
+
   factory DayOverride.fromJson(Map<String, dynamic> j) => DayOverride(
         dayIndex: j['day_index'] as int,
         startHour: j['start_hour'] as int?,
         dailyDrivingCapHours: j['daily_driving_cap_hours'] as int?,
         dailyKmCap: j['daily_km_cap'] as int?,
+        endMinutes: j['end_minutes'] as int?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -788,12 +784,14 @@ class DayOverride {
         if (dailyDrivingCapHours != null)
           'daily_driving_cap_hours': dailyDrivingCapHours,
         if (dailyKmCap != null) 'daily_km_cap': dailyKmCap,
+        if (endMinutes != null) 'end_minutes': endMinutes,
       };
 
   DayOverride copyWith({
     int? startHour,
     int? dailyDrivingCapHours,
     int? dailyKmCap,
+    int? endMinutes,
   }) =>
       DayOverride(
         dayIndex: dayIndex,
@@ -801,6 +799,21 @@ class DayOverride {
         dailyDrivingCapHours:
             dailyDrivingCapHours ?? this.dailyDrivingCapHours,
         dailyKmCap: dailyKmCap ?? this.dailyKmCap,
+        endMinutes: endMinutes ?? this.endMinutes,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is DayOverride &&
+      other.dayIndex == dayIndex &&
+      other.startHour == startHour &&
+      other.dailyDrivingCapHours == dailyDrivingCapHours &&
+      other.dailyKmCap == dailyKmCap &&
+      other.endMinutes == endMinutes;
+
+  @override
+  int get hashCode => Object.hash(
+        dayIndex, startHour, dailyDrivingCapHours, dailyKmCap, endMinutes,
       );
 }
 
@@ -948,12 +961,17 @@ class RouteInfo {
     this.vignetteCountries = const [],
     this.vignettes = const [],
     this.tollVerified = false,
+    this.avoidTolls = false,
   });
 
   /// True when [tollCostEur] / [vignetteCostEur] come from the booth-level
   /// quote (enrich phase). The core phase only has a provisional
   /// route-level estimate, so a merge must prefer verified figures — even
   /// a verified 0 for a genuinely toll-free route.
+  /// True when the server really routed away from tolls (it could not
+  /// when the toll-avoiding router was unavailable).
+  final bool avoidTolls;
+
   final bool tollVerified;
 
   final double distanceKm;
@@ -1009,6 +1027,7 @@ class RouteInfo {
             .map(VignetteLine.fromJson)
             .toList(growable: false),
         tollVerified: json['toll_verified'] as bool? ?? false,
+        avoidTolls: json['avoid_tolls'] as bool? ?? false,
       );
 
   /// This route with the toll figures of [verified] (an enrich-phase
@@ -1024,6 +1043,7 @@ class RouteInfo {
         vignetteCountries: verified.vignetteCountries,
         vignettes: verified.vignettes,
         tollVerified: true,
+        avoidTolls: avoidTolls,
       );
 }
 
@@ -2131,9 +2151,14 @@ class TripPlanResponse {
   /// fuel / weather / adverse events / toll alternative. Neither
   /// endpoint currently populates its "other" half — the backend
   /// zeroes them so the wire cost is small.
+  ///
+  /// [coreDays] keeps core's days and optimizations even when [enrich] is
+  /// a PREVIOUS plan's enrich data shown as a stand-in while the new one is
+  /// in flight: the stand-in's days and meal stops describe the old plan.
   factory TripPlanResponse.merge({
     required TripPlanResponse core,
     required TripPlanResponse enrich,
+    bool coreDays = false,
   }) =>
       TripPlanResponse(
         // -- core-owned, except the toll total --
@@ -2150,7 +2175,7 @@ class TripPlanResponse {
         // that core doesn't have. Fall back to core.days only when
         // enrich returned nothing (e.g. single-day trip; enrich still
         // ships full per-day rest_stops in the multi-day case).
-        days: enrich.days.isNotEmpty ? enrich.days : core.days,
+        days: !coreDays && enrich.days.isNotEmpty ? enrich.days : core.days,
         savings: core.savings,
         // Prefer enrich's optimizations when it has densified the meal
         // stops with real restaurant picks (name + coord). Core's
@@ -2160,7 +2185,8 @@ class TripPlanResponse {
         // 2026-09-29 dogfood: Toledo→Murcia (~4h) returned 55 top-level
         // restaurants + 1 lunch meal_stop but core.meal_stops[0]
         // was still `restaurant=null`; enrich had done the attach.
-        optimizations: (enrich.optimizations != null &&
+        optimizations: (!coreDays &&
+                enrich.optimizations != null &&
                 enrich.optimizations!.mealStops.isNotEmpty)
             ? enrich.optimizations
             : core.optimizations,

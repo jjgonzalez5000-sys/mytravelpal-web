@@ -289,6 +289,9 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
 
   Future<void> syncFromServer() async {
     if (api == null) return;
+    // Places the driver had when the request left; anything that shows up
+    // locally after this was added while waiting for the server.
+    final placeIdsAtStart = {for (final p in _prefs.myPlaces) p.id};
     final remote = await api!.fetchProfile();
     if (remote != null) {
       // Server returns the raw profile blob (post-fix) OR the
@@ -356,9 +359,20 @@ class TripProfileNotifier extends StateNotifier<TripProfile?> {
             restored.add(MyPlace.fromJson(e));
           } catch (_) {}
         }
+        // A place added while the request was in flight is not in the
+        // server's answer yet; adopting that answer verbatim would erase it.
+        final restoredIds = {for (final p in restored) p.id};
+        final addedMeanwhile = [
+          for (final p in _prefs.myPlaces)
+            if (!placeIdsAtStart.contains(p.id) &&
+                !restoredIds.contains(p.id))
+              p,
+        ];
+        restored.addAll(addedMeanwhile);
         try {
           await _prefs.setMyPlaces(restored);
           onMyPlacesRestored?.call();
+          if (addedMeanwhile.isNotEmpty) _pushToServer(state);
         } catch (_) {}
       }
       if (recents is List && recents.isNotEmpty) {

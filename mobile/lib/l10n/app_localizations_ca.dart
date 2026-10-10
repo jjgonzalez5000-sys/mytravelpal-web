@@ -5104,4 +5104,149 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'A LA RUTA';
+
+  @override
+  String get resultRecalculate => 'Recalcula la ruta';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n parades',
+      one: '1 parada',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n peatges evitats',
+      one: '1 peatge evitat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n dies ajustats',
+      one: '1 dia ajustat',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Canvia l\'hora de fi';
+
+  @override
+  String get dayShiftApply => 'Aplica';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km es mouran al dia següent.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km es mouran als dies següents.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km s\'avançaran des dels dies següents.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'El viatge s\'allarga $n dies.',
+      one: 'El viatge s\'allarga 1 dia.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'El viatge s\'escurça $n dies.',
+      one: 'El viatge s\'escurça 1 dia.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle => 'Ruta canviada per evitar peatges';
+
+  @override
+  String get tollRouteBannerBack => 'Torna a la ruta amb peatges';
+
+  @override
+  String get stopTagAi => 'IA';
+
+  @override
+  String get stopAddCustom => 'Afegeix una parada pròpia';
+
+  @override
+  String get stopSearchMore => 'Cerca més parades amb IA';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n idees',
+      one: '1 idea',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Hora aproximada de la parada';
+
+  @override
+  String get stopVisitDuration => 'Temps a la parada';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'Dels meus llocs';
+
+  @override
+  String get stopSearchPlace => 'Cerca un lloc';
+
+  @override
+  String get stopNoMyPlaces => 'Encara no tens llocs desats.';
+
+  @override
+  String get stopEditTime => 'Canvia l\'hora';
+
+  @override
+  String get stopSaveToMyPlaces => 'Desa als meus llocs';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Cap a les $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'Un viatge admet fins a $n parades.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'No s\'ha pogut calcular una ruta sense peatges; es mostra la ruta amb peatges.';
 }

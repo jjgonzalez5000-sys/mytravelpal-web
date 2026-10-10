@@ -1,0 +1,42 @@
+appId: com.mytravelpal.travel
+---
+# The AI suggestions live in one collapsible section that also offers a
+# stop of your own.
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: "Desde|From"
+- inputText: "Toledo"
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- tapOn:
+    text: "Toledo, .*"
+    index: 0
+- tapOn: "Hasta|To"
+- inputText: "Murcia"
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- tapOn:
+    text: "Murcia, .*"
+    index: 0
+- scrollUntilVisible:
+    element: "Planificar viaje|Plan trip"
+    direction: DOWN
+- tapOn: "Planificar viaje|Plan trip"
+- extendedWaitUntil:
+    visible: ".*[0-9] km.*"
+    timeout: 120000
+- scrollUntilVisible:
+    element: ".*(Sugerencias con IA|AI suggestions).*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: ".*(Sugerencias con IA|AI suggestions).*"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: ".*(Añadir parada propia|Add your own stop).*"
+    direction: DOWN
+- assertVisible: ".*(Añadir parada propia|Add your own stop).*"

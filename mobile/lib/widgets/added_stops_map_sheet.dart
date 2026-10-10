@@ -20,6 +20,10 @@ class AddedStop {
     required this.coordinate,
     this.distanceFromOriginKm,
     this.onRemove,
+    this.isAi = false,
+    this.plannedAt,
+    this.visitMinutes,
+    this.onEditTime,
   });
 
   final AddedStopKind kind;
@@ -35,6 +39,16 @@ class AddedStop {
   /// Called when the user taps the X button on this stop.
   /// Wired by result_screen.dart to remove the stop from _addedStops.
   final VoidCallback? onRemove;
+
+  /// The stop was suggested by the AI; the day plan marks it with a tag.
+  final bool isAi;
+
+  /// Approximate local time the driver plans to be there.
+  final DateTime? plannedAt;
+  final int? visitMinutes;
+
+  /// Lets the driver move the stop to another time of the day.
+  final VoidCallback? onEditTime;
 
   IconData get icon => switch (kind) {
         AddedStopKind.hotel => Icons.hotel_outlined,

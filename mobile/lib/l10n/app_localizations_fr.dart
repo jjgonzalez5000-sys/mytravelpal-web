@@ -5133,4 +5133,150 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'SUR LA ROUTE';
+
+  @override
+  String get resultRecalculate => 'Recalculer l\'itinéraire';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n arrêts',
+      one: '1 arrêt',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n péages évités',
+      one: '1 péage évité',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n jours ajustés',
+      one: '1 jour ajusté',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Modifier l\'heure de fin';
+
+  @override
+  String get dayShiftApply => 'Appliquer';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km seront reportés au jour suivant.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km seront reportés aux jours suivants.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km seront avancés depuis les jours suivants.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Le voyage s\'allonge de $n jours.',
+      one: 'Le voyage s\'allonge d\'1 jour.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Le voyage raccourcit de $n jours.',
+      one: 'Le voyage raccourcit d\'1 jour.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle =>
+      'Itinéraire modifié pour éviter les péages';
+
+  @override
+  String get tollRouteBannerBack => 'Revenir à l\'itinéraire avec péages';
+
+  @override
+  String get stopTagAi => 'IA';
+
+  @override
+  String get stopAddCustom => 'Ajouter un arrêt personnel';
+
+  @override
+  String get stopSearchMore => 'Trouver plus d\'arrêts avec l\'IA';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n idées',
+      one: '1 idée',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Heure approximative à l\'arrêt';
+
+  @override
+  String get stopVisitDuration => 'Temps sur place';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'De mes lieux';
+
+  @override
+  String get stopSearchPlace => 'Chercher un lieu';
+
+  @override
+  String get stopNoMyPlaces => 'Vous n\'avez pas encore de lieux enregistrés.';
+
+  @override
+  String get stopEditTime => 'Changer l\'heure';
+
+  @override
+  String get stopSaveToMyPlaces => 'Enregistrer dans mes lieux';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Vers $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'Un voyage accepte jusqu\'à $n arrêts.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'Impossible de calculer un itinéraire sans péages ; l\'itinéraire avec péages est affiché.';
 }

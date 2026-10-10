@@ -5123,4 +5123,149 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'AUF DER STRECKE';
+
+  @override
+  String get resultRecalculate => 'Route neu berechnen';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Stopps',
+      one: '1 Stopp',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Mautstellen umgangen',
+      one: '1 Maut umgangen',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Tage angepasst',
+      one: '1 Tag angepasst',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Endzeit ändern';
+
+  @override
+  String get dayShiftApply => 'Anwenden';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km verschieben sich auf den nächsten Tag.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km verschieben sich auf die folgenden Tage.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km werden von den folgenden Tagen vorgezogen.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Die Reise dauert $n Tage länger.',
+      one: 'Die Reise dauert 1 Tag länger.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'Die Reise dauert $n Tage kürzer.',
+      one: 'Die Reise dauert 1 Tag kürzer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle => 'Route zur Mautvermeidung geändert';
+
+  @override
+  String get tollRouteBannerBack => 'Zurück zur Route mit Maut';
+
+  @override
+  String get stopTagAi => 'KI';
+
+  @override
+  String get stopAddCustom => 'Eigenen Stopp hinzufügen';
+
+  @override
+  String get stopSearchMore => 'Mehr Stopps mit KI finden';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n Ideen',
+      one: '1 Idee',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Ungefähre Uhrzeit am Stopp';
+
+  @override
+  String get stopVisitDuration => 'Zeit am Stopp';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n Min.';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'Aus meinen Orten';
+
+  @override
+  String get stopSearchPlace => 'Ort suchen';
+
+  @override
+  String get stopNoMyPlaces => 'Du hast noch keine gespeicherten Orte.';
+
+  @override
+  String get stopEditTime => 'Uhrzeit ändern';
+
+  @override
+  String get stopSaveToMyPlaces => 'In meinen Orten speichern';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Gegen $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'Eine Reise erlaubt bis zu $n Stopps.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'Eine mautfreie Route konnte nicht berechnet werden; die Route mit Maut wird angezeigt.';
 }

@@ -53,6 +53,7 @@ class AppPrefs {
   // (flutter. is added automatically by the shared_preferences plugin).
   static const _notifSoundKey = 'notificationSound';
   static const _tollAlternativeDefaultKey = 'toll_alternative_default.v1';
+  static const _aiSuggestKey = 'ai_suggest_enabled.v1';
   static const _unitSystemKey = 'unit_system.v1';
   static const _tripProfileKey = 'trip_profile.v1';
   static const _premiumKey = 'premium.v1';
@@ -572,6 +573,11 @@ class AppPrefs {
       _prefs.getBool(_tollAlternativeDefaultKey) ?? true;
   Future<void> setTollAlternativeDefault(bool v) =>
       _prefs.setBool(_tollAlternativeDefaultKey, v);
+
+  /// "Suggest stops and places with AI": on by default; remembered between
+  /// trips so the plan form and the result screen share one preference.
+  bool get aiSuggestEnabled => _prefs.getBool(_aiSuggestKey) ?? true;
+  Future<void> setAiSuggestEnabled(bool v) => _prefs.setBool(_aiSuggestKey, v);
 
   Future<void> setNotificationSound(String value) async {
     await _prefs.setString(_notifSoundKey, value);

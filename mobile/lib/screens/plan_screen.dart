@@ -304,6 +304,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     _hotelPrefs = prefs.hotelPrefs;
     _restaurantPrefs = prefs.restaurantPrefs;
     _tollAlternativeEnabled = prefs.tollAlternativeDefault;
+    _aiSuggestEnabled = prefs.aiSuggestEnabled;
     // Default the departure clock to the profile's preferred driving
     // start hour so a driver who set 10:00 doesn't see 08:00 pre-
     // filled every plan.
@@ -1645,8 +1646,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     onActivitiesChanged: (v) =>
                         setState(() => _activitiesEnabled = v),
                     aiSuggestEnabled: _aiSuggestOn,
-                    onAiSuggestChanged: (v) =>
-                        setState(() => _aiSuggestEnabled = v),
+                    onAiSuggestChanged: (v) {
+                      setState(() => _aiSuggestEnabled = v);
+                      unawaited(ref
+                          .read(appPrefsProvider)
+                          .setAiSuggestEnabled(v));
+                    },
                     onAiSuggestLockedTap: ref.watch(isPremiumProvider)
                         ? null
                         : _showAiSuggestLocked,
@@ -1978,6 +1983,8 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
     final l = AppLocalizations.of(context);
 
     final activeChips = <_ActiveChip>[
+      if (widget.aiSuggestEnabled)
+        _ActiveChip(Icons.auto_awesome, l.planOptAiSuggestTitle),
       if (widget.hotelPrefs.enabled)
         _ActiveChip(
           Icons.hotel_outlined,
@@ -2095,6 +2102,14 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
             Tokens.space8,
           ),
           children: [
+            _CompactToggle(
+              icon: Icons.auto_awesome,
+              title: l.planOptAiSuggestTitle,
+              subtitle: l.planOptAiSuggestSub,
+              value: widget.aiSuggestEnabled,
+              onChanged: widget.onAiSuggestChanged,
+              onLockedTap: widget.onAiSuggestLockedTap,
+            ),
             _CompactExpandableToggle(
               icon: Icons.hotel_outlined,
               title: l.hotelPrefTitle,
@@ -2134,14 +2149,6 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
               subtitle: l.planIncludeActivitiesHint,
               value: widget.activitiesEnabled,
               onChanged: widget.onActivitiesChanged,
-            ),
-            _CompactToggle(
-              icon: Icons.auto_awesome,
-              title: l.planOptAiSuggestTitle,
-              subtitle: l.planOptAiSuggestSub,
-              value: widget.aiSuggestEnabled,
-              onChanged: widget.onAiSuggestChanged,
-              onLockedTap: widget.onAiSuggestLockedTap,
             ),
             InkWell(
               onTap: () => setState(

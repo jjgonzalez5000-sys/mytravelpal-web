@@ -5091,4 +5091,149 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'ON THE ROUTE';
+
+  @override
+  String get resultRecalculate => 'Recalculate route';
+
+  @override
+  String recalcPartStops(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n stops',
+      one: '1 stop',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartTolls(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n tolls skipped',
+      one: '1 toll skipped',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String recalcPartDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n days adjusted',
+      one: '1 day adjusted',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get dayShiftConfirmTitle => 'Change the end time';
+
+  @override
+  String get dayShiftApply => 'Apply';
+
+  @override
+  String dayShiftPushNext(String km) {
+    return '$km will move to the next day.';
+  }
+
+  @override
+  String dayShiftPushLater(String km) {
+    return '$km will move to the following days.';
+  }
+
+  @override
+  String dayShiftPull(String km) {
+    return '$km will be brought forward from the following days.';
+  }
+
+  @override
+  String dayShiftAddsDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'The trip gets $n days longer.',
+      one: 'The trip gets 1 day longer.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String dayShiftRemovesDays(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: 'The trip gets $n days shorter.',
+      one: 'The trip gets 1 day shorter.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get tollRouteBannerTitle => 'Route changed to avoid tolls';
+
+  @override
+  String get tollRouteBannerBack => 'Back to the route with tolls';
+
+  @override
+  String get stopTagAi => 'AI';
+
+  @override
+  String get stopAddCustom => 'Add your own stop';
+
+  @override
+  String get stopSearchMore => 'Find more stops with AI';
+
+  @override
+  String stopIdeasCount(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n ideas',
+      one: '1 idea',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get stopPickTime => 'Approximate time at the stop';
+
+  @override
+  String get stopVisitDuration => 'Time at the stop';
+
+  @override
+  String stopMinutes(int n) {
+    return '$n min';
+  }
+
+  @override
+  String get stopFromMyPlaces => 'From my places';
+
+  @override
+  String get stopSearchPlace => 'Search a place';
+
+  @override
+  String get stopNoMyPlaces => 'You have no saved places yet.';
+
+  @override
+  String get stopEditTime => 'Change time';
+
+  @override
+  String get stopSaveToMyPlaces => 'Save to my places';
+
+  @override
+  String stopAtTime(String time) {
+    return 'Around $time';
+  }
+
+  @override
+  String stopLimitReached(int n) {
+    return 'A trip can have up to $n stops.';
+  }
+
+  @override
+  String get tollRouteAvoidFailed =>
+      'Could not compute a toll-free route; the route with tolls is shown.';
 }
