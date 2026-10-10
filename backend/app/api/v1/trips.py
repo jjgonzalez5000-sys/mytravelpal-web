@@ -55,6 +55,7 @@ def _day_overrides_map(
             "start_hour": ov.start_hour,
             "daily_driving_cap_hours": ov.daily_driving_cap_hours,
             "daily_km_cap": ov.daily_km_cap,
+            "end_minutes": ov.end_minutes,
         }
     return out
 
@@ -209,7 +210,10 @@ from app.services.toll_savings import compare as compare_toll
 from dataclasses import replace as _dc_replace
 from app.services.consistency import check_trip as check_trip_consistency
 from app.services.plan_cache import get_plan_cache, PlanCacheSlot
-from app.services.trip_optimizations import compute as compute_optimizations
+from app.services.trip_optimizations import (
+    compute as compute_optimizations,
+    resolve_day_cap_hours,
+)
 from app.services.trip_style import derive_scope as derive_style_scope
 
 router = APIRouter(prefix="/trips", tags=["trips"])
@@ -232,10 +236,16 @@ class DayOverrideIn(BaseModel):
 
     day_index: int = Field(ge=1, le=30)
     start_hour: int | None = Field(default=None, ge=4, le=14)
+    # ge=1: ignored when `end_minutes` is set, and older apps may send 1.
     daily_driving_cap_hours: int | None = Field(
-        default=None, ge=2, le=14,
+        default=None, ge=1, le=14,
     )
     daily_km_cap: int | None = Field(default=None, ge=50, le=2000)
+    # Wall-clock time the driver wants to STOP driving that day, in
+    # minutes after local midnight of that day (request datetimes are
+    # local ISO strings without offset). Up to 1560 = 02:00 the next
+    # morning. When set it wins over `daily_driving_cap_hours`.
+    end_minutes: int | None = Field(default=None, ge=0, le=1560)
 
 
 class WaypointIn(BaseModel):
@@ -247,6 +257,11 @@ class WaypointIn(BaseModel):
     that forces the multi-day plan to bookend N days there and
     densifies hotels around it.
 
+    `via_only = True` makes the point a pure routing via: it is passed
+    to the router (and counts toward the waypoint limit) but is NOT a
+    visit stop — no day anchor, label, dwell or hotel densification.
+    It wins over `dwell_nights`.
+
     Accepts a bare `{lat, lon}` object too — Pydantic coerces via
     the alias validator so callers on the previous request shape
     (mobile pre-dwell) still work.
@@ -256,6 +271,7 @@ class WaypointIn(BaseModel):
     lon: float = Field(ge=-180.0, le=180.0)
     dwell_nights: int = Field(default=0, ge=0, le=14)
     label: str | None = Field(default=None, max_length=512)
+    via_only: bool = False
 
 
 class VehicleIn(BaseModel):
@@ -406,8 +422,14 @@ class TripPlanRequest(BaseModel):
         it already sent is not rejected for exceeding the limit."""
         if not isinstance(value, list):
             return value
-        seen: set[tuple[float, float]] = set()
+        seen: dict[tuple[float, float], int] = {}
         out: list[object] = []
+
+        def _is_via(item: object) -> bool:
+            if isinstance(item, dict):
+                return bool(item.get("via_only", False))
+            return bool(getattr(item, "via_only", False))
+
         for item in value:
             lat = item.get("lat") if isinstance(item, dict) else getattr(item, "lat", None)
             lon = item.get("lon") if isinstance(item, dict) else getattr(item, "lon", None)
@@ -417,8 +439,13 @@ class TripPlanRequest(BaseModel):
                 out.append(item)  # let normal validation report it
                 continue
             if key in seen:
+                # Same spot twice: keep one, but a real visit stop must
+                # not be swallowed by a via-only duplicate.
+                idx = seen[key]
+                if _is_via(out[idx]) and not _is_via(item):
+                    out[idx] = item
                 continue
-            seen.add(key)
+            seen[key] = len(out)
             out.append(item)
         return out
 
@@ -587,6 +614,15 @@ class TripPlanRequest(BaseModel):
     )
     avoid_motorways: bool = Field(default=False)
     prefer_scenic: bool = Field(default=False)
+    avoid_tolls: bool = Field(
+        default=False,
+        description=(
+            "Route the whole trip without toll roads (HERE when a key is "
+            "configured; the public OSRM cannot avoid tolls). Every stop "
+            "and day follows the toll-free geometry; the toll cost is 0 "
+            "and the toll alternative / partial skips are not offered."
+        ),
+    )
     time_window_span_hours: int = Field(
         default=3,
         ge=1,
@@ -667,6 +703,11 @@ class RouteOut(BaseModel):
     # route-level estimate, so a merge must prefer the verified figures
     # (even when they are 0 — a genuinely toll-free route).
     toll_verified: bool = False
+    # True only when the route was REALLY computed avoiding toll roads
+    # (HERE honoured `avoid_tolls`). False when the request did not ask for
+    # it, or when it could not be honoured (HERE unavailable, or unavoidable
+    # tolls) and a normal tolled route was served instead.
+    avoid_tolls: bool = False
 
 
 class TollAlternativeOut(BaseModel):
@@ -1195,6 +1236,8 @@ async def _plan_shared_preamble(
     # Full waypoint list (including dwell metadata) — the routing
     # provider only needs coords, but downstream services
     # (day_plan, hotel densification) need dwell_nights + label.
+    # `via_only` points are routed through but are NOT visit stops, so
+    # they never reach the day plan / anchors / labels / hotel search.
     dwell_waypoints = tuple(
         Waypoint(
             coordinate=Coordinate(lat=w.lat, lon=w.lon),
@@ -1202,6 +1245,7 @@ async def _plan_shared_preamble(
             label=w.label,
         )
         for w in payload.waypoints
+        if not w.via_only
     )
     countries_override = (
         tuple(payload.countries) if payload.countries else None
@@ -1211,6 +1255,7 @@ async def _plan_shared_preamble(
     route = await providers.routing.route(
         origin, destination, countries_override,
         waypoints=waypoints,
+        avoid_tolls=payload.avoid_tolls,
         avoid_motorways=payload.avoid_motorways,
         prefer_scenic=payload.prefer_scenic,
     )
@@ -1293,18 +1338,12 @@ async def _plan_shared_preamble(
     _trip_hours = (
         route.free_flow_duration.total_seconds() / 3600.0
     ) * _REALISM_FACTOR
-    _cap_hours = float(
-        getattr(profile, "daily_driving_cap_hours", 8) or 8,
-    ) if profile is not None else 24.0
     # km cap: convert to equivalent hours using the route's avg speed.
     _avg_speed_kmh = (
         route.distance_km
         / (route.free_flow_duration.total_seconds() / 3600.0)
     ) if route.free_flow_duration.total_seconds() > 0 else 100.0
-    _daily_km_cap = getattr(profile, "daily_km_cap", None) if profile else None
-    if _daily_km_cap:
-        _km_cap_hours = _daily_km_cap / max(_avg_speed_kmh, 30.0)
-        _cap_hours = min(_cap_hours, _km_cap_hours)
+    _overrides_map = _day_overrides_map(payload)
     # Prefer `preferred_driving_start_hour` when set — the arrival
     # estimate has to match what `trip_optimizations` actually does
     # or the consistency check falsely fires "breakfast at Thu 08:00
@@ -1318,7 +1357,24 @@ async def _plan_shared_preamble(
     _day_start = effective_departure_at
     _remaining = _trip_hours
     _day_end = effective_departure_at
+    _day_index = 0
     while _remaining > 0.01:
+        _day_index += 1
+        # Same per-day cap (hours / km / explicit end time, with the
+        # day's overrides) that day_plan and trip_optimizations use.
+        _cap_hours = (
+            resolve_day_cap_hours(
+                profile=profile,
+                override=_overrides_map.get(_day_index),
+                day_start=_day_start,
+                avg_kmh=_avg_speed_kmh,
+                meals_enabled=bool(
+                    payload.restaurant_max_detour_minutes
+                    and payload.restaurant_max_detour_minutes > 0
+                ),
+            )
+            if profile is not None else 24.0
+        )
         _drive = min(_cap_hours, _remaining)
         _day_end = _day_start + timedelta(
             hours=_drive * (1.0 + _pause_ratio),
@@ -1326,9 +1382,14 @@ async def _plan_shared_preamble(
         _remaining -= _drive
         if _remaining <= 0.01:
             break
-        # Wake next day at wake_hour; fall through when no profile.
+        # Wake next day at the next day's start hour (its override,
+        # else wake_hour); fall through when no profile.
+        _next_start_hour = (
+            (_overrides_map.get(_day_index + 1) or {}).get("start_hour")
+            or _wake_hour
+        )
         _next_wake_at = _day_end.replace(
-            hour=_wake_hour, minute=0, second=0, microsecond=0,
+            hour=_next_start_hour, minute=0, second=0, microsecond=0,
         )
         if _next_wake_at <= _day_end:
             _next_wake_at += timedelta(days=1)
@@ -1729,6 +1790,7 @@ async def _plan_core_impl(
             vignette_cost_eur=_vignette_cost,
             vignette_countries=_vignette_countries,
             vignettes=_vignette_lines(preamble.real_tolls),
+            avoid_tolls=bool(route.avoid_tolls),
         ),
         time_windows=[
             TimeWindowOut(
@@ -1946,7 +2008,15 @@ async def _plan_enrich_impl(
         except Exception:  # noqa: BLE001
             return ()
 
+    # Toll-free plan: the route itself honoured avoid_tolls (not merely
+    # requested), so its toll is genuinely 0. No booth quote, partial skips,
+    # intra-section skips or toll alternative apply. When HERE could not
+    # honour it, route.avoid_tolls is False and the normal toll flow runs.
+    _toll_free = bool(payload.avoid_tolls and route.avoid_tolls)
+
     async def _fetch_alt_route():
+        if _toll_free:
+            return None
         if not (
             payload.include_toll_alternative
             or payload.include_hourly_toll_analysis
@@ -1955,7 +2025,9 @@ async def _plan_enrich_impl(
         try:
             return await providers.routing.route(
                 origin, destination, route.countries_crossed,
+                waypoints=preamble.waypoints,
                 avoid_tolls=True,
+                avoid_motorways=payload.avoid_motorways,
             )
         except Exception as exc:  # noqa: BLE001
             _log.warning("toll_alternative routing failed: %r", exc)
@@ -1997,7 +2069,7 @@ async def _plan_enrich_impl(
         so the preamble stays short. The route.toll_cost_eur from routing
         already carries a usable total; this adds per-booth detail for
         partial-skip display."""
-        if providers.tollguru is None or not route.geometry:
+        if _toll_free or providers.tollguru is None or not route.geometry:
             return None
         try:
             return await providers.tollguru.quote(route)
@@ -2175,7 +2247,11 @@ async def _plan_enrich_impl(
         _hourly_toll_out: HourlyTollReportOut | None = None
 
         # ---- Partial skips (HERE Routing v8 upgrade) ----------------
-        if payload.include_toll_alternative and route.toll_cost_eur > 0:
+        if (
+            not _toll_free
+            and payload.include_toll_alternative
+            and route.toll_cost_eur > 0
+        ):
             _raw_skips = compute_partial_skips(route, real_tolls=real_tolls)
             # Upgrade the heuristic penalty / extra_km numbers to REAL
             # figures from HERE Routing v8 (avoid=tollRoad) and attach
@@ -2218,7 +2294,8 @@ async def _plan_enrich_impl(
 
         # ---- Intra-section skips ------------------------------------
         if (
-            payload.include_toll_alternative
+            not _toll_free
+            and payload.include_toll_alternative
             and real_tolls
             and isinstance(providers.tollguru, _HereTollsProvider)
         ):
@@ -3268,7 +3345,8 @@ async def _plan_enrich_impl(
     return TripPlanResponse(
         route=_enrich_route(
             toll_total_eur=(
-                _toll_quote.total_eur if _toll_quote is not None else None
+                0.0 if _toll_free
+                else (_toll_quote.total_eur if _toll_quote is not None else None)
             ),
             real_tolls=real_tolls,
         ),

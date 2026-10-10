@@ -36,10 +36,13 @@ _log = logging.getLogger(__name__)
 
 
 from app.services.trip_optimizations import (
+    _MEAL_OVERHEAD_HOURS,
     MealStop,
     Optimizations,
     _pause_ratio,
     _wall_hours,
+    explicit_end_at,
+    resolve_day_cap_hours,
 )
 
 
@@ -116,11 +119,6 @@ def compute(
     earlier so the driver can settle in.
     """
     arrival_at = departure_at + timedelta(hours=trip_duration_hours)
-    cap_hours = float(profile.daily_driving_cap_hours)
-    # If a km cap is set, convert to hours using avg speed and apply
-    # as a secondary ceiling. Needed both for the is_multiday check
-    # and for the per-day boundary loop below.
-    _profile_km_cap = getattr(profile, "daily_km_cap", None)
     _overrides = day_overrides or {}
     # Profile-level preferred driving start hour — used on days 2+
     # when no per-day override says otherwise. Falls back to
@@ -129,14 +127,52 @@ def compute(
         getattr(profile, "preferred_driving_start_hour", None)
         or profile.wake_hour
     )
+    # Day-1 start_hour override — when the user tapped the pencil on
+    # day 1 and picked a specific hour (e.g. leave at 10:00 instead
+    # of the planned 09:00), shift the departure forward. If the
+    # picked hour is BEFORE departure_at (they picked 07:00 and
+    # departure was 09:00), the earliest legal option is departure_at
+    # itself — don't move backwards.
+    _day1_over = _overrides.get(1) or {}
+    _day1_start_hour = _day1_over.get("start_hour")
+    day1_start = departure_at
+    if _day1_start_hour is not None:
+        day1_start = day1_start.replace(
+            hour=_day1_start_hour, minute=0, second=0, microsecond=0,
+        )
+    # Effective average speed; guards against zero-hour trips
+    # (shouldn't happen, defensive).
+    avg_kmh = (
+        route_distance_km / trip_duration_hours
+        if trip_duration_hours > 0
+        else 90.0
+    )
+    # Day-1 driving cap INCLUDING overrides (hours / km / explicit end
+    # time) so a day-1 override that caps below the trip duration makes
+    # the trip multi-day even when the profile cap alone says single-day.
+    meals_enabled = optimizations.meals_enabled if optimizations else True
+    day1_cap_hours = resolve_day_cap_hours(
+        profile=profile, override=_day1_over,
+        day_start=day1_start, avg_kmh=avg_kmh,
+        meals_enabled=meals_enabled,
+    )
     arrival_local_hour = arrival_at.hour
     # A trip with any dwell waypoint is inherently multi-day even
     # if the driving alone would fit in one day (you can't stay
     # 2 nights somewhere in an 8-hour trip).
     has_dwell = any(w.dwell_nights >= 1 for w in waypoints)
+    # An explicit day-1 stop time that covers the whole drive means the
+    # driver chose to keep going past bedtime: not a forced overnight.
+    day1_end_covers_trip = (
+        explicit_end_at(_day1_over, day1_start) is not None
+        and trip_duration_hours <= day1_cap_hours
+    )
     is_multiday = (
-        trip_duration_hours > cap_hours
-        or arrival_local_hour >= profile.bedtime_hour
+        trip_duration_hours > day1_cap_hours
+        or (
+            arrival_local_hour >= profile.bedtime_hour
+            and not day1_end_covers_trip
+        )
         or has_dwell
     )
     if not is_multiday:
@@ -169,19 +205,7 @@ def compute(
             Coordinate | None, str | None,
         ]
     ] = []
-    current_start = departure_at
-    # Day-1 start_hour override — when the user tapped the pencil on
-    # day 1 and picked a specific hour (e.g. leave at 10:00 instead
-    # of the planned 09:00), shift the departure forward. If the
-    # picked hour is BEFORE departure_at (they picked 07:00 and
-    # departure was 09:00), the earliest legal option is departure_at
-    # itself — don't move backwards.
-    _day1_over = (day_overrides or {}).get(1) or {}
-    _day1_start_hour = _day1_over.get("start_hour")
-    if _day1_start_hour is not None:
-        current_start = current_start.replace(
-            hour=_day1_start_hour, minute=0, second=0, microsecond=0,
-        )
+    current_start = day1_start
     current_start_km = 0.0
     # Project dwell waypoints onto the route geometry so we can
     # detect when the driving cap for a day would carry us past a
@@ -231,23 +255,22 @@ def compute(
             ))
     pass_anchors.sort(key=lambda a: a.km)
     dwell_idx = 0
-    # Effective km / h at the trip's average speed. Guard against
-    # zero-hour trips (shouldn't happen, defensive).
-    avg_kmh = (
-        route_distance_km / trip_duration_hours
-        if trip_duration_hours > 0
-        else 90.0
-    )
-    # Apply km cap to the profile-level cap_hours so is_multiday and
-    # the first-day boundary are consistent with the per-day loop.
-    if _profile_km_cap and avg_kmh > 0:
-        cap_hours = min(cap_hours, _profile_km_cap / max(avg_kmh, 30.0))
+    # The per-day cap (hours / km / end time, with overrides) is resolved
+    # inside the loop by `resolve_day_cap_hours`, shared with
+    # trip_optimizations so the sleep card and day boundaries agree.
     remaining_hours = trip_duration_hours
     day_index = 0
     opt_sleep = (
         optimizations.sleep_stop if optimizations is not None else None
     )
     opt_sleep_consumed = False
+    sleeps_by_day = {
+        ss.day_index: ss
+        for ss in (optimizations.sleep_stops if optimizations else ())
+        if ss.day_index
+    }
+    # boundary index -> sleep coordinate seeded from an optimizations stop
+    seeded_sleep_coord: dict[int, Coordinate] = {}
     # Fold pause overhead into wall-clock day boundaries so middle
     # days don't sleep at 16:00 (raw 08:00 + 8 h driving) — a real
     # driver takes ~15 % more clock time than pure road time. Same
@@ -258,17 +281,23 @@ def compute(
         day_index += 1
         # Per-day override tweaks (from the ResultScreen edit sheet).
         _day_over = _overrides.get(day_index) or {}
-        _this_day_cap = float(
-            _day_over.get("daily_driving_cap_hours") or cap_hours
+        _this_day_cap = resolve_day_cap_hours(
+            profile=profile, override=_day_over,
+            day_start=current_start, avg_kmh=avg_kmh,
+            meals_enabled=meals_enabled,
         )
-        # km cap: convert to hours using route avg speed.
-        _day_km_cap = _day_over.get("daily_km_cap") or getattr(
-            profile, "daily_km_cap", None
-        )
-        if _day_km_cap and avg_kmh > 0:
-            _this_day_cap = min(
-                _this_day_cap, _day_km_cap / max(avg_kmh, 30.0)
-            )
+        # Days 2+ with an explicit end time are seeded from the matching
+        # optimizations sleep stop (like day 1) so the day boundary and
+        # the promoted sleep card / hotel are the SAME place.
+        _seed_sleep = None
+        if day_index > 1 and _day_over.get("end_minutes") is not None:
+            _seed_sleep = sleeps_by_day.get(day_index)
+            if _seed_sleep is not None and (
+                _seed_sleep.rest_stop.cumulative_driving_hours
+                - (trip_duration_hours - remaining_hours)
+                <= 0.01
+            ):
+                _seed_sleep = None  # stop is behind us: use the cap maths
         # Day 1: honour the opt sleep-stop when present. It already
         # respects `cap_hours` and pause overhead, and its `at` is
         # what the promoted card shows.
@@ -279,6 +308,21 @@ def compute(
             )
             end_km = opt_sleep.rest_stop.distance_from_origin_km
             opt_sleep_consumed = True
+            seeded_sleep_coord[len(boundaries)] = (
+                opt_sleep.rest_stop.coordinate
+            )
+        elif _seed_sleep is not None:
+            driving_this_day = (
+                _seed_sleep.rest_stop.cumulative_driving_hours
+                - (trip_duration_hours - remaining_hours)
+            )
+            day_end_driving_at = _extend_end_with_meals(
+                current_start, _seed_sleep.at, meals,
+            )
+            end_km = _seed_sleep.rest_stop.distance_from_origin_km
+            seeded_sleep_coord[len(boundaries)] = (
+                _seed_sleep.rest_stop.coordinate
+            )
         else:
             driving_this_day = min(_this_day_cap, remaining_hours)
             raw_drive_end = current_start + timedelta(
@@ -415,8 +459,8 @@ def compute(
         # Day 1: opt_sleep already seeded the boundary so end_at IS
         # the sleep time and coord comes from the rest area. Later
         # days: fall through to route-geometry interpolation.
-        elif idx == 0 and opt_sleep_consumed and sleep_at is not None:
-            sleep_coord = opt_sleep.rest_stop.coordinate  # type: ignore[union-attr]
+        elif idx in seeded_sleep_coord and sleep_at is not None:
+            sleep_coord = seeded_sleep_coord[idx]
         elif sleep_at is not None and route is not None:
             # Otherwise interpolate a rough coord from the route
             # geometry at the day's ending km. Clients use this to
@@ -451,13 +495,6 @@ def compute(
             )
         )
     return MultiDayPlan(days=tuple(days), total_days=total)
-
-
-# Wall-clock overhead we assume for each meal stop that falls
-# inside a day's driving window. 1 h covers sit-down time + parking
-# + service at a European roadside restaurant; matches the value
-# `_select_sleep_stop` reserves in `trip_optimizations.py`.
-_MEAL_OVERHEAD_HOURS = 1.0
 
 
 def _extend_end_with_meals(

@@ -52,11 +52,33 @@ _SEGMENT_CACHE_TTL_S = 30 * 86400  # 30 days — EU toll prices change 1-2×/yea
 # re-fetch to detect price drift. If the new total differs by >15% we log
 # a warning and update the entry; otherwise we silently reset the counter.
 _QUOTE_CACHE: dict[
-    tuple[float, float, float, float],
+    tuple[Any, ...],
     tuple["TollQuote", float, int],       # (quote, ts, hit_count)
 ] = {}
 _QUOTE_CACHE_TTL_S = 30 * 86400  # 30 days
 _VALIDATION_EVERY = 8            # re-validate every 8th cache hit
+
+
+def _quote_key(route: Route) -> tuple[Any, ...]:
+    """Cache key for a full-route quote.
+
+    Endpoints rounded to 1 decimal (~11 km) so nearby addresses share an
+    entry, PLUS a discriminator for the actual path: the ``avoid_tolls``
+    flag and a digest of the downsampled geometry (also on the ~11 km
+    grid). A toll-free route and a normal one between the same city pair
+    therefore never share (and never poison) each other's quote.
+    """
+    import hashlib
+
+    vias = _downsample_vias(route)
+    digest = hashlib.sha1(
+        repr([(round(c.lat, 1), round(c.lon, 1)) for c in vias]).encode(),
+    ).hexdigest()[:12]
+    return (
+        round(route.geometry[0].lat, 1), round(route.geometry[0].lon, 1),
+        round(route.geometry[-1].lat, 1), round(route.geometry[-1].lon, 1),
+        bool(route.avoid_tolls), digest,
+    )
 
 
 def _api_key() -> str | None:
@@ -86,10 +108,7 @@ class HereTollsProvider:
         # Check route-level cache before hitting HERE.
         # Round to 1 decimal (~11 km grid) so nearby addresses share a cache entry —
         # toll costs for routes from the same city area are identical.
-        qk: tuple[float, float, float, float] = (
-            round(route.geometry[0].lat, 1), round(route.geometry[0].lon, 1),
-            round(route.geometry[-1].lat, 1), round(route.geometry[-1].lon, 1),
-        )
+        qk = _quote_key(route)
         cached_q = _QUOTE_CACHE.get(qk)
         if cached_q is not None:
             cached_quote, ts, hit_count = cached_q
@@ -97,7 +116,7 @@ class HereTollsProvider:
                 new_hits = hit_count + 1
                 _QUOTE_CACHE[qk] = (cached_quote, ts, new_hits)
                 _log.debug("HERE tolls: cache hit #%d for %s→%s",
-                           new_hits, qk[:2], qk[2:])
+                           new_hits, qk[:2], qk[2:4])
                 # Periodic background re-validation so stale prices don't
                 # silently persist for 30 days after a vignette price change.
                 if new_hits % _VALIDATION_EVERY == 0:
@@ -229,7 +248,7 @@ class HereTollsProvider:
 
     async def _validate_cache(
         self,
-        qk: tuple[float, float, float, float],
+        qk: tuple[Any, ...],
         cached: "TollQuote",
         route: "Route",
         vehicle_class: str,
@@ -253,7 +272,8 @@ class HereTollsProvider:
                 _log.warning(
                     "HERE tolls: cached total %.2f EUR differs from live %.2f EUR "
                     "(%.0f%%) — updating cache for %s→%s",
-                    cached.total_eur, fresh.total_eur, drift * 100, qk[:2], qk[2:],
+                    cached.total_eur, fresh.total_eur, drift * 100,
+                    qk[:2], qk[2:4],
                 )
                 _QUOTE_CACHE[qk] = (fresh, time.time(), 0)
             else:

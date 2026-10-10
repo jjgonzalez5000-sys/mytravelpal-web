@@ -49,8 +49,9 @@ _TTL_SECONDS = 600
 _ENRICH_TTL_SECONDS = 300
 _MEMORY_MAX = 200
 # Bump to throw away every cached plan at once (a Redis cache survives
-# deploys): old entries simply stop matching. 2026-10-10: toll estimate fix.
-_CACHE_VERSION = "2026-10-10a"
+# deploys): old entries simply stop matching. 2026-10-10b: avoid_tolls,
+# via_only waypoints and per-day end_minutes change the plan contract.
+_CACHE_VERSION = "2026-10-10b"
 
 
 class PlanCacheSlot(str, Enum):
@@ -101,12 +102,13 @@ def _bucket_departure_to_hour(iso_or_dt: Any) -> str:
     return dt.strftime("%Y-%m-%d %H:00")
 
 
-def _waypoint_key(w: dict[str, Any]) -> tuple[float, float, int, str]:
+def _waypoint_key(w: dict[str, Any]) -> tuple[float, float, int, str, bool]:
     return (
         _round_coord(w.get("lat", 0.0)),
         _round_coord(w.get("lon", 0.0)),
         int(w.get("dwell_nights", 0) or 0),
         str(w.get("label") or ""),
+        bool(w.get("via_only", False)),
     )
 
 
@@ -173,7 +175,7 @@ class PlanCache:
 
         * ``origin`` / ``destination`` — coords rounded to 4 decimals
           (~11 m at the equator) so hand-tap jitter still collides.
-        * ``waypoints`` — sorted by (lat, lon, dwell_nights, label);
+        * ``waypoints`` — sorted by (lat, lon, dwell_nights, label, via_only);
           also 4-decimal-rounded.
         * ``desired_departure_at`` — bucketed to the hour, so 08:15
           and 08:45 share a cache slot (traffic/weather don't move
@@ -209,8 +211,9 @@ class PlanCache:
                 "lon": lon,
                 "dwell_nights": dwell,
                 "label": label,
+                "via_only": via_only,
             }
-            for (lat, lon, dwell, label) in waypoints_sorted
+            for (lat, lon, dwell, label, via_only) in waypoints_sorted
         ]
         data["desired_departure_at"] = _bucket_departure_to_hour(
             data.get("desired_departure_at")

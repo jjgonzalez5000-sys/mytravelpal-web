@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import dataclasses
 import hashlib
 import logging
 import os
+import re
 import time
 from datetime import timedelta
 from math import asin, atan2, cos, degrees, radians, sin, sqrt
@@ -409,6 +411,94 @@ class FallbackRoutingProvider:
             )
 
 
+_HERE_DOWN_TTL_S = 30.0
+
+
+def _here_outage(exc: Exception) -> bool:
+    """True for failures that mean HERE itself is unavailable (timeout,
+    connection error, bad/missing key, quota, 5xx) as opposed to a
+    per-request problem (no route, bad coordinates)."""
+    msg = str(exc)
+    if "not set" in msg or "request failed" in msg:
+        return True
+    m = re.search(r"HTTP (\d{3})", msg)
+    if m:
+        code = int(m.group(1))
+        return code in (401, 403, 429) or code >= 500
+    return False
+
+
+class TollAvoidingRoutingProvider:
+    """Honest toll-free routing.
+
+    The public OSRM server cannot avoid tolls (see `OsrmRoutingProvider`,
+    which keeps ignoring the flag), so `avoid_tolls=True` requests go to
+    `here` (HERE Routing v8, `avoid[features]=tollRoad`). When HERE is not
+    configured (`here=None`) or fails, the request is served by `default`
+    as a NORMAL route (`avoid_tolls=False`, real toll estimate) and the
+    returned `Route.avoid_tolls` is False, so the client can tell the toll
+    avoidance was not applied. A route that HERE really produced with
+    `avoid_tolls=True` is stamped `avoid_tolls=True`.
+
+    After an HERE outage (timeout / 401 / 429 / 5xx) further toll-free
+    requests skip HERE for `_HERE_DOWN_TTL_S` seconds so concurrent
+    /plan/core + /plan/enrich calls do not each wait out the timeout.
+    """
+
+    def __init__(
+        self, default: RoutingProvider, here: RoutingProvider | None,
+    ) -> None:
+        self._default = default
+        self._here = here
+        self._here_down_until = 0.0
+
+    async def route(
+        self,
+        origin: Coordinate,
+        destination: Coordinate,
+        countries: tuple[Country, ...] | None = None,
+        *,
+        waypoints: tuple[Coordinate, ...] = (),
+        avoid_tolls: bool = False,
+        avoid_motorways: bool = False,
+        prefer_scenic: bool = False,
+    ) -> Route:
+        if avoid_tolls and self._here is not None:
+            if time.monotonic() < self._here_down_until:
+                _log.debug("HERE marked down - serving a normal route")
+            else:
+                try:
+                    route = await self._here.route(
+                        origin, destination, countries,
+                        waypoints=waypoints,
+                        avoid_tolls=True, avoid_motorways=avoid_motorways,
+                        prefer_scenic=prefer_scenic,
+                    )
+                    # Stamp from what HERE really honoured (it already
+                    # clears the flag when the response still has tolls).
+                    return route
+                except Exception as exc:  # noqa: BLE001
+                    if _here_outage(exc):
+                        self._here_down_until = (
+                            time.monotonic() + _HERE_DOWN_TTL_S
+                        )
+                    _log.warning(
+                        "HERE toll-free routing failed, serving a normal "
+                        "(tolled) route instead: %s", exc,
+                    )
+        # Normal route: never forward avoid_tolls=True to a provider that
+        # cannot honour it, and never label the result as toll-free.
+        route = await self._default.route(
+            origin, destination, countries,
+            waypoints=waypoints,
+            avoid_tolls=False, avoid_motorways=avoid_motorways,
+            prefer_scenic=prefer_scenic,
+        )
+        if route.avoid_tolls:
+            route = dataclasses.replace(route, avoid_tolls=False)
+        return route
+
+
 # ---------------------------------------------------------------------------
 # HERE Flexible Polyline decoder
 # ---------------------------------------------------------------------------
@@ -598,6 +688,7 @@ class HereRoutingProvider:
         total_s = 0.0
         all_coords: list[Coordinate] = []
         toll_eur = 0.0
+        has_toll_sections = False
 
         for section in sections:
             summary = section.get("summary") or {}
@@ -617,6 +708,7 @@ class HereRoutingProvider:
             # HERE may expose EUR fares directly; pick the minimum fare per
             # toll entry (tag/video price is cheaper than cash).
             for toll in section.get("tolls") or []:
+                has_toll_sections = True
                 eur_fares: list[float] = []
                 for f in (toll.get("fares") or []):
                     price_obj = f.get("price") or {}
@@ -643,7 +735,11 @@ class HereRoutingProvider:
         # back to the per-country heuristic so toll-free sections don't
         # silently zero-out routes where toll_eur happened to be 0 because
         # HERE didn't return fare data for that country yet.
-        toll_cost = 0.0 if avoid_tolls else (
+        # HERE cannot always avoid tolls (e.g. the only access is a toll
+        # road); then the response still lists toll sections. Do not label
+        # such a route toll-free: price it and clear the flag.
+        honoured = avoid_tolls and not has_toll_sections
+        toll_cost = 0.0 if honoured else (
             round(toll_eur, 2)
             if toll_eur > 0
             else _apply_toll_pricing(distance_km, countries)
@@ -659,7 +755,7 @@ class HereRoutingProvider:
             countries_crossed=countries,
             waypoints=wps,
             geometry=geometry,
-            avoid_tolls=avoid_tolls,
+            avoid_tolls=honoured,
         )
         _HERE_ROUTE_CACHE[cache_key] = (result, time.time())
         return result
@@ -682,21 +778,26 @@ def default_routing_provider() -> RoutingProvider:
 
     mock_fallback = MockRoutingProvider()
 
+    has_here = bool(os.environ.get("MYTRAVELPAL_HERE_API_KEY"))
+
     if mode == "here":
-        # HERE-only chain: HERE → mock.
-        if not os.environ.get("MYTRAVELPAL_HERE_API_KEY"):
+        # HERE-only chain: HERE -> mock.
+        if not has_here:
             _log.warning(
                 "MYTRAVELPAL_ROUTING=here but MYTRAVELPAL_HERE_API_KEY is "
                 "not set — falling back to mock routing",
             )
             return mock_fallback
-        return FallbackRoutingProvider(
-            primary=HereRoutingProvider(),
-            fallback=mock_fallback,
+        return TollAvoidingRoutingProvider(
+            default=FallbackRoutingProvider(
+                primary=HereRoutingProvider(),
+                fallback=mock_fallback,
+            ),
+            here=HereRoutingProvider(),
         )
 
-    # Default OSRM chain: OSRM → (HERE if key set) → mock.
-    if os.environ.get("MYTRAVELPAL_HERE_API_KEY"):
+    # Default OSRM chain: OSRM -> (HERE if key set) -> mock.
+    if has_here:
         here_to_mock = FallbackRoutingProvider(
             primary=HereRoutingProvider(),
             fallback=mock_fallback,
@@ -704,9 +805,16 @@ def default_routing_provider() -> RoutingProvider:
     else:
         here_to_mock = mock_fallback
 
-    return FallbackRoutingProvider(
+    chain = FallbackRoutingProvider(
         primary=OsrmRoutingProvider(
             base_url=os.environ.get("MYTRAVELPAL_OSRM_URL"),
         ),
         fallback=here_to_mock,
+    )
+    # Public OSRM cannot avoid tolls, so toll-free requests need HERE.
+    # Without a key the wrapper serves an honest tolled route
+    # (avoid_tolls=False) instead of a mislabelled one.
+    return TollAvoidingRoutingProvider(
+        default=chain,
+        here=HereRoutingProvider() if has_here else None,
     )

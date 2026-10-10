@@ -14,7 +14,7 @@ fuel-cost estimate produced by [`fuel_cost`](fuel_cost.py). No LLM.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
 from app.domain import (
@@ -58,6 +58,102 @@ def _wall_hours(driving_hours: float, pause_ratio: float) -> float:
     return driving_hours * (1.0 + pause_ratio)
 
 
+# Wall-clock overhead we assume for each meal stop that falls inside a
+# day's driving window. 1 h covers sit-down time + parking + service at
+# a European roadside restaurant. Shared by day_plan (which folds real
+# meal stops into day ends) and by the cap resolution below.
+_MEAL_OVERHEAD_HOURS = 1.0
+
+
+def meal_slots_in_window(
+    prefs: MealPreferences, start: datetime, end: datetime,
+) -> int:
+    """Number of meal slots (breakfast / lunch / dinner) whose clock time
+    lands in ``[start, end)``. Slot times wrap to the next day when they
+    already passed at ``start`` (same rule as `_next_at_hour_minute`)."""
+    return sum(
+        1
+        for slot in (MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER)
+        if start
+        <= _next_at_hour_minute(
+            start, _slot_hour(prefs, slot), _slot_minute(prefs, slot),
+        )
+        < end
+    )
+
+
+def explicit_end_at(
+    override: dict[str, int | None] | None, day_start: datetime,
+) -> datetime | None:
+    """Wall-clock moment the driver asked to stop driving on this day
+    (``end_minutes`` = minutes after local midnight of ``day_start``'s
+    date; may exceed 1440 for "after midnight"). None when not set."""
+    minutes = (override or {}).get("end_minutes")
+    if minutes is None:
+        return None
+    midnight = day_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    return midnight + timedelta(minutes=int(minutes))
+
+
+def resolve_day_cap_hours(
+    *,
+    profile: TripProfile,
+    override: dict[str, int | None] | None,
+    day_start: datetime,
+    avg_kmh: float,
+    meals_enabled: bool = True,
+) -> float:
+    """Driving-hours ceiling for ONE day. The single source of truth used
+    by both `compute` (trip_optimizations) and `day_plan.compute`, so the
+    promoted sleep card and the day boundaries cannot diverge.
+
+    Resolution order:
+    1. ``end_minutes`` (explicit stop time) wins over every hours cap.
+       Wall-clock window ``W = end - day_start`` is made of driving,
+       safety pauses (``driving * pause_ratio``) and one
+       ``_MEAL_OVERHEAD_HOURS`` per meal slot inside the window, i.e.
+       ``W = d * (1 + pause_ratio) + N_meals * overhead`` (N_meals = 0
+       when ``meals_enabled`` is False: no meal stops will be scheduled,
+       so nothing has to be added back). Inverting:
+       ``d = (W - N_meals * overhead) / (1 + pause_ratio)``, floored at
+       0.5 h. The profile-level km cap is deliberately NOT applied (the
+       driver explicitly asked for this end time); an explicit km cap on
+       the same day still is.
+    2. Otherwise ``daily_driving_cap_hours`` override, else the profile cap.
+       The km cap is ``override if override is not None else profile`` so a
+       day can LIFT the profile km cap (e.g. profile 500 km, day 2000 km),
+       converted to hours with the route's average speed (>= 30 km/h).
+    """
+    override = override or {}
+    km_override = override.get("daily_km_cap")
+    end_at = explicit_end_at(override, day_start)
+    if end_at is not None:
+        window_h = (end_at - day_start).total_seconds() / 3600.0
+        overhead_h = (
+            _MEAL_OVERHEAD_HOURS
+            * meal_slots_in_window(profile.meals, day_start, end_at)
+            if meals_enabled else 0.0
+        )
+        cap = max(
+            0.5,
+            (window_h - overhead_h) / (1.0 + _pause_ratio(profile)),
+        )
+        km_cap = km_override
+    else:
+        cap = float(
+            override.get("daily_driving_cap_hours")
+            or getattr(profile, "daily_driving_cap_hours", 8)
+            or 8
+        )
+        km_cap = (
+            km_override if km_override is not None
+            else getattr(profile, "daily_km_cap", None)
+        )
+    if km_cap:
+        cap = min(cap, km_cap / max(avg_kmh, 30.0))
+    return cap
+
+
 @dataclass(frozen=True, slots=True)
 class MealStop:
     slot: MealSlot
@@ -71,6 +167,9 @@ class SleepStop:
     at: datetime
     rest_stop: RestStop
     hotel: Hotel | None
+    # 1-based day this overnight closes (0 = unknown). Lets day_plan seed
+    # the matching day boundary from this very stop.
+    day_index: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +184,10 @@ class Optimizations:
     # list to densify hotels around every overnight so multi-day
     # trips don't lose their middle-day hotel recommendations.
     sleep_stops: tuple[SleepStop, ...] = ()
+    # False when the caller asked for no meal stops at all; the explicit
+    # end-time cap resolution then budgets no meal overhead (day_plan reads
+    # this so both sides stay in sync).
+    meals_enabled: bool = True
 
 
 def _slot_hour(prefs: MealPreferences, slot: MealSlot) -> int:
@@ -235,8 +338,8 @@ def compute(
     """
     pause_ratio = _pause_ratio(profile)
     prefs = profile.meals
-    cap_hours = float(getattr(profile, "daily_driving_cap_hours", 8) or 8)
     wake_hour = getattr(profile, "wake_hour", 8)
+    _avg_kmh = route_km / trip_duration_hours if trip_duration_hours > 0 else 90.0
     # Preferred hour the user wants to be behind the wheel on day
     # 2+. Falls back to wake_hour when unset — matches the previous
     # behaviour where "wake up" == "start driving". Independent of
@@ -284,19 +387,13 @@ def compute(
         # for the driving cap. `override_cap` supersedes the profile
         # `cap_hours` for THIS day only; subsequent days revert.
         _override = _overrides.get(day_index) or {}
-        this_day_cap = float(
-            _override.get("daily_driving_cap_hours") or cap_hours
+        # (hours / km / explicit end time — see `resolve_day_cap_hours`).
+        this_day_cap = resolve_day_cap_hours(
+            profile=profile, override=_override,
+            day_start=day_start, avg_kmh=_avg_kmh,
+            meals_enabled=include_meal_stops,
         )
-        # Per-day km cap: convert to hours using route avg speed and
-        # apply as a secondary ceiling (whichever is stricter wins).
-        _day_km_cap = _override.get("daily_km_cap") or getattr(
-            profile, "daily_km_cap", None
-        )
-        if _day_km_cap:
-            _avg_kmh = (
-                route_km / trip_duration_hours if trip_duration_hours > 0 else 90.0
-            )
-            this_day_cap = min(this_day_cap, _day_km_cap / max(_avg_kmh, 30.0))
+        end_override_at = explicit_end_at(_override, day_start)
         driving_this_day = min(this_day_cap, remaining_driving)
         # Wall-clock end of driving for this day (before any post-
         # driving meal/sleep). Includes pause overhead.
@@ -321,11 +418,25 @@ def compute(
                 prefs=prefs,
                 driving_offset=driving_offset,
                 cap_hours=this_day_cap,  # use the km-capped cap, not the raw hours cap
+                end_override_at=end_override_at,
+                meals_enabled=include_meal_stops,
             )
             if day_sleep is not None:
+                day_sleep = replace(day_sleep, day_index=day_index)
                 all_sleeps.append(day_sleep)
             if day_index == 1:
                 first_sleep = day_sleep
+
+        if end_override_at is not None and day_sleep is not None:
+            # Explicit end time: the day really ends at the rest stop it
+            # snapped to (day_plan seeds day 1 from it too), so advance by
+            # THAT driving, not by the derived cap — otherwise the next
+            # day's meal/sleep clock drifts by the snap difference.
+            driving_this_day = max(
+                0.0,
+                day_sleep.rest_stop.cumulative_driving_hours
+                - driving_offset,
+            )
 
         day_end = day_sleep.at if day_sleep is not None else day_drive_end
         # Gate the meal-stop expansion on the caller's opt-in.
@@ -367,6 +478,7 @@ def compute(
         meal_stops=tuple(meal_stops),
         sleep_stop=first_sleep,
         sleep_stops=tuple(all_sleeps),
+        meals_enabled=include_meal_stops,
     )
 
 
@@ -548,6 +660,8 @@ def _select_sleep_stop(
     prefs: MealPreferences,
     driving_offset: float = 0.0,
     cap_hours: float | None = None,
+    end_override_at: datetime | None = None,
+    meals_enabled: bool = True,
 ) -> SleepStop | None:
     """Pick the sleep stop the driver naturally reaches around
     bedtime, capped at `daily_driving_cap_hours`. See `compute`
@@ -557,6 +671,10 @@ def _select_sleep_stop(
     """
     sleep_target_hour = getattr(profile, "bedtime_hour", 22)
     late_at = _next_at_hour(departure_at, sleep_target_hour)
+    if end_override_at is not None:
+        # The driver explicitly asked to keep driving until this time:
+        # honour it even when it is past the profile bedtime.
+        late_at = max(late_at, end_override_at)
     # Skip sleep ONLY when both:
     # 1) the driver can finish today under the daily driving cap
     #    (no cap-forced early stop), AND
@@ -583,19 +701,13 @@ def _select_sleep_stop(
     # ~1 h per meal slot: sit-down time + parking + service in
     # European roadside stops rarely fits in 30 min once you
     # factor in kids/pets.
-    meal_overhead_hours = 1.0 * sum(
-        1
-        for slot in (
-            MealSlot.BREAKFAST, MealSlot.LUNCH, MealSlot.DINNER,
-        )
-        if departure_at
-        <= _next_at_hour_minute(
-            departure_at,
-            _slot_hour(prefs, slot),
-            _slot_minute(prefs, slot),
-        )
-        < late_at
+    meal_overhead_hours = _MEAL_OVERHEAD_HOURS * meal_slots_in_window(
+        prefs, departure_at, late_at,
     )
+    if end_override_at is not None and not meals_enabled:
+        # No meal stops will be scheduled: do not reserve time for them
+        # (mirrors `resolve_day_cap_hours`). Default behaviour is unchanged.
+        meal_overhead_hours = 0.0
     available_wall = max(wall_hours_to_bedtime - meal_overhead_hours, 0.0)
     effective_driving_hours = min(
         available_wall / (1.0 + pause_ratio),
@@ -606,12 +718,31 @@ def _select_sleep_stop(
     driving_target = departure_at + timedelta(
         hours=_wall_hours(effective_driving_hours, pause_ratio),
     )
-    rest = _nearest_rest_stop(
-        rest_stops, departure_at, driving_target,
-        tolerance=timedelta(hours=3),
-        pause_ratio=pause_ratio,
-        driving_offset=driving_offset,
-    )
+    if end_override_at is not None:
+        # Explicit end time: snap tightly first (+-90 min; rest stops are
+        # ~2 h apart) so the stop stays near what the driver asked for;
+        # when nothing is that close (requested end near the day start or
+        # the trip end) retry with the default +-3 h.
+        rest = _nearest_rest_stop(
+            rest_stops, departure_at, driving_target,
+            tolerance=timedelta(minutes=90),
+            pause_ratio=pause_ratio,
+            driving_offset=driving_offset,
+        )
+        if rest is None:
+            rest = _nearest_rest_stop(
+                rest_stops, departure_at, driving_target,
+                tolerance=timedelta(hours=3),
+                pause_ratio=pause_ratio,
+                driving_offset=driving_offset,
+            )
+    else:
+        rest = _nearest_rest_stop(
+            rest_stops, departure_at, driving_target,
+            tolerance=timedelta(hours=3),
+            pause_ratio=pause_ratio,
+            driving_offset=driving_offset,
+        )
     if rest is None:
         return None
     arrival_at_stop = departure_at + timedelta(
