@@ -2344,7 +2344,7 @@
   "garageDelete": "Elimina",
   "garageCancel": "Annulla",
   "garageSave": "Salva",
-  "garageDefaultName": "La mia auto",
+  "garageDefaultName": "Il mio veicolo",
   "garageNameHint": "Dagli un nome (es. La mia Golf)",
   "garageDefaultTankLabel": "Livello serbatoio predefinito",
   "garageDefaultChargeLevelLabel": "Livello di carica iniziale",
@@ -2366,7 +2366,7 @@
       }
     }
   },
-  "planScreenGarageChip": "Auto: {name} · {pct} %",
+  "planScreenGarageChip": "Veicolo: {name} · {pct} %",
   "@planScreenGarageChip": {
     "placeholders": {
       "name": {
@@ -3004,5 +3004,51 @@
   "vignetteInTotal": "+ {amount} di vignette",
   "@vignetteInTotal": {
     "placeholders": { "amount": { "type": "String" } }
+  },
+  "vehicleTypeTruck": "Camion",
+  "@vehicleTypeTruck": {},
+  "vehicleWizardStepOf": "Passo {current} di {total}",
+  "@vehicleWizardStepOf": {
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "vehicleWizardTypeTitle": "Che tipo di veicolo è?",
+  "@vehicleWizardTypeTitle": {},
+  "vehicleWizardHowTitle": "Come vuoi indicarlo?",
+  "@vehicleWizardHowTitle": {},
+  "vehicleWizardHowSearch": "Cerca il mio modello",
+  "@vehicleWizardHowSearch": {},
+  "vehicleWizardHowSearchSub": "Scegli marca e modello dal catalogo",
+  "@vehicleWizardHowSearchSub": {},
+  "vehicleWizardSpecsTitle": "Carburante e consumo",
+  "@vehicleWizardSpecsTitle": {},
+  "vehicleWizardDimsTitle": "Dimensioni e peso",
+  "@vehicleWizardDimsTitle": {},
+  "vehicleWizardHeight": "Altezza (m)",
+  "@vehicleWizardHeight": {},
+  "vehicleWizardLength": "Lunghezza (m)",
+  "@vehicleWizardLength": {},
+  "vehicleWizardWeight": "Peso massimo (t)",
+  "@vehicleWizardWeight": {},
+  "vehicleWizardAxles": "Assi",
+  "@vehicleWizardAxles": {},
+  "vehicleWizardTruckNote": "Il calcolo specifico per camion (pedaggi per asse, limiti di altezza e peso, pause obbligatorie) non è ancora disponibile. Per ora il viaggio viene calcolato come quello di un furgone.",
+  "@vehicleWizardTruckNote": {},
+  "vehicleWizardNameTitle": "Nome e livello iniziale",
+  "@vehicleWizardNameTitle": {},
+  "vehicleWizardNext": "Avanti",
+  "@vehicleWizardNext": {},
+  "vehicleWizardBack": "Indietro",
+  "@vehicleWizardBack": {},
+  "vehicleWizardRange": "Tra {min} e {max}",
+  "@vehicleWizardRange": {
+    "placeholders": { "min": { "type": "String" }, "max": { "type": "String" } }
+  },
+  "garageSignInRequired": "Accedi per salvare i veicoli nel tuo garage.",
+  "@garageSignInRequired": {},
+  "suggestSeeDetails": "Dettagli e mappa",
+  "@suggestSeeDetails": {},
+  "suggestWhere": "Sosta intorno al km {km} · a {off} km dal percorso",
+  "@suggestWhere": {
+    "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   }
 }

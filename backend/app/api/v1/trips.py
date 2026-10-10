@@ -261,13 +261,15 @@ class WaypointIn(BaseModel):
 class VehicleIn(BaseModel):
     type: VehicleType = VehicleType.CAR
     fuel_type: FuelType = FuelType.PETROL
-    consumption_l_per_100km: float = Field(default=6.5, ge=0, le=40)
-    consumption_kwh_per_100km: float = Field(default=18.0, ge=0, le=80)
+    # Upper bounds leave room for trucks (400 L tanks, 30-45 L/100 km, 110+
+    # kWh/100 km for an electric one); a car sits far below them.
+    consumption_l_per_100km: float = Field(default=6.5, ge=0, le=80)
+    consumption_kwh_per_100km: float = Field(default=18.0, ge=0, le=150)
     # `ge=0` (not `gt=0`): pure EVs post `fuel_tank_l=0`, ICE posts
     # `consumption_kwh_per_100km=0`. The validator downstream picks
     # the field pair that matches `fuel_type` and ignores the other.
-    fuel_tank_l: float = Field(default=50.0, ge=0, le=200)
-    ev_range_km: float = Field(default=350.0, ge=0, le=1200)
+    fuel_tank_l: float = Field(default=50.0, ge=0, le=1000)
+    ev_range_km: float = Field(default=350.0, ge=0, le=1500)
 
 
 class MealPreferencesIn(BaseModel):

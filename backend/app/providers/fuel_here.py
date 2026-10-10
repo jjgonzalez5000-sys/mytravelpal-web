@@ -500,6 +500,9 @@ _HERE_CODES_BY_FUEL["sp98"] = _HERE_CODES_BY_FUEL["petrol"]
 _HERE_CODES_BY_FUEL["hybrid"] = _HERE_CODES_BY_FUEL["petrol"]
 _HERE_CODES_BY_FUEL["phev"] = _HERE_CODES_BY_FUEL["petrol"]
 
+# Drivers of fuels that cost far less than petrol: no road-fuel price floor.
+_ALT_FUEL_DRIVERS = frozenset({"lpg", "e85", "cng"})
+
 # AdBlue (urea) products: for cars, for trucks, and the generic ones.
 _ADBLUE_CAR_CODES = ("71", "19", "91")
 _ADBLUE_TRUCK_CODES = ("72", "92")
@@ -596,7 +599,11 @@ def _extract_fuel_price_from_prices_api(
                 cur = str(p.get("currency") or "EUR").upper()
                 if isinstance(val, (int, float)):
                     eur = _to_eur(float(val), cur)
-                    if _price_plausible(eur):
+                    # The believable-price floor is for road fuels; LPG, E85
+                    # and CNG are legitimately far cheaper.
+                    if eur is not None and (
+                        ft_lower in _ALT_FUEL_DRIVERS or _price_plausible(eur)
+                    ):
                         label = _FUEL_TYPE_LABELS.get(ft)
                         return eur, label
 
@@ -762,7 +769,11 @@ class HereFuelPricesProvider:
                     except (ValueError, TypeError):
                         pass
                 raw_price, fuel_label = _extract_fuel_price_from_prices_api(station, fuel_type)
-                if raw_price is not None and not _price_plausible(raw_price, country):
+                if (
+                    raw_price is not None
+                    and (fuel_type or "").lower() not in _ALT_FUEL_DRIVERS
+                    and not _price_plausible(raw_price, country)
+                ):
                     # Far below this country's pump prices: another fuel or
                     # bad data. Show the station without a price instead.
                     raw_price, fuel_label = None, None

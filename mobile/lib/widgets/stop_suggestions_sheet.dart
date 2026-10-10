@@ -11,6 +11,7 @@ import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../services/route_slice.dart';
 import 'my_place_category.dart';
+import 'poi_detail_sheet.dart' show PoiKind, showPoiDetailSheet;
 
 /// Opens the AI stop-suggestions sheet. [onAdd] adds a suggestion to the
 /// route and reports whether it was added.
@@ -278,6 +279,16 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
                 suggestion: s,
                 added: _added.contains(suggestionKey(s)),
                 onAdd: () => _add(s),
+                onTap: () => showSuggestionDetail(
+                  context,
+                  suggestion: s,
+                  geometry: widget.geometry,
+                  added: _added.contains(suggestionKey(s)),
+                  onAdd: (x) async {
+                    await _add(x);
+                    return _added.contains(suggestionKey(x));
+                  },
+                ),
               ),
           ],
         ],
@@ -286,16 +297,64 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
   }
 }
 
+/// Opens the place's detail sheet: the route and the stop on a map, the
+/// address, phone, website and opening hours the place lists, a Google Maps
+/// link and, if it is not on the route yet, the add button.
+Future<void> showSuggestionDetail(
+  BuildContext context, {
+  required StopSuggestion suggestion,
+  required List<LatLon> geometry,
+  required bool added,
+  required Future<bool> Function(StopSuggestion) onAdd,
+}) {
+  final l = AppLocalizations.of(context);
+  final s = suggestion;
+  final where = l.suggestWhere(
+    s.alongKm.round(), s.distanceFromRouteKm.toStringAsFixed(1),
+  );
+  final subtitle = [
+    if (s.why.isNotEmpty) s.why,
+    where,
+    l.suggestCost(s.detourMinutes, s.visitMinutes),
+  ].join('\n');
+  return showPoiDetailSheet(
+    context,
+    kind: PoiKind.rest,
+    name: s.name,
+    subtitle: subtitle,
+    poi: s.coordinate,
+    origin: geometry.isNotEmpty ? geometry.first : s.coordinate,
+    destination: geometry.isNotEmpty ? geometry.last : s.coordinate,
+    routeGeometry: geometry,
+    attributes: s.attributes,
+    icon: myPlaceCategoryIcon(s.placeCategory),
+    accent: Theme.of(context).colorScheme.primary,
+    isAdded: added,
+    // Add only: the detail's button would flip to "remove" and this does not
+    // remove, so it closes once the stop is on the route.
+    onAddToRoute: added
+        ? null
+        : () {
+            onAdd(s);
+            Navigator.of(context).pop();
+          },
+  );
+}
+
 class SuggestionCard extends StatelessWidget {
   const SuggestionCard({
     required this.suggestion,
     required this.added,
     required this.onAdd,
+    this.onTap,
   });
 
   final StopSuggestion suggestion;
   final bool added;
   final VoidCallback onAdd;
+
+  /// Tapping the card (anywhere but the button) opens the place's details.
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -303,7 +362,10 @@ class SuggestionCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final s = suggestion;
-    return Container(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: Tokens.space8),
       padding: const EdgeInsets.all(Tokens.space12),
       decoration: BoxDecoration(
@@ -345,6 +407,25 @@ class SuggestionCard extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (onTap != null) ...[
+                  const SizedBox(height: Tokens.space4),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.map_outlined, size: 14, color: scheme.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        l.suggestSeeDetails,
+                        style: t.labelMedium?.copyWith(
+                          color: scheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Icon(Icons.chevron_right,
+                          size: 16, color: scheme.primary),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -360,6 +441,7 @@ class SuggestionCard extends StatelessWidget {
                   child: Text(l.suggestAdd),
                 ),
         ],
+      ),
       ),
     );
   }

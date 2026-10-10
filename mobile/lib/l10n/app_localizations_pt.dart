@@ -5029,4 +5029,72 @@ class AppLocalizationsPt extends AppLocalizations {
   String vignetteInTotal(String amount) {
     return '+ $amount in vignettes';
   }
+
+  @override
+  String get vehicleTypeTruck => 'Truck';
+
+  @override
+  String vehicleWizardStepOf(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get vehicleWizardTypeTitle => 'What type of vehicle is it?';
+
+  @override
+  String get vehicleWizardHowTitle => 'How do you want to enter it?';
+
+  @override
+  String get vehicleWizardHowSearch => 'Find my model';
+
+  @override
+  String get vehicleWizardHowSearchSub =>
+      'Pick the make and model from the catalogue';
+
+  @override
+  String get vehicleWizardSpecsTitle => 'Fuel and consumption';
+
+  @override
+  String get vehicleWizardDimsTitle => 'Size and weight';
+
+  @override
+  String get vehicleWizardHeight => 'Height (m)';
+
+  @override
+  String get vehicleWizardLength => 'Length (m)';
+
+  @override
+  String get vehicleWizardWeight => 'Maximum weight (t)';
+
+  @override
+  String get vehicleWizardAxles => 'Axles';
+
+  @override
+  String get vehicleWizardTruckNote =>
+      'Truck-specific routing (per-axle tolls, height and weight limits, mandatory rest) is not available yet. For now the trip is calculated like a van\'s.';
+
+  @override
+  String get vehicleWizardNameTitle => 'Name and starting level';
+
+  @override
+  String get vehicleWizardNext => 'Next';
+
+  @override
+  String get vehicleWizardBack => 'Back';
+
+  @override
+  String vehicleWizardRange(String min, String max) {
+    return 'Between $min and $max';
+  }
+
+  @override
+  String get garageSignInRequired => 'Sign in to save vehicles in your garage.';
+
+  @override
+  String get suggestSeeDetails => 'Details and map';
+
+  @override
+  String suggestWhere(int km, String off) {
+    return 'Stop around km $km · $off km off the route';
+  }
 }

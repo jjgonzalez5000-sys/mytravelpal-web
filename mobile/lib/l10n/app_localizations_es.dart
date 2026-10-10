@@ -4055,13 +4055,13 @@ class AppLocalizationsEs extends AppLocalizations {
   String get garageTitle => 'Mi garaje';
 
   @override
-  String get garageEmpty => 'Aún no hay coches — añade el primero';
+  String get garageEmpty => 'Aún no hay vehículos — añade el primero';
 
   @override
-  String get garageAdd => 'Añadir coche';
+  String get garageAdd => 'Añadir vehículo';
 
   @override
-  String get garageEdit => 'Editar coche';
+  String get garageEdit => 'Editar vehículo';
 
   @override
   String get garageDelete => 'Eliminar';
@@ -4073,7 +4073,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get garageSave => 'Guardar';
 
   @override
-  String get garageDefaultName => 'Mi coche';
+  String get garageDefaultName => 'Mi vehículo';
 
   @override
   String get garageNameHint => 'Ponle nombre (ej. Mi Golf)';
@@ -4088,7 +4088,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get garageAddError => 'No se pudo guardar. Inténtalo otra vez.';
 
   @override
-  String get garageDeleteTitle => '¿Eliminar coche?';
+  String get garageDeleteTitle => '¿Eliminar vehículo?';
 
   @override
   String garageDeleteBody(String name) {
@@ -4102,11 +4102,12 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String planScreenGarageChip(String name, int pct) {
-    return 'Coche: $name · $pct %';
+    return 'Vehículo: $name · $pct %';
   }
 
   @override
-  String get planScreenGarageChooseVehicle => 'Elige un coche para este viaje';
+  String get planScreenGarageChooseVehicle =>
+      'Elige un vehículo para este viaje';
 
   @override
   String get hotelArbitrageTitle => 'Hoteles más baratos al lado';
@@ -5048,5 +5049,73 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String vignetteInTotal(String amount) {
     return '+ $amount de viñetas';
+  }
+
+  @override
+  String get vehicleTypeTruck => 'Camión';
+
+  @override
+  String vehicleWizardStepOf(int current, int total) {
+    return 'Paso $current de $total';
+  }
+
+  @override
+  String get vehicleWizardTypeTitle => '¿Qué tipo de vehículo es?';
+
+  @override
+  String get vehicleWizardHowTitle => '¿Cómo quieres indicarlo?';
+
+  @override
+  String get vehicleWizardHowSearch => 'Buscar mi modelo';
+
+  @override
+  String get vehicleWizardHowSearchSub => 'Elige marca y modelo del catálogo';
+
+  @override
+  String get vehicleWizardSpecsTitle => 'Combustible y consumo';
+
+  @override
+  String get vehicleWizardDimsTitle => 'Medidas y peso';
+
+  @override
+  String get vehicleWizardHeight => 'Altura (m)';
+
+  @override
+  String get vehicleWizardLength => 'Longitud (m)';
+
+  @override
+  String get vehicleWizardWeight => 'Peso máximo (t)';
+
+  @override
+  String get vehicleWizardAxles => 'Ejes';
+
+  @override
+  String get vehicleWizardTruckNote =>
+      'Las rutas específicas de camión (peajes por ejes, límites de altura y peso, descansos obligatorios) todavía no están. Por ahora el viaje se calcula como el de una furgoneta.';
+
+  @override
+  String get vehicleWizardNameTitle => 'Nombre y nivel inicial';
+
+  @override
+  String get vehicleWizardNext => 'Siguiente';
+
+  @override
+  String get vehicleWizardBack => 'Atrás';
+
+  @override
+  String vehicleWizardRange(String min, String max) {
+    return 'Entre $min y $max';
+  }
+
+  @override
+  String get garageSignInRequired =>
+      'Inicia sesión para guardar vehículos en tu garaje.';
+
+  @override
+  String get suggestSeeDetails => 'Ver detalles y mapa';
+
+  @override
+  String suggestWhere(int km, String off) {
+    return 'Parada hacia el km $km · a $off km de la ruta';
   }
 }

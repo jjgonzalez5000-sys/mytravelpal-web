@@ -31,6 +31,7 @@ import '../services/plan_foreground_task.dart';
 import '../services/trip_foreground.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
+import '../services/garage_profile.dart';
 import '../services/my_places_match.dart';
 import '../services/route_slice.dart';
 import '../services/selection_check.dart';
@@ -750,6 +751,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               suggestion: s,
               added: added.contains(suggestionKey(s)),
               onAdd: () => _addSuggestion(s),
+              onTap: () => showSuggestionDetail(
+                context,
+                suggestion: s,
+                geometry: _response.route.geometry,
+                added: added.contains(suggestionKey(s)),
+                onAdd: _addSuggestion,
+              ),
             ),
         ],
       ),
@@ -3081,8 +3089,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             // image/link) which confused testers. Both surfaces
             // now open the same 3-option sheet.
             tooltip: l.resultShareTooltip,
-            icon: const Icon(Icons.ios_share, size: 18,
-                color: Colors.white70),
+            icon: Icon(Icons.ios_share, size: 18,
+                color: isDark ? Colors.white70 : scheme.onSurfaceVariant),
             onPressed: () => _openShareMenu(l),
           ),
         ],
@@ -4026,7 +4034,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
     );
     if (!mounted) return;
-    final current = ref.read(tripProfileProvider);
+    // With the garage vehicle on top, like the plan: comparing or replanning
+    // against the bare saved profile would undo the vehicle the trip uses.
+    final current = effectiveTripProfile(ref);
     if (_isPlanRelevantChange(widget.request.tripProfile, current)) {
       setState(() => _profileChangedSincePlan = true);
     }
@@ -4039,14 +4049,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       ),
     );
     if (!mounted) return;
-    final current = ref.read(tripProfileProvider);
+    // With the garage vehicle on top, like the plan: comparing or replanning
+    // against the bare saved profile would undo the vehicle the trip uses.
+    final current = effectiveTripProfile(ref);
     if (_isPlanRelevantChange(widget.request.tripProfile, current)) {
       setState(() => _profileChangedSincePlan = true);
     }
   }
 
   Future<void> _replanWithUpdatedProfile() async {
-    final current = ref.read(tripProfileProvider);
+    // With the garage vehicle on top, like the plan: comparing or replanning
+    // against the bare saved profile would undo the vehicle the trip uses.
+    final current = effectiveTripProfile(ref);
     if (current == null) return;
     setState(() => _profileChangedSincePlan = false);
     // Replan with the updated profile at the same departure time.
@@ -4170,13 +4184,21 @@ class _HeroStatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // The card is a dark gradient in the dark theme and a light surface in
+    // the light one: the text must follow, or it vanishes on light.
+    final labelColor = isDark ? Colors.white70 : scheme.onSurfaceVariant;
+    final gradient = isDark
+        ? const [Color(0xFFF59E0B), Colors.white]
+        : [const Color(0xFFB45309), scheme.onSurface];
     final tile = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label.toUpperCase(),
           style: t.labelSmall?.copyWith(
-            color: Colors.white70,
+            color: labelColor,
             letterSpacing: 1.4,
             fontWeight: FontWeight.w700,
           ),
@@ -4186,9 +4208,8 @@ class _HeroStatTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             ShaderMask(
-              shaderCallback: (bounds) => const LinearGradient(
-                colors: [Color(0xFFF59E0B), Colors.white],
-              ).createShader(bounds),
+              shaderCallback: (bounds) =>
+                  LinearGradient(colors: gradient).createShader(bounds),
               child: Text(
                 value,
                 style: t.headlineMedium?.copyWith(
@@ -4199,8 +4220,9 @@ class _HeroStatTile extends StatelessWidget {
             ),
             if (onTap != null) ...[
               const SizedBox(width: 4),
-              const Icon(Icons.chevron_right,
-                  color: Colors.white54, size: 16),
+              Icon(Icons.chevron_right,
+                  color: isDark ? Colors.white54 : scheme.onSurfaceVariant,
+                  size: 16),
             ],
           ],
         ),

@@ -1047,6 +1047,17 @@ class _MoreInfoSectionState extends State<_MoreInfoSection> {
     'addr:street',
     'addr:housenumber',
     'addr:city',
+    // The address row above already carries the city, and the price is the
+    // spotlight tile (an estimate we compute, not a listed price); showing
+    // them again here produced an untranslated "Price" and a "City" that
+    // held a street.
+    'city',
+    'here_city',
+    'here_address',
+    'here_postal_code',
+    'here_country',
+    'here_id',
+    'price',
     ..._featureCatalogueKeys,
   };
 

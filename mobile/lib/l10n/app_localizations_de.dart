@@ -4067,7 +4067,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get garageSave => 'Speichern';
 
   @override
-  String get garageDefaultName => 'Mein Auto';
+  String get garageDefaultName => 'Mein Fahrzeug';
 
   @override
   String get garageNameHint => 'Gib ihm einen Namen (z. B. Mein Golf)';
@@ -4096,7 +4096,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String planScreenGarageChip(String name, int pct) {
-    return 'Auto: $name · $pct %';
+    return 'Fahrzeug: $name · $pct %';
   }
 
   @override
@@ -5047,5 +5047,74 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String vignetteInTotal(String amount) {
     return '+ $amount Vignetten';
+  }
+
+  @override
+  String get vehicleTypeTruck => 'Lkw';
+
+  @override
+  String vehicleWizardStepOf(int current, int total) {
+    return 'Schritt $current von $total';
+  }
+
+  @override
+  String get vehicleWizardTypeTitle => 'Welche Art von Fahrzeug ist es?';
+
+  @override
+  String get vehicleWizardHowTitle => 'Wie möchtest du es angeben?';
+
+  @override
+  String get vehicleWizardHowSearch => 'Mein Modell suchen';
+
+  @override
+  String get vehicleWizardHowSearchSub =>
+      'Marke und Modell aus dem Katalog wählen';
+
+  @override
+  String get vehicleWizardSpecsTitle => 'Kraftstoff und Verbrauch';
+
+  @override
+  String get vehicleWizardDimsTitle => 'Maße und Gewicht';
+
+  @override
+  String get vehicleWizardHeight => 'Höhe (m)';
+
+  @override
+  String get vehicleWizardLength => 'Länge (m)';
+
+  @override
+  String get vehicleWizardWeight => 'Zulässiges Gesamtgewicht (t)';
+
+  @override
+  String get vehicleWizardAxles => 'Achsen';
+
+  @override
+  String get vehicleWizardTruckNote =>
+      'Lkw-spezifische Routen (Maut pro Achse, Höhen- und Gewichtsgrenzen, Pflichtpausen) gibt es noch nicht. Vorerst wird die Fahrt wie die eines Transporters berechnet.';
+
+  @override
+  String get vehicleWizardNameTitle => 'Name und Startfüllstand';
+
+  @override
+  String get vehicleWizardNext => 'Weiter';
+
+  @override
+  String get vehicleWizardBack => 'Zurück';
+
+  @override
+  String vehicleWizardRange(String min, String max) {
+    return 'Zwischen $min und $max';
+  }
+
+  @override
+  String get garageSignInRequired =>
+      'Melde dich an, um Fahrzeuge in deiner Garage zu speichern.';
+
+  @override
+  String get suggestSeeDetails => 'Details und Karte';
+
+  @override
+  String suggestWhere(int km, String off) {
+    return 'Stopp bei km $km · $off km von der Route';
   }
 }

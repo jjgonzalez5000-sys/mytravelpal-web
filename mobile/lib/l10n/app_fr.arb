@@ -2344,7 +2344,7 @@
   "garageDelete": "Supprimer",
   "garageCancel": "Annuler",
   "garageSave": "Enregistrer",
-  "garageDefaultName": "Ma voiture",
+  "garageDefaultName": "Mon véhicule",
   "garageNameHint": "Donnez-lui un nom (ex. Ma Golf)",
   "garageDefaultTankLabel": "Niveau de réservoir par défaut",
   "garageDefaultChargeLevelLabel": "Niveau de charge initial",
@@ -2366,7 +2366,7 @@
       }
     }
   },
-  "planScreenGarageChip": "Voiture : {name} · {pct} %",
+  "planScreenGarageChip": "Véhicule : {name} · {pct} %",
   "@planScreenGarageChip": {
     "placeholders": {
       "name": {
@@ -3004,5 +3004,51 @@
   "vignetteInTotal": "+ {amount} de vignettes",
   "@vignetteInTotal": {
     "placeholders": { "amount": { "type": "String" } }
+  },
+  "vehicleTypeTruck": "Camion",
+  "@vehicleTypeTruck": {},
+  "vehicleWizardStepOf": "Étape {current} sur {total}",
+  "@vehicleWizardStepOf": {
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "vehicleWizardTypeTitle": "Quel type de véhicule ?",
+  "@vehicleWizardTypeTitle": {},
+  "vehicleWizardHowTitle": "Comment voulez-vous l'indiquer ?",
+  "@vehicleWizardHowTitle": {},
+  "vehicleWizardHowSearch": "Trouver mon modèle",
+  "@vehicleWizardHowSearch": {},
+  "vehicleWizardHowSearchSub": "Choisissez la marque et le modèle dans le catalogue",
+  "@vehicleWizardHowSearchSub": {},
+  "vehicleWizardSpecsTitle": "Carburant et consommation",
+  "@vehicleWizardSpecsTitle": {},
+  "vehicleWizardDimsTitle": "Dimensions et poids",
+  "@vehicleWizardDimsTitle": {},
+  "vehicleWizardHeight": "Hauteur (m)",
+  "@vehicleWizardHeight": {},
+  "vehicleWizardLength": "Longueur (m)",
+  "@vehicleWizardLength": {},
+  "vehicleWizardWeight": "Poids maximal (t)",
+  "@vehicleWizardWeight": {},
+  "vehicleWizardAxles": "Essieux",
+  "@vehicleWizardAxles": {},
+  "vehicleWizardTruckNote": "Le calcul spécifique aux poids lourds (péages par essieu, limites de hauteur et de poids, pauses obligatoires) n'est pas encore disponible. Pour l'instant, le trajet est calculé comme pour une fourgonnette.",
+  "@vehicleWizardTruckNote": {},
+  "vehicleWizardNameTitle": "Nom et niveau de départ",
+  "@vehicleWizardNameTitle": {},
+  "vehicleWizardNext": "Suivant",
+  "@vehicleWizardNext": {},
+  "vehicleWizardBack": "Retour",
+  "@vehicleWizardBack": {},
+  "vehicleWizardRange": "Entre {min} et {max}",
+  "@vehicleWizardRange": {
+    "placeholders": { "min": { "type": "String" }, "max": { "type": "String" } }
+  },
+  "garageSignInRequired": "Connectez-vous pour enregistrer des véhicules dans votre garage.",
+  "@garageSignInRequired": {},
+  "suggestSeeDetails": "Détails et carte",
+  "@suggestSeeDetails": {},
+  "suggestWhere": "Arrêt vers le km {km} · à {off} km de l'itinéraire",
+  "@suggestWhere": {
+    "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   }
 }

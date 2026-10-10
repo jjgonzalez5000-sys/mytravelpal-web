@@ -58,6 +58,9 @@ class Candidate:
     along_km: float             # position along the route from its start
     website: str | None = None
     prominent: bool = False     # has a wiki entry or a website
+    # Facts the place carries (address, phone, website, opening hours,
+    # Wikipedia page) for the detail sheet. Never invented, only passed on.
+    attributes: tuple[tuple[str, str], ...] = ()
 
     @property
     def detour_minutes(self) -> int:
@@ -183,6 +186,43 @@ def _category_label(feature: dict[str, Any]) -> str:
     return "place"
 
 
+def _first_text(*sources_and_keys: tuple[dict[str, Any], str]) -> str | None:
+    for src, key in sources_and_keys:
+        v = src.get(key)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return None
+
+
+def _wikipedia_url(tag: str | None) -> str | None:
+    """OSM writes `wikipedia=fr:Musée du Verrier`; turn it into a link."""
+    if not tag or ":" not in tag:
+        return None
+    lang, _, title = tag.partition(":")
+    if not (2 <= len(lang) <= 3 and lang.isalpha() and title.strip()):
+        return None
+    return f"https://{lang}.wikipedia.org/wiki/" + title.strip().replace(" ", "_")
+
+
+def place_attributes(
+    props: dict[str, Any], raw: dict[str, Any],
+) -> tuple[tuple[str, str], ...]:
+    """Contact facts for a place, from what the provider returned."""
+    found = {
+        "website": _first_text((props, "website"), (raw, "website"),
+                               (raw, "contact:website")),
+        "phone": _first_text((raw, "phone"), (raw, "contact:phone")),
+        "opening_hours": _first_text((raw, "opening_hours"),
+                                     (props, "opening_hours")),
+        "address_line1": _first_text((props, "address_line2"),
+                                     (props, "formatted")),
+        "wikipedia_url": _wikipedia_url(_first_text((raw, "wikipedia"))),
+        "wheelchair": _first_text((raw, "wheelchair")),
+        "fee": _first_text((raw, "fee")),
+    }
+    return tuple((k, v[:200]) for k, v in found.items() if v)
+
+
 def select_candidates(
     features: list[dict[str, Any]],
     line: list[tuple[float, float]],
@@ -231,6 +271,7 @@ def select_candidates(
             distance_km=round(dist, 2), along_km=round(along, 1),
             website=website if isinstance(website, str) else None,
             prominent=wiki or isinstance(website, str),
+            attributes=place_attributes(props, raw),
         ))
     rows.sort(key=lambda c: (not c.prominent, c.distance_km))
     rows = rows[:cap]
@@ -239,6 +280,7 @@ def select_candidates(
             id=f"c{i}", name=c.name, lat=c.lat, lon=c.lon, category=c.category,
             distance_km=c.distance_km, along_km=c.along_km,
             website=c.website, prominent=c.prominent,
+            attributes=c.attributes,
         )
         for i, c in enumerate(rows, start=1)
     ]

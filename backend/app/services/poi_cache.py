@@ -26,7 +26,7 @@ import random
 import time
 from collections import OrderedDict, defaultdict
 from datetime import datetime, timezone
-from typing import Any, Awaitable, Callable
+from typing import Any, Awaitable, Callable, Coroutine
 
 _log = logging.getLogger(__name__)
 
@@ -187,11 +187,12 @@ async def _log_usage(status: int | None, categories: str) -> None:
         pass
 
 
-def _spawn(coro: Awaitable[None]) -> None:
+def _spawn(coro: Coroutine[Any, Any, None]) -> None:
+    """Run `coro` in the background; with no running loop, drop it quietly."""
     try:
-        task = asyncio.get_running_loop().create_task(coro)  # type: ignore[arg-type]
+        task: asyncio.Task[None] = asyncio.get_running_loop().create_task(coro)
     except RuntimeError:
-        coro.close()  # type: ignore[attr-defined] - no loop, nothing to log to
+        coro.close()
         return
     _background.add(task)
     task.add_done_callback(_background.discard)
@@ -213,10 +214,22 @@ def clear() -> None:
     _alerted.clear()
 
 
+# Bump to ignore every stored answer (e.g. when what is kept per place changes).
+_KEY_VERSION = "v2"
+# A database round trip must never hold a request for long: the cache is an
+# optimisation, a slow or stuck query is treated as a miss.
+_DB_TIMEOUT_S = 2.0
+
+
+class _OwnerAborted(Exception):
+    """The request that was fetching a query died (cancelled, crashed): the
+    ones waiting on it must fetch for themselves, not inherit its failure."""
+
+
 def make_key(
     categories: str, snapped_filter: str, limit: int, conditions: str | None,
 ) -> str:
-    raw = f"{categories}|{snapped_filter}|{limit}|{conditions or ''}"
+    raw = f"{_KEY_VERSION}|{categories}|{snapped_filter}|{limit}|{conditions or ''}"
     return hashlib.sha1(raw.encode()).hexdigest()
 
 
@@ -248,17 +261,24 @@ async def _db_get(key: str) -> tuple[list[dict[str, Any]], float] | None:
 
         if not is_available():
             return None
-        async with get_session() as session:
-            row = (await session.execute(
-                text(
-                    "SELECT payload, EXTRACT(EPOCH FROM (expires_at - NOW())) "
-                    "FROM poi_cache WHERE key = :k AND expires_at > NOW()"
-                ),
-                {"k": key},
-            )).first()
+
+        async def _read():
+            async with get_session() as session:
+                return (await session.execute(
+                    text(
+                        "SELECT payload, "
+                        "EXTRACT(EPOCH FROM (expires_at - NOW())) "
+                        "FROM poi_cache WHERE key = :k AND expires_at > NOW()"
+                    ),
+                    {"k": key},
+                )).first()
+
+        row = await asyncio.wait_for(_read(), timeout=_DB_TIMEOUT_S)
         if row is None:
             return None
         payload = row[0]
+        # Stored as a JSON *string* inside the JSONB column (see _db_put), so
+        # the key order of every feature survives the round trip.
         if isinstance(payload, str):
             payload = json.loads(payload)
         if not isinstance(payload, list):
@@ -277,22 +297,30 @@ async def _db_put(key: str, features: list[dict[str, Any]], ttl_s: float) -> Non
 
         if not is_available():
             return
-        async with get_session() as session:
-            await session.execute(
-                text(
-                    "INSERT INTO poi_cache (key, payload, expires_at) "
-                    "VALUES (:k, CAST(:p AS JSONB), "
-                    "NOW() + make_interval(secs => :ttl)) "
-                    "ON CONFLICT (key) DO UPDATE SET payload = EXCLUDED.payload, "
-                    "fetched_at = NOW(), expires_at = EXCLUDED.expires_at"
-                ),
-                {"k": key, "p": json.dumps(features), "ttl": float(ttl_s)},
-            )
-            if random.random() < 0.01:
+
+        async def _write():
+            async with get_session() as session:
                 await session.execute(
-                    text("DELETE FROM poi_cache WHERE expires_at < NOW()"),
+                    text(
+                        "INSERT INTO poi_cache (key, payload, expires_at) "
+                        "VALUES (:k, CAST(:p AS JSONB), "
+                        "NOW() + make_interval(secs => :ttl)) "
+                        "ON CONFLICT (key) DO UPDATE SET "
+                        "payload = EXCLUDED.payload, fetched_at = NOW(), "
+                        "expires_at = EXCLUDED.expires_at"
+                    ),
+                    # JSONB sorts object keys, which would change which of a
+                    # place's tags come first; a JSON string keeps the order.
+                    {"k": key, "p": json.dumps(json.dumps(features)),
+                     "ttl": float(ttl_s)},
                 )
-            await session.commit()
+                if random.random() < 0.01:
+                    await session.execute(
+                        text("DELETE FROM poi_cache WHERE expires_at < NOW()"),
+                    )
+                await session.commit()
+
+        await asyncio.wait_for(_write(), timeout=_DB_TIMEOUT_S)
     except Exception as exc:  # noqa: BLE001
         _log.warning("poi_cache write failed: %r", exc)
 
@@ -322,7 +350,14 @@ async def get_or_fetch(
     pending = _inflight.get(key)
     if pending is not None:
         _stats["coalesced"] += 1
-        return await asyncio.shield(pending)
+        try:
+            return await asyncio.shield(pending)
+        except _OwnerAborted:
+            # The request that was fetching died (a timeout upstream
+            # cancelled it): do the work ourselves instead of inheriting it.
+            return await get_or_fetch(
+                categories, snapped_filter, limit, conditions, fetch,
+            )
 
     loop = asyncio.get_running_loop()
     future: "asyncio.Future[list[dict[str, Any]]]" = loop.create_future()
@@ -343,15 +378,18 @@ async def get_or_fetch(
         if ok:
             ttl = TTL_S if features else EMPTY_TTL_S
             _l1_put(key, features, ttl)
-            await _db_put(key, features, ttl)
+            # Off the request path: the answer is already in memory.
+            _spawn(_db_put(key, features, ttl))
         else:
             _stats["failed"] += 1
         if not future.done():
             future.set_result(features)
         return features
-    except BaseException as exc:
+    except BaseException:
         if not future.done():
-            future.set_exception(exc)
+            # Whoever is waiting must retry on its own, whatever killed us
+            # (a cancellation included), so they get a marker, not our error.
+            future.set_exception(_OwnerAborted())
             # Nobody may be waiting: avoid "exception was never retrieved".
             future.exception()
         raise

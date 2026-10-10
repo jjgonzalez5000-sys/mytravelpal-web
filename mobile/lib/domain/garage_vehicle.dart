@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'vehicle_kind.dart';
+
 /// One entry in the user's "garage" — a saved vehicle they can pick
 /// per-trip.
 ///
@@ -27,6 +29,10 @@ class GarageVehicle {
   final String modelId;
   final int defaultTankPercent;
   final String? notes;
+
+  /// Type and measures kept in [notes]; an old entry without them is a car.
+  VehicleSpecs get specs => VehicleSpecs.fromNotes(notes);
+  VehicleKind get kind => specs.kind;
 
   GarageVehicle copyWith({
     String? name,

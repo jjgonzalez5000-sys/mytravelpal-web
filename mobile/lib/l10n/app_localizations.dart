@@ -7219,7 +7219,7 @@ abstract class AppLocalizations {
   /// No description provided for @garageEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No vehicles yet — add your first car'**
+  /// **'No vehicles yet — add your first vehicle'**
   String get garageEmpty;
 
   /// No description provided for @garageAdd.
@@ -7255,7 +7255,7 @@ abstract class AppLocalizations {
   /// No description provided for @garageDefaultName.
   ///
   /// In en, this message translates to:
-  /// **'My car'**
+  /// **'My vehicle'**
   String get garageDefaultName;
 
   /// No description provided for @garageNameHint.
@@ -7303,7 +7303,7 @@ abstract class AppLocalizations {
   /// No description provided for @planScreenGarageChip.
   ///
   /// In en, this message translates to:
-  /// **'Car: {name} · {pct}%'**
+  /// **'Vehicle: {name} · {pct}%'**
   String planScreenGarageChip(String name, int pct);
 
   /// No description provided for @planScreenGarageChooseVehicle.
@@ -8878,6 +8878,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+ {amount} in vignettes'**
   String vignetteInTotal(String amount);
+
+  /// No description provided for @vehicleTypeTruck.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck'**
+  String get vehicleTypeTruck;
+
+  /// No description provided for @vehicleWizardStepOf.
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String vehicleWizardStepOf(int current, int total);
+
+  /// No description provided for @vehicleWizardTypeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What type of vehicle is it?'**
+  String get vehicleWizardTypeTitle;
+
+  /// No description provided for @vehicleWizardHowTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How do you want to enter it?'**
+  String get vehicleWizardHowTitle;
+
+  /// No description provided for @vehicleWizardHowSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Find my model'**
+  String get vehicleWizardHowSearch;
+
+  /// No description provided for @vehicleWizardHowSearchSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick the make and model from the catalogue'**
+  String get vehicleWizardHowSearchSub;
+
+  /// No description provided for @vehicleWizardSpecsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fuel and consumption'**
+  String get vehicleWizardSpecsTitle;
+
+  /// No description provided for @vehicleWizardDimsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Size and weight'**
+  String get vehicleWizardDimsTitle;
+
+  /// No description provided for @vehicleWizardHeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Height (m)'**
+  String get vehicleWizardHeight;
+
+  /// No description provided for @vehicleWizardLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Length (m)'**
+  String get vehicleWizardLength;
+
+  /// No description provided for @vehicleWizardWeight.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum weight (t)'**
+  String get vehicleWizardWeight;
+
+  /// No description provided for @vehicleWizardAxles.
+  ///
+  /// In en, this message translates to:
+  /// **'Axles'**
+  String get vehicleWizardAxles;
+
+  /// No description provided for @vehicleWizardTruckNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck-specific routing (per-axle tolls, height and weight limits, mandatory rest) is not available yet. For now the trip is calculated like a van\'s.'**
+  String get vehicleWizardTruckNote;
+
+  /// No description provided for @vehicleWizardNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and starting level'**
+  String get vehicleWizardNameTitle;
+
+  /// No description provided for @vehicleWizardNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get vehicleWizardNext;
+
+  /// No description provided for @vehicleWizardBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get vehicleWizardBack;
+
+  /// No description provided for @vehicleWizardRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Between {min} and {max}'**
+  String vehicleWizardRange(String min, String max);
+
+  /// No description provided for @garageSignInRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to save vehicles in your garage.'**
+  String get garageSignInRequired;
+
+  /// No description provided for @suggestSeeDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Details and map'**
+  String get suggestSeeDetails;
+
+  /// No description provided for @suggestWhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop around km {km} · {off} km off the route'**
+  String suggestWhere(int km, String off);
 }
 
 class _AppLocalizationsDelegate

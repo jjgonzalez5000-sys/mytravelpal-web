@@ -2339,18 +2339,18 @@
     }
   },
   "garageTitle": "Mi garaje",
-  "garageEmpty": "Aún no hay coches — añade el primero",
-  "garageAdd": "Añadir coche",
-  "garageEdit": "Editar coche",
+  "garageEmpty": "Aún no hay vehículos — añade el primero",
+  "garageAdd": "Añadir vehículo",
+  "garageEdit": "Editar vehículo",
   "garageDelete": "Eliminar",
   "garageCancel": "Cancelar",
   "garageSave": "Guardar",
-  "garageDefaultName": "Mi coche",
+  "garageDefaultName": "Mi vehículo",
   "garageNameHint": "Ponle nombre (ej. Mi Golf)",
   "garageDefaultTankLabel": "Nivel de depósito por defecto",
   "garageDefaultChargeLevelLabel": "Nivel de carga inicial",
   "garageAddError": "No se pudo guardar. Inténtalo otra vez.",
-  "garageDeleteTitle": "¿Eliminar coche?",
+  "garageDeleteTitle": "¿Eliminar vehículo?",
   "garageDeleteBody": "\"{name}\" se borrará de tu garaje.",
   "@garageDeleteBody": {
     "placeholders": {
@@ -2367,7 +2367,7 @@
       }
     }
   },
-  "planScreenGarageChip": "Coche: {name} · {pct} %",
+  "planScreenGarageChip": "Vehículo: {name} · {pct} %",
   "@planScreenGarageChip": {
     "placeholders": {
       "name": {
@@ -2378,7 +2378,7 @@
       }
     }
   },
-  "planScreenGarageChooseVehicle": "Elige un coche para este viaje",
+  "planScreenGarageChooseVehicle": "Elige un vehículo para este viaje",
   "hotelArbitrageTitle": "Hoteles más baratos al lado",
   "hotelArbitrageBody": "Esta noche cae en {dear}, ~{dearPrice}€/noche. En {cheap} son ~{cheapPrice}€ ({pct}% menos). Mueve {nights, plural, one{una noche} other{{nights} noches}} y ahorras ~{savings}€.",
   "@hotelArbitrageBody": {
@@ -3005,5 +3005,51 @@
   "vignetteInTotal": "+ {amount} de viñetas",
   "@vignetteInTotal": {
     "placeholders": { "amount": { "type": "String" } }
+  },
+  "vehicleTypeTruck": "Camión",
+  "@vehicleTypeTruck": {},
+  "vehicleWizardStepOf": "Paso {current} de {total}",
+  "@vehicleWizardStepOf": {
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "vehicleWizardTypeTitle": "¿Qué tipo de vehículo es?",
+  "@vehicleWizardTypeTitle": {},
+  "vehicleWizardHowTitle": "¿Cómo quieres indicarlo?",
+  "@vehicleWizardHowTitle": {},
+  "vehicleWizardHowSearch": "Buscar mi modelo",
+  "@vehicleWizardHowSearch": {},
+  "vehicleWizardHowSearchSub": "Elige marca y modelo del catálogo",
+  "@vehicleWizardHowSearchSub": {},
+  "vehicleWizardSpecsTitle": "Combustible y consumo",
+  "@vehicleWizardSpecsTitle": {},
+  "vehicleWizardDimsTitle": "Medidas y peso",
+  "@vehicleWizardDimsTitle": {},
+  "vehicleWizardHeight": "Altura (m)",
+  "@vehicleWizardHeight": {},
+  "vehicleWizardLength": "Longitud (m)",
+  "@vehicleWizardLength": {},
+  "vehicleWizardWeight": "Peso máximo (t)",
+  "@vehicleWizardWeight": {},
+  "vehicleWizardAxles": "Ejes",
+  "@vehicleWizardAxles": {},
+  "vehicleWizardTruckNote": "Las rutas específicas de camión (peajes por ejes, límites de altura y peso, descansos obligatorios) todavía no están. Por ahora el viaje se calcula como el de una furgoneta.",
+  "@vehicleWizardTruckNote": {},
+  "vehicleWizardNameTitle": "Nombre y nivel inicial",
+  "@vehicleWizardNameTitle": {},
+  "vehicleWizardNext": "Siguiente",
+  "@vehicleWizardNext": {},
+  "vehicleWizardBack": "Atrás",
+  "@vehicleWizardBack": {},
+  "vehicleWizardRange": "Entre {min} y {max}",
+  "@vehicleWizardRange": {
+    "placeholders": { "min": { "type": "String" }, "max": { "type": "String" } }
+  },
+  "garageSignInRequired": "Inicia sesión para guardar vehículos en tu garaje.",
+  "@garageSignInRequired": {},
+  "suggestSeeDetails": "Ver detalles y mapa",
+  "@suggestSeeDetails": {},
+  "suggestWhere": "Parada hacia el km {km} · a {off} km de la ruta",
+  "@suggestWhere": {
+    "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   }
 }

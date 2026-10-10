@@ -18,6 +18,7 @@ import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
 import '../storage/saved_trip.dart';
+import '../services/garage_profile.dart';
 import '../services/maps_url_parser.dart';
 import '../services/plan_foreground_task.dart';
 import '../services/trip_sharing.dart';
@@ -203,6 +204,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   /// effective for Premium (see [_aiSuggestOn]); everyone else sees it off
   /// and locked.
   bool _aiSuggestEnabled = true;
+
+  /// The profile this trip is planned with: the per-trip override or the
+  /// saved profile, with the active garage vehicle (the one picked for the
+  /// trip, else the first, which the vehicle chip shows) on top.
+  TripProfile? _profileForTrip() =>
+      effectiveTripProfile(ref, override: _overrideProfile);
 
   bool get _aiSuggestOn => effectiveAiSuggest(
         wanted: _aiSuggestEnabled,
@@ -770,8 +777,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         includeHourlyTollAnalysis: _hourlyTollEnabled,
         avoidMotorways: _avoidMotorways,
         preferScenic: _preferScenic,
-        tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
-        garageVehicleId: ref.read(selectedGarageVehicleIdProvider),
+        tripProfile: _profileForTrip(),
+        garageVehicleId: activeGarageVehicle(ref)?.id,
       );
       // Round-trip: fire two /plan calls in parallel — outbound
       // A→B on the chosen departure and return B→A on the return
@@ -820,8 +827,8 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
           includeHourlyTollAnalysis: _hourlyTollEnabled,
           avoidMotorways: _avoidMotorways,
           preferScenic: _preferScenic,
-          tripProfile: _overrideProfile ?? ref.read(tripProfileProvider),
-          garageVehicleId: ref.read(selectedGarageVehicleIdProvider),
+          tripProfile: _profileForTrip(),
+          garageVehicleId: activeGarageVehicle(ref)?.id,
         );
         // Round-trip stays on the legacy monolithic endpoint for now —
         // we only need the two-phase progressive UX for the primary

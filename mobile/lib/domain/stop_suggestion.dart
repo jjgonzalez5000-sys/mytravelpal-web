@@ -16,6 +16,7 @@ class StopSuggestion {
     required this.alongKm,
     required this.fitsWindow,
     this.website,
+    this.attributes = const {},
   });
 
   final String id;
@@ -33,6 +34,10 @@ class StopSuggestion {
   final double alongKm;
   final bool fitsWindow;
   final String? website;
+
+  /// What the place itself lists: address, phone, website, opening hours,
+  /// Wikipedia link. Only keys it actually has.
+  final Map<String, String> attributes;
 
   int get totalMinutes => visitMinutes + detourMinutes;
 
@@ -91,6 +96,14 @@ class StopSuggestion {
       alongKm: (json['along_km'] as num?)?.toDouble() ?? 0,
       fitsWindow: json['fits_window'] as bool? ?? true,
       website: website is String && website.isNotEmpty ? website : null,
+      attributes: {
+        if (json['attributes'] is Map<String, dynamic>)
+          for (final e in (json['attributes'] as Map<String, dynamic>).entries)
+            if (e.value is String && (e.value as String).isNotEmpty)
+              e.key: e.value as String,
+        // The top-level website is the same fact; keep one place to read it.
+        if (website is String && website.isNotEmpty) 'website': website,
+      },
     );
   }
 }

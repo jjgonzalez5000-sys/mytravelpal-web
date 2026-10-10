@@ -2386,13 +2386,13 @@
     }
   },
   "garageTitle": "My garage",
-  "garageEmpty": "No vehicles yet — add your first car",
+  "garageEmpty": "No vehicles yet — add your first vehicle",
   "garageAdd": "Add vehicle",
   "garageEdit": "Edit vehicle",
   "garageDelete": "Delete",
   "garageCancel": "Cancel",
   "garageSave": "Save",
-  "garageDefaultName": "My car",
+  "garageDefaultName": "My vehicle",
   "garageNameHint": "Give it a name (e.g. Mi Golf)",
   "garageDefaultTankLabel": "Default tank level",
   "garageDefaultChargeLevelLabel": "Initial charge level",
@@ -2414,7 +2414,7 @@
       }
     }
   },
-  "planScreenGarageChip": "Car: {name} · {pct}%",
+  "planScreenGarageChip": "Vehicle: {name} · {pct}%",
   "@planScreenGarageChip": {
     "placeholders": {
       "name": {
@@ -3052,5 +3052,51 @@
   "vignetteInTotal": "+ {amount} in vignettes",
   "@vignetteInTotal": {
     "placeholders": { "amount": { "type": "String" } }
+  },
+  "vehicleTypeTruck": "Truck",
+  "@vehicleTypeTruck": {},
+  "vehicleWizardStepOf": "Step {current} of {total}",
+  "@vehicleWizardStepOf": {
+    "placeholders": { "current": { "type": "int" }, "total": { "type": "int" } }
+  },
+  "vehicleWizardTypeTitle": "What type of vehicle is it?",
+  "@vehicleWizardTypeTitle": {},
+  "vehicleWizardHowTitle": "How do you want to enter it?",
+  "@vehicleWizardHowTitle": {},
+  "vehicleWizardHowSearch": "Find my model",
+  "@vehicleWizardHowSearch": {},
+  "vehicleWizardHowSearchSub": "Pick the make and model from the catalogue",
+  "@vehicleWizardHowSearchSub": {},
+  "vehicleWizardSpecsTitle": "Fuel and consumption",
+  "@vehicleWizardSpecsTitle": {},
+  "vehicleWizardDimsTitle": "Size and weight",
+  "@vehicleWizardDimsTitle": {},
+  "vehicleWizardHeight": "Height (m)",
+  "@vehicleWizardHeight": {},
+  "vehicleWizardLength": "Length (m)",
+  "@vehicleWizardLength": {},
+  "vehicleWizardWeight": "Maximum weight (t)",
+  "@vehicleWizardWeight": {},
+  "vehicleWizardAxles": "Axles",
+  "@vehicleWizardAxles": {},
+  "vehicleWizardTruckNote": "Truck-specific routing (per-axle tolls, height and weight limits, mandatory rest) is not available yet. For now the trip is calculated like a van's.",
+  "@vehicleWizardTruckNote": {},
+  "vehicleWizardNameTitle": "Name and starting level",
+  "@vehicleWizardNameTitle": {},
+  "vehicleWizardNext": "Next",
+  "@vehicleWizardNext": {},
+  "vehicleWizardBack": "Back",
+  "@vehicleWizardBack": {},
+  "vehicleWizardRange": "Between {min} and {max}",
+  "@vehicleWizardRange": {
+    "placeholders": { "min": { "type": "String" }, "max": { "type": "String" } }
+  },
+  "garageSignInRequired": "Sign in to save vehicles in your garage.",
+  "@garageSignInRequired": {},
+  "suggestSeeDetails": "Details and map",
+  "@suggestSeeDetails": {},
+  "suggestWhere": "Stop around km {km} · {off} km off the route",
+  "@suggestWhere": {
+    "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
   }
 }
