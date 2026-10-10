@@ -265,22 +265,32 @@ class TripCompanionScreen(carContext: CarContext) : Screen(carContext) {
         val totalKm = prefs.getLong(KEY_TOTAL_KM, 0L).toInt()
         if (speedKmh < 0 && totalKm == 0) return
         val speedStr = if (speedKmh >= 0) "${speedKmh} km/h" else "—"
-        val progressStr = if (totalKm > 0) "${progressKm} / ${totalKm} km" else ""
-        val body = if (progressStr.isNotEmpty()) "$speedStr  ·  $progressStr" else speedStr
-        val spannable = SpannableString(body)
-        val distSpan = DistanceSpan.create(
-            Distance.create(
-                if (totalKm > 0) (totalKm - progressKm).toDouble() else 1.0,
-                Distance.UNIT_KILOMETERS,
-            ),
-        )
-        spannable.setSpan(distSpan, 0, body.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
-        list.addItem(
-            Row.Builder()
-                .setTitle(carContext.getString(R.string.aa_speed_title))
-                .addText(spannable)
-                .build(),
-        )
+        val row = Row.Builder().setTitle(carContext.getString(R.string.aa_speed_title))
+        if (totalKm > 0) {
+            // The host replaces the spanned character with the formatted
+            // distance, so the span must cover ONLY a placeholder: spanning
+            // the whole body turned the row into just "1670 km", which read
+            // as the speed.
+            val body = "$speedStr  ·  §"
+            val spannable = SpannableString(body)
+            spannable.setSpan(
+                DistanceSpan.create(
+                    Distance.create(
+                        (totalKm - progressKm).coerceAtLeast(0).toDouble(),
+                        Distance.UNIT_KILOMETERS,
+                    ),
+                ),
+                body.length - 1, body.length, Spanned.SPAN_INCLUSIVE_INCLUSIVE,
+            )
+            row.addText(spannable)
+        } else {
+            // Free navigation: no route distance to show; a Place on the
+            // row satisfies PlaceListMapTemplate instead of a DistanceSpan.
+            row.addText(speedStr)
+            placeWithMarker(KEY_ME_LAT, KEY_ME_LON, CarColor.PRIMARY, "•")
+                ?.let { row.setMetadata(Metadata.Builder().setPlace(it).build()) }
+        }
+        list.addItem(row.build())
     }
 
     private fun addEtaRowBrowsable(list: ItemList.Builder) {

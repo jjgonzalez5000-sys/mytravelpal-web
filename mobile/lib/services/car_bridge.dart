@@ -199,6 +199,29 @@ class CarBridge {
         'expiresAtMs': e.expiresAt.millisecondsSinceEpoch,
       };
 
+  /// Free navigation: the driver left the planned route, so route-based
+  /// figures (remaining km, ETA, next stop) would be stale or nonsense.
+  /// Keep only speed and position on the head unit.
+  Future<void> updateFreeDrive({
+    required double speedKmh,
+    required LatLon me,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kActiveTrip, true);
+    for (final k in [
+      _kNextStopName, _kNextStopEtaMs, _kNextStopLat, _kNextStopLon,
+      _kCheaperFuelBrand, _kCheaperFuelKm, _kCheaperFuelCents,
+      _kCheaperFuelLat, _kCheaperFuelLon,
+      _kDestEtaMs, _kRemainingKm, _kProgressKm, _kTotalKm,
+      _kDestLat, _kDestLon, _kFuelListJson, _kRestaurantsListJson,
+    ]) {
+      await prefs.remove(k);
+    }
+    await prefs.setInt(_kSpeedKmh, speedKmh.round());
+    await prefs.setDouble(_kMeLat, me.lat);
+    await prefs.setDouble(_kMeLon, me.lon);
+  }
+
   /// Called when the driver leaves the dashboard so AA falls back
   /// to the idle "plan a trip" screen instead of showing stale data.
   Future<void> clearTrip() async {

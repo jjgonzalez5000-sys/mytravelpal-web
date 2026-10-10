@@ -349,23 +349,35 @@ class _CompanionDriveScreenState
     final pos = _lastPosition;
     if (trip == null || route == null || pos == null) return;
     final me = LatLon(lat: pos.latitude, lon: pos.longitude);
-    final currentKm = _kmAtPosition(me);
-    // 5 evenly spaced samples over the next 200 km. Fewer coords
-    // keep the RainViewer tile fetches under the polite ~1 req/s
-    // guideline; 5 is enough to catch a squall line at any point
-    // along a 2 h corridor.
-    const sampleCount = 5;
-    const stepKm = _adverseLookAheadKm / sampleCount;
-    final samples = <({double lat, double lon, double? kmAhead})>[];
-    for (int i = 1; i <= sampleCount; i++) {
-      final targetKm = currentKm + stepKm * i;
-      final coord = _coordAtKm(trip.route.geometry, targetKm);
-      if (coord == null) break;
-      samples.add((
-        lat: coord.lat,
-        lon: coord.lon,
-        kmAhead: stepKm * i,
-      ));
+    // The driver's own position goes first: rain that is already falling
+    // on the car is the most urgent hazard and the look-ahead samples
+    // below start one step down the road.
+    final samples = <({double lat, double lon, double? kmAhead})>[
+      (lat: me.lat, lon: me.lon, kmAhead: 0.0),
+    ];
+    if (_freeNavigationMode) {
+      // Off the plan the polyline says nothing about what lies ahead;
+      // project along the current heading instead.
+      if (pos.heading >= 0 && pos.speed > 1.0) {
+        for (final km in const [25.0, 60.0, 120.0]) {
+          final c = _projectAlong(me, pos.heading, km);
+          samples.add((lat: c.lat, lon: c.lon, kmAhead: km));
+        }
+      }
+    } else {
+      final currentKm = _kmAtPosition(me);
+      // 5 evenly spaced samples over the next 200 km. Fewer coords
+      // keep the RainViewer tile fetches under the polite ~1 req/s
+      // guideline; 5 is enough to catch a squall line at any point
+      // along a 2 h corridor.
+      const sampleCount = 5;
+      const stepKm = _adverseLookAheadKm / sampleCount;
+      for (int i = 1; i <= sampleCount; i++) {
+        final targetKm = currentKm + stepKm * i;
+        final coord = _coordAtKm(trip.route.geometry, targetKm);
+        if (coord == null) break;
+        samples.add((lat: coord.lat, lon: coord.lon, kmAhead: stepKm * i));
+      }
     }
     if (samples.isEmpty) return;
 
@@ -411,7 +423,49 @@ class _CompanionDriveScreenState
           body: h.description,
         ),
       );
+      // Head unit: a CarAppExtender notification pops up on the car
+      // screen (the phone notification above never reaches it).
+      unawaited(
+        CarNotificationBridge.instance.postAlert(
+          id: 20000 + (fp.hashCode & 0xFFFF),
+          title: '$typeName$etaSuffix',
+          body: h.description,
+          waypointLat: h.lat,
+          waypointLon: h.lon,
+        ),
+      );
+      final nowTs = DateTime.now();
+      _activeAdverseEvents.add(AdverseEvent(
+        id: 'hazard:$fp',
+        type: h.type,
+        severity: h.severity,
+        source: 'weather',
+        description: h.description,
+        reportedAt: nowTs,
+        expiresAt: nowTs.add(const Duration(hours: 3)),
+        coordinate: LatLon(lat: h.lat, lon: h.lon),
+      ));
+      unawaited(CarBridge.instance.updateAlertsQueue(_activeAdverseEvents));
     }
+  }
+
+  /// Point `km` kilometres from [from] along compass bearing [bearingDeg].
+  LatLon _projectAlong(LatLon from, double bearingDeg, double km) {
+    const r = 6371.0;
+    final d = km / r;
+    final br = bearingDeg * math.pi / 180.0;
+    final lat1 = from.lat * math.pi / 180.0;
+    final lon1 = from.lon * math.pi / 180.0;
+    final lat2 = math.asin(
+      math.sin(lat1) * math.cos(d) +
+          math.cos(lat1) * math.sin(d) * math.cos(br),
+    );
+    final lon2 = lon1 +
+        math.atan2(
+          math.sin(br) * math.sin(d) * math.cos(lat1),
+          math.cos(d) - math.sin(lat1) * math.sin(lat2),
+        );
+    return LatLon(lat: lat2 * 180.0 / math.pi, lon: lon2 * 180.0 / math.pi);
   }
 
   /// Linear interpolation along the route polyline to a coord at
@@ -1191,6 +1245,14 @@ class _CompanionDriveScreenState
     // AND the driver is on/near the route. In free-navigation mode
     // we skip route-based calculations to avoid nonsensical km readings.
     final route = _routeRef;
+    if (route != null && widget.activeTrip != null && _freeNavigationMode) {
+      // Route figures are meaningless off the plan; show only speed and
+      // position on the head unit instead of freezing the last values.
+      unawaited(CarBridge.instance.updateFreeDrive(
+        speedKmh: speedKmh,
+        me: LatLon(lat: p.latitude, lon: p.longitude),
+      ));
+    }
     if (route != null && widget.activeTrip != null && !_freeNavigationMode) {
       final fixLL = LatLon(lat: p.latitude, lon: p.longitude);
       _speedTracker.addFix(fixLL, now, speedKmh: speedKmh);
