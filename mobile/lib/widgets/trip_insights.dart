@@ -70,6 +70,14 @@ void _showRestaurantPrefsSheet(BuildContext context) {
   );
 }
 
+/// "  ·  AdBlue 0.690/L" when the station sells AdBlue for cars, else "".
+/// The product name is a brand, so it is not translated.
+String _adBlueSuffix(FuelPrice p, String ccy) {
+  final eur = double.tryParse(p.attributes['adblue'] ?? '');
+  if (eur == null || eur <= 0) return '';
+  return '  ·  AdBlue ${formatMoney(eur, ccy, decimals: 2)}/L';
+}
+
 const double _earthRadiusKm = 6371.0088;
 
 double _haversineKm(LatLon a, LatLon b) {
@@ -1895,7 +1903,8 @@ class DayPlanSection extends StatelessWidget {
                                   child: Text(
                                     '${p.stationName}  ·  '
                                     'km ${p.distanceFromOriginKm.toStringAsFixed(0)}  ·  '
-                                    '${formatMoney(p.priceEurPerL, ccy, decimals: 3)}/L',
+                                    '${formatMoney(p.priceEurPerL, ccy, decimals: 3)}/L'
+                                    '${_adBlueSuffix(p, ccy)}',
                                     style: t.bodySmall?.copyWith(
                                       fontWeight: FontWeight.w500,
                                     ),

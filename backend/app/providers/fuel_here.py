@@ -458,22 +458,51 @@ def _map_here_fuel_type(fuel_type: str | None) -> str:
     return _FUEL_TYPE_MAP.get(fuel_type.lower(), "diesel")
 
 
-# Human-readable labels for HERE v3 fuelType numeric codes.
+# Human-readable labels for HERE v3 fuelType numeric codes (names from HERE's
+# own catalogue, GET /v3/fuelTypes).
 _FUEL_TYPE_LABELS: dict[str, str] = {
-    "53": "Diésel",
-    "54": "Diésel Plus",
-    "55": "Super 95",
-    "1":  "E10",
-    "11": "Super Plus 98",
-    "59": "Super Plus 95",
-    "40": "Premium",
-    "21": "GLP",
-    "72": "Autogás",
-    "14": "GNC",
-    "73": "Super",
-    "69": "Diésel especial",
-    "61": "Super especial",
+    "1": "Diesel",
+    "18": "Diesel",
+    "55": "Premium Diesel",
+    "10": "Diesel Plus",
+    "32": "Super Diesel",
+    "54": "Super E10",
+    "53": "Super E5",
+    "43": "E10",
+    "33": "E5",
+    "13": "E10",
+    "56": "95",
+    "66": "Super 95",
+    "35": "Unleaded",
+    "2": "Regular",
+    "59": "Super 98",
+    "60": "98",
+    "40": "100",
+    "14": "LPG",
+    "24": "LPG",
+    "21": "CNG",
+    "16": "CNG",
+    "5": "E85",
 }
+
+# Which HERE codes a driver's fuel reads, in order of preference.
+_HERE_CODES_BY_FUEL: dict[str, tuple[str, ...]] = {
+    "petrol": ("54", "53", "43", "33", "56", "13", "66", "35", "2", "59", "60", "40"),
+    "diesel": ("1", "18", "55", "10", "32", "58", "76"),
+    "lpg": ("14", "24", "95"),
+    "e85": ("5", "75"),
+    "cng": ("21", "16", "96"),
+}
+_HERE_CODES_BY_FUEL["gasoline"] = _HERE_CODES_BY_FUEL["petrol"]
+_HERE_CODES_BY_FUEL["sp95"] = _HERE_CODES_BY_FUEL["petrol"]
+_HERE_CODES_BY_FUEL["sp98"] = _HERE_CODES_BY_FUEL["petrol"]
+# A hybrid burns petrol: never offer it a diesel station.
+_HERE_CODES_BY_FUEL["hybrid"] = _HERE_CODES_BY_FUEL["petrol"]
+_HERE_CODES_BY_FUEL["phev"] = _HERE_CODES_BY_FUEL["petrol"]
+
+# AdBlue (urea) products: for cars, for trucks, and the generic ones.
+_ADBLUE_CAR_CODES = ("71", "19", "91")
+_ADBLUE_TRUCK_CODES = ("72", "92")
 
 
 # Sanity bounds for pump prices in EUR/L.
@@ -546,21 +575,16 @@ def _extract_fuel_price_from_prices_api(
     if not isinstance(prices, list):
         return None, None
 
-    # Only the codes listed below are ever read, so LPG/CNG/hydrogen
-    # (21, 72, 14, ...) can never be picked.
+    # Codes are HERE's own `fuelTypes` catalogue (GET /v3/fuelTypes), checked
+    # against the live API: 1 is Diesel, 53/54 are Super E5/E10 petrol.
+    # Each driver fuel only ever reads its own family; there is no fallback
+    # to another family (a petrol driver is never quoted a diesel price).
     ft_lower = (fuel_type or "").lower()
-    is_petrol = ft_lower in ("petrol", "gasoline", "sp95", "sp98")
-    is_hybrid = ft_lower in ("hybrid",)
-
-    if is_hybrid:
-        # Hybrids use petrol only — never suggest diesel stations.
-        preferred_codes = ("55", "1", "59", "11", "40")
-    elif is_petrol:
-        # Pure petrol: petrol first, diesel as last fallback for coverage.
-        preferred_codes = ("55", "1", "59", "11", "40", "53", "54")
+    if ft_lower in _HERE_CODES_BY_FUEL:
+        preferred_codes = _HERE_CODES_BY_FUEL[ft_lower]
     else:
         # Diesel default (also catches None / unknown).
-        preferred_codes = ("53", "54", "55", "1", "11", "40")
+        preferred_codes = _HERE_CODES_BY_FUEL["diesel"]
 
     for want in preferred_codes:
         for p in prices:
@@ -582,6 +606,18 @@ def _extract_fuel_price_from_prices_api(
     return None, None
 
 
+def _price_for_codes(station: dict[str, Any], codes: tuple[str, ...]) -> float | None:
+    """EUR price of the first of `codes` the station sells, or None."""
+    for want in codes:
+        for p in station.get("prices") or []:
+            if not isinstance(p, dict) or str(p.get("fuelType") or "") != want:
+                continue
+            val = p.get("price")
+            if isinstance(val, (int, float)) and val > 0:
+                return _to_eur(float(val), str(p.get("currency") or "EUR").upper())
+    return None
+
+
 def _attributes_from_prices_api(
     station: dict[str, Any],
 ) -> tuple[tuple[str, str], ...]:
@@ -590,6 +626,11 @@ def _attributes_from_prices_api(
     brand = station.get("brand") or station.get("name", "")
     if brand:
         attrs.append(("brand", str(brand)))
+    # AdBlue per litre, when the station sells it (separate for trucks).
+    for key, codes in (("adblue", _ADBLUE_CAR_CODES), ("adblue_truck", _ADBLUE_TRUCK_CODES)):
+        eur = _price_for_codes(station, codes)
+        if eur is not None:
+            attrs.append((key, f"{eur:.3f}"))
     # v3 exposes modification timestamp per-station
     modified = station.get("modified") or station.get("lastUpdated")
     if modified:

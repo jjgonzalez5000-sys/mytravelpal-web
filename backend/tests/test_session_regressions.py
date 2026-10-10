@@ -772,12 +772,12 @@ class TestFuelPriceBelievability:
         from app.providers.fuel_here import _extract_fuel_price_from_prices_api
 
         station = {"prices": [
-            {"fuelType": "21", "price": 0.969, "currency": "EUR"},  # LPG
-            {"fuelType": "55", "price": 1.789, "currency": "EUR"},
+            {"fuelType": "14", "price": 0.969, "currency": "EUR"},  # LPG-GLP
+            {"fuelType": "54", "price": 1.789, "currency": "EUR"},  # Super E10
         ]}
         price, label = _extract_fuel_price_from_prices_api(station, "petrol")
         assert price == pytest.approx(1.789)
-        assert label == "Super 95"
+        assert label == "Super E10"
 
     def test_browse_fallback_is_an_allow_list(self):
         from app.providers.fuel_here import _extract_price

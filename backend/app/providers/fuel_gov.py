@@ -238,6 +238,9 @@ _SPAIN_PRICE_COLS: dict[str, str] = {
     "Precio Gasolina 95 E5": "sp95",
     "Precio Gasolina 98 E5": "sp98",
     "Precio Gases licuados del petróleo": "lpg",
+    # Not a fuel: kept only as a station attribute (it is never picked as
+    # the primary price, see `_pick_primary_price`).
+    "Precio Adblue": "adblue",
 }
 
 
@@ -591,7 +594,7 @@ _DGEG_FUEL_NAMES: dict[str, str] = {
     "Gasolina especial 98": "sp98",
     "GPL Auto": "lpg",
     "GNV": "cng",
-    "Adblue": None,                        # additive, not a fuel
+    "Adblue": "adblue",                    # additive: attribute only, never a primary price
 }
 
 
