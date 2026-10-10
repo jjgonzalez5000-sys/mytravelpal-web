@@ -150,33 +150,49 @@ class _Station:
 _FUEL_TYPE_MAP: dict[str, tuple[str, ...]] = {
     "diesel": ("diesel",),
     "petrol": ("sp95", "e10", "sp98"),
+    "gasoline": ("sp95", "e10", "sp98"),
+    "hybrid": ("sp95", "e10", "sp98"),
+    "phev": ("sp95", "e10", "sp98"),
     "lpg": ("lpg",),
+    "e85": ("e85",),
+    "cng": ("cng",),
     "electric": (),
 }
-# E85 deliberately last — its ~0.70 €/L price would distort savings
-# calculations when used as a fallback for regular petrol stations.
-_DEFAULT_ORDER = ("diesel", "sp95", "e10", "sp98", "lpg", "e85")
+# LPG / E85 / CNG are legitimately far cheaper than petrol, so the
+# "this is not a believable pump price" floor only applies to road fuels.
+_ALT_FUEL_KEYS = frozenset({"lpg", "e85", "cng"})
+# Used only when the driver's fuel is unknown. LPG / E85 / CNG are never a
+# stand-in for a road fuel: their ~0.7-1.0 EUR/L price shown next to petrol
+# made every such station look like a bargain.
+_DEFAULT_ORDER = ("diesel", "sp95", "e10", "sp98")
 
 
 def _pick_primary_price(
     prices: dict[str, float],
     preferred: str | None = None,
+    country: Country | None = None,
 ) -> tuple[str, float] | None:
     """Choose which fuel type to expose as `price_eur_per_l`.
 
-    When `preferred` matches a profile fuel type, try those keys
-    first. Falls back to the default order so a diesel station
-    still appears (with its diesel price) for a petrol driver.
+    A known driver fuel only ever matches its own price columns: a
+    station without them is skipped rather than quoted with another
+    fuel's (cheaper or dearer) price. A road-fuel price far below the
+    country's usual level is bad data, not a bargain, and is skipped too.
     """
+    from app.providers.fuel_here import _price_plausible
+
     order = _DEFAULT_ORDER
     if preferred:
-        pref_keys = _FUEL_TYPE_MAP.get(preferred.lower(), ())
-        if pref_keys:
-            order = (*pref_keys, *(k for k in _DEFAULT_ORDER if k not in pref_keys))
+        pref_keys = _FUEL_TYPE_MAP.get(preferred.lower())
+        if pref_keys is not None:
+            order = pref_keys
     for key in order:
         val = prices.get(key)
-        if val and val > 0:
-            return (key, val)
+        if not val or val <= 0:
+            continue
+        if key not in _ALT_FUEL_KEYS and not _price_plausible(val, country):
+            continue
+        return (key, val)
     return None
 
 
@@ -184,7 +200,9 @@ def _station_to_fuel_price(
     st: _Station, route: Route, distance_km: float, country: Country,
     preferred_fuel: str | None = None,
 ) -> FuelPrice | None:
-    primary = _pick_primary_price(st.prices, preferred=preferred_fuel)
+    primary = _pick_primary_price(
+        st.prices, preferred=preferred_fuel, country=country,
+    )
     if primary is None:
         return None
     fuel_type_key, unit = primary
