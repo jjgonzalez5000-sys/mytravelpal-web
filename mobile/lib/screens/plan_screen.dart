@@ -199,9 +199,10 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       );
   }
 
-  /// AI stop suggestions once the plan is ready. Off by default: each
-  /// search spends the daily AI quota. Premium only, like the server.
-  bool _aiSuggestEnabled = false;
+  /// AI stop suggestions once the plan is ready. On by default, but only
+  /// effective for Premium (see [_aiSuggestOn]); everyone else sees it off
+  /// and locked.
+  bool _aiSuggestEnabled = true;
 
   bool get _aiSuggestOn => effectiveAiSuggest(
         wanted: _aiSuggestEnabled,

@@ -154,6 +154,17 @@ era stale — la implementación real vive en `providers/geocoding.py`
 
 ## Backlog (existing)
 
+- **Mercados / plataformas (2026-10-10)**: Europa primero. iOS (carpeta `ios/`,
+  StoreKit, CarPlay, cuenta Apple 99 USD/año) cuando la suscripción convierta;
+  antes, inglés pulido + páginas de ruta en inglés en mytravelpal.io para el
+  turista US/AU que viaja por Europa. EE. UU. como mercado propio (gasolineras,
+  peajes E-ZPass, millas/galones) = otro producto, descartado por ahora.
+- **Web mytravelpal.io + afiliados (2026-10-10)**: programas directos
+  (Booking/Expedia/Hotels.com) rechazaron la solicitud (sin tráfico ni web con
+  contenido). Plan: Skimlinks (requiere dominio aprobado) + páginas de ruta
+  estáticas generadas con el backend (cacheadas, build-time) y reaplicar a
+  Booking una sola vez con la web y la app publicadas.
+
 - TollGuru integration (real toll booth data) — code ready, needs API key
 - Tankerkönig (Germany fuel) — needs API key
 - Firebase Crashlytics — needs google-services.json
