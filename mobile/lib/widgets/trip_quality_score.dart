@@ -109,7 +109,8 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     final rawMax = factors.fold<int>(0, (s, f) => s + f.max);
     // Normalise to 0-100 regardless of how many factors are active.
     final score = rawMax > 0 ? (rawScore * 100 ~/ rawMax) : 100;
-    final color = _color(score);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = _color(score, isDark);
     final label = _label(score, l);
 
     // During enrichment show an indeterminate pulsing bar.
@@ -157,9 +158,9 @@ class _TripQualityScoreState extends State<TripQualityScore> {
         padding: const EdgeInsets.symmetric(
             horizontal: Tokens.space12, vertical: Tokens.space12),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.06),
+          color: color.withValues(alpha: isDark ? 0.06 : 0.1),
           borderRadius: BorderRadius.circular(Tokens.radiusMd),
-          border: Border.all(color: color.withValues(alpha: 0.2)),
+          border: Border.all(color: color.withValues(alpha: isDark ? 0.2 : 0.4)),
         ),
         child: Column(
           children: [
@@ -179,7 +180,7 @@ class _TripQualityScoreState extends State<TripQualityScore> {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
+                    color: color.withValues(alpha: isDark ? 0.15 : 0.16),
                     borderRadius:
                         BorderRadius.circular(Tokens.radiusPill),
                   ),
@@ -247,11 +248,8 @@ class _TripQualityScoreState extends State<TripQualityScore> {
     );
   }
 
-  Color _color(int score) {
-    if (score >= 75) return const Color(0xFF4ADE80);
-    if (score >= 50) return const Color(0xFFFBBF24);
-    return const Color(0xFFF87171);
-  }
+  Color _color(int score, bool isDark) =>
+      qualityTierColor(score >= 75 ? 2 : (score >= 50 ? 1 : 0), isDark);
 
   String _label(int score, AppLocalizations l) {
     if (score >= 75) return l.tripQualityExcellent;
@@ -492,11 +490,11 @@ class _ScoreChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = factor.ok
-        ? const Color(0xFF4ADE80)
-        : factor.score > 0
-            ? const Color(0xFFFBBF24)
-            : const Color(0xFFF87171);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = qualityTierColor(
+      factor.ok ? 2 : (factor.score > 0 ? 1 : 0),
+      isDark,
+    );
 
     return GestureDetector(
       onTap: () => showDialog<void>(
@@ -521,9 +519,9 @@ class _ScoreChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: color.withValues(alpha: isDark ? 0.1 : 0.12),
           borderRadius: BorderRadius.circular(Tokens.radiusSm),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          border: Border.all(color: color.withValues(alpha: isDark ? 0.3 : 0.5)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -534,7 +532,7 @@ class _ScoreChip extends StatelessWidget {
               color: color,
             ),
             const SizedBox(width: 4),
-            Icon(factor.icon, size: 12, color: color.withValues(alpha: 0.8)),
+            Icon(factor.icon, size: 12, color: color.withValues(alpha: isDark ? 0.8 : 1.0)),
             const SizedBox(width: 4),
             Text(
               factor.label,
@@ -547,3 +545,13 @@ class _ScoreChip extends StatelessWidget {
     );
   }
 }
+
+/// Tier colour for the quality score: 2 = good, 1 = partial, 0 = poor.
+/// The neon shades read well on the dark surface; on the light surface
+/// they sit around 1.7:1, so the light theme gets darker shades that
+/// clear 4.5:1 as text.
+Color qualityTierColor(int tier, bool isDark) => switch (tier) {
+      2 => isDark ? const Color(0xFF4ADE80) : const Color(0xFF15803D),
+      1 => isDark ? const Color(0xFFFBBF24) : const Color(0xFFB45309),
+      _ => isDark ? const Color(0xFFF87171) : const Color(0xFFB91C1C),
+    };

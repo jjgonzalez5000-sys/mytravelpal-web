@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/models.dart';
 import '../design/tokens.dart';
+import '../domain/travel_style_presets.dart';
 import '../domain/trip_profile.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
@@ -167,12 +168,11 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // start, 6h daily cap. Everything else stays at the sensible
       // defaults from `const TripProfile()` (car / petrol / steady
       // pace / if-needed overnight / scenic breaks).
-      const demoProfile = TripProfile(
+      final demoProfile = TravelStylePreset.balanced.apply(const TripProfile(
         travellers: 3,
         hasKids: true,
-        dailyDrivingCapHours: 6,
         preferredDrivingStartHour: 10,
-      );
+      ));
       // `set` persists to AppPrefs AND fires _pushToServer (fire-and-
       // forget) so the backend sees the profile too.
       await profileNotifier.set(demoProfile);

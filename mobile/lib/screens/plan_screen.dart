@@ -95,6 +95,18 @@ const _todAnchors = <({double hour, Color top, Color bottom})>[
   );
 }
 
+/// The time-of-day anchors are saturated enough for white text on a dark
+/// theme; under the light theme's dark text they made the hero copy
+/// unreadable, so pull them most of the way toward the surface colour.
+({Color top, Color bottom}) _softenForLightTheme(
+  ({Color top, Color bottom}) c,
+  Color surface,
+) =>
+    (
+      top: Color.lerp(c.top, surface, 0.65)!,
+      bottom: Color.lerp(c.bottom, surface, 0.65)!,
+    );
+
 class PlanScreen extends ConsumerStatefulWidget {
   const PlanScreen({
     super.key,
@@ -991,7 +1003,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final tod = isDark
         ? (top: const Color(0xFF1A1B2E), bottom: const Color(0xFF05060F))
-        : _timeOfDayColors();
+        : _softenForLightTheme(_timeOfDayColors(), scheme.surface);
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
@@ -1016,12 +1028,14 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               titleSpacing: Tokens.space20,
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF0A1628), Colors.transparent],
-                    ),
+                  decoration: BoxDecoration(
+                    gradient: isDark
+                        ? const LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Color(0xFF0A1628), Colors.transparent],
+                          )
+                        : null,
                   ),
                 ),
               ),
@@ -1465,18 +1479,31 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                               const SizedBox.shrink(),
                             Container(
                               decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: (_origin == null || _destination == null)
-                                      ? const [Color(0xFF1E2A40), Color(0xFF1E2A40)]
-                                      : const [Color(0xFF0F2044), Color(0xFF1A3A6A)],
-                                ),
+                                gradient: isDark
+                                    ? LinearGradient(
+                                        colors: (_origin == null || _destination == null)
+                                            ? const [Color(0xFF1E2A40), Color(0xFF1E2A40)]
+                                            : const [Color(0xFF0F2044), Color(0xFF1A3A6A)],
+                                      )
+                                    : null,
+                                color: isDark
+                                    ? null
+                                    : scheme.secondaryContainer.withValues(
+                                        alpha: (_origin == null || _destination == null)
+                                            ? 0.5
+                                            : 1.0,
+                                      ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
                               child: TextButton.icon(
                                 style: TextButton.styleFrom(
-                                  foregroundColor: (_origin == null || _destination == null)
+                                  foregroundColor: isDark
+                                      ? Colors.white70
+                                      : scheme.onSecondaryContainer,
+                                  disabledForegroundColor: isDark
                                       ? Colors.white38
-                                      : Colors.white70,
+                                      : scheme.onSecondaryContainer
+                                          .withValues(alpha: 0.5),
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 4,
                                   ),

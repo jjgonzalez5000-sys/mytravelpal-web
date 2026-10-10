@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../api/models.dart' show PriceBand;
 import 'app_shell.dart';
 import '../design/tokens.dart';
+import '../domain/travel_style_presets.dart';
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
@@ -91,12 +92,11 @@ class _OnboardingWizardScreenState
     final existing = prefs.tripProfile ?? const TripProfile();
     // Save profile data synchronously so splash sees it on re-route.
     await prefs.setTripProfile(
-      existing.copyWith(
+      TravelStylePreset.balanced.apply(existing).copyWith(
         hasKids: _hasKids,
         hasPets: _hasPets,
         wakeHour: _wakeHour.round(),
         bedtimeHour: _bedtimeHour.round(),
-        dailyDrivingCapHours: (_bedtimeHour - _wakeHour - 1).round().clamp(3, 14),
         vehicle: existing.vehicle.copyWith(
           type: _vehicleType,
           fuelType: _fuelType,
