@@ -844,12 +844,15 @@ class GovFuelProvider:
                     )
                     if key in seen_coords:
                         continue
-                    seen_coords.add(key)
                     fp = _station_to_fuel_price(
                         st, route, distance_km, country,
                         preferred_fuel=_pref,
                     )
                     if fp is not None:
+                        # Only a station that is offered claims the spot: one
+                        # without the driver's fuel must not hide a
+                        # co-located registration that sells it.
+                        seen_coords.add(key)
                         bucket.append(fp)
             # Per-country cap: sample EVENLY along each country's leg
             # instead of taking the first-N-by-distance. The naive

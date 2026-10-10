@@ -92,7 +92,10 @@ def _cache_key(req: SuggestRequest, lang: str) -> str:
     payload = json.dumps(
         {
             "r": [[round(p.lat, 3), round(p.lon, 3)] for p in req.route],
-            "f": req.free_minutes // 15,  # 15-minute buckets
+            # Exact minutes: the cached answer carries fits_window and
+            # window_minutes computed for this value.
+            "f": req.free_minutes,
+            "x": sorted({n.strip().lower() for n in req.exclude_names}),
             "i": sorted(req.interests),
             "t": req.travellers, "k": req.has_kids, "p": req.has_pets,
             "l": lang, "n": req.limit,
@@ -118,15 +121,6 @@ def _cache_put(key: str, resp: SuggestResponse) -> None:
         oldest = min(_CACHE, key=lambda k: _CACHE[k][0])
         _CACHE.pop(oldest, None)
     _CACHE[key] = (time.time(), resp)
-
-
-def _without(resp: SuggestResponse, names: list[str]) -> SuggestResponse:
-    """Drop already-added places from a (possibly cached) answer."""
-    if not names:
-        return resp
-    skip = {n.strip().lower() for n in names}
-    kept = [s for s in resp.suggestions if s.name.strip().lower() not in skip]
-    return resp.model_copy(update={"suggestions": kept})
 
 
 async def _fetch_places(
@@ -191,14 +185,14 @@ async def suggest_stops(
     resolved = _resolve_locale(body_locale, lang, accept_language) or payload.locale
     code = resolved.lower().split("-")[0]
     language_name = _LANGUAGE_NAMES.get(code, "English")
-    interests = list(payload.interests) or list(ss.DEFAULT_INTERESTS)
+    interests: list[str] = list(payload.interests) or list(ss.DEFAULT_INTERESTS)
     if payload.has_kids and "kids" not in interests:
         interests.append("kids")
 
     key = _cache_key(payload, code)
     cached = _cache_get(key)
     if cached is not None:
-        return _without(cached, payload.exclude_names)
+        return cached
 
     # Only a call that really reaches the places API / the model is metered.
     check_and_bump(user, "suggest", is_premium=True)
@@ -210,14 +204,16 @@ async def suggest_stops(
             suggestions=[], ai=False, reason="places_unavailable",
             window_minutes=payload.free_minutes, used_minutes=0,
         )
-    candidates = ss.select_candidates(features, line)
+    excluded = {n.strip().lower() for n in payload.exclude_names}
+    candidates = ss.select_candidates(features, line, exclude_names=excluded)
     if not candidates:
-        resp = SuggestResponse(
+        # Not cached: the places provider swallows its own failures
+        # (timeout, 429 once the free quota is gone) and returns [], which
+        # cannot be told apart from a stretch with nothing of interest.
+        return SuggestResponse(
             suggestions=[], ai=False, reason="no_places",
             window_minutes=payload.free_minutes, used_minutes=0,
         )
-        _cache_put(key, resp)
-        return _without(resp, payload.exclude_names)
 
     prompt = ss.build_prompt(
         candidates,
@@ -268,4 +264,4 @@ async def suggest_stops(
     # should get the chance of a real explanation.
     if ai:
         _cache_put(key, resp)
-    return _without(resp, payload.exclude_names)
+    return resp

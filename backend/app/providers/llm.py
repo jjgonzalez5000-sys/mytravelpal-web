@@ -23,7 +23,10 @@ _log = logging.getLogger(__name__)
 
 
 class LlmProvider(Protocol):
-    async def generate_narrative(self, prompt: str) -> str:
+    async def generate_narrative(
+        self, prompt: str, *, user_id: str | None = None,
+        endpoint: str = "narrative",
+    ) -> str:
         """Generate a natural-language trip narrative from a structured prompt."""
         ...
 

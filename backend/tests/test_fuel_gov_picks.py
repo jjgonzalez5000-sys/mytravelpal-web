@@ -119,3 +119,38 @@ class TestFeedParsers:
         assert _pick_primary_price(
             stations[0].prices, "petrol", Country.IT,
         ) == ("sp95", 1.869)
+
+
+class TestReviewFixes:
+    def test_a_skipped_station_does_not_hide_a_colocated_one(self):
+        import asyncio
+        from unittest.mock import AsyncMock, patch
+
+        here = Coordinate(lat=40.0, lon=-3.0)
+        lpg_only = _Station(here, "LPG only", None, {"lpg": 0.95})
+        petrol = _Station(here, "Petrol", None, {"sp95": 1.7})
+        route = SimpleNamespace(
+            origin=here, destination=Coordinate(lat=40.1, lon=-3.1),
+            waypoints=(), geometry=(here, Coordinate(lat=40.1, lon=-3.1)),
+            distance_km=15.0, countries_crossed=(Country.ES,),
+        )
+        with patch.object(
+            fuel_gov._SPAIN, "stations",
+            new=AsyncMock(return_value=(lpg_only, petrol)),
+        ):
+            out = asyncio.run(
+                fuel_gov.GovFuelProvider().prices_along(route, fuel_type="petrol")
+            )
+        assert [p.station_name for p in out] == ["Petrol"]
+
+    def test_lpg_is_not_compared_with_the_petrol_anchor(self):
+        from app.services.fuel_savings import _country_fuel_medians
+        from app.providers.fuel import FuelPrice
+
+        lpg = FuelPrice(
+            station_name="LPG", country=Country.FR, price_eur_per_l=0.96,
+            distance_from_origin_km=1.0, coordinate=None,
+            attributes=(("primary_fuel", "lpg"),),
+        )
+        medians = _country_fuel_medians((lpg,))
+        assert medians[(Country.FR, "lpg")] == pytest.approx(0.96)

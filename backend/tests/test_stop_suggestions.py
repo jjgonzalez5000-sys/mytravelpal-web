@@ -265,3 +265,70 @@ class TestSuggestStopsEndpoint:
             if uid == "u-suggest-cache" and kind == "suggest"
         )
         assert used == 1
+
+
+class TestSuggestStopsReviewFixes:
+    """Defects found in the pre-release review."""
+
+    BODY = TestSuggestStopsEndpoint.BODY
+
+    @staticmethod
+    def _post(client, body):
+        return client.post("/v1/trips/suggest-stops", json=body)
+
+    def _run(self, feats, bodies, user="u-review", llm=None):
+        from app.api.v1 import suggest
+
+        suggest._CACHE.clear()
+        fetch = AsyncMock(return_value=feats)
+        client, app = TestSuggestStopsEndpoint._client(user)
+        answers = []
+        try:
+            with patch(
+                "app.api.v1.billing.get_subscription_tier",
+                new=AsyncMock(return_value="premium"),
+            ), patch.object(suggest, "_fetch_places", new=fetch), patch(
+                "app.providers.llm.MockLlmProvider.generate_narrative",
+                new=AsyncMock(return_value=llm or '{"picks": [{"id": "c1", "why": "x", "visit_minutes": 20}]}'),
+            ):
+                for b in bodies:
+                    answers.append(self._post(client, b).json())
+        finally:
+            app.dependency_overrides.clear()
+        return answers, fetch
+
+    def test_an_empty_answer_is_never_cached(self):
+        # The places provider swallows its own failures and returns [], so a
+        # provider outage must not be remembered for six hours.
+        answers, fetch = self._run([], [self.BODY, self.BODY], user="u-empty")
+        assert [a["reason"] for a in answers] == ["no_places", "no_places"]
+        assert fetch.await_count == 2
+
+    def test_excluded_places_are_not_candidates(self):
+        feats = [
+            {"properties": {"name": "Already added", "lat": 40.01, "lon": -2.5}},
+            {"properties": {"name": "Other spot", "lat": 40.01, "lon": -2.4}},
+        ]
+        body = {**self.BODY, "exclude_names": ["already ADDED"]}
+        answers, _ = self._run(feats, [body], user="u-excl")
+        names = [s["name"] for s in answers[0]["suggestions"]]
+        assert names == ["Other spot"]
+
+    def test_excluding_changes_the_cache_entry(self):
+        feats = [
+            {"properties": {"name": "A castle", "lat": 40.01, "lon": -2.5}},
+            {"properties": {"name": "B castle", "lat": 40.01, "lon": -2.4}},
+        ]
+        first = {**self.BODY}
+        second = {**self.BODY, "exclude_names": ["A castle"]}
+        answers, fetch = self._run(feats, [first, second], user="u-cache-x")
+        assert fetch.await_count == 2
+        assert [s["name"] for s in answers[1]["suggestions"]] == ["B castle"]
+
+    def test_different_free_minutes_do_not_share_an_answer(self):
+        feats = [{"properties": {"name": "Real castle", "lat": 40.01, "lon": -2.5}}]
+        a = {**self.BODY, "free_minutes": 90}
+        b = {**self.BODY, "free_minutes": 104}
+        answers, fetch = self._run(feats, [a, b], user="u-free")
+        assert fetch.await_count == 2
+        assert [x["window_minutes"] for x in answers] == [90, 104]

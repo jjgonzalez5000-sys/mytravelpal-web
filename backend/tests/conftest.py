@@ -15,3 +15,16 @@ os.environ.setdefault("MYTRAVELPAL_FIRES", "off")
 os.environ.setdefault("MYTRAVELPAL_SKIP_PREWARM", "1")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def _fresh_rate_limiter():
+    """Every TestClient shares one IP, so the per-IP limiter (60/min)
+    would otherwise start answering 429 once the suite runs fast enough."""
+    from app.api import rate_limit
+
+    rate_limit._hits.clear()
+    yield
+    rate_limit._hits.clear()

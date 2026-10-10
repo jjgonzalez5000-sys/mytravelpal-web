@@ -677,7 +677,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         for (final p in ref.read(myPlacesProvider))
           if (_addedStops.containsKey('place:${p.id}'))
             placeKey(p.name, p.coordinate),
+        // A suggestion that reused a saved place sitting a little off its
+        // own position would not match by coordinates alone.
+        for (final e in _suggestionStopKeys.entries)
+          if (_addedStops.containsKey(e.value)) e.key,
       };
+
+  /// suggestion key -> the `place:<id>` stop it was added as.
+  final Map<String, String> _suggestionStopKeys = {};
 
   Widget _autoSuggestionsCard(AppLocalizations l, ColorScheme scheme) {
     final res = _autoSuggestions;
@@ -800,6 +807,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     }
     if (!mounted) return false;
     final key = 'place:${place.id}';
+    _suggestionStopKeys[suggestionKey(s)] = key;
     if (!_addedStops.containsKey(key)) {
       _toggleStop(
         key,
@@ -3227,7 +3235,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   value: (_enrichPending || _replanning)
                       ? '—'
                       : formatMoney(_heroTollTotal(route, ccy), ccy),
-                  onTap: !_enrichPending && !_replanning && _response.partialTollSkips.isNotEmpty
+                  // A trip with only vignettes (no toll booths) has no skips
+                  // but still needs the breakdown and the purchase links.
+                  onTap: !_enrichPending &&
+                          !_replanning &&
+                          (_response.partialTollSkips.isNotEmpty ||
+                              route.vignetteCostEur > 0 ||
+                              route.vignettes.isNotEmpty)
                       ? () => showTollSummarySheet(
                             context: context,
                             partialTollSkips: _response.partialTollSkips,
@@ -3776,6 +3790,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       desiredDepartureAt: other.desiredDepartureAt,
                       currentLegLabel: other.label,
                       otherLeg: backLeg,
+                      autoSuggest: widget.autoSuggest,
                     ),
                   ),
                 );

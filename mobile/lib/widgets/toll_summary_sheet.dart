@@ -214,12 +214,13 @@ class _TollSummarySheetState extends State<_TollSummarySheet> {
                       style: t.titleMedium?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
-                  // Map button
-                  IconButton(
-                    icon: Icon(Icons.map_outlined, color: scheme.primary),
-                    tooltip: l.tollSummaryMapButton,
-                    onPressed: () => _openTollMap(context),
-                  ),
+                  // Map button (nothing to map on a vignette-only trip)
+                  if (widget.partialTollSkips.isNotEmpty)
+                    IconButton(
+                      icon: Icon(Icons.map_outlined, color: scheme.primary),
+                      tooltip: l.tollSummaryMapButton,
+                      onPressed: () => _openTollMap(context),
+                    ),
                 ],
               ),
             ),

@@ -118,6 +118,12 @@ def _country_fuel_medians(
         if len(vs) >= _MIN_SAMPLE_FOR_CORRIDOR_MEDIAN:
             result[(country, fuel_key)] = round(median(vs), 3)
         else:
+            # LPG / CNG / E85 are far cheaper than petrol by nature, so the
+            # petrol anchor would book the whole gap as a "saving" on every
+            # station. Compare them only with each other.
+            if fuel_key in {"lpg", "cng", "e85"}:
+                result[(country, fuel_key)] = round(median(vs), 3)
+                continue
             # Small sample → use the stable country anchor instead.
             anchor = COUNTRIES.get(country.value)
             if anchor is not None:
