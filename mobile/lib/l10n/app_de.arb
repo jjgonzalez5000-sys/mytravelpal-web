@@ -2968,5 +2968,11 @@
       "used": { "type": "int" },
       "window": { "type": "int" }
     }
-  }
+  },
+  "planOptAiSuggestTitle": "Stopps und Orte per KI vorschlagen",
+  "@planOptAiSuggestTitle": {},
+  "planOptAiSuggestSub": "Sucht nach dem Plan echte Orte nahe deiner Route",
+  "@planOptAiSuggestSub": {},
+  "planOptAiSuggestLocked": "KI-Vorschläge sind ein Premium-Feature",
+  "@planOptAiSuggestLocked": {}
 }

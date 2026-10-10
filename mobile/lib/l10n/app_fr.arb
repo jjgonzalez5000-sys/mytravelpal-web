@@ -2968,5 +2968,11 @@
       "used": { "type": "int" },
       "window": { "type": "int" }
     }
-  }
+  },
+  "planOptAiSuggestTitle": "Suggérer arrêts et lieux avec l'IA",
+  "@planOptAiSuggestTitle": {},
+  "planOptAiSuggestSub": "Une fois le plan prêt, trouve des lieux réels près de votre route",
+  "@planOptAiSuggestSub": {},
+  "planOptAiSuggestLocked": "Les suggestions IA sont réservées à Premium",
+  "@planOptAiSuggestLocked": {}
 }

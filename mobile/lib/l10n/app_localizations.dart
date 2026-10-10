@@ -8788,6 +8788,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Uses {used} of {window} free min'**
   String suggestUsed(int used, int window);
+
+  /// No description provided for @planOptAiSuggestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggest stops and places with AI'**
+  String get planOptAiSuggestTitle;
+
+  /// No description provided for @planOptAiSuggestSub.
+  ///
+  /// In en, this message translates to:
+  /// **'When the plan is ready, finds real places near your route'**
+  String get planOptAiSuggestSub;
+
+  /// No description provided for @planOptAiSuggestLocked.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestions are a Premium feature'**
+  String get planOptAiSuggestLocked;
 }
 
 class _AppLocalizationsDelegate

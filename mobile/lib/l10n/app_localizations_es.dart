@@ -4995,4 +4995,14 @@ class AppLocalizationsEs extends AppLocalizations {
   String suggestUsed(int used, int window) {
     return 'Usas $used de $window min libres';
   }
+
+  @override
+  String get planOptAiSuggestTitle => 'Sugerir paradas y lugares con IA';
+
+  @override
+  String get planOptAiSuggestSub =>
+      'Al terminar el plan busca sitios reales cerca de tu ruta';
+
+  @override
+  String get planOptAiSuggestLocked => 'Las sugerencias con IA son de Premium';
 }

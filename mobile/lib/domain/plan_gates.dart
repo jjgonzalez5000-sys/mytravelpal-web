@@ -5,3 +5,9 @@
 /// stored default says.
 bool effectiveTollFree({required bool wanted, required bool paid}) =>
     wanted && paid;
+
+/// Whether the AI stop suggestions are really on for a plan: the driver
+/// asked for them AND their plan is Premium (the server answers 402 to
+/// anyone else, and each search spends the daily AI quota).
+bool effectiveAiSuggest({required bool wanted, required bool premium}) =>
+    wanted && premium;

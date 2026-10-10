@@ -3016,5 +3016,11 @@
       "used": { "type": "int" },
       "window": { "type": "int" }
     }
-  }
+  },
+  "planOptAiSuggestTitle": "Suggest stops and places with AI",
+  "@planOptAiSuggestTitle": {},
+  "planOptAiSuggestSub": "When the plan is ready, finds real places near your route",
+  "@planOptAiSuggestSub": {},
+  "planOptAiSuggestLocked": "AI suggestions are a Premium feature",
+  "@planOptAiSuggestLocked": {}
 }

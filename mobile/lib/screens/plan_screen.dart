@@ -198,6 +198,31 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
         ),
       );
   }
+
+  /// AI stop suggestions once the plan is ready. Off by default: each
+  /// search spends the daily AI quota. Premium only, like the server.
+  bool _aiSuggestEnabled = false;
+
+  bool get _aiSuggestOn => effectiveAiSuggest(
+        wanted: _aiSuggestEnabled,
+        premium: ref.read(isPremiumProvider),
+      );
+
+  void _showAiSuggestLocked() {
+    final l = AppLocalizations.of(context);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(l.planOptAiSuggestLocked),
+          action: SnackBarAction(
+            label: l.planOptSeePlans,
+            onPressed: () => BillingService.showPurchaseSheet(context, ref),
+          ),
+        ),
+      );
+  }
+
   bool _routeComparisonEnabled = false;
   bool _activitiesEnabled = false;
   // Kept as fields (not consts) so the request builder keeps its
@@ -903,6 +928,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
             // recent-trip pick, so the fresh plan lands with the
             // driver's earlier fuel / hotel picks pre-applied.
             initialSelections: _pendingSelections,
+            autoSuggest: _aiSuggestOn,
           ),
         ),
       );
@@ -1583,6 +1609,12 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     activitiesEnabled: _activitiesEnabled,
                     onActivitiesChanged: (v) =>
                         setState(() => _activitiesEnabled = v),
+                    aiSuggestEnabled: _aiSuggestOn,
+                    onAiSuggestChanged: (v) =>
+                        setState(() => _aiSuggestEnabled = v),
+                    onAiSuggestLockedTap: ref.watch(isPremiumProvider)
+                        ? null
+                        : _showAiSuggestLocked,
                   ).animate().fadeIn(delay: 120.ms, duration: Tokens.motionBase),
 
                   const SizedBox(height: Tokens.space24),
@@ -1820,8 +1852,18 @@ class _OnRoutePicker extends StatefulWidget {
     required this.onRouteComparisonChanged,
     required this.activitiesEnabled,
     required this.onActivitiesChanged,
+    required this.aiSuggestEnabled,
+    required this.onAiSuggestChanged,
+    this.onAiSuggestLockedTap,
     this.onTollFreeLockedTap,
   });
+
+  final bool aiSuggestEnabled;
+  final ValueChanged<bool> onAiSuggestChanged;
+
+  /// Non-null when the driver is not Premium: the AI suggestions toggle
+  /// shows locked and a tap calls this.
+  final VoidCallback? onAiSuggestLockedTap;
 
   /// Non-null when the driver's plan does not include the toll-free
   /// options: the toggle shows locked and a tap calls this.
@@ -2057,6 +2099,14 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
               subtitle: l.planIncludeActivitiesHint,
               value: widget.activitiesEnabled,
               onChanged: widget.onActivitiesChanged,
+            ),
+            _CompactToggle(
+              icon: Icons.auto_awesome,
+              title: l.planOptAiSuggestTitle,
+              subtitle: l.planOptAiSuggestSub,
+              value: widget.aiSuggestEnabled,
+              onChanged: widget.onAiSuggestChanged,
+              onLockedTap: widget.onAiSuggestLockedTap,
             ),
             InkWell(
               onTap: () => setState(

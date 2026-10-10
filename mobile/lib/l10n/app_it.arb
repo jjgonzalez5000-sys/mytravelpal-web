@@ -2968,5 +2968,11 @@
       "used": { "type": "int" },
       "window": { "type": "int" }
     }
-  }
+  },
+  "planOptAiSuggestTitle": "Suggerisci soste e luoghi con l'IA",
+  "@planOptAiSuggestTitle": {},
+  "planOptAiSuggestSub": "A piano pronto cerca luoghi reali vicino al percorso",
+  "@planOptAiSuggestSub": {},
+  "planOptAiSuggestLocked": "I suggerimenti IA sono una funzione Premium",
+  "@planOptAiSuggestLocked": {}
 }

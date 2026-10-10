@@ -4994,4 +4994,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String suggestUsed(int used, int window) {
     return 'Nutzt $used von $window freien Min.';
   }
+
+  @override
+  String get planOptAiSuggestTitle => 'Stopps und Orte per KI vorschlagen';
+
+  @override
+  String get planOptAiSuggestSub =>
+      'Sucht nach dem Plan echte Orte nahe deiner Route';
+
+  @override
+  String get planOptAiSuggestLocked => 'KI-Vorschläge sind ein Premium-Feature';
 }

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mytravelpal/api/models.dart' show LatLon;
 import 'package:mytravelpal/domain/my_place.dart';
+import 'package:mytravelpal/domain/plan_gates.dart';
 import 'package:mytravelpal/domain/stop_suggestion.dart';
 import 'package:mytravelpal/services/route_slice.dart';
 import 'package:mytravelpal/widgets/stop_suggestions_sheet.dart'
@@ -96,6 +97,15 @@ void main() {
         suggestionKey(s),
         placeKey('MIRADOR', LatLon(lat: 40.1234, lon: -3.9876)),
       );
+    });
+  });
+
+  group('effectiveAiSuggest', () {
+    test('only a Premium driver who asked for it gets it', () {
+      expect(effectiveAiSuggest(wanted: true, premium: true), isTrue);
+      expect(effectiveAiSuggest(wanted: true, premium: false), isFalse);
+      expect(effectiveAiSuggest(wanted: false, premium: true), isFalse);
+      expect(effectiveAiSuggest(wanted: false, premium: false), isFalse);
     });
   });
 }

@@ -2969,5 +2969,11 @@
       "used": { "type": "int" },
       "window": { "type": "int" }
     }
-  }
+  },
+  "planOptAiSuggestTitle": "Sugerir paradas y lugares con IA",
+  "@planOptAiSuggestTitle": {},
+  "planOptAiSuggestSub": "Al terminar el plan busca sitios reales cerca de tu ruta",
+  "@planOptAiSuggestSub": {},
+  "planOptAiSuggestLocked": "Las sugerencias con IA son de Premium",
+  "@planOptAiSuggestLocked": {}
 }

@@ -274,7 +274,7 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
               ),
             ),
             for (final s in result.suggestions)
-              _SuggestionCard(
+              SuggestionCard(
                 suggestion: s,
                 added: _added.contains(suggestionKey(s)),
                 onAdd: () => _add(s),
@@ -286,8 +286,8 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
   }
 }
 
-class _SuggestionCard extends StatelessWidget {
-  const _SuggestionCard({
+class SuggestionCard extends StatelessWidget {
+  const SuggestionCard({
     required this.suggestion,
     required this.added,
     required this.onAdd,

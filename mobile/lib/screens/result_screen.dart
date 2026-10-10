@@ -32,6 +32,7 @@ import '../services/trip_foreground.dart';
 import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
 import '../services/my_places_match.dart';
+import '../services/route_slice.dart';
 import '../services/selection_check.dart';
 import '../domain/my_place.dart';
 import '../domain/stop_suggestion.dart';
@@ -140,7 +141,12 @@ class ResultScreen extends ConsumerStatefulWidget {
     this.enrichFuture,
     this.departureClaimed = false,
     this.initialSelections,
+    this.autoSuggest = false,
   });
+
+  /// The driver ticked "suggest stops with AI" on the plan form (Premium):
+  /// search once as soon as the route is known and show the best picks.
+  final bool autoSuggest;
 
   /// Pre-populated user selections carried over from a `SavedTrip`
   /// (fuel picks, hotel picks, chosen departure, per-day overrides).
@@ -450,6 +456,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     Future.microtask(() {
       ReviewPrompter.instance.onPlanCompleted();
     });
+    if (widget.autoSuggest) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _autoSuggestStops());
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (_response.partialTollSkips.isNotEmpty) {
@@ -618,6 +627,126 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     );
   }
 
+  /// Result of the automatic search started when the plan form asked for
+  /// AI suggestions; null until it answers (or if it failed).
+  StopSuggestionsResult? _autoSuggestions;
+  bool _autoSuggestLoading = false;
+
+  /// Free time assumed for a whole-trip search; the sheet lets the driver
+  /// narrow it to a day and a budget.
+  static const int _autoSuggestFreeMinutes = 120;
+
+  /// One search over the whole route. A failure (quota, network, no
+  /// places) is silent: the entry tile below still opens the sheet.
+  Future<void> _autoSuggestStops() async {
+    if (!mounted || !ref.read(isPremiumProvider)) return;
+    final geometry = _response.route.geometry;
+    if (geometry.length < 2) return;
+    final profile = widget.request.tripProfile;
+    final locale = Localizations.localeOf(context).languageCode;
+    setState(() => _autoSuggestLoading = true);
+    try {
+      final res = await ref.read(apiClientWithPremiumProvider).suggestStops(
+            route: sliceRoute(
+              geometry,
+              _response.route.distanceKm,
+              fromKm: 0,
+              toKm: _response.route.distanceKm,
+            ),
+            freeMinutes: _autoSuggestFreeMinutes,
+            travellers: profile?.travellers ?? 1,
+            hasKids: profile?.hasKids ?? false,
+            hasPets: profile?.hasPets ?? false,
+            limit: 3,
+            locale: locale,
+          );
+      if (!mounted) return;
+      setState(() => _autoSuggestions = res);
+    } catch (_) {
+      // Silent on purpose, see above.
+    } finally {
+      if (mounted) setState(() => _autoSuggestLoading = false);
+    }
+  }
+
+  /// Identity of the saved places already added as stops, in the form the
+  /// suggestion cards compare against.
+  Set<String> _addedPlaceKeys() => {
+        for (final p in ref.read(myPlacesProvider))
+          if (_addedStops.containsKey('place:${p.id}'))
+            placeKey(p.name, p.coordinate),
+      };
+
+  Widget _autoSuggestionsCard(AppLocalizations l, ColorScheme scheme) {
+    final res = _autoSuggestions;
+    if (_autoSuggestLoading) {
+      return Padding(
+        padding: const EdgeInsets.only(top: Tokens.space12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Icon(Icons.auto_awesome, size: 18, color: scheme.primary),
+              const SizedBox(width: Tokens.space8),
+              Text(l.suggestEntryTitle,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelLarge
+                      ?.copyWith(fontWeight: FontWeight.w700)),
+            ]),
+            const SizedBox(height: Tokens.space8),
+            const LinearProgressIndicator(),
+            const SizedBox(height: Tokens.space4),
+            Text(
+              l.suggestSearching,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      );
+    }
+    if (res == null || res.suggestions.isEmpty) return const SizedBox.shrink();
+    final added = _addedPlaceKeys();
+    return Padding(
+      padding: const EdgeInsets.only(top: Tokens.space12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.auto_awesome, size: 18, color: scheme.primary),
+            const SizedBox(width: Tokens.space8),
+            Text(l.suggestEntryTitle,
+                style: Theme.of(context)
+                    .textTheme
+                    .labelLarge
+                    ?.copyWith(fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: Tokens.space8),
+          if (!res.ai)
+            Padding(
+              padding: const EdgeInsets.only(bottom: Tokens.space8),
+              child: Text(
+                l.suggestNoAiNote,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodySmall
+                    ?.copyWith(color: scheme.onSurfaceVariant),
+              ),
+            ),
+          for (final s in res.suggestions)
+            SuggestionCard(
+              suggestion: s,
+              added: added.contains(suggestionKey(s)),
+              onAdd: () => _addSuggestion(s),
+            ),
+        ],
+      ),
+    );
+  }
+
   /// Opens the AI suggestions sheet (Premium); everyone else sees the plans.
   Future<void> _openSuggestions() async {
     if (!ref.read(isPremiumProvider)) {
@@ -630,11 +759,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       routeKm: _response.route.distanceKm,
       days: _response.days,
       profile: widget.request.tripProfile,
-      addedKeys: {
-        for (final p in ref.read(myPlacesProvider))
-          if (_addedStops.containsKey('place:${p.id}'))
-            placeKey(p.name, p.coordinate),
-      },
+      addedKeys: _addedPlaceKeys(),
       onAdd: _addSuggestion,
     );
   }
@@ -2201,6 +2326,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             // toggle after the user has already picked a window) so the
             // savings chip doesn't disappear on unrelated actions.
             departureClaimed: claimTimeSavings || widget.departureClaimed,
+            autoSuggest: widget.autoSuggest,
           ),
         ),
       );
@@ -3187,6 +3313,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ),
               );
             }),
+            if (widget.autoSuggest) _autoSuggestionsCard(l, scheme),
             if (!_enrichPending && _response.route.geometry.length > 1) ...[
               const SizedBox(height: Tokens.space12),
               Material(
