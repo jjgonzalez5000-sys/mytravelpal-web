@@ -8998,6 +8998,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stop around km {km} · {off} km off the route'**
   String suggestWhere(int km, String off);
+
+  /// No description provided for @planSectionRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'ROUTE'**
+  String get planSectionRoute;
+
+  /// No description provided for @planSectionOnRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'ON THE ROUTE'**
+  String get planSectionOnRoute;
 }
 
 class _AppLocalizationsDelegate

@@ -16,10 +16,10 @@ PASS=0; FAIL=0
 for flow in "$FLOWS_DIR"/*.yaml; do
   name=$(basename "$flow" .yaml)
   echo -n "  $name ... "
-  if maestro --device "$DEVICE" test "$flow" --output "$REPORTS_DIR/${name}.xml" 2>/dev/null; then
+  if maestro --device "$DEVICE" test "$flow" --format junit --output "$REPORTS_DIR/${name}.xml" >"$REPORTS_DIR/${name}.log" 2>&1; then
     echo "PASS"; PASS=$((PASS+1))
   else
-    echo "FAIL"; FAIL=$((FAIL+1))
+    echo "FAIL"; tail -n 25 "$REPORTS_DIR/${name}.log"; FAIL=$((FAIL+1))
   fi
 done
 

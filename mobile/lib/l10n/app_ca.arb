@@ -1003,5 +1003,7 @@
   "resultGyGActivities": "Veure activitats a {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "RUTA",
+  "planSectionOnRoute": "A LA RUTA"
 }

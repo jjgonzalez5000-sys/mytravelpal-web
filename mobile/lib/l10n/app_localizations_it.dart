@@ -5109,4 +5109,10 @@ class AppLocalizationsIt extends AppLocalizations {
   String suggestWhere(int km, String off) {
     return 'Sosta intorno al km $km · a $off km dal percorso';
   }
+
+  @override
+  String get planSectionRoute => 'PERCORSO';
+
+  @override
+  String get planSectionOnRoute => 'LUNGO IL PERCORSO';
 }

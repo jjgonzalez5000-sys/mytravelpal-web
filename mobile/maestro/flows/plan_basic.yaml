@@ -1,22 +1,36 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
-- tapOn: "Desde"
-- inputText: "Toledo"
-- waitForAnimationToEnd
-- tapOn:
-    text: "Toledo, Castilla-La Mancha"
-    optional: true
-- tapOn: "Hasta"
-- inputText: "Murcia"
-- waitForAnimationToEnd
-- tapOn:
-    text: "Murcia, Región de Murcia"
-    optional: true
-- tapOn: "Planificar viaje"
-- waitForAnimationToEnd:
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
     timeout: 60000
-- assertVisible:
-    text: "km"
-- assertVisible:
-    text: "h"
+- tapOn: "Desde|From"
+- inputText: "Toledo"
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Toledo.*"
+    timeout: 15000
+- tapOn:
+    text: "Toledo, .*"
+    index: 0
+- tapOn: "Hasta|To"
+- inputText: "Murcia"
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Murcia.*"
+    timeout: 15000
+- tapOn:
+    text: "Murcia, .*"
+    index: 0
+- scrollUntilVisible:
+    element: "Planificar viaje|Plan trip"
+    direction: DOWN
+- tapOn: "Planificar viaje|Plan trip"
+- extendedWaitUntil:
+    visible: ".*[0-9] km.*"
+    timeout: 120000

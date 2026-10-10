@@ -5097,4 +5097,10 @@ class AppLocalizationsPt extends AppLocalizations {
   String suggestWhere(int km, String off) {
     return 'Stop around km $km · $off km off the route';
   }
+
+  @override
+  String get planSectionRoute => 'ROTA';
+
+  @override
+  String get planSectionOnRoute => 'NA ROTA';
 }

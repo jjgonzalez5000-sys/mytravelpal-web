@@ -5127,4 +5127,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String suggestWhere(int km, String off) {
     return 'Arrêt vers le km $km · à $off km de l\'itinéraire';
   }
+
+  @override
+  String get planSectionRoute => 'ITINÉRAIRE';
+
+  @override
+  String get planSectionOnRoute => 'SUR LA ROUTE';
 }

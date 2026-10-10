@@ -84,11 +84,14 @@ platform :android do
     )
   end
 
-  desc "Promote the latest Internal build to Closed testing (beta)."
+  desc "Promote the latest Internal build to Closed testing (the alpha track in the Play API; beta is OPEN testing)."
   lane :promote_to_closed do
     upload_to_play_store(
       track: "internal",
-      track_promote_to: "beta",
+      track_promote_to: "alpha",
+      # Promoting needs the build to move; the pubspec build number is the
+      # one the last `internal` upload used.
+      version_code: pubspec_version.split("+").last.to_i,
       skip_upload_apk: true,
       skip_upload_aab: true,
       skip_upload_metadata: true,
@@ -100,7 +103,7 @@ platform :android do
   desc "Promote latest Closed build to Production."
   lane :promote_to_prod do
     upload_to_play_store(
-      track: "beta",
+      track: "alpha",
       track_promote_to: "production",
       skip_upload_apk: true,
       skip_upload_aab: true,

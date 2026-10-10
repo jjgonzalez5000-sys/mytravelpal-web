@@ -1,28 +1,18 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
+# Override the trip profile to an electric vehicle from the plan form.
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: "Sobrescribir para este viaje|Override for this trip"
 - waitForAnimationToEnd
-# Tap the profile chip — it shows vehicle summary or "Configura tu perfil de viaje".
-# Either way it opens the action sheet.
-- tapOn:
-    text: "Gasolina"
-    optional: true
-- tapOn:
-    text: "Configura tu perfil de viaje"
-    optional: true
+- scrollUntilVisible:
+    element: "Eléctrico|Electric"
+    direction: DOWN
+- tapOn: "Eléctrico|Electric"
 - waitForAnimationToEnd
-# Action sheet: choose "Edit trip profile" (avoids garage picker)
-- tapOn:
-    text: "Editar perfil del viaje"
-    optional: true
+- tapOn: "Usar|Use"
 - waitForAnimationToEnd
-# In profile screen: tap the "Eléctrico" chip in the fuel type row
-- tapOn:
-    text: "Eléctrico"
-- waitForAnimationToEnd
-# Navigate back — profile auto-saves on pop
-- pressKey: Back
-- waitForAnimationToEnd
-# Profile chip on PlanScreen must now show the EV label
-- assertVisible:
-    text: "Eléctrico"
+- assertVisible: ".*(Eléctrico|Electric).*"

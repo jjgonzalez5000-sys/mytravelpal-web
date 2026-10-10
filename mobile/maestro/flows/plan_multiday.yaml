@@ -1,24 +1,40 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
-- tapOn: "Desde"
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: "Desde|From"
 - inputText: "Unterageri"
-- waitForAnimationToEnd
-- tapOn:
-    text: "Unterägeri"
-    optional: true
-- tapOn: "Hasta"
-- inputText: "Madrid"
-- waitForAnimationToEnd
-- tapOn:
-    text: "Madrid"
-    optional: true
-- tapOn: "Planificar viaje"
 - waitForAnimationToEnd:
-    timeout: 90000
-- assertVisible:
-    text: "Día 1"
-- assertVisible:
-    text: "Día 2"
-- assertVisible:
-    text: "Día 3"
+    timeout: 4000
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Unter.*"
+    timeout: 15000
+- tapOn:
+    text: "Unter.*"
+    index: 0
+- tapOn: "Hasta|To"
+- inputText: "Madrid"
+- waitForAnimationToEnd:
+    timeout: 4000
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Madrid.*"
+    timeout: 15000
+- tapOn:
+    text: "Madrid.*"
+    index: 0
+- scrollUntilVisible:
+    element: "Planificar viaje|Plan trip"
+    direction: DOWN
+- tapOn: "Planificar viaje|Plan trip"
+- extendedWaitUntil:
+    visible: ".*[0-9]{3,} km.*"
+    timeout: 150000
+- scrollUntilVisible:
+    element: ".*(Distribución por etapas|Day breakdown).*"
+    direction: DOWN
+- assertVisible: ".*[0-9]{3} km · [0-9]+h [0-9]+m.*"

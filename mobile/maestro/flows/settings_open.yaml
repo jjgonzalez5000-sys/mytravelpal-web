@@ -1,27 +1,16 @@
 appId: com.mytravelpal.travel
 ---
-# Smoke test: navigate to Settings and verify key sections exist.
-# Entry point: PlanScreen AppBar settings icon (tooltip "Ajustes").
-- launchApp
-- waitForAnimationToEnd:
-    timeout: 3000
-# Tap the settings gear icon in the PlanScreen AppBar
-- tapOn:
-    text: "Ajustes"
-    optional: false
-- waitForAnimationToEnd:
-    timeout: 2000
-# Verify the Settings screen title appeared
-- assertVisible:
-    text: "Ajustes"
-# Verify the first section (Apariencia) is visible without scrolling
-- assertVisible:
-    text: "Apariencia"
-# Scroll down to reach the "Acerca de" section at the bottom
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: "Ajustes|Settings"
+- waitForAnimationToEnd
+- assertVisible: "Ajustes|Settings"
 - scrollUntilVisible:
-    element:
-      text: "Versión"
+    element: ".*(Apariencia|Appearance).*"
     direction: DOWN
-    timeout: 10000
-- assertVisible:
-    text: "Versión"
+- scrollUntilVisible:
+    element: ".*(Cuenta|Account).*"
+    direction: DOWN

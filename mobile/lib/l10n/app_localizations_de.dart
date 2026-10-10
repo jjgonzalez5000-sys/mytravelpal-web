@@ -5117,4 +5117,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String suggestWhere(int km, String off) {
     return 'Stopp bei km $km · $off km von der Route';
   }
+
+  @override
+  String get planSectionRoute => 'ROUTE';
+
+  @override
+  String get planSectionOnRoute => 'AUF DER STRECKE';
 }

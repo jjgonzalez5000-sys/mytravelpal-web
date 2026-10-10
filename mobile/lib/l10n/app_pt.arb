@@ -959,5 +959,7 @@
   "resultGyGActivities": "Ver atividades em {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "ROTA",
+  "planSectionOnRoute": "NA ROTA"
 }

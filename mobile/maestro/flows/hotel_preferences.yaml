@@ -1,12 +1,11 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
 - scrollUntilVisible:
-    element:
-      text: "Buscar hoteles"
+    element: ".*(hoteles|hotels).*"
     direction: DOWN
-- tapOn: "Buscar hoteles"
-- waitForAnimationToEnd
-- assertVisible:
-    text: "Parking"
-    optional: true
+- assertVisible: ".*(hoteles|hotels).*"

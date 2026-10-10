@@ -3050,5 +3050,7 @@
   "suggestWhere": "Sosta intorno al km {km} · a {off} km dal percorso",
   "@suggestWhere": {
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "PERCORSO",
+  "planSectionOnRoute": "LUNGO IL PERCORSO"
 }

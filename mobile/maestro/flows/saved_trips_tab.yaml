@@ -1,8 +1,10 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
-- tapOn: "Mis viajes"
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: ".*(Mis viajes|My trips).*"
 - waitForAnimationToEnd
-- assertVisible:
-    text: "viaje"
-    optional: true
+- assertNotVisible: "Desde|From"

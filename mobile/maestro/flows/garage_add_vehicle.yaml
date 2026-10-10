@@ -1,20 +1,18 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
+# Settings -> Garage -> Add vehicle opens the wizard.
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: "Ajustes|Settings"
 - waitForAnimationToEnd
 - scrollUntilVisible:
-    element:
-      text: "Garage"
+    element: "Mi garaje.*|My garage.*"
     direction: DOWN
-    optional: true
-- tapOn:
-    text: "Garage"
-    optional: true
+- tapOn: "Mi garaje.*|My garage.*"
 - waitForAnimationToEnd
-- tapOn:
-    text: "Añadir vehículo"
-    optional: true
+- tapOn: "Añadir vehículo|Add vehicle"
 - waitForAnimationToEnd
-- assertVisible:
-    text: "Garaje"
-    optional: true
+- assertVisible: "Turismo|Car"

@@ -5118,4 +5118,10 @@ class AppLocalizationsEs extends AppLocalizations {
   String suggestWhere(int km, String off) {
     return 'Parada hacia el km $km · a $off km de la ruta';
   }
+
+  @override
+  String get planSectionRoute => 'RUTA';
+
+  @override
+  String get planSectionOnRoute => 'EN RUTA';
 }

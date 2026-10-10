@@ -181,6 +181,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
       // launches also skip it.
       final prefs = ref.read(appPrefsProvider);
       await prefs.markOnboardingShown();
+      // Same for the profile wizard: the demo profile above replaces it.
+      await prefs.setOnboardingShown();
       // Also silence the plan + result coach-mark tutorials so a
       // fresh install doesn't stop the dogfood flow at the first
       // "welcome to the planner" overlay.

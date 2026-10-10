@@ -3050,5 +3050,7 @@
   "suggestWhere": "Stopp bei km {km} · {off} km von der Route",
   "@suggestWhere": {
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "ROUTE",
+  "planSectionOnRoute": "AUF DER STRECKE"
 }

@@ -3051,5 +3051,7 @@
   "suggestWhere": "Parada hacia el km {km} · a {off} km de la ruta",
   "@suggestWhere": {
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "RUTA",
+  "planSectionOnRoute": "EN RUTA"
 }

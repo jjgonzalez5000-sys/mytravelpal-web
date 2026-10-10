@@ -3098,5 +3098,7 @@
   "suggestWhere": "Stop around km {km} · {off} km off the route",
   "@suggestWhere": {
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "ROUTE",
+  "planSectionOnRoute": "ON THE ROUTE"
 }

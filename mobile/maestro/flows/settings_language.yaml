@@ -1,35 +1,44 @@
 appId: com.mytravelpal.travel
 ---
-- launchApp
+- launchApp:
+    permissions: { all: allow }
+- extendedWaitUntil:
+    visible: "Desde|From"
+    timeout: 60000
+- tapOn: "Ajustes|Settings"
 - waitForAnimationToEnd
-# Open Settings from the Plan screen AppBar icon
-- tapOn:
-    description: "Settings icon"
-    optional: true
-- tapOn:
-    id: "settings_outlined"
-    optional: true
-# Fallback: tap by tooltip text if id doesn't match
-- tapOn:
-    text: "Ajustes"
-    optional: true
-- waitForAnimationToEnd
-# Scroll to the Language row and tap it
 - scrollUntilVisible:
-    element:
-      text: "Idioma"
+    element: ".*(Apariencia|Appearance).*"
     direction: DOWN
-- tapOn: "Idioma"
+- tapOn: ".*(Apariencia|Appearance).*"
 - waitForAnimationToEnd
-# Select English in the bottom sheet
-- tapOn: "English"
+- runFlow:
+    when:
+      notVisible: ".*(Idioma|Language).*"
+    commands:
+      - tapOn: ".*(Apariencia|Appearance).*"
+      - waitForAnimationToEnd
+- tapOn: ".*(Idioma|Language).*"
 - waitForAnimationToEnd
-# Go back to the Plan screen
-- tapOn:
-    text: "Back"
-    optional: true
-- pressBack
+- tapOn: ".*Español.*"
 - waitForAnimationToEnd
-# Assert UI has switched to English
-- assertVisible:
-    text: "Plan"
+- pressKey: Back
+- waitForAnimationToEnd
+- assertVisible: "Desde"
+# Restore English so the order of flows never matters.
+- tapOn: "Ajustes"
+- waitForAnimationToEnd
+- scrollUntilVisible:
+    element: ".*(Apariencia|Appearance).*"
+    direction: DOWN
+- runFlow:
+    when:
+      notVisible: ".*(Idioma|Language).*"
+    commands:
+      - tapOn: ".*(Apariencia|Appearance).*"
+      - waitForAnimationToEnd
+- tapOn: ".*(Idioma|Language).*"
+- waitForAnimationToEnd
+- tapOn: ".*English.*"
+- waitForAnimationToEnd
+- assertVisible: "Settings"

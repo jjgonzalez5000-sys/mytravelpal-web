@@ -1256,7 +1256,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
 
                   // Route card
                   Text(
-                    'RUTA', // l10n pending
+                    l.planSectionRoute,
                     style: t.labelSmall?.copyWith(
                       color: scheme.primary.withValues(alpha: 0.7),
                       letterSpacing: 1.5,
@@ -1575,7 +1575,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                   // reflects what's currently enabled so users know at
                   // a glance without expanding.
                   Text(
-                    'EN RUTA', // l10n pending
+                    l.planSectionOnRoute,
                     style: t.labelSmall?.copyWith(
                       color: scheme.primary.withValues(alpha: 0.7),
                       letterSpacing: 1.5,
@@ -2342,8 +2342,14 @@ class _ProfileChip extends ConsumerWidget {
           Expanded(
             child: hasProfile
                 ? _summary(
-                    context, profile!, garageVehicle, catalogueEntry,
-                    t, scheme,
+                    context,
+                    profile!,
+                    // An override describes its own vehicle; the garage
+                    // entry would mask the fuel the driver just picked.
+                    isOverride ? null : garageVehicle,
+                    isOverride ? null : catalogueEntry,
+                    t,
+                    scheme,
                   )
                 : Text(
                     AppLocalizations.of(context).profilePromptSetup,

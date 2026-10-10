@@ -3050,5 +3050,7 @@
   "suggestWhere": "Arrêt vers le km {km} · à {off} km de l'itinéraire",
   "@suggestWhere": {
     "placeholders": { "km": { "type": "int" }, "off": { "type": "String" } }
-  }
+  },
+  "planSectionRoute": "ITINÉRAIRE",
+  "planSectionOnRoute": "SUR LA ROUTE"
 }
