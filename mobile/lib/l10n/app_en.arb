@@ -3034,5 +3034,23 @@
     "placeholders": { "kg": { "type": "int" } }
   },
   "tripCo2EvNote": "Based on the average EU electricity mix",
-  "@tripCo2EvNote": {}
+  "@tripCo2EvNote": {},
+  "vignetteSectionTitle": "Mandatory vignettes",
+  "@vignetteSectionTitle": {},
+  "vignetteSectionNote": "Paid once per country, not per toll booth, and cannot be skipped: you need one as soon as you use its motorways.",
+  "@vignetteSectionNote": {},
+  "vignetteKindDigital": "Digital, tied to your number plate",
+  "@vignetteKindDigital": {},
+  "vignetteKindSticker": "Annual sticker (a digital version also exists)",
+  "@vignetteKindSticker": {},
+  "vignetteBuyBefore": "Buy it before entering the country",
+  "@vignetteBuyBefore": {},
+  "vignetteBuyOfficial": "Buy on the official website",
+  "@vignetteBuyOfficial": {},
+  "vignetteOther": "Other vignettes",
+  "@vignetteOther": {},
+  "vignetteInTotal": "+ {amount} in vignettes",
+  "@vignetteInTotal": {
+    "placeholders": { "amount": { "type": "String" } }
+  }
 }

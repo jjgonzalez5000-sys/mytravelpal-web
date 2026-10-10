@@ -5030,4 +5030,32 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get tripCo2EvNote => 'Selon le mix électrique moyen de l\'UE';
+
+  @override
+  String get vignetteSectionTitle => 'Vignettes obligatoires';
+
+  @override
+  String get vignetteSectionNote =>
+      'Payées une fois par pays, pas par péage, et impossibles à éviter : il en faut une dès que vous prenez ses autoroutes.';
+
+  @override
+  String get vignetteKindDigital => 'Numérique, liée à votre plaque';
+
+  @override
+  String get vignetteKindSticker =>
+      'Vignette annuelle (version numérique aussi disponible)';
+
+  @override
+  String get vignetteBuyBefore => 'À acheter avant d\'entrer dans le pays';
+
+  @override
+  String get vignetteBuyOfficial => 'Acheter sur le site officiel';
+
+  @override
+  String get vignetteOther => 'Autres vignettes';
+
+  @override
+  String vignetteInTotal(String amount) {
+    return '+ $amount de vignettes';
+  }
 }

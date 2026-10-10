@@ -2986,5 +2986,23 @@
     "placeholders": { "kg": { "type": "int" } }
   },
   "tripCo2EvNote": "In base al mix elettrico medio UE",
-  "@tripCo2EvNote": {}
+  "@tripCo2EvNote": {},
+  "vignetteSectionTitle": "Vignette obbligatorie",
+  "@vignetteSectionTitle": {},
+  "vignetteSectionNote": "Si pagano una volta per paese, non per casello, e non si possono evitare: servono appena usi le sue autostrade.",
+  "@vignetteSectionNote": {},
+  "vignetteKindDigital": "Digitale, legata alla targa",
+  "@vignetteKindDigital": {},
+  "vignetteKindSticker": "Bollino annuale (esiste anche la versione digitale)",
+  "@vignetteKindSticker": {},
+  "vignetteBuyBefore": "Acquistala prima di entrare nel paese",
+  "@vignetteBuyBefore": {},
+  "vignetteBuyOfficial": "Acquista sul sito ufficiale",
+  "@vignetteBuyOfficial": {},
+  "vignetteOther": "Altre vignette",
+  "@vignetteOther": {},
+  "vignetteInTotal": "+ {amount} di vignette",
+  "@vignetteInTotal": {
+    "placeholders": { "amount": { "type": "String" } }
+  }
 }

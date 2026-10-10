@@ -5021,4 +5021,31 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get tripCo2EvNote =>
       'Basierend auf dem durchschnittlichen EU-Strommix';
+
+  @override
+  String get vignetteSectionTitle => 'Pflicht-Vignetten';
+
+  @override
+  String get vignetteSectionNote =>
+      'Einmal pro Land zu zahlen, nicht pro Mautstelle, und nicht vermeidbar: Sie wird fällig, sobald du dort Autobahnen nutzt.';
+
+  @override
+  String get vignetteKindDigital => 'Digital, an dein Kennzeichen gebunden';
+
+  @override
+  String get vignetteKindSticker => 'Jahresvignette (auch digital erhältlich)';
+
+  @override
+  String get vignetteBuyBefore => 'Vor der Einreise kaufen';
+
+  @override
+  String get vignetteBuyOfficial => 'Auf der offiziellen Website kaufen';
+
+  @override
+  String get vignetteOther => 'Weitere Vignetten';
+
+  @override
+  String vignetteInTotal(String amount) {
+    return '+ $amount Vignetten';
+  }
 }

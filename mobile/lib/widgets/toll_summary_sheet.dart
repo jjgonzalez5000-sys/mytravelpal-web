@@ -5,7 +5,9 @@ import 'package:latlong2/latlong.dart' as ll;
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
+import '../domain/vignette_info.dart';
 import '../services/currency_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Shows a full trip toll breakdown grouped by day.
 /// Tolls can be toggled (pay / skip) from here — changes propagate
@@ -19,6 +21,7 @@ void showTollSummarySheet({
   required double routeTollCostEur,
   required double vignetteCostEur,
   required List<String> vignetteCountries,
+  List<VignetteLine> vignettes = const [],
   required String ccy,
   DateTime? tripDepartureAt,
   double? routeFreeFlowMinutes,
@@ -38,6 +41,7 @@ void showTollSummarySheet({
       routeTollCostEur: routeTollCostEur,
       vignetteCostEur: vignetteCostEur,
       vignetteCountries: vignetteCountries,
+      vignettes: vignettes,
       ccy: ccy,
       tripDepartureAt: tripDepartureAt,
       routeFreeFlowMinutes: routeFreeFlowMinutes,
@@ -58,6 +62,7 @@ class _TollSummarySheet extends StatefulWidget {
     required this.routeTollCostEur,
     required this.vignetteCostEur,
     required this.vignetteCountries,
+    this.vignettes = const [],
     required this.ccy,
     this.tripDepartureAt,
     this.routeFreeFlowMinutes,
@@ -72,6 +77,7 @@ class _TollSummarySheet extends StatefulWidget {
   final double routeTollCostEur;
   final double vignetteCostEur;
   final List<String> vignetteCountries;
+  final List<VignetteLine> vignettes;
   final String ccy;
   final DateTime? tripDepartureAt;
   final double? routeFreeFlowMinutes;
@@ -250,7 +256,9 @@ class _TollSummarySheetState extends State<_TollSummarySheet> {
                   const Spacer(),
                   if (widget.vignetteCostEur > 0)
                     Text(
-                      '+ ${formatMoney(widget.vignetteCostEur, widget.ccy)} viñeta',
+                      AppLocalizations.of(context).vignetteInTotal(
+                        formatMoney(widget.vignetteCostEur, widget.ccy),
+                      ),
                       style: t.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
                     ),
                 ],
@@ -274,9 +282,10 @@ class _TollSummarySheetState extends State<_TollSummarySheet> {
                       ccy: widget.ccy,
                     ),
                   if (widget.vignetteCountries.isNotEmpty)
-                    _VignetteRow(
+                    _VignetteSection(
                       countries: widget.vignetteCountries,
-                      costEur: widget.vignetteCostEur,
+                      lines: widget.vignettes,
+                      totalEur: widget.vignetteCostEur,
                       ccy: widget.ccy,
                     ),
                 ],
@@ -572,38 +581,135 @@ class _SlimTollRow extends StatelessWidget {
 // Vignette row
 // ---------------------------------------------------------------------------
 
-class _VignetteRow extends StatelessWidget {
-  const _VignetteRow({
+class _VignetteSection extends StatelessWidget {
+  const _VignetteSection({
     required this.countries,
-    required this.costEur,
+    required this.lines,
+    required this.totalEur,
     required this.ccy,
   });
 
   final List<String> countries;
-  final double costEur;
+  final List<VignetteLine> lines;
+  final double totalEur;
   final String ccy;
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
+    // An older server sends only the countries and the total: show the
+    // countries, with the total once in the header.
+    final perCountry = lines.isNotEmpty
+        ? lines
+        : [for (final c in countries) VignetteLine(country: c, costEur: 0)];
+    final listed = lines.fold(0.0, (s, v) => s + v.costEur);
+    final other = lines.isEmpty ? 0.0 : totalEur - listed;
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: Tokens.space20, vertical: Tokens.space12),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.local_play_outlined, size: 18, color: scheme.onSurfaceVariant),
-          const SizedBox(width: Tokens.space12),
-          Expanded(
-            child: Text(
-              'Viñetas (${countries.join(', ')})',
-              style: t.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
-            ),
+          Row(
+            children: [
+              Icon(Icons.local_play_outlined,
+                  size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Tokens.space12),
+              Expanded(
+                child: Text(
+                  l.vignetteSectionTitle,
+                  style: t.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Text(
+                formatMoney(totalEur, ccy),
+                style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
+          const SizedBox(height: Tokens.space4),
           Text(
-            formatMoney(costEur, ccy),
-            style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+            l.vignetteSectionNote,
+            style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
+          for (final v in perCountry) _VignetteCountryRow(line: v, ccy: ccy),
+          if (other > 0.5)
+            Padding(
+              padding: const EdgeInsets.only(top: Tokens.space8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(l.vignetteOther, style: t.bodyMedium),
+                  ),
+                  Text(formatMoney(other, ccy), style: t.labelLarge),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VignetteCountryRow extends StatelessWidget {
+  const _VignetteCountryRow({required this.line, required this.ccy});
+
+  final VignetteLine line;
+  final String ccy;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final info = vignetteInfoFor(line.country);
+    final name = Country.fromCode(line.country).displayName;
+    final muted = t.bodySmall?.copyWith(color: scheme.onSurfaceVariant);
+    return Padding(
+      padding: const EdgeInsets.only(top: Tokens.space12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  name,
+                  style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+              if (line.costEur > 0)
+                Text(
+                  formatMoney(line.costEur, ccy),
+                  style: t.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+                ),
+            ],
+          ),
+          if (info != null) ...[
+            Text(
+              info.sticker ? l.vignetteKindSticker : l.vignetteKindDigital,
+              style: muted,
+            ),
+            Text(l.vignetteBuyBefore, style: muted),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 32),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.open_in_new, size: 14),
+                label: Text(l.vignetteBuyOfficial),
+                onPressed: () => launchUrl(
+                  Uri.parse(info.officialUrl),
+                  mode: LaunchMode.externalApplication,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );

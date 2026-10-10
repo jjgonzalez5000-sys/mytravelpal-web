@@ -920,6 +920,21 @@ class GeocodeResult {
       Object.hash(displayName, coordinate, country, poiClass, poiType);
 }
 
+/// The vignette (country road-permit) price for one country.
+@immutable
+class VignetteLine {
+  const VignetteLine({required this.country, required this.costEur});
+
+  /// 2-letter ISO code.
+  final String country;
+  final double costEur;
+
+  factory VignetteLine.fromJson(Map<String, dynamic> json) => VignetteLine(
+        country: json['country'] as String,
+        costEur: (json['cost_eur'] as num?)?.toDouble() ?? 0.0,
+      );
+}
+
 @immutable
 class RouteInfo {
   const RouteInfo({
@@ -931,6 +946,7 @@ class RouteInfo {
     this.geometry = const [],
     this.vignetteCostEur = 0,
     this.vignetteCountries = const [],
+    this.vignettes = const [],
     this.tollVerified = false,
   });
 
@@ -962,6 +978,10 @@ class RouteInfo {
   /// vignette-based country OR when HERE didn't classify one.
   final List<String> vignetteCountries;
 
+  /// Price per vignette country. Empty on responses from an older server;
+  /// then only [vignetteCountries] and the total are known.
+  final List<VignetteLine> vignettes;
+
   factory RouteInfo.fromJson(Map<String, dynamic> json) => RouteInfo(
         distanceKm: (json['distance_km'] as num).toDouble(),
         freeFlowMinutes: (json['free_flow_minutes'] as num).toDouble(),
@@ -984,6 +1004,10 @@ class RouteInfo {
             (json['vignette_countries'] as List<dynamic>? ?? const [])
                 .whereType<String>()
                 .toList(growable: false),
+        vignettes: (json['vignettes'] as List<dynamic>? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(VignetteLine.fromJson)
+            .toList(growable: false),
         tollVerified: json['toll_verified'] as bool? ?? false,
       );
 
@@ -998,6 +1022,7 @@ class RouteInfo {
         geometry: geometry,
         vignetteCostEur: verified.vignetteCostEur,
         vignetteCountries: verified.vignetteCountries,
+        vignettes: verified.vignettes,
         tollVerified: true,
       );
 }

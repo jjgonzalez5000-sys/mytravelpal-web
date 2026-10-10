@@ -2986,5 +2986,23 @@
     "placeholders": { "kg": { "type": "int" } }
   },
   "tripCo2EvNote": "Basierend auf dem durchschnittlichen EU-Strommix",
-  "@tripCo2EvNote": {}
+  "@tripCo2EvNote": {},
+  "vignetteSectionTitle": "Pflicht-Vignetten",
+  "@vignetteSectionTitle": {},
+  "vignetteSectionNote": "Einmal pro Land zu zahlen, nicht pro Mautstelle, und nicht vermeidbar: Sie wird fällig, sobald du dort Autobahnen nutzt.",
+  "@vignetteSectionNote": {},
+  "vignetteKindDigital": "Digital, an dein Kennzeichen gebunden",
+  "@vignetteKindDigital": {},
+  "vignetteKindSticker": "Jahresvignette (auch digital erhältlich)",
+  "@vignetteKindSticker": {},
+  "vignetteBuyBefore": "Vor der Einreise kaufen",
+  "@vignetteBuyBefore": {},
+  "vignetteBuyOfficial": "Auf der offiziellen Website kaufen",
+  "@vignetteBuyOfficial": {},
+  "vignetteOther": "Weitere Vignetten",
+  "@vignetteOther": {},
+  "vignetteInTotal": "+ {amount} Vignetten",
+  "@vignetteInTotal": {
+    "placeholders": { "amount": { "type": "String" } }
+  }
 }

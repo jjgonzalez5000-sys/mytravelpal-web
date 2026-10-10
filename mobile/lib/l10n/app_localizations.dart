@@ -8830,6 +8830,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Based on the average EU electricity mix'**
   String get tripCo2EvNote;
+
+  /// No description provided for @vignetteSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mandatory vignettes'**
+  String get vignetteSectionTitle;
+
+  /// No description provided for @vignetteSectionNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid once per country, not per toll booth, and cannot be skipped: you need one as soon as you use its motorways.'**
+  String get vignetteSectionNote;
+
+  /// No description provided for @vignetteKindDigital.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital, tied to your number plate'**
+  String get vignetteKindDigital;
+
+  /// No description provided for @vignetteKindSticker.
+  ///
+  /// In en, this message translates to:
+  /// **'Annual sticker (a digital version also exists)'**
+  String get vignetteKindSticker;
+
+  /// No description provided for @vignetteBuyBefore.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy it before entering the country'**
+  String get vignetteBuyBefore;
+
+  /// No description provided for @vignetteBuyOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Buy on the official website'**
+  String get vignetteBuyOfficial;
+
+  /// No description provided for @vignetteOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other vignettes'**
+  String get vignetteOther;
+
+  /// No description provided for @vignetteInTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'+ {amount} in vignettes'**
+  String vignetteInTotal(String amount);
 }
 
 class _AppLocalizationsDelegate

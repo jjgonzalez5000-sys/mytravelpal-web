@@ -2986,5 +2986,23 @@
     "placeholders": { "kg": { "type": "int" } }
   },
   "tripCo2EvNote": "Selon le mix électrique moyen de l'UE",
-  "@tripCo2EvNote": {}
+  "@tripCo2EvNote": {},
+  "vignetteSectionTitle": "Vignettes obligatoires",
+  "@vignetteSectionTitle": {},
+  "vignetteSectionNote": "Payées une fois par pays, pas par péage, et impossibles à éviter : il en faut une dès que vous prenez ses autoroutes.",
+  "@vignetteSectionNote": {},
+  "vignetteKindDigital": "Numérique, liée à votre plaque",
+  "@vignetteKindDigital": {},
+  "vignetteKindSticker": "Vignette annuelle (version numérique aussi disponible)",
+  "@vignetteKindSticker": {},
+  "vignetteBuyBefore": "À acheter avant d'entrer dans le pays",
+  "@vignetteBuyBefore": {},
+  "vignetteBuyOfficial": "Acheter sur le site officiel",
+  "@vignetteBuyOfficial": {},
+  "vignetteOther": "Autres vignettes",
+  "@vignetteOther": {},
+  "vignetteInTotal": "+ {amount} de vignettes",
+  "@vignetteInTotal": {
+    "placeholders": { "amount": { "type": "String" } }
+  }
 }

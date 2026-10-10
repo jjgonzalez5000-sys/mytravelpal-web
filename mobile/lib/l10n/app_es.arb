@@ -2987,5 +2987,23 @@
     "placeholders": { "kg": { "type": "int" } }
   },
   "tripCo2EvNote": "Según el mix eléctrico medio de la UE",
-  "@tripCo2EvNote": {}
+  "@tripCo2EvNote": {},
+  "vignetteSectionTitle": "Viñetas obligatorias",
+  "@vignetteSectionTitle": {},
+  "vignetteSectionNote": "Se pagan una vez por país, no por caseta, y no se pueden saltar: hacen falta en cuanto usas sus autopistas.",
+  "@vignetteSectionNote": {},
+  "vignetteKindDigital": "Digital, ligada a tu matrícula",
+  "@vignetteKindDigital": {},
+  "vignetteKindSticker": "Pegatina anual (también hay versión digital)",
+  "@vignetteKindSticker": {},
+  "vignetteBuyBefore": "Cómprala antes de entrar en el país",
+  "@vignetteBuyBefore": {},
+  "vignetteBuyOfficial": "Comprar en la web oficial",
+  "@vignetteBuyOfficial": {},
+  "vignetteOther": "Otras viñetas",
+  "@vignetteOther": {},
+  "vignetteInTotal": "+ {amount} de viñetas",
+  "@vignetteInTotal": {
+    "placeholders": { "amount": { "type": "String" } }
+  }
 }

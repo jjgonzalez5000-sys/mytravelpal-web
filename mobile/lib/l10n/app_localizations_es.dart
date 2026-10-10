@@ -5021,4 +5021,32 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get tripCo2EvNote => 'Según el mix eléctrico medio de la UE';
+
+  @override
+  String get vignetteSectionTitle => 'Viñetas obligatorias';
+
+  @override
+  String get vignetteSectionNote =>
+      'Se pagan una vez por país, no por caseta, y no se pueden saltar: hacen falta en cuanto usas sus autopistas.';
+
+  @override
+  String get vignetteKindDigital => 'Digital, ligada a tu matrícula';
+
+  @override
+  String get vignetteKindSticker =>
+      'Pegatina anual (también hay versión digital)';
+
+  @override
+  String get vignetteBuyBefore => 'Cómprala antes de entrar en el país';
+
+  @override
+  String get vignetteBuyOfficial => 'Comprar en la web oficial';
+
+  @override
+  String get vignetteOther => 'Otras viñetas';
+
+  @override
+  String vignetteInTotal(String amount) {
+    return '+ $amount de viñetas';
+  }
 }

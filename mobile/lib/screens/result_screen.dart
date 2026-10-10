@@ -3243,6 +3243,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             routeTollCostEur: route.tollCostEur,
                             vignetteCostEur: route.vignetteCostEur,
                             vignetteCountries: route.vignetteCountries,
+                            vignettes: route.vignettes,
                             ccy: ccy,
                             tripDepartureAt: _response.days.isNotEmpty
                                 ? _response.days.first.startAt

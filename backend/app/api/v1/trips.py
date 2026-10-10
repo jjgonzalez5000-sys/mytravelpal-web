@@ -627,6 +627,11 @@ class TripPlanRequest(BaseModel):
     garage_vehicle_id: str | None = Field(default=None, max_length=64)
 
 
+class VignetteLine(BaseModel):
+    country: str  # 2-letter ISO code
+    cost_eur: float
+
+
 class RouteOut(BaseModel):
     distance_km: float
     free_flow_minutes: float
@@ -651,6 +656,10 @@ class RouteOut(BaseModel):
     # country crossed OR HERE didn't classify one.
     vignette_cost_eur: float = 0.0
     vignette_countries: list[str] = Field(default_factory=list)
+    # One line per vignette country (code + price) so the client can show
+    # the breakdown instead of a single lump sum. Lines whose country
+    # could not be identified are left out; the total above still has them.
+    vignettes: list[VignetteLine] = Field(default_factory=list)
     # True when `toll_cost_eur` / `vignette_*` come from a booth-level
     # quote (the enrich phase). The core phase only has a provisional
     # route-level estimate, so a merge must prefer the verified figures
@@ -1399,6 +1408,23 @@ def _guess_country_from_operator(operator: str) -> str:
     return ""
 
 
+def _vignette_lines(real_tolls: tuple) -> list[VignetteLine]:
+    """Vignette price per country, summed when a country has several
+    stickers. Vignettes whose country cannot be identified are skipped."""
+
+    by_country: dict[str, float] = {}
+    for t in real_tolls:
+        if not t.is_vignette:
+            continue
+        code = _guess_country_from_operator(t.operator)
+        if code:
+            by_country[code] = by_country.get(code, 0.0) + t.cost_eur
+    return [
+        VignetteLine(country=c, cost_eur=round(v, 2))
+        for c, v in sorted(by_country.items())
+    ]
+
+
 def _empty_route() -> RouteOut:
     """Canonical empty RouteOut for the enrich-slice wire payload."""
 
@@ -1429,6 +1455,7 @@ def _enrich_route(*, toll_total_eur: float | None, real_tolls: tuple) -> RouteOu
         "vignette_countries": sorted({
             _guess_country_from_operator(t.operator) for t in vignettes
         } - {""}),
+        "vignettes": _vignette_lines(real_tolls),
         "toll_verified": True,
     })
 
@@ -1692,6 +1719,7 @@ async def _plan_core_impl(
             geometry=[[c.lon, c.lat] for c in simplified],
             vignette_cost_eur=_vignette_cost,
             vignette_countries=_vignette_countries,
+            vignettes=_vignette_lines(preamble.real_tolls),
         ),
         time_windows=[
             TimeWindowOut(
@@ -3303,6 +3331,7 @@ def _merge_route(core: RouteOut, enrich: RouteOut) -> RouteOut:
         "toll_cost_eur": enrich.toll_cost_eur,
         "vignette_cost_eur": enrich.vignette_cost_eur,
         "vignette_countries": enrich.vignette_countries,
+        "vignettes": enrich.vignettes,
         "toll_verified": True,
     })
 

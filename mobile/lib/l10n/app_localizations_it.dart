@@ -5013,4 +5013,32 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get tripCo2EvNote => 'In base al mix elettrico medio UE';
+
+  @override
+  String get vignetteSectionTitle => 'Vignette obbligatorie';
+
+  @override
+  String get vignetteSectionNote =>
+      'Si pagano una volta per paese, non per casello, e non si possono evitare: servono appena usi le sue autostrade.';
+
+  @override
+  String get vignetteKindDigital => 'Digitale, legata alla targa';
+
+  @override
+  String get vignetteKindSticker =>
+      'Bollino annuale (esiste anche la versione digitale)';
+
+  @override
+  String get vignetteBuyBefore => 'Acquistala prima di entrare nel paese';
+
+  @override
+  String get vignetteBuyOfficial => 'Acquista sul sito ufficiale';
+
+  @override
+  String get vignetteOther => 'Altre vignette';
+
+  @override
+  String vignetteInTotal(String amount) {
+    return '+ $amount di vignette';
+  }
 }

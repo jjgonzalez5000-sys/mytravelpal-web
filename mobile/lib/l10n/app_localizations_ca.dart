@@ -5002,4 +5002,32 @@ class AppLocalizationsCa extends AppLocalizations {
 
   @override
   String get tripCo2EvNote => 'Based on the average EU electricity mix';
+
+  @override
+  String get vignetteSectionTitle => 'Mandatory vignettes';
+
+  @override
+  String get vignetteSectionNote =>
+      'Paid once per country, not per toll booth, and cannot be skipped: you need one as soon as you use its motorways.';
+
+  @override
+  String get vignetteKindDigital => 'Digital, tied to your number plate';
+
+  @override
+  String get vignetteKindSticker =>
+      'Annual sticker (a digital version also exists)';
+
+  @override
+  String get vignetteBuyBefore => 'Buy it before entering the country';
+
+  @override
+  String get vignetteBuyOfficial => 'Buy on the official website';
+
+  @override
+  String get vignetteOther => 'Other vignettes';
+
+  @override
+  String vignetteInTotal(String amount) {
+    return '+ $amount in vignettes';
+  }
 }
