@@ -7586,11 +7586,10 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
     // branches (weather / plausible sleep_stop / fuel notes) fire.
     // Gate the whole card so it isn't rendered as an empty rounded
     // pill.
-    final hasWeather = widget.weatherSegments.isNotEmpty;
     final hasSleep = opts.sleepStop != null &&
         isPlausibleSleepTime(opts.sleepStop!.at);
     final hasFuelNotes = opts.fuelCost.notes.isNotEmpty;
-    if (!hasWeather && !hasSleep && !hasFuelNotes) {
+    if (!hasSleep && !hasFuelNotes) {
       return const SizedBox.shrink();
     }
     return Column(
@@ -7605,12 +7604,6 @@ class _OptimizationsSectionState extends State<_OptimizationsSection> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (widget.weatherSegments.isNotEmpty) ...[
-                _WeatherInlineRow(segments: widget.weatherSegments),
-                const SizedBox(height: Tokens.space12),
-                Divider(color: scheme.outlineVariant),
-                const SizedBox(height: Tokens.space12),
-              ],
               // Fuel budget row removed 2026-09-27 — duplicated the
               // "Combustible" line already inside the total-trip-cost
               // card, and its €1.75/L placeholder confused testers.
@@ -8739,53 +8732,6 @@ class _TinyChip extends StatelessWidget {
                 fontSize: 10,
                 color: scheme.onSurfaceVariant,
               )),
-        ],
-      ),
-    );
-  }
-}
-
-/// Compact horizontal row showing weather icons + temp per segment.
-/// Used inside the Optimizado card so weather is visible for all trip
-/// types (including single-day where DayPlanSection doesn't render).
-class _WeatherInlineRow extends StatelessWidget {
-  const _WeatherInlineRow({required this.segments});
-  final List<WeatherSegment> segments;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    final l = AppLocalizations.of(context);
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          Icon(Icons.wb_cloudy_outlined, size: 16, color: scheme.primary),
-          const SizedBox(width: 6),
-          for (int i = 0; i < segments.length; i++) ...[
-            if (i > 0) ...[
-              const SizedBox(width: 4),
-              Text('·', style: t.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant)),
-              const SizedBox(width: 4),
-            ],
-            Icon(segments[i].iconData, size: 15,
-                color: scheme.onSurface),
-            const SizedBox(width: 3),
-            Text(
-              segments[i].temperatureC != null
-                  ? '${segments[i].temperatureC!.round()}°'
-                  : segments[i].localizedLabel(l),
-              style: t.bodySmall,
-            ),
-            const SizedBox(width: 3),
-            Text(
-              'km ${segments[i].fromKm.toStringAsFixed(0)}-${segments[i].toKm.toStringAsFixed(0)}',
-              style: t.bodySmall?.copyWith(
-                  color: scheme.onSurfaceVariant, fontSize: 10),
-            ),
-          ],
         ],
       ),
     );
