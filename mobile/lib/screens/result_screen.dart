@@ -33,8 +33,11 @@ import '../services/review_prompter.dart';
 import '../services/app_tutorial.dart';
 import '../services/my_places_match.dart';
 import '../services/selection_check.dart';
+import '../domain/my_place.dart';
+import '../domain/stop_suggestion.dart';
 import '../widgets/my_place_category.dart';
 import '../widgets/my_places_on_route.dart';
+import '../widgets/stop_suggestions_sheet.dart';
 import '../services/toll_detour_waypoints.dart';
 import '../widgets/toll_summary_sheet.dart';
 import '../widgets/trip_day_bars.dart';
@@ -613,6 +616,75 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       coord: m.place.coordinate,
       label: m.place.name,
     );
+  }
+
+  /// Opens the AI suggestions sheet (Premium); everyone else sees the plans.
+  Future<void> _openSuggestions() async {
+    if (!ref.read(isPremiumProvider)) {
+      await BillingService.showPurchaseSheet(context, ref);
+      return;
+    }
+    await showStopSuggestionsSheet(
+      context,
+      geometry: _response.route.geometry,
+      routeKm: _response.route.distanceKm,
+      days: _response.days,
+      profile: widget.request.tripProfile,
+      addedKeys: {
+        for (final p in ref.read(myPlacesProvider))
+          if (_addedStops.containsKey('place:${p.id}'))
+            placeKey(p.name, p.coordinate),
+      },
+      onAdd: _addSuggestion,
+    );
+  }
+
+  /// Adds an AI suggestion as a stop. It is saved as one of the driver's
+  /// places (so it survives a replan and can be offered again), unless an
+  /// equivalent one already exists.
+  Future<bool> _addSuggestion(StopSuggestion s) async {
+    final l = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final notifier = ref.read(myPlacesProvider.notifier);
+    MyPlace? place;
+    for (final p in ref.read(myPlacesProvider)) {
+      if (p.name.toLowerCase() == s.name.toLowerCase() &&
+          _haversineStatic(p.coordinate, s.coordinate) < 0.2) {
+        place = p;
+        break;
+      }
+    }
+    if (place == null) {
+      final fresh = MyPlace(
+        id: DateTime.now().microsecondsSinceEpoch.toString(),
+        name: s.name,
+        coordinate: s.coordinate,
+        category: s.placeCategory,
+        note: s.why,
+        createdAt: DateTime.now(),
+      );
+      if (!await notifier.add(fresh)) {
+        messenger.showSnackBar(
+          SnackBar(content: Text(l.myPlacesLimit(MyPlacesNotifier.maxPlaces))),
+        );
+        return false;
+      }
+      place = fresh;
+    }
+    if (!mounted) return false;
+    final key = 'place:${place.id}';
+    if (!_addedStops.containsKey(key)) {
+      _toggleStop(
+        key,
+        (s.detourMinutes + s.visitMinutes).toDouble(),
+        coord: s.coordinate,
+        label: s.name,
+      );
+    }
+    messenger.showSnackBar(
+      SnackBar(content: Text(l.suggestAddedSnack(s.name))),
+    );
+    return true;
   }
 
   /// Build sorted waypoints from added routeable stops to include in replan.
@@ -3115,6 +3187,27 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ),
               );
             }),
+            if (!_enrichPending && _response.route.geometry.length > 1) ...[
+              const SizedBox(height: Tokens.space12),
+              Material(
+                color: scheme.surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(Tokens.radiusMd),
+                child: ListTile(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Tokens.radiusMd),
+                    side: BorderSide(color: scheme.outlineVariant),
+                  ),
+                  leading: Icon(Icons.auto_awesome, color: scheme.primary),
+                  title: Text(l.suggestEntryTitle),
+                  subtitle: Text(l.suggestEntrySubtitle),
+                  trailing: ref.watch(isPremiumProvider)
+                      ? const Icon(Icons.chevron_right)
+                      : Icon(Icons.lock_outline,
+                          size: 18, color: scheme.onSurfaceVariant),
+                  onTap: _openSuggestions,
+                ),
+              ),
+            ],
             if (_addedStops.isNotEmpty ||
                 _selectedNightHotels.isNotEmpty ||
                 _response.partialTollSkips.length >

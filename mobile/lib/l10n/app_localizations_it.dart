@@ -4909,4 +4909,81 @@ class AppLocalizationsIt extends AppLocalizations {
   String resultGyGActivities(String city) {
     return 'Vedi attività a $city';
   }
+
+  @override
+  String get suggestEntryTitle => 'Suggerimenti IA';
+
+  @override
+  String get suggestEntrySubtitle =>
+      'Soste reali vicino al percorso, adatte al tuo tempo libero';
+
+  @override
+  String get suggestSheetTitle => 'Soste per il tuo percorso';
+
+  @override
+  String get suggestWholeTrip => 'Tutto il viaggio';
+
+  @override
+  String suggestDay(int day) {
+    return 'Giorno $day';
+  }
+
+  @override
+  String get suggestFreeTime => 'Tempo libero per le soste';
+
+  @override
+  String get suggestInterests => 'Cosa ti interessa';
+
+  @override
+  String get suggestFind => 'Cerca soste';
+
+  @override
+  String get suggestSearching => 'Cerco luoghi vicino al percorso…';
+
+  @override
+  String suggestMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String suggestCost(int detour, int visit) {
+    return 'Deviazione $detour min · visita $visit min';
+  }
+
+  @override
+  String get suggestFits => 'Rientra nel tuo tempo libero';
+
+  @override
+  String get suggestTooLong => 'Non rientra nel tuo tempo libero';
+
+  @override
+  String get suggestAdd => 'Aggiungi';
+
+  @override
+  String get suggestAdded => 'Aggiunta';
+
+  @override
+  String get suggestNoAiNote =>
+      'L\'IA non è disponibile al momento. Ecco i luoghi più noti, senza spiegazione.';
+
+  @override
+  String get suggestNoPlaces =>
+      'Nessun luogo di interesse vicino a questo tratto.';
+
+  @override
+  String get suggestError => 'Impossibile caricare i suggerimenti. Riprova.';
+
+  @override
+  String get suggestQuota =>
+      'Hai raggiunto il limite giornaliero di suggerimenti. Torna domani.';
+
+  @override
+  String suggestAddedSnack(String name) {
+    return '$name aggiunta al percorso';
+  }
+
+  @override
+  String suggestUsed(int used, int window) {
+    return 'Usa $used di $window min liberi';
+  }
 }

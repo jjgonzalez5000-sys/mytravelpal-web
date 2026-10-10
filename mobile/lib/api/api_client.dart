@@ -8,6 +8,7 @@ import 'models.dart';
 
 import '../domain/auth_user.dart';
 import '../domain/garage_vehicle.dart';
+import '../domain/stop_suggestion.dart';
 import '../domain/vehicle_model.dart';
 import 'config.dart';
 
@@ -632,6 +633,49 @@ class ApiClient {
       throw ApiException(response.statusCode, response.body);
     }
     return InspireItinerary.fromJson(
+      jsonDecode(response.body) as Map<String, dynamic>,
+    );
+  }
+
+  /// Premium: real places near [route] that fit [freeMinutes], picked and
+  /// explained by the model. 402 means the account is not Premium, 429 that
+  /// the daily AI cap is used up.
+  Future<StopSuggestionsResult> suggestStops({
+    required List<LatLon> route,
+    required int freeMinutes,
+    List<String> interests = const [],
+    int travellers = 1,
+    bool hasKids = false,
+    bool hasPets = false,
+    int limit = 5,
+    List<String> excludeNames = const [],
+    String? locale,
+  }) async {
+    final normalizedLocale = _normalizeLocale(locale);
+    final uri = Uri.parse('$_baseUrl/v1/trips/suggest-stops').replace(
+      queryParameters: {
+        if (normalizedLocale != null) 'lang': normalizedLocale,
+      },
+    );
+    final body = jsonEncode({
+      'route': [for (final p in route) {'lat': p.lat, 'lon': p.lon}],
+      'free_minutes': freeMinutes,
+      'interests': interests,
+      'travellers': travellers,
+      'has_kids': hasKids,
+      'has_pets': hasPets,
+      'limit': limit,
+      'exclude_names': excludeNames,
+      if (normalizedLocale != null) 'locale': normalizedLocale,
+    });
+    final response = await _http
+        .post(uri,
+            headers: _headers(acceptLanguage: normalizedLocale), body: body)
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode != 200) {
+      throw ApiException(response.statusCode, response.body);
+    }
+    return StopSuggestionsResult.fromJson(
       jsonDecode(response.body) as Map<String, dynamic>,
     );
   }

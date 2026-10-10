@@ -4917,4 +4917,82 @@ class AppLocalizationsEs extends AppLocalizations {
   String resultGyGActivities(String city) {
     return 'Ver actividades en $city';
   }
+
+  @override
+  String get suggestEntryTitle => 'Sugerencias con IA';
+
+  @override
+  String get suggestEntrySubtitle =>
+      'Paradas reales cerca de tu ruta que caben en tu tiempo libre';
+
+  @override
+  String get suggestSheetTitle => 'Paradas para tu ruta';
+
+  @override
+  String get suggestWholeTrip => 'Todo el viaje';
+
+  @override
+  String suggestDay(int day) {
+    return 'Día $day';
+  }
+
+  @override
+  String get suggestFreeTime => 'Tiempo libre para paradas';
+
+  @override
+  String get suggestInterests => 'Qué te interesa';
+
+  @override
+  String get suggestFind => 'Buscar paradas';
+
+  @override
+  String get suggestSearching => 'Buscando lugares cerca de tu ruta…';
+
+  @override
+  String suggestMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String suggestCost(int detour, int visit) {
+    return 'Desvío $detour min · visita $visit min';
+  }
+
+  @override
+  String get suggestFits => 'Cabe en tu tiempo libre';
+
+  @override
+  String get suggestTooLong => 'No cabe en tu tiempo libre';
+
+  @override
+  String get suggestAdd => 'Añadir';
+
+  @override
+  String get suggestAdded => 'Añadida';
+
+  @override
+  String get suggestNoAiNote =>
+      'La IA no está disponible ahora. Te mostramos los lugares más destacados, sin explicación.';
+
+  @override
+  String get suggestNoPlaces =>
+      'No hay lugares de interés cerca de este tramo.';
+
+  @override
+  String get suggestError =>
+      'No se pudieron cargar las sugerencias. Inténtalo de nuevo.';
+
+  @override
+  String get suggestQuota =>
+      'Has llegado al límite diario de sugerencias. Vuelve mañana.';
+
+  @override
+  String suggestAddedSnack(String name) {
+    return '$name añadida a la ruta';
+  }
+
+  @override
+  String suggestUsed(int used, int window) {
+    return 'Usas $used de $window min libres';
+  }
 }

@@ -4926,4 +4926,81 @@ class AppLocalizationsFr extends AppLocalizations {
   String resultGyGActivities(String city) {
     return 'Voir activités à $city';
   }
+
+  @override
+  String get suggestEntryTitle => 'Suggestions IA';
+
+  @override
+  String get suggestEntrySubtitle =>
+      'Des arrêts réels près de votre route, adaptés à votre temps libre';
+
+  @override
+  String get suggestSheetTitle => 'Arrêts pour votre route';
+
+  @override
+  String get suggestWholeTrip => 'Tout le voyage';
+
+  @override
+  String suggestDay(int day) {
+    return 'Jour $day';
+  }
+
+  @override
+  String get suggestFreeTime => 'Temps libre pour les arrêts';
+
+  @override
+  String get suggestInterests => 'Vos centres d\'intérêt';
+
+  @override
+  String get suggestFind => 'Chercher des arrêts';
+
+  @override
+  String get suggestSearching => 'Recherche de lieux près de votre route…';
+
+  @override
+  String suggestMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String suggestCost(int detour, int visit) {
+    return 'Détour $detour min · visite $visit min';
+  }
+
+  @override
+  String get suggestFits => 'Rentre dans votre temps libre';
+
+  @override
+  String get suggestTooLong => 'Ne rentre pas dans votre temps libre';
+
+  @override
+  String get suggestAdd => 'Ajouter';
+
+  @override
+  String get suggestAdded => 'Ajouté';
+
+  @override
+  String get suggestNoAiNote =>
+      'L\'IA n\'est pas disponible pour le moment. Voici les lieux les plus remarquables, sans explication.';
+
+  @override
+  String get suggestNoPlaces => 'Aucun lieu d\'intérêt près de ce tronçon.';
+
+  @override
+  String get suggestError =>
+      'Impossible de charger les suggestions. Réessayez.';
+
+  @override
+  String get suggestQuota =>
+      'Vous avez atteint la limite quotidienne de suggestions. Revenez demain.';
+
+  @override
+  String suggestAddedSnack(String name) {
+    return '$name ajouté à l\'itinéraire';
+  }
+
+  @override
+  String suggestUsed(int used, int window) {
+    return 'Utilise $used sur $window min libres';
+  }
 }

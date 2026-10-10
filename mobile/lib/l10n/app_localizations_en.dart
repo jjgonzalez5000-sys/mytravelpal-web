@@ -4887,4 +4887,80 @@ class AppLocalizationsEn extends AppLocalizations {
   String resultGyGActivities(String city) {
     return 'See activities in $city';
   }
+
+  @override
+  String get suggestEntryTitle => 'AI suggestions';
+
+  @override
+  String get suggestEntrySubtitle =>
+      'Real stops near your route that fit your free time';
+
+  @override
+  String get suggestSheetTitle => 'Stops for your route';
+
+  @override
+  String get suggestWholeTrip => 'Whole trip';
+
+  @override
+  String suggestDay(int day) {
+    return 'Day $day';
+  }
+
+  @override
+  String get suggestFreeTime => 'Free time for stops';
+
+  @override
+  String get suggestInterests => 'What you like';
+
+  @override
+  String get suggestFind => 'Find stops';
+
+  @override
+  String get suggestSearching => 'Looking for places near your route…';
+
+  @override
+  String suggestMinutes(int minutes) {
+    return '$minutes min';
+  }
+
+  @override
+  String suggestCost(int detour, int visit) {
+    return 'Detour $detour min · visit $visit min';
+  }
+
+  @override
+  String get suggestFits => 'Fits your free time';
+
+  @override
+  String get suggestTooLong => 'Does not fit your free time';
+
+  @override
+  String get suggestAdd => 'Add';
+
+  @override
+  String get suggestAdded => 'Added';
+
+  @override
+  String get suggestNoAiNote =>
+      'AI is not available right now. Showing the most notable places, without an explanation.';
+
+  @override
+  String get suggestNoPlaces => 'No places of interest near this stretch.';
+
+  @override
+  String get suggestError => 'Could not load suggestions. Please try again.';
+
+  @override
+  String get suggestQuota =>
+      'You have reached the daily suggestion limit. Come back tomorrow.';
+
+  @override
+  String suggestAddedSnack(String name) {
+    return '$name added to the route';
+  }
+
+  @override
+  String suggestUsed(int used, int window) {
+    return 'Uses $used of $window free min';
+  }
 }

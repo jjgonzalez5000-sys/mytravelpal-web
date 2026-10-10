@@ -8662,6 +8662,132 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'See activities in {city}'**
   String resultGyGActivities(String city);
+
+  /// No description provided for @suggestEntryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'AI suggestions'**
+  String get suggestEntryTitle;
+
+  /// No description provided for @suggestEntrySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Real stops near your route that fit your free time'**
+  String get suggestEntrySubtitle;
+
+  /// No description provided for @suggestSheetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Stops for your route'**
+  String get suggestSheetTitle;
+
+  /// No description provided for @suggestWholeTrip.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole trip'**
+  String get suggestWholeTrip;
+
+  /// No description provided for @suggestDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Day {day}'**
+  String suggestDay(int day);
+
+  /// No description provided for @suggestFreeTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Free time for stops'**
+  String get suggestFreeTime;
+
+  /// No description provided for @suggestInterests.
+  ///
+  /// In en, this message translates to:
+  /// **'What you like'**
+  String get suggestInterests;
+
+  /// No description provided for @suggestFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find stops'**
+  String get suggestFind;
+
+  /// No description provided for @suggestSearching.
+  ///
+  /// In en, this message translates to:
+  /// **'Looking for places near your route…'**
+  String get suggestSearching;
+
+  /// No description provided for @suggestMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min'**
+  String suggestMinutes(int minutes);
+
+  /// No description provided for @suggestCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Detour {detour} min · visit {visit} min'**
+  String suggestCost(int detour, int visit);
+
+  /// No description provided for @suggestFits.
+  ///
+  /// In en, this message translates to:
+  /// **'Fits your free time'**
+  String get suggestFits;
+
+  /// No description provided for @suggestTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Does not fit your free time'**
+  String get suggestTooLong;
+
+  /// No description provided for @suggestAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get suggestAdd;
+
+  /// No description provided for @suggestAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Added'**
+  String get suggestAdded;
+
+  /// No description provided for @suggestNoAiNote.
+  ///
+  /// In en, this message translates to:
+  /// **'AI is not available right now. Showing the most notable places, without an explanation.'**
+  String get suggestNoAiNote;
+
+  /// No description provided for @suggestNoPlaces.
+  ///
+  /// In en, this message translates to:
+  /// **'No places of interest near this stretch.'**
+  String get suggestNoPlaces;
+
+  /// No description provided for @suggestError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load suggestions. Please try again.'**
+  String get suggestError;
+
+  /// No description provided for @suggestQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'You have reached the daily suggestion limit. Come back tomorrow.'**
+  String get suggestQuota;
+
+  /// No description provided for @suggestAddedSnack.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} added to the route'**
+  String suggestAddedSnack(String name);
+
+  /// No description provided for @suggestUsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses {used} of {window} free min'**
+  String suggestUsed(int used, int window);
 }
 
 class _AppLocalizationsDelegate

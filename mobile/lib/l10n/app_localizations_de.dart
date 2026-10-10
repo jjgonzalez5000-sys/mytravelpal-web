@@ -4916,4 +4916,82 @@ class AppLocalizationsDe extends AppLocalizations {
   String resultGyGActivities(String city) {
     return 'Aktivitäten in $city';
   }
+
+  @override
+  String get suggestEntryTitle => 'KI-Vorschläge';
+
+  @override
+  String get suggestEntrySubtitle =>
+      'Echte Stopps nahe deiner Route, passend zu deiner freien Zeit';
+
+  @override
+  String get suggestSheetTitle => 'Stopps für deine Route';
+
+  @override
+  String get suggestWholeTrip => 'Ganze Reise';
+
+  @override
+  String suggestDay(int day) {
+    return 'Tag $day';
+  }
+
+  @override
+  String get suggestFreeTime => 'Freie Zeit für Stopps';
+
+  @override
+  String get suggestInterests => 'Was dich interessiert';
+
+  @override
+  String get suggestFind => 'Stopps suchen';
+
+  @override
+  String get suggestSearching => 'Suche Orte nahe deiner Route…';
+
+  @override
+  String suggestMinutes(int minutes) {
+    return '$minutes Min.';
+  }
+
+  @override
+  String suggestCost(int detour, int visit) {
+    return 'Umweg $detour Min. · Besuch $visit Min.';
+  }
+
+  @override
+  String get suggestFits => 'Passt in deine freie Zeit';
+
+  @override
+  String get suggestTooLong => 'Passt nicht in deine freie Zeit';
+
+  @override
+  String get suggestAdd => 'Hinzufügen';
+
+  @override
+  String get suggestAdded => 'Hinzugefügt';
+
+  @override
+  String get suggestNoAiNote =>
+      'Die KI ist gerade nicht verfügbar. Hier die bekanntesten Orte, ohne Erklärung.';
+
+  @override
+  String get suggestNoPlaces =>
+      'Keine sehenswerten Orte nahe diesem Abschnitt.';
+
+  @override
+  String get suggestError =>
+      'Vorschläge konnten nicht geladen werden. Bitte erneut versuchen.';
+
+  @override
+  String get suggestQuota =>
+      'Du hast das tägliche Limit für Vorschläge erreicht. Komm morgen wieder.';
+
+  @override
+  String suggestAddedSnack(String name) {
+    return '$name zur Route hinzugefügt';
+  }
+
+  @override
+  String suggestUsed(int used, int window) {
+    return 'Nutzt $used von $window freien Min.';
+  }
 }

@@ -15,6 +15,7 @@ from app.api.v1 import (
     parking,
     profile,
     speed_cameras,
+    suggest,
     trip_sharing,
     trips,
     vehicles,
@@ -24,6 +25,7 @@ from app.api.v1 import (
 router = APIRouter()
 router.include_router(trips.router)
 router.include_router(trip_sharing.router)
+router.include_router(suggest.router)
 router.include_router(geocode.router)
 router.include_router(adverse_events.router)
 router.include_router(narrative.router)

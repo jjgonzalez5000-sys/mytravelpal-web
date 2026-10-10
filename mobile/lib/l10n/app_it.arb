@@ -2910,5 +2910,63 @@
   "resultGyGActivities": "Vedi attività a {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
+  },
+  "suggestEntryTitle": "Suggerimenti IA",
+  "@suggestEntryTitle": {},
+  "suggestEntrySubtitle": "Soste reali vicino al percorso, adatte al tuo tempo libero",
+  "@suggestEntrySubtitle": {},
+  "suggestSheetTitle": "Soste per il tuo percorso",
+  "@suggestSheetTitle": {},
+  "suggestWholeTrip": "Tutto il viaggio",
+  "@suggestWholeTrip": {},
+  "suggestDay": "Giorno {day}",
+  "@suggestDay": {
+    "placeholders": { "day": { "type": "int" } }
+  },
+  "suggestFreeTime": "Tempo libero per le soste",
+  "@suggestFreeTime": {},
+  "suggestInterests": "Cosa ti interessa",
+  "@suggestInterests": {},
+  "suggestFind": "Cerca soste",
+  "@suggestFind": {},
+  "suggestSearching": "Cerco luoghi vicino al percorso…",
+  "@suggestSearching": {},
+  "suggestMinutes": "{minutes} min",
+  "@suggestMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "suggestCost": "Deviazione {detour} min · visita {visit} min",
+  "@suggestCost": {
+    "placeholders": {
+      "detour": { "type": "int" },
+      "visit": { "type": "int" }
+    }
+  },
+  "suggestFits": "Rientra nel tuo tempo libero",
+  "@suggestFits": {},
+  "suggestTooLong": "Non rientra nel tuo tempo libero",
+  "@suggestTooLong": {},
+  "suggestAdd": "Aggiungi",
+  "@suggestAdd": {},
+  "suggestAdded": "Aggiunta",
+  "@suggestAdded": {},
+  "suggestNoAiNote": "L'IA non è disponibile al momento. Ecco i luoghi più noti, senza spiegazione.",
+  "@suggestNoAiNote": {},
+  "suggestNoPlaces": "Nessun luogo di interesse vicino a questo tratto.",
+  "@suggestNoPlaces": {},
+  "suggestError": "Impossibile caricare i suggerimenti. Riprova.",
+  "@suggestError": {},
+  "suggestQuota": "Hai raggiunto il limite giornaliero di suggerimenti. Torna domani.",
+  "@suggestQuota": {},
+  "suggestAddedSnack": "{name} aggiunta al percorso",
+  "@suggestAddedSnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestUsed": "Usa {used} di {window} min liberi",
+  "@suggestUsed": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "window": { "type": "int" }
+    }
   }
 }

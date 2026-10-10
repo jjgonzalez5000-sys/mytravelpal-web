@@ -2911,5 +2911,63 @@
   "resultGyGActivities": "Ver actividades en {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
+  },
+  "suggestEntryTitle": "Sugerencias con IA",
+  "@suggestEntryTitle": {},
+  "suggestEntrySubtitle": "Paradas reales cerca de tu ruta que caben en tu tiempo libre",
+  "@suggestEntrySubtitle": {},
+  "suggestSheetTitle": "Paradas para tu ruta",
+  "@suggestSheetTitle": {},
+  "suggestWholeTrip": "Todo el viaje",
+  "@suggestWholeTrip": {},
+  "suggestDay": "Día {day}",
+  "@suggestDay": {
+    "placeholders": { "day": { "type": "int" } }
+  },
+  "suggestFreeTime": "Tiempo libre para paradas",
+  "@suggestFreeTime": {},
+  "suggestInterests": "Qué te interesa",
+  "@suggestInterests": {},
+  "suggestFind": "Buscar paradas",
+  "@suggestFind": {},
+  "suggestSearching": "Buscando lugares cerca de tu ruta…",
+  "@suggestSearching": {},
+  "suggestMinutes": "{minutes} min",
+  "@suggestMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "suggestCost": "Desvío {detour} min · visita {visit} min",
+  "@suggestCost": {
+    "placeholders": {
+      "detour": { "type": "int" },
+      "visit": { "type": "int" }
+    }
+  },
+  "suggestFits": "Cabe en tu tiempo libre",
+  "@suggestFits": {},
+  "suggestTooLong": "No cabe en tu tiempo libre",
+  "@suggestTooLong": {},
+  "suggestAdd": "Añadir",
+  "@suggestAdd": {},
+  "suggestAdded": "Añadida",
+  "@suggestAdded": {},
+  "suggestNoAiNote": "La IA no está disponible ahora. Te mostramos los lugares más destacados, sin explicación.",
+  "@suggestNoAiNote": {},
+  "suggestNoPlaces": "No hay lugares de interés cerca de este tramo.",
+  "@suggestNoPlaces": {},
+  "suggestError": "No se pudieron cargar las sugerencias. Inténtalo de nuevo.",
+  "@suggestError": {},
+  "suggestQuota": "Has llegado al límite diario de sugerencias. Vuelve mañana.",
+  "@suggestQuota": {},
+  "suggestAddedSnack": "{name} añadida a la ruta",
+  "@suggestAddedSnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestUsed": "Usas {used} de {window} min libres",
+  "@suggestUsed": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "window": { "type": "int" }
+    }
   }
 }

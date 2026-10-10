@@ -2958,5 +2958,63 @@
   "resultGyGActivities": "See activities in {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
+  },
+  "suggestEntryTitle": "AI suggestions",
+  "@suggestEntryTitle": {},
+  "suggestEntrySubtitle": "Real stops near your route that fit your free time",
+  "@suggestEntrySubtitle": {},
+  "suggestSheetTitle": "Stops for your route",
+  "@suggestSheetTitle": {},
+  "suggestWholeTrip": "Whole trip",
+  "@suggestWholeTrip": {},
+  "suggestDay": "Day {day}",
+  "@suggestDay": {
+    "placeholders": { "day": { "type": "int" } }
+  },
+  "suggestFreeTime": "Free time for stops",
+  "@suggestFreeTime": {},
+  "suggestInterests": "What you like",
+  "@suggestInterests": {},
+  "suggestFind": "Find stops",
+  "@suggestFind": {},
+  "suggestSearching": "Looking for places near your route…",
+  "@suggestSearching": {},
+  "suggestMinutes": "{minutes} min",
+  "@suggestMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "suggestCost": "Detour {detour} min · visit {visit} min",
+  "@suggestCost": {
+    "placeholders": {
+      "detour": { "type": "int" },
+      "visit": { "type": "int" }
+    }
+  },
+  "suggestFits": "Fits your free time",
+  "@suggestFits": {},
+  "suggestTooLong": "Does not fit your free time",
+  "@suggestTooLong": {},
+  "suggestAdd": "Add",
+  "@suggestAdd": {},
+  "suggestAdded": "Added",
+  "@suggestAdded": {},
+  "suggestNoAiNote": "AI is not available right now. Showing the most notable places, without an explanation.",
+  "@suggestNoAiNote": {},
+  "suggestNoPlaces": "No places of interest near this stretch.",
+  "@suggestNoPlaces": {},
+  "suggestError": "Could not load suggestions. Please try again.",
+  "@suggestError": {},
+  "suggestQuota": "You have reached the daily suggestion limit. Come back tomorrow.",
+  "@suggestQuota": {},
+  "suggestAddedSnack": "{name} added to the route",
+  "@suggestAddedSnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestUsed": "Uses {used} of {window} free min",
+  "@suggestUsed": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "window": { "type": "int" }
+    }
   }
 }

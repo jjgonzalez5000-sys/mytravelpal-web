@@ -24,7 +24,7 @@ from fastapi import Depends, HTTPException, status
 from app.auth.dependency import current_user_required
 from app.auth.jwt import AuthUser
 
-AiKind = Literal["inspire", "narrative"]
+AiKind = Literal["inspire", "narrative", "suggest"]
 
 # (kind, is_premium) -> daily cap. Free-tier caps are deliberately
 # low to force a paywall; Premium caps are still bounded to keep a
@@ -34,6 +34,11 @@ _LIMITS: dict[tuple[AiKind, bool], int] = {
     ("inspire", True): 20,
     ("narrative", False): 5,
     ("narrative", True): 50,
+    # Stop suggestions are Premium-only (the endpoint rejects the rest with
+    # 402), so the free cap is 0. One call per (stretch, interests) because
+    # identical requests are served from a cache and do not count.
+    ("suggest", False): 0,
+    ("suggest", True): 30,
 }
 
 # {(user_id, kind, ymd) -> count}

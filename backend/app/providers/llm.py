@@ -35,7 +35,10 @@ class MockLlmProvider:
     exercise the endpoint end-to-end without an ANTHROPIC_API_KEY.
     """
 
-    async def generate_narrative(self, prompt: str) -> str:
+    async def generate_narrative(
+        self, prompt: str, *, user_id: str | None = None,
+        endpoint: str = "narrative",
+    ) -> str:
         # Return the first 500 characters wrapped as a friendly note.
         trimmed = prompt.strip().replace("\n", " ")[:500]
         return (

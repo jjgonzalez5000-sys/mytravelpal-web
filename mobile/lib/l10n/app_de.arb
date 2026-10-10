@@ -2910,5 +2910,63 @@
   "resultGyGActivities": "Aktivitäten in {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
+  },
+  "suggestEntryTitle": "KI-Vorschläge",
+  "@suggestEntryTitle": {},
+  "suggestEntrySubtitle": "Echte Stopps nahe deiner Route, passend zu deiner freien Zeit",
+  "@suggestEntrySubtitle": {},
+  "suggestSheetTitle": "Stopps für deine Route",
+  "@suggestSheetTitle": {},
+  "suggestWholeTrip": "Ganze Reise",
+  "@suggestWholeTrip": {},
+  "suggestDay": "Tag {day}",
+  "@suggestDay": {
+    "placeholders": { "day": { "type": "int" } }
+  },
+  "suggestFreeTime": "Freie Zeit für Stopps",
+  "@suggestFreeTime": {},
+  "suggestInterests": "Was dich interessiert",
+  "@suggestInterests": {},
+  "suggestFind": "Stopps suchen",
+  "@suggestFind": {},
+  "suggestSearching": "Suche Orte nahe deiner Route…",
+  "@suggestSearching": {},
+  "suggestMinutes": "{minutes} Min.",
+  "@suggestMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "suggestCost": "Umweg {detour} Min. · Besuch {visit} Min.",
+  "@suggestCost": {
+    "placeholders": {
+      "detour": { "type": "int" },
+      "visit": { "type": "int" }
+    }
+  },
+  "suggestFits": "Passt in deine freie Zeit",
+  "@suggestFits": {},
+  "suggestTooLong": "Passt nicht in deine freie Zeit",
+  "@suggestTooLong": {},
+  "suggestAdd": "Hinzufügen",
+  "@suggestAdd": {},
+  "suggestAdded": "Hinzugefügt",
+  "@suggestAdded": {},
+  "suggestNoAiNote": "Die KI ist gerade nicht verfügbar. Hier die bekanntesten Orte, ohne Erklärung.",
+  "@suggestNoAiNote": {},
+  "suggestNoPlaces": "Keine sehenswerten Orte nahe diesem Abschnitt.",
+  "@suggestNoPlaces": {},
+  "suggestError": "Vorschläge konnten nicht geladen werden. Bitte erneut versuchen.",
+  "@suggestError": {},
+  "suggestQuota": "Du hast das tägliche Limit für Vorschläge erreicht. Komm morgen wieder.",
+  "@suggestQuota": {},
+  "suggestAddedSnack": "{name} zur Route hinzugefügt",
+  "@suggestAddedSnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestUsed": "Nutzt {used} von {window} freien Min.",
+  "@suggestUsed": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "window": { "type": "int" }
+    }
   }
 }

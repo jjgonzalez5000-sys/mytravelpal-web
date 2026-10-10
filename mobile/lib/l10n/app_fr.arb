@@ -2910,5 +2910,63 @@
   "resultGyGActivities": "Voir activités à {city}",
   "@resultGyGActivities": {
     "placeholders": { "city": { "type": "String" } }
+  },
+  "suggestEntryTitle": "Suggestions IA",
+  "@suggestEntryTitle": {},
+  "suggestEntrySubtitle": "Des arrêts réels près de votre route, adaptés à votre temps libre",
+  "@suggestEntrySubtitle": {},
+  "suggestSheetTitle": "Arrêts pour votre route",
+  "@suggestSheetTitle": {},
+  "suggestWholeTrip": "Tout le voyage",
+  "@suggestWholeTrip": {},
+  "suggestDay": "Jour {day}",
+  "@suggestDay": {
+    "placeholders": { "day": { "type": "int" } }
+  },
+  "suggestFreeTime": "Temps libre pour les arrêts",
+  "@suggestFreeTime": {},
+  "suggestInterests": "Vos centres d'intérêt",
+  "@suggestInterests": {},
+  "suggestFind": "Chercher des arrêts",
+  "@suggestFind": {},
+  "suggestSearching": "Recherche de lieux près de votre route…",
+  "@suggestSearching": {},
+  "suggestMinutes": "{minutes} min",
+  "@suggestMinutes": {
+    "placeholders": { "minutes": { "type": "int" } }
+  },
+  "suggestCost": "Détour {detour} min · visite {visit} min",
+  "@suggestCost": {
+    "placeholders": {
+      "detour": { "type": "int" },
+      "visit": { "type": "int" }
+    }
+  },
+  "suggestFits": "Rentre dans votre temps libre",
+  "@suggestFits": {},
+  "suggestTooLong": "Ne rentre pas dans votre temps libre",
+  "@suggestTooLong": {},
+  "suggestAdd": "Ajouter",
+  "@suggestAdd": {},
+  "suggestAdded": "Ajouté",
+  "@suggestAdded": {},
+  "suggestNoAiNote": "L'IA n'est pas disponible pour le moment. Voici les lieux les plus remarquables, sans explication.",
+  "@suggestNoAiNote": {},
+  "suggestNoPlaces": "Aucun lieu d'intérêt près de ce tronçon.",
+  "@suggestNoPlaces": {},
+  "suggestError": "Impossible de charger les suggestions. Réessayez.",
+  "@suggestError": {},
+  "suggestQuota": "Vous avez atteint la limite quotidienne de suggestions. Revenez demain.",
+  "@suggestQuota": {},
+  "suggestAddedSnack": "{name} ajouté à l'itinéraire",
+  "@suggestAddedSnack": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "suggestUsed": "Utilise {used} sur {window} min libres",
+  "@suggestUsed": {
+    "placeholders": {
+      "used": { "type": "int" },
+      "window": { "type": "int" }
+    }
   }
 }
