@@ -326,6 +326,23 @@ void main() {
     test('a verified zero replaces a non-zero estimate', () {
       expect(core.withVerifiedTolls(enrichRoute(0)).tollCostEur, 0);
     });
+
+    test('an unobtainable quote drops the estimate instead of showing it', () {
+      final flagged = RouteInfo.fromJson({
+        'distance_km': 0,
+        'free_flow_minutes': 0,
+        'polyline': '',
+        'toll_cost_eur': 0,
+        'countries_crossed': <String>[],
+        'toll_unavailable': true,
+      });
+      expect(flagged.tollUnavailable, isTrue);
+      expect(flagged.tollVerified, isFalse);
+      final merged = core.withTollsUnavailable();
+      expect(merged.tollUnavailable, isTrue);
+      expect(merged.tollCostEur, 0);
+      expect(merged.distanceKm, 1573);
+    });
   });
 
   // ── 7. PICKS THAT DO NOT SURVIVE A REPLAN MUST BE REPORTED ───────────────────

@@ -168,6 +168,7 @@ class HereTollsProvider:
             return None
         total_eur = 0.0
         booths: list[TollBooth] = []
+        unpriced = 0
         for section in routes[0].get("sections") or []:
             tolls = section.get("tolls") or []
             if not tolls:
@@ -177,16 +178,9 @@ class HereTollsProvider:
                 # one per payment method (cash, tag, video). Pick
                 # the MIN EUR fare (tag/video price) and emit one
                 # booth per section.
-                eur_fares = [
-                    float((f.get("price") or {}).get("value"))
-                    for f in (toll.get("fares") or [])
-                    if str(((f.get("price") or {}).get("currency") or ""))
-                        .upper() == "EUR"
-                    and isinstance(
-                        (f.get("price") or {}).get("value"), (int, float),
-                    )
-                ]
+                eur_fares = _eur_fares(toll)
                 if not eur_fares:
+                    unpriced += 1
                     continue
                 val = min(eur_fares)
                 total_eur += val
@@ -241,6 +235,11 @@ class HereTollsProvider:
                     operator=operator,
                     is_vignette=_is_vignette_toll(toll, operator),
                 ))
+        if unpriced and not booths:
+            # Tolls exist on the route but none could be priced in euros:
+            # an honest "no data", not a toll-free route.
+            _log.warning("HERE tolls: %d toll(s) without a EUR price", unpriced)
+            return None
         result_quote = TollQuote(total_eur=round(total_eur, 2), tolls=tuple(booths))
         _QUOTE_CACHE[qk] = (result_quote, time.time(), 0)
         return result_quote
@@ -324,15 +323,7 @@ class HereTollsProvider:
             if not tolls:
                 continue
             for toll in tolls:
-                eur_fares = [
-                    float((f.get("price") or {}).get("value"))
-                    for f in (toll.get("fares") or [])
-                    if str(((f.get("price") or {}).get("currency") or ""))
-                        .upper() == "EUR"
-                    and isinstance(
-                        (f.get("price") or {}).get("value"), (int, float),
-                    )
-                ]
+                eur_fares = _eur_fares(toll)
                 if not eur_fares:
                     continue
                 val = min(eur_fares)
@@ -434,20 +425,36 @@ class HereTollsProvider:
         total = 0.0
         for section in routes[0].get("sections") or []:
             for toll in section.get("tolls") or []:
-                eur_fares = [
-                    float((f.get("price") or {}).get("value"))
-                    for f in (toll.get("fares") or [])
-                    if str(((f.get("price") or {}).get("currency") or ""))
-                        .upper() == "EUR"
-                    and isinstance(
-                        (f.get("price") or {}).get("value"), (int, float),
-                    )
-                ]
+                eur_fares = _eur_fares(toll)
                 if eur_fares:
                     total += min(eur_fares)
         fare = round(total, 2)
         _SEGMENT_CACHE[key] = (fare, time.time())
         return fare
+
+
+def _eur_fares(toll: dict[str, Any]) -> list[float]:
+    """EUR amount of every fare of a HERE toll entry.
+
+    HERE quotes each fare in the toll's own currency (CHF, SEK, NOK, DKK,
+    ...) and, when ``currency=EUR`` is requested, adds the EUR figure as
+    ``convertedPrice``. Reading only ``price`` dropped every non-euro toll
+    (Oresund, Swiss vignette, Norwegian rings) and left a quote that
+    looked complete with a total of zero.
+    """
+
+    out: list[float] = []
+    for fare in toll.get("fares") or []:
+        for node in (fare.get("price"), fare.get("convertedPrice")):
+            node = node or {}
+            value = node.get("value")
+            if (
+                str(node.get("currency") or "").upper() == "EUR"
+                and isinstance(value, (int, float))
+            ):
+                out.append(float(value))
+                break
+    return out
 
 
 def _is_vignette_toll(toll: dict[str, Any], operator: str) -> bool:

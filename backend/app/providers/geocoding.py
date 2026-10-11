@@ -31,6 +31,9 @@ class GeocodeResult:
     `natural=peak`, `place=city`. See `mobile/lib/widgets/poi_icons.dart`
     for the full mapping the client uses to pick an icon.
     """
+    place_label: str | None = None
+    """Where the point is, as "Town (Region)": reverse lookups only. Falls
+    back to the region alone when there is no named locality."""
 
 
 class GeocodingProvider(Protocol):
@@ -261,7 +264,34 @@ class NominatimGeocodingProvider:
             country=country,
             poi_class=item.get("class") or None,
             poi_type=item.get("type") or None,
+            place_label=place_label_from_address(address),
         )
+
+
+def place_label_from_address(address: dict) -> str | None:
+    """"Town (Region)" from a Nominatim address, or just the region when
+    the point has no named locality (open road), or None."""
+
+    locality = next(
+        (
+            str(address[k]).strip()
+            for k in ("city", "town", "village", "hamlet", "suburb",
+                      "municipality", "city_district")
+            if address.get(k)
+        ),
+        "",
+    )
+    zone = next(
+        (
+            str(address[k]).strip()
+            for k in ("county", "state_district", "state", "region")
+            if address.get(k)
+        ),
+        "",
+    )
+    if locality and zone and zone.casefold() != locality.casefold():
+        return f"{locality} ({zone})"
+    return locality or zone or None
 
 
 class HybridGeocodingProvider:

@@ -4708,6 +4708,51 @@ class AppLocalizationsPt extends AppLocalizations {
   String get tripDayBarsCapLabel => 'Cap';
 
   @override
+  String get tollsUnavailableShort => 'Indisponível';
+
+  @override
+  String get tollsUnavailableMessage =>
+      'Não foi possível obter as portagens deste percurso neste momento, por isso o total não as inclui. Tenta novamente daqui a pouco.';
+
+  @override
+  String get tripLegendDriving => 'Condução';
+
+  @override
+  String get tripLegendBreakfast => 'Pequeno-almoço';
+
+  @override
+  String get tripLegendLunch => 'Almoço';
+
+  @override
+  String get tripLegendDinner => 'Jantar';
+
+  @override
+  String get tripLegendRest => 'Paragem adicionada';
+
+  @override
+  String get tripLegendRestGhost => 'Pausa sugerida, não adicionada';
+
+  @override
+  String get tripLegendCap => 'Limite diário';
+
+  @override
+  String get profileVehicleFromGarage =>
+      'Retirado da tua garagem, para a app usar sempre o mesmo veículo.';
+
+  @override
+  String get profileVehicleGarageManage => 'Alterar na minha garagem';
+
+  @override
+  String get profileVehicleGarageEmpty =>
+      'Adiciona o teu veículo à garagem: as viagens usarão o tipo, combustível e consumo.';
+
+  @override
+  String get tripBarsRestStop => 'Paragem de descanso';
+
+  @override
+  String get tripBarsDayEnd => 'Fim do dia';
+
+  @override
   String get tripDayBarsTitle => 'Distribuição por etapas';
 
   @override

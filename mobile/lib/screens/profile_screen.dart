@@ -9,11 +9,11 @@ import '../design/tokens.dart';
 // travel_style_presets import removed — presets replaced by direct parameters
 import '../domain/trip_profile.dart';
 import '../domain/vehicle_labels.dart';
-import '../domain/vehicle_model.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/garage_profile.dart';
 import '../widgets/hour_wheel_picker.dart';
-import 'vehicle_picker_screen.dart';
+import 'garage_screen.dart';
 
 /// Single-form profile editor. Users set this once; the plan screen
 /// then shows a compact chip and applies the profile silently to every
@@ -64,7 +64,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     // says 5 travellers, silently trim to the new cap so the
     // request payload stays consistent. Trimming here (single
     // funnel) beats sprinkling clamps at each call site.
-    final cap = _maxTravellersFor(p.vehicle.type);
+    final cap = _maxTravellersFor(
+      effectiveTripProfile(ref, override: p)?.vehicle.type ?? p.vehicle.type,
+    );
     if (p.travellers > cap) {
       p = p.copyWith(travellers: cap);
     }
@@ -96,8 +98,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final v = _profile.vehicle;
-    final isEv = v.fuelType == FuelType.electric;
     final l = AppLocalizations.of(context);
 
     final overrideMode = widget.mode == ProfileScreenMode.override_;
@@ -205,116 +205,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             title: l.profileVehicle,
             eyebrow: l.profileVehicleEyebrow,
           ),
-          SoftCard(
-            padding: const EdgeInsets.all(Tokens.space16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _LabeledChoice<VehicleType>(
-                  label: l.profileVehicleType,
-                  value: v.type,
-                  options: VehicleType.values,
-                  optionLabel: (t) => vehicleTypeLabel(context, t),
-                  optionIcon: (t) => t.icon,
-                  onChanged: (t) => _update(_profile.copyWith(
-                      vehicle: v.copyWith(type: t)),
-                  ),
-                ),
-                const SizedBox(height: Tokens.space16),
-                _LabeledChoice<FuelType>(
-                  label: l.profileFuelType,
-                  value: v.fuelType,
-                  options: FuelType.values,
-                  optionLabel: (f) => fuelTypeLabel(context, f),
-                  onChanged: (f) => _update(_profile.copyWith(
-                      vehicle: v.copyWith(fuelType: f)),
-                  ),
-                ),
-                const SizedBox(height: Tokens.space16),
-                if (isEv) ...[
-                  _LabeledSlider(
-                    label: l.profileConsumption,
-                    suffix: 'kWh / 100 km',
-                    value: v.consumptionKwhPer100km,
-                    min: 8, max: 40, divisions: 32,
-                    onChanged: (x) => _update(_profile.copyWith(
-                        vehicle: v.copyWith(consumptionKwhPer100km: x)),
-                    ),
-                  ),
-                  const SizedBox(height: Tokens.space16),
-                  _LabeledSlider(
-                    label: l.profileEvRange,
-                    suffix: 'km',
-                    value: v.evRangeKm,
-                    min: 100, max: 800, divisions: 70,
-                    onChanged: (x) => _update(_profile.copyWith(
-                        vehicle: v.copyWith(evRangeKm: x)),
-                    ),
-                  ),
-                ] else ...[
-                  _LabeledSlider(
-                    label: l.profileConsumption,
-                    suffix: 'L / 100 km',
-                    value: v.consumptionLPer100km,
-                    min: 2, max: 20, divisions: 36,
-                    onChanged: (x) => _update(_profile.copyWith(
-                        vehicle: v.copyWith(consumptionLPer100km: x)),
-                    ),
-                  ),
-                  const SizedBox(height: Tokens.space16),
-                  _VehicleModelRow(
-                    currentId: _profile.vehicleModelId,
-                    onPicked: (model) {
-                      // Overwrite the manual fuel type / tank / consumption
-                      // fields with the picked model's data so the profile
-                      // stays consistent (the fields shown above this row
-                      // are the same ones that get sent to the backend
-                      // when no vehicle_model_id fallback is in play).
-                      _update(
-                        _profile.copyWith(
-                          vehicleModelId: model.id,
-                          vehicle: _profile.vehicle.copyWith(
-                            fuelType: model.fuelType,
-                            fuelTankL: model.tankLiters > 0
-                                ? model.tankLiters
-                                : _profile.vehicle.fuelTankL,
-                            consumptionLPer100km: model.consumptionL100km > 0
-                                ? model.consumptionL100km
-                                : _profile.vehicle.consumptionLPer100km,
-                          ),
-                        ),
-                      );
-                    },
-                    onClear: () {
-                      _update(_profile.copyWith(
-                        vehicleModelId: null,
-                        currentTankLevelPercent: null,
-                      ));
-                    },
-                    onCustom: (values) {
-                      _update(
-                        _profile.copyWith(
-                          vehicleModelId: kCustomVehicleId,
-                          vehicle: _profile.vehicle.copyWith(
-                            fuelTankL: values.tankL,
-                            consumptionLPer100km: values.consumptionL100km,
-                            fuelType: values.fuelType,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  if (_profile.vehicleModelId != null) ...[
-                    const SizedBox(height: Tokens.space16),
-                    _TankLevelPicker(
-                      current: _profile.currentTankLevelPercent,
-                      onChanged: (pct) => _update(
-                        _profile.copyWith(currentTankLevelPercent: pct),
-                      ),
-                    ),
-                  ],
-                ],
-              ],
+          _GarageVehicleCard(
+            profile: _profile,
+            onTankLevel: (pct) => _update(
+              _profile.copyWith(currentTankLevelPercent: pct),
             ),
           ),
           const SizedBox(height: Tokens.space24),
@@ -453,112 +347,6 @@ class _Stepper extends StatelessWidget {
           icon: const Icon(Icons.add_circle_outline),
           onPressed:
               value < max ? () => onChanged((value + step).clamp(min, max)) : null,
-        ),
-      ],
-    );
-  }
-}
-
-class _LabeledChoice<T> extends StatelessWidget {
-  const _LabeledChoice({
-    required this.label,
-    required this.value,
-    required this.options,
-    required this.optionLabel,
-    required this.onChanged,
-    this.optionIcon,
-  });
-  final String label;
-  final T value;
-  final List<T> options;
-  final String Function(T) optionLabel;
-  final IconData Function(T)? optionIcon;
-  final ValueChanged<T> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: t.labelMedium),
-        const SizedBox(height: Tokens.space8),
-        Wrap(
-          spacing: Tokens.space8,
-          runSpacing: Tokens.space8,
-          children: [
-            for (final o in options)
-              ChoiceChip(
-                selected: o == value,
-                label: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (optionIcon != null) ...[
-                      Icon(optionIcon!(o), size: 14),
-                      const SizedBox(width: 4),
-                    ],
-                    Text(optionLabel(o)),
-                  ],
-                ),
-                onSelected: (s) {
-                  if (s) onChanged(o);
-                },
-              ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-class _LabeledSlider extends StatelessWidget {
-  const _LabeledSlider({
-    required this.label,
-    required this.suffix,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.divisions,
-    required this.onChanged,
-  });
-  final String label;
-  final String suffix;
-  final double value;
-  final double min;
-  final double max;
-  final int divisions;
-  final ValueChanged<double> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Theme.of(context).textTheme;
-    final scheme = Theme.of(context).colorScheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(child: Text(label, style: t.labelMedium)),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(Tokens.radiusPill),
-              ),
-              child: Text(
-                '${value.toStringAsFixed(1)} $suffix',
-                style: t.labelSmall?.copyWith(
-                  color: scheme.onPrimaryContainer,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-        Slider(
-          value: value,
-          min: min, max: max, divisions: divisions,
-          onChanged: onChanged,
         ),
       ],
     );
@@ -905,287 +693,6 @@ class _MealTimeTile extends StatelessWidget {
   }
 }
 
-/// A tappable row showing the currently-picked vehicle model (short
-/// label) or a "pick model" hint. Opens the [VehiclePickerScreen] and
-/// forwards the selection back up to the parent form.
-///
-/// When the user picks the "Custom vehicle" option, [onCustom] is called
-/// with the user-entered tank size and consumption; [onClear] is invoked
-/// first to clear any previously pinned catalogue model id.
-class _VehicleModelRow extends ConsumerWidget {
-  const _VehicleModelRow({
-    required this.currentId,
-    required this.onPicked,
-    required this.onClear,
-    required this.onCustom,
-  });
-
-  final String? currentId;
-  // Callback receives the resolved [VehicleModel] (not just its id)
-  // so the caller can also overwrite the profile's `Vehicle` fields
-  // (fuelType / tankLiters / consumption) — otherwise the "manual"
-  // spec fields shown below stay stale and disagree with the model.
-  final ValueChanged<VehicleModel> onPicked;
-  final VoidCallback onClear;
-  /// Called when the user saves a custom vehicle. The record carries the
-  /// user-entered [tankL] (5–200 L) and [consumptionL100km] (1–50).
-  /// vehicleModelId will already have been cleared via [onClear].
-  final ValueChanged<({double tankL, double consumptionL100km, FuelType fuelType})> onCustom;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final t = Theme.of(context).textTheme;
-    final l = AppLocalizations.of(context);
-    // Resolve id -> VehicleModel using the cached catalogue. If the
-    // catalogue is still loading (cold start) we render the raw id so
-    // the row is never empty for the user.
-    final async = ref.watch(vehicleCatalogueProvider);
-    final isCustom = currentId == kCustomVehicleId;
-    VehicleModel? picked;
-    if (currentId != null && !isCustom && async.hasValue) {
-      picked = async.value!.firstWhere(
-        (m) => m.id == currentId,
-        orElse: () => VehicleModel(
-          id: currentId!,
-          make: '',
-          model: currentId!,
-          yearFrom: 0,
-          yearTo: null,
-          fuelType: FuelType.petrol,
-          tankLiters: 0,
-          consumptionL100km: 0,
-        ),
-      );
-    }
-    final labelText = isCustom
-        ? l.vehiclePickerCustomOption
-        : picked == null
-            ? l.profileVehicleModelHint
-            : '${picked.make} ${picked.model}';
-    final subLabel = isCustom
-        ? l.vehiclePickerCustomOptionSubtitle
-        : picked == null || picked.tankLiters <= 0
-            ? null
-            : picked.shortLabel;
-
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: () async {
-        final id = await Navigator.of(context).push<String>(
-          MaterialPageRoute(
-            builder: (_) => VehiclePickerScreen(currentId: currentId),
-          ),
-        );
-        if (id == null || id.isEmpty) return;
-
-        // Custom vehicle: show a form sheet to collect tank + consumption.
-        if (id == kCustomVehicleId) {
-          // ignore: use_build_context_synchronously
-          final result = await _promptForCustomVehicle(context, l);
-          if (result == null) return;
-          onClear();
-          onCustom(result);
-          return;
-        }
-
-        // Resolve to a full VehicleModel via the cached catalogue so
-        // the caller can apply fuel type + tank + consumption to the
-        // profile's Vehicle. Fall back to a stub with just the id if
-        // the catalogue isn't loaded yet (extremely rare — the
-        // picker itself needs the catalogue to render).
-        final list = async.hasValue ? async.value! : const <VehicleModel>[];
-        final resolved = list.firstWhere(
-          (m) => m.id == id,
-          orElse: () => VehicleModel(
-            id: id, make: '', model: id, yearFrom: 0, yearTo: null,
-            fuelType: FuelType.petrol, tankLiters: 0, consumptionL100km: 0,
-          ),
-        );
-        onPicked(resolved);
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Tokens.space8),
-        child: Row(
-          children: [
-            Icon(
-              isCustom ? Icons.tune : Icons.directions_car_filled,
-              color: scheme.primary,
-            ),
-            const SizedBox(width: Tokens.space12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l.profileVehicleModel,
-                    style: t.labelMedium?.copyWith(
-                      color: scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(labelText, style: t.titleMedium),
-                  if (subLabel != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subLabel,
-                      style: t.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (currentId != null)
-              IconButton(
-                icon: const Icon(Icons.close),
-                tooltip: l.profileVehicleModelClear,
-                onPressed: onClear,
-              ),
-            Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Bottom sheet that collects a custom vehicle's tank size and consumption.
-/// Returns null if cancelled.
-Future<({double tankL, double consumptionL100km, FuelType fuelType})?> _promptForCustomVehicle(
-  BuildContext context,
-  AppLocalizations l,
-) async {
-  final tankCtrl = TextEditingController(text: '55');
-  final consCtrl = TextEditingController(text: '7.5');
-  final formKey = GlobalKey<FormState>();
-  FuelType selectedFuelType = FuelType.petrol;
-
-  return showModalBottomSheet<({double tankL, double consumptionL100km, FuelType fuelType})>(
-    context: context,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-    ),
-    builder: (sheetCtx) => StatefulBuilder(
-      builder: (sheetCtx, setSheetState) => Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
-        ),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(
-            Tokens.space16, Tokens.space20, Tokens.space16, Tokens.space16,
-          ),
-          child: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l.vehicleCustomTitle,
-                    style: Theme.of(sheetCtx).textTheme.titleLarge),
-                const SizedBox(height: Tokens.space16),
-                // Fuel type selector
-                Text(l.profileFuelType,
-                    style: Theme.of(sheetCtx).textTheme.labelMedium),
-                const SizedBox(height: Tokens.space8),
-                Wrap(
-                  spacing: Tokens.space8,
-                  runSpacing: Tokens.space4,
-                  children: [
-                    for (final ft in FuelType.values)
-                      ChoiceChip(
-                        label: Text(_fuelTypeLabel(ft, l)),
-                        selected: selectedFuelType == ft,
-                        onSelected: (_) =>
-                            setSheetState(() => selectedFuelType = ft),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: Tokens.space16),
-                TextFormField(
-                  controller: tankCtrl,
-                  autofocus: false,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: false),
-                  textInputAction: TextInputAction.next,
-                  decoration: InputDecoration(
-                    labelText: l.vehicleCustomTank,
-                    border: const OutlineInputBorder(),
-                    suffixText: selectedFuelType == FuelType.electric
-                        ? 'kWh'
-                        : 'L',
-                    isDense: true,
-                  ),
-                  validator: (v) {
-                    final n = double.tryParse(v ?? '');
-                    if (n == null || n < 1 || n > 200) return '1 – 200';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: Tokens.space12),
-                TextFormField(
-                  controller: consCtrl,
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  textInputAction: TextInputAction.done,
-                  decoration: InputDecoration(
-                    labelText: l.vehicleCustomConsumption,
-                    border: const OutlineInputBorder(),
-                    suffixText: selectedFuelType == FuelType.electric
-                        ? 'kWh/100 km'
-                        : 'L/100 km',
-                    isDense: true,
-                  ),
-                  validator: (v) {
-                    final n = double.tryParse(v ?? '');
-                    if (n == null || n < 0.5 || n > 50) return '0.5 – 50';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: Tokens.space16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.of(sheetCtx).pop(),
-                      child: Text(MaterialLocalizations.of(sheetCtx).cancelButtonLabel),
-                    ),
-                    const SizedBox(width: Tokens.space8),
-                    FilledButton(
-                      onPressed: () {
-                        if (!formKey.currentState!.validate()) return;
-                        final tankL = double.parse(tankCtrl.text.trim());
-                        final consL = double.parse(consCtrl.text.trim());
-                        Navigator.of(sheetCtx).pop(
-                          (tankL: tankL, consumptionL100km: consL, fuelType: selectedFuelType),
-                        );
-                      },
-                      child: Text(l.vehicleCustomSave),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
-String _fuelTypeLabel(FuelType ft, AppLocalizations l) {
-  switch (ft) {
-    case FuelType.petrol: return l.fuelTypePetrol;
-    case FuelType.diesel: return l.fuelTypeDiesel;
-    case FuelType.hybrid: return l.fuelTypeHybrid;
-    case FuelType.electric: return l.fuelTypeElectric;
-    case FuelType.lpg: return l.fuelTypeLpg;
-    case FuelType.e85: return l.fuelTypeE85;
-  }
-}
-
 /// 4-notch chip picker (25 / 50 / 75 / 100 %) for the current fuel
 /// level. Only surfaced when a `vehicleModelId` is set — without it
 /// the backend has no tank size to project against.
@@ -1222,6 +729,105 @@ class _TankLevelPicker extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+
+/// The vehicle a trip is planned with always comes from the garage, so the
+/// profile only shows it (type, fuel, consumption) and links to the garage
+/// to change it, instead of offering a second, separate set of controls.
+class _GarageVehicleCard extends ConsumerWidget {
+  const _GarageVehicleCard({required this.profile, required this.onTankLevel});
+
+  final TripProfile profile;
+  final ValueChanged<int?> onTankLevel;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context);
+    final t = Theme.of(context).textTheme;
+    final scheme = Theme.of(context).colorScheme;
+    ref.watch(garageProvider);
+    ref.watch(selectedGarageVehicleIdProvider);
+    ref.watch(vehicleCatalogueProvider);
+    final garageVehicle = activeGarageVehicle(ref);
+    final effective = effectiveTripProfile(ref, override: profile);
+
+    Future<void> openGarage() => Navigator.of(context).push<void>(
+          MaterialPageRoute(builder: (_) => const GarageScreen()),
+        );
+
+    if (garageVehicle == null || effective == null) {
+      return SoftCard(
+        padding: const EdgeInsets.all(Tokens.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.profileVehicleGarageEmpty, style: t.bodyMedium),
+            const SizedBox(height: Tokens.space12),
+            FilledButton.tonalIcon(
+              onPressed: openGarage,
+              icon: const Icon(Icons.add),
+              label: Text(l.garageAdd),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final v = effective.vehicle;
+    final isEv = v.fuelType == FuelType.electric;
+    final consumption = isEv
+        ? '${v.consumptionKwhPer100km.toStringAsFixed(1)} kWh / 100 km'
+        : '${v.consumptionLPer100km.toStringAsFixed(1)} L / 100 km';
+    return SoftCard(
+      padding: const EdgeInsets.all(Tokens.space16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(v.type.icon, color: scheme.primary),
+              const SizedBox(width: Tokens.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(garageVehicle.name.isEmpty
+                            ? l.garageDefaultName
+                            : garageVehicle.name,
+                        style: t.titleMedium),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${vehicleTypeLabel(context, v.type)} · '
+                      '${fuelTypeLabel(context, v.fuelType)} · $consumption',
+                      style: t.bodySmall
+                          ?.copyWith(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space8),
+          Text(
+            l.profileVehicleFromGarage,
+            style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: Tokens.space8),
+          TextButton.icon(
+            onPressed: openGarage,
+            icon: const Icon(Icons.garage_outlined),
+            label: Text(l.profileVehicleGarageManage),
+          ),
+          const SizedBox(height: Tokens.space8),
+          _TankLevelPicker(
+            current: profile.currentTankLevelPercent,
+            onChanged: onTankLevel,
+          ),
+        ],
+      ),
     );
   }
 }

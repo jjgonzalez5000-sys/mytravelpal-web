@@ -3655,11 +3655,17 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   // is then the server's rough estimate, not a real quote.
                   value: (_enrichPending || _replanning)
                       ? '—'
-                      : '${route.tollVerified ? '' : '≈ '}'
-                          '${formatMoney(_heroTollTotal(route, ccy), ccy)}',
+                      : route.tollUnavailable
+                          ? l.tollsUnavailableShort
+                          : '${route.tollVerified ? '' : '≈ '}'
+                              '${formatMoney(_heroTollTotal(route, ccy), ccy)}',
                   // A trip with only vignettes (no toll booths) has no skips
                   // but still needs the breakdown and the purchase links.
-                  onTap: !_enrichPending &&
+                  onTap: route.tollUnavailable && !_enrichPending && !_replanning
+                      ? () => ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(l.tollsUnavailableMessage)),
+                          )
+                      : !_enrichPending &&
                           !_replanning &&
                           (_response.partialTollSkips.isNotEmpty ||
                               route.vignetteCostEur > 0 ||
@@ -3825,6 +3831,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               _TotalTripCostCard(
                 fuelCostEur: _response.optimizations!.fuelCost.totalCostEur,
                 tollCostEur: route.tollCostEur,
+                tollsUnavailable: route.tollUnavailable,
                 tollsPending: _enrichPending || _replanning,
                 mealStops: _response.optimizations!.mealStops,
                 sleepStop: _response.optimizations!.sleepStop,
@@ -5123,6 +5130,7 @@ class _TotalTripCostCard extends ConsumerWidget {
   const _TotalTripCostCard({
     required this.fuelCostEur,
     required this.tollCostEur,
+    this.tollsUnavailable = false,
     required this.mealStops,
     this.sleepStop,
     this.tollSkipSavingsEur = 0,
@@ -5174,6 +5182,7 @@ class _TotalTripCostCard extends ConsumerWidget {
   final double assumedTankLiters;
   final double fuelCostEur;
   final double tollCostEur;
+  final bool tollsUnavailable;
   final List<MealStopOpt> mealStops;
   final SleepStopOpt? sleepStop;
   final double tollSkipSavingsEur;
@@ -5267,7 +5276,9 @@ class _TotalTripCostCard extends ConsumerWidget {
     final hotelCost = pickedHotelsCostEur ?? 0.0;
     final hotelNights = pickedHotelsNights;
     final hotelApplicable = tripDays > 1 || sleepStop != null;
-    final effectiveTolls = (tollCostEur - tollSkipSavingsEur).clamp(0.0, tollCostEur);
+    final effectiveTolls = tollsUnavailable
+        ? 0.0
+        : (tollCostEur - tollSkipSavingsEur).clamp(0.0, tollCostEur);
     final total = fuelCostEur + effectiveTolls + mealsCost + hotelCost;
 
     return Column(
@@ -5300,6 +5311,9 @@ class _TotalTripCostCard extends ConsumerWidget {
             label: l.tripCostTolls,
             value: effectiveTolls,
             pending: tollsPending,
+            placeholder: tollsUnavailable && !tollsPending
+                ? l.tollsUnavailableShort
+                : null,
             scheme: scheme, t: t,
             // Strikethrough the original toll when the driver
             // has skipped at least one booth. Concrete visual

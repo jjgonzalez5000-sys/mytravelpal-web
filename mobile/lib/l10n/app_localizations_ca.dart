@@ -4708,6 +4708,51 @@ class AppLocalizationsCa extends AppLocalizations {
   String get tripDayBarsCapLabel => 'Límit';
 
   @override
+  String get tollsUnavailableShort => 'No disponible';
+
+  @override
+  String get tollsUnavailableMessage =>
+      'Ara mateix no hem pogut obtenir els peatges d\'aquesta ruta, així que el total no els inclou. Torna-ho a provar d\'aquí a un moment.';
+
+  @override
+  String get tripLegendDriving => 'Conducció';
+
+  @override
+  String get tripLegendBreakfast => 'Esmorzar';
+
+  @override
+  String get tripLegendLunch => 'Dinar';
+
+  @override
+  String get tripLegendDinner => 'Sopar';
+
+  @override
+  String get tripLegendRest => 'Parada afegida';
+
+  @override
+  String get tripLegendRestGhost => 'Descans suggerit sense afegir';
+
+  @override
+  String get tripLegendCap => 'Límit diari';
+
+  @override
+  String get profileVehicleFromGarage =>
+      'Pres del teu garatge, així tota l\'app fa servir el mateix vehicle.';
+
+  @override
+  String get profileVehicleGarageManage => 'Canvia al meu garatge';
+
+  @override
+  String get profileVehicleGarageEmpty =>
+      'Afegeix el teu vehicle al garatge: els viatges faran servir el tipus, combustible i consum.';
+
+  @override
+  String get tripBarsRestStop => 'Parada de descans';
+
+  @override
+  String get tripBarsDayEnd => 'Fi de la jornada';
+
+  @override
   String get tripDayBarsTitle => 'Distribució per etapes';
 
   @override

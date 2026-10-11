@@ -81,7 +81,7 @@ Color _baseColor(_SegType type, ColorScheme scheme) => switch (type) {
 // ── State ─────────────────────────────────────────────────────────────────────
 
 class _TripDayBarsState extends State<TripDayBars> {
-  bool _expanded = false;
+  bool _expanded = true;
 
   String _restKey(RestStop r) =>
       'reststop:${r.name ?? "noname"}:'
@@ -167,6 +167,57 @@ class _TripDayBarsState extends State<TripDayBars> {
       ));
     }
     return segs;
+  }
+
+  /// Timed, named stops of one day for the list under its bar: meals,
+  /// service/rest stops and the end of the day.
+  List<_StopLine> _buildStopLines(DayPlan d, AppLocalizations l) {
+    final startLocal = d.startAt.toLocal();
+    final totalMin = d.endAt.toLocal().difference(startLocal).inMinutes;
+    final dayRange = d.toKm - d.fromKm;
+    final out = <_StopLine>[];
+    for (final m in d.mealStops) {
+      final slot = switch (m.slot.toLowerCase()) {
+        'breakfast' => (_SegType.breakfast, l.tripLegendBreakfast),
+        'dinner' => (_SegType.dinner, l.tripLegendDinner),
+        _ => (_SegType.lunch, l.tripLegendLunch),
+      };
+      final name = m.restaurantName;
+      final near = m.cityHint;
+      out.add(_StopLine(
+        at: m.at.toLocal(),
+        type: slot.$1,
+        text: name != null
+            ? '$name · ${slot.$2}'
+            : near != null
+                ? '${slot.$2} · $near'
+                : slot.$2,
+        selected: true,
+      ));
+    }
+    for (final r in d.restStops) {
+      final frac = dayRange > 0
+          ? ((r.distanceFromOriginKm - d.fromKm) / dayRange).clamp(0.0, 1.0)
+          : 0.5;
+      out.add(_StopLine(
+        at: startLocal.add(Duration(minutes: (totalMin * frac).round())),
+        type: _SegType.rest,
+        text: '${r.name ?? l.tripBarsRestStop} · '
+            '${r.recommendedBreakMinutes} min',
+        selected: _isSelected(r),
+      ));
+    }
+    out.sort((a, b) => a.at.compareTo(b.at));
+    final end = d.toName;
+    out.add(_StopLine(
+      at: d.endAt.toLocal(),
+      type: null,
+      text: end == null || end.isEmpty
+          ? l.tripBarsDayEnd
+          : '${l.tripBarsDayEnd} · $end',
+      selected: true,
+    ));
+    return out;
   }
 
   int _unselectedCount(DayPlan d) =>
@@ -290,6 +341,7 @@ class _TripDayBarsState extends State<TripDayBars> {
                 child: _GanttDayRow(
                   day: day,
                   segments: _buildSegments(day),
+                  stops: _buildStopLines(day, l),
                   profileCapHours: widget.profileCapHours,
                   unselectedCount: _unselectedCount(day),
                   expanded: _expanded,
@@ -299,9 +351,136 @@ class _TripDayBarsState extends State<TripDayBars> {
                 ),
               ).animate(delay: (i * 60).ms).fadeIn(duration: 250.ms),
             ],
+            const SizedBox(height: Tokens.space8),
+            _Legend(scheme: scheme, t: t, l: l),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _StopLine {
+  const _StopLine({
+    required this.at,
+    required this.type,
+    required this.text,
+    required this.selected,
+  });
+  final DateTime at;
+  final _SegType? type; // null → end of the day
+  final String text;
+  final bool selected;
+}
+
+class _StopLineRow extends StatelessWidget {
+  const _StopLineRow({
+    required this.stop,
+    required this.scheme,
+    required this.t,
+  });
+
+  final _StopLine stop;
+  final ColorScheme scheme;
+  final TextTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final type = stop.type;
+    final base = type == null ? scheme.onSurfaceVariant : _baseColor(type, scheme);
+    final dimmed = !stop.selected;
+    final swatch = Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: dimmed ? base.withValues(alpha: 0.15) : base,
+        shape: type == null ? BoxShape.rectangle : BoxShape.circle,
+        borderRadius: type == null ? BorderRadius.circular(2) : null,
+        border: dimmed ? Border.all(color: base.withValues(alpha: 0.6)) : null,
+      ),
+    );
+    final style = t.labelSmall?.copyWith(
+      fontSize: 11,
+      color: dimmed
+          ? scheme.onSurfaceVariant.withValues(alpha: 0.75)
+          : scheme.onSurface,
+    );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 38,
+            child: Text(DateFormat('HH:mm').format(stop.at),
+                style: style?.copyWith(fontFeatures: const [
+                  FontFeature.tabularFigures(),
+                ])),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 3, right: 6),
+            child: swatch,
+          ),
+          Expanded(child: Text(stop.text, style: style)),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Colour legend ─────────────────────────────────────────────────────────────
+
+class _Legend extends StatelessWidget {
+  const _Legend({required this.scheme, required this.t, required this.l});
+
+  final ColorScheme scheme;
+  final TextTheme t;
+  final AppLocalizations l;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget item(Widget swatch, String label) => Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            swatch,
+            const SizedBox(width: 4),
+            Text(label,
+                style: t.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant, fontSize: 10)),
+          ],
+        );
+    Widget box(_SegType type, {bool ghost = false}) {
+      final c = _baseColor(type, scheme);
+      return Container(
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(
+          color: ghost ? c.withValues(alpha: 0.15) : c,
+          borderRadius: BorderRadius.circular(2),
+          border: ghost ? Border.all(color: c.withValues(alpha: 0.6)) : null,
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 4,
+      children: [
+        item(box(_SegType.driving), l.tripLegendDriving),
+        item(box(_SegType.breakfast), l.tripLegendBreakfast),
+        item(box(_SegType.lunch), l.tripLegendLunch),
+        item(box(_SegType.dinner), l.tripLegendDinner),
+        item(box(_SegType.rest), l.tripLegendRest),
+        item(box(_SegType.rest, ghost: true), l.tripLegendRestGhost),
+        item(
+          Container(
+            width: 2,
+            height: 10,
+            color: scheme.onSurface.withValues(alpha: 0.45),
+          ),
+          l.tripLegendCap,
+        ),
+      ],
     );
   }
 }
@@ -312,6 +491,7 @@ class _GanttDayRow extends StatelessWidget {
   const _GanttDayRow({
     required this.day,
     required this.segments,
+    required this.stops,
     required this.profileCapHours,
     required this.unselectedCount,
     required this.expanded,
@@ -322,6 +502,7 @@ class _GanttDayRow extends StatelessWidget {
 
   final DayPlan day;
   final List<_Seg> segments;
+  final List<_StopLine> stops;
   final int profileCapHours;
   final int unselectedCount;
   final bool expanded;
@@ -435,6 +616,11 @@ class _GanttDayRow extends StatelessWidget {
             ),
           );
         }),
+        if (expanded) ...[
+          const SizedBox(height: 4),
+          for (final stop in stops)
+            _StopLineRow(stop: stop, scheme: scheme, t: t),
+        ],
         // Ghost hint — shown when expanded and this day has unselected stops
         if (expanded && unselectedCount > 0) ...[
           const SizedBox(height: 3),

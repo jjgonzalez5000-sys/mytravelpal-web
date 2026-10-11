@@ -4727,6 +4727,51 @@ class AppLocalizationsEs extends AppLocalizations {
   String get tripDayBarsCapLabel => 'Cap';
 
   @override
+  String get tollsUnavailableShort => 'No disponible';
+
+  @override
+  String get tollsUnavailableMessage =>
+      'No hemos podido obtener los peajes de esta ruta ahora mismo, así que el total no los incluye. Inténtalo de nuevo en un momento.';
+
+  @override
+  String get tripLegendDriving => 'Conducción';
+
+  @override
+  String get tripLegendBreakfast => 'Desayuno';
+
+  @override
+  String get tripLegendLunch => 'Comida';
+
+  @override
+  String get tripLegendDinner => 'Cena';
+
+  @override
+  String get tripLegendRest => 'Parada añadida';
+
+  @override
+  String get tripLegendRestGhost => 'Descanso sugerido sin añadir';
+
+  @override
+  String get tripLegendCap => 'Límite diario';
+
+  @override
+  String get profileVehicleFromGarage =>
+      'Tomado de tu garaje, así toda la app usa el mismo vehículo.';
+
+  @override
+  String get profileVehicleGarageManage => 'Cambiar en mi garaje';
+
+  @override
+  String get profileVehicleGarageEmpty =>
+      'Añade tu vehículo al garaje: los viajes usarán su tipo, combustible y consumo.';
+
+  @override
+  String get tripBarsRestStop => 'Parada de descanso';
+
+  @override
+  String get tripBarsDayEnd => 'Fin de la jornada';
+
+  @override
   String get tripDayBarsTitle => 'Distribución por etapas';
 
   @override

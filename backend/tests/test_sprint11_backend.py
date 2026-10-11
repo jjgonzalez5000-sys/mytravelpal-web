@@ -98,7 +98,7 @@ class TestPartialTollSkips:
 
 
 class TestPlanEndpointPartialTollSkips:
-    def test_plan_includes_partial_toll_skips_when_alt_requested(self) -> None:
+    def test_plan_has_no_invented_skips_without_booth_level_data(self) -> None:
         response = client.post("/v1/trips/plan", json={
             "origin": {"lat": 48.8566, "lon": 2.3522},
             "destination": {"lat": 40.4168, "lon": -3.7038},
@@ -106,11 +106,9 @@ class TestPlanEndpointPartialTollSkips:
             "include_toll_alternative": True,
         })
         assert response.status_code == 200, response.text
-        body = response.json()
-        assert body["partial_toll_skips"]
-        first = body["partial_toll_skips"][0]
-        assert "savings_eur" in first and "worth_it" in first
-        assert "lat" in first and "lon" in first
+        # No booth-level quote in the mock stack: the old "Toll stretch n/5"
+        # even split was a made-up figure and must not be offered.
+        assert response.json()["partial_toll_skips"] == []
 
     def test_plan_omits_partial_toll_skips_when_alt_off(self) -> None:
         response = client.post("/v1/trips/plan", json={

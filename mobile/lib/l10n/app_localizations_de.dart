@@ -4722,6 +4722,51 @@ class AppLocalizationsDe extends AppLocalizations {
   String get tripDayBarsCapLabel => 'Limit';
 
   @override
+  String get tollsUnavailableShort => 'Nicht verfügbar';
+
+  @override
+  String get tollsUnavailableMessage =>
+      'Die Mautkosten für diese Route konnten gerade nicht abgerufen werden, daher sind sie nicht in der Summe enthalten. Versuche es gleich noch einmal.';
+
+  @override
+  String get tripLegendDriving => 'Fahrt';
+
+  @override
+  String get tripLegendBreakfast => 'Frühstück';
+
+  @override
+  String get tripLegendLunch => 'Mittagessen';
+
+  @override
+  String get tripLegendDinner => 'Abendessen';
+
+  @override
+  String get tripLegendRest => 'Hinzugefügter Stopp';
+
+  @override
+  String get tripLegendRestGhost => 'Vorgeschlagene Pause, nicht hinzugefügt';
+
+  @override
+  String get tripLegendCap => 'Tageslimit';
+
+  @override
+  String get profileVehicleFromGarage =>
+      'Aus deiner Garage übernommen, damit die ganze App dasselbe Fahrzeug verwendet.';
+
+  @override
+  String get profileVehicleGarageManage => 'In meiner Garage ändern';
+
+  @override
+  String get profileVehicleGarageEmpty =>
+      'Füge dein Fahrzeug der Garage hinzu: Reisen nutzen dann Typ, Kraftstoff und Verbrauch.';
+
+  @override
+  String get tripBarsRestStop => 'Rastplatz';
+
+  @override
+  String get tripBarsDayEnd => 'Tagesende';
+
+  @override
   String get tripDayBarsTitle => 'Tagesverteilung';
 
   @override

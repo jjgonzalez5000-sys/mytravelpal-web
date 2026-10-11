@@ -4695,6 +4695,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripDayBarsCapLabel => 'Cap';
 
   @override
+  String get tollsUnavailableShort => 'Unavailable';
+
+  @override
+  String get tollsUnavailableMessage =>
+      'We couldn\'t get the toll prices for this route right now, so the total doesn\'t include them. Try again in a moment.';
+
+  @override
+  String get tripLegendDriving => 'Driving';
+
+  @override
+  String get tripLegendBreakfast => 'Breakfast';
+
+  @override
+  String get tripLegendLunch => 'Lunch';
+
+  @override
+  String get tripLegendDinner => 'Dinner';
+
+  @override
+  String get tripLegendRest => 'Rest stop added';
+
+  @override
+  String get tripLegendRestGhost => 'Suggested rest, not added';
+
+  @override
+  String get tripLegendCap => 'Daily limit';
+
+  @override
+  String get profileVehicleFromGarage =>
+      'Taken from your garage, so the whole app uses the same vehicle.';
+
+  @override
+  String get profileVehicleGarageManage => 'Change in my garage';
+
+  @override
+  String get profileVehicleGarageEmpty =>
+      'Add your vehicle to the garage: trips will use its type, fuel and consumption.';
+
+  @override
+  String get tripBarsRestStop => 'Rest stop';
+
+  @override
+  String get tripBarsDayEnd => 'End of day';
+
+  @override
   String get tripDayBarsTitle => 'Day breakdown';
 
   @override

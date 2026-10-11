@@ -703,6 +703,11 @@ class RouteOut(BaseModel):
     # route-level estimate, so a merge must prefer the verified figures
     # (even when they are 0 — a genuinely toll-free route).
     toll_verified: bool = False
+    # True when a toll-quote provider is configured but the booth-level
+    # quote failed (timeout, quota, fares it could not price). The core
+    # estimate is then NOT trustworthy and the client must say the tolls
+    # could not be obtained instead of showing a made-up figure.
+    toll_unavailable: bool = False
     # True only when the route was REALLY computed avoiding toll roads
     # (HERE honoured `avoid_tolls`). False when the request did not ask for
     # it, or when it could not be honoured (HERE unavailable, or unavoidable
@@ -1508,7 +1513,12 @@ def _empty_route() -> RouteOut:
     )
 
 
-def _enrich_route(*, toll_total_eur: float | None, real_tolls: tuple) -> RouteOut:
+def _enrich_route(
+    *,
+    toll_total_eur: float | None,
+    real_tolls: tuple,
+    unavailable: bool = False,
+) -> RouteOut:
     """Route for the enrich-slice payload: empty except for the toll
     figures. The core phase ships a provisional toll estimate; the real
     total comes from the booth-level quote that only enrich runs, and
@@ -1517,7 +1527,9 @@ def _enrich_route(*, toll_total_eur: float | None, real_tolls: tuple) -> RouteOu
 
     out = _empty_route()
     if toll_total_eur is None:
-        return out  # no quote: leave toll_verified False
+        # No quote: leave toll_verified False; flag it when a provider
+        # was supposed to answer so the client does not show the estimate.
+        return out.model_copy(update={"toll_unavailable": unavailable})
     vignettes = [t for t in real_tolls if t.is_vignette]
     return out.model_copy(update={
         "toll_cost_eur": round(toll_total_eur, 2),
@@ -2130,6 +2142,9 @@ async def _plan_enrich_impl(
         ),
     )
 
+    _toll_unavailable = (
+        providers.tollguru is not None and not _toll_free and _toll_quote is None
+    )
     # Extract booth-level toll data from the enrich-phase quote.
     if _toll_quote is not None:
         real_tolls = tuple(_toll_quote.tolls)
@@ -2251,6 +2266,7 @@ async def _plan_enrich_impl(
             not _toll_free
             and payload.include_toll_alternative
             and route.toll_cost_eur > 0
+            and real_tolls
         ):
             _raw_skips = compute_partial_skips(route, real_tolls=real_tolls)
             # Upgrade the heuristic penalty / extra_km numbers to REAL
@@ -2327,7 +2343,11 @@ async def _plan_enrich_impl(
                 ))
 
         # ---- Toll alternative comparison (CPU) + hourly analysis ----
-        if payload.include_toll_alternative and alt_route_domain is not None:
+        if (
+            payload.include_toll_alternative
+            and alt_route_domain is not None
+            and not _toll_unavailable
+        ):
             _alt = compare_toll(route, alt_route_domain)
             _toll_alternative_out = TollAlternativeOut(
                 distance_km=_alt.distance_km,
@@ -2774,7 +2794,11 @@ async def _plan_enrich_impl(
                 r = await reverse(coord.lat, coord.lon)
                 if r is None:
                     return None
-                return r.display_name.split(",")[0].strip() or None
+                return (
+                    getattr(r, "place_label", None)
+                    or r.display_name.split(",")[0].strip()
+                    or None
+                )
             except Exception:  # noqa: BLE001
                 return None
 
@@ -3069,7 +3093,11 @@ async def _plan_enrich_impl(
                         r = await reverse(coord.lat, coord.lon)
                         if r is None:
                             return None
-                        return r.display_name.split(",")[0].strip() or None
+                        return (
+                            getattr(r, "place_label", None)
+                            or r.display_name.split(",")[0].strip()
+                            or None
+                        )
                     except Exception:  # noqa: BLE001
                         return None
                 _geocoded = await asyncio.gather(*(
@@ -3349,6 +3377,7 @@ async def _plan_enrich_impl(
                 else (_toll_quote.total_eur if _toll_quote is not None else None)
             ),
             real_tolls=real_tolls,
+            unavailable=_toll_unavailable,
         ),
         time_windows=[],
         fuel_prices=[
@@ -3412,6 +3441,8 @@ def _merge_route(core: RouteOut, enrich: RouteOut) -> RouteOut:
     (``toll_verified``) its figures replace the estimate, so the total and
     the per-booth list describe the same toll."""
 
+    if enrich.toll_unavailable and not enrich.toll_verified:
+        return core.model_copy(update={"toll_unavailable": True})
     if not enrich.toll_verified:
         return core
     return core.model_copy(update={

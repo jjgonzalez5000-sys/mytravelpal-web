@@ -961,8 +961,14 @@ class RouteInfo {
     this.vignetteCountries = const [],
     this.vignettes = const [],
     this.tollVerified = false,
+    this.tollUnavailable = false,
     this.avoidTolls = false,
   });
+
+  /// True when the server could not obtain the toll prices (provider
+  /// failure). [tollCostEur] is then only a rough guess and must not be
+  /// shown or added to any total.
+  final bool tollUnavailable;
 
   /// True when [tollCostEur] / [vignetteCostEur] come from the booth-level
   /// quote (enrich phase). The core phase only has a provisional
@@ -1027,7 +1033,21 @@ class RouteInfo {
             .map(VignetteLine.fromJson)
             .toList(growable: false),
         tollVerified: json['toll_verified'] as bool? ?? false,
+        tollUnavailable: json['toll_unavailable'] as bool? ?? false,
         avoidTolls: json['avoid_tolls'] as bool? ?? false,
+      );
+
+  /// This route flagged as having no obtainable toll prices.
+  RouteInfo withTollsUnavailable() => RouteInfo(
+        distanceKm: distanceKm,
+        freeFlowMinutes: freeFlowMinutes,
+        polyline: polyline,
+        tollCostEur: 0,
+        countriesCrossed: countriesCrossed,
+        geometry: geometry,
+        vignetteCostEur: 0,
+        tollUnavailable: true,
+        avoidTolls: avoidTolls,
       );
 
   /// This route with the toll figures of [verified] (an enrich-phase
@@ -2168,7 +2188,9 @@ class TripPlanResponse {
         // booths) and the cost card (core total) disagree.
         route: enrich.route.tollVerified
             ? core.route.withVerifiedTolls(enrich.route)
-            : core.route,
+            : enrich.route.tollUnavailable
+                ? core.route.withTollsUnavailable()
+                : core.route,
         timeWindows: core.timeWindows,
         // Days come from enrich when non-empty — enrich's per-day
         // rest_stops carry the Overpass POI names + types + reasons

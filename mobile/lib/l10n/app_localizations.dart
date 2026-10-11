@@ -8393,6 +8393,90 @@ abstract class AppLocalizations {
   /// **'Cap'**
   String get tripDayBarsCapLabel;
 
+  /// No description provided for @tollsUnavailableShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get tollsUnavailableShort;
+
+  /// No description provided for @tollsUnavailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t get the toll prices for this route right now, so the total doesn\'t include them. Try again in a moment.'**
+  String get tollsUnavailableMessage;
+
+  /// No description provided for @tripLegendDriving.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving'**
+  String get tripLegendDriving;
+
+  /// No description provided for @tripLegendBreakfast.
+  ///
+  /// In en, this message translates to:
+  /// **'Breakfast'**
+  String get tripLegendBreakfast;
+
+  /// No description provided for @tripLegendLunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Lunch'**
+  String get tripLegendLunch;
+
+  /// No description provided for @tripLegendDinner.
+  ///
+  /// In en, this message translates to:
+  /// **'Dinner'**
+  String get tripLegendDinner;
+
+  /// No description provided for @tripLegendRest.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest stop added'**
+  String get tripLegendRest;
+
+  /// No description provided for @tripLegendRestGhost.
+  ///
+  /// In en, this message translates to:
+  /// **'Suggested rest, not added'**
+  String get tripLegendRestGhost;
+
+  /// No description provided for @tripLegendCap.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily limit'**
+  String get tripLegendCap;
+
+  /// No description provided for @profileVehicleFromGarage.
+  ///
+  /// In en, this message translates to:
+  /// **'Taken from your garage, so the whole app uses the same vehicle.'**
+  String get profileVehicleFromGarage;
+
+  /// No description provided for @profileVehicleGarageManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Change in my garage'**
+  String get profileVehicleGarageManage;
+
+  /// No description provided for @profileVehicleGarageEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your vehicle to the garage: trips will use its type, fuel and consumption.'**
+  String get profileVehicleGarageEmpty;
+
+  /// No description provided for @tripBarsRestStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Rest stop'**
+  String get tripBarsRestStop;
+
+  /// No description provided for @tripBarsDayEnd.
+  ///
+  /// In en, this message translates to:
+  /// **'End of day'**
+  String get tripBarsDayEnd;
+
   /// No description provided for @tripDayBarsTitle.
   ///
   /// In en, this message translates to:

@@ -946,3 +946,95 @@ def test_day_override_driving_cap_hours_bounds() -> None:
     for bad in (0, 15):
         with pytest.raises(ValidationError):
             DayOverrideIn(day_index=1, daily_driving_cap_hours=bad)
+
+
+def _here_tolls_provider(tolls: list[dict]):
+    from app.providers import tolls_here
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, text=json.dumps(
+            {"routes": [{"sections": [{"tolls": tolls}]}]},
+        ))
+
+    tolls_here._QUOTE_CACHE.clear()
+    return tolls_here.HereTollsProvider(
+        http_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+
+
+def test_here_quote_uses_converted_eur_for_foreign_currency_tolls(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("MYTRAVELPAL_HERE_API_KEY", "k")
+    provider = _here_tolls_provider([
+        {"tollSystem": "ORESUNDSBRON", "fares": [{
+            "price": {"currency": "SEK", "value": 690.0},
+            "convertedPrice": {"currency": "EUR", "value": 61.58},
+        }]},
+        {"tollSystem": "VIGNETTE SWITZERLAND", "fares": [{
+            "price": {"currency": "CHF", "value": 40.0},
+            "convertedPrice": {"currency": "EUR", "value": 43.02},
+        }]},
+    ])
+    q = asyncio.run(provider.quote(_line_route(_NORMAL_LAT, 10.0)))
+    assert q is not None
+    assert q.total_eur == 104.6
+    assert len(q.tolls) == 2
+
+
+def test_here_quote_with_unpriced_tolls_is_unavailable_not_zero(
+    monkeypatch,
+) -> None:
+    monkeypatch.setenv("MYTRAVELPAL_HERE_API_KEY", "k")
+    provider = _here_tolls_provider([
+        {"tollSystem": "X", "fares": [
+            {"price": {"currency": "SEK", "value": 690.0}},
+        ]},
+    ])
+    assert asyncio.run(provider.quote(_line_route(_NORMAL_LAT, 10.0))) is None
+
+
+def test_enrich_flags_tolls_unavailable_and_drops_estimated_extras() -> None:
+    stub = _StubRouting()
+    _patch(stub, _CountingToll())
+    try:
+        resp = client.post(
+            "/v1/trips/plan/enrich",
+            json=_payload(include_toll_alternative=True),
+        )
+    finally:
+        _unpatch()
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["route"]["toll_unavailable"] is True
+    assert body["route"]["toll_verified"] is False
+    assert body["partial_toll_skips"] == []
+    assert body["toll_alternative"] is None
+
+
+def test_merge_route_carries_toll_unavailable() -> None:
+    from app.api.v1.trips import RouteOut, _merge_route
+
+    core = RouteOut(
+        distance_km=10, free_flow_minutes=5, polyline="",
+        toll_cost_eur=63.8, countries_crossed=[], geometry=[],
+    )
+    enrich = core.model_copy(update={
+        "toll_cost_eur": 0.0, "toll_unavailable": True,
+    })
+    merged = _merge_route(core, enrich)
+    assert merged.toll_unavailable is True
+    assert merged.toll_verified is False
+
+
+def test_place_label_names_the_town_and_zone_not_the_street() -> None:
+    from app.providers.geocoding import place_label_from_address
+
+    assert place_label_from_address(
+        {"road": "E 6", "village": "Hjärnarp", "county": "Skåne County"},
+    ) == "Hjärnarp (Skåne County)"
+    assert place_label_from_address(
+        {"road": "E 6", "county": "Skåne County"},
+    ) == "Skåne County"
+    assert place_label_from_address({"city": "Oslo", "state": "Oslo"}) == "Oslo"
+    assert place_label_from_address({"road": "E 6"}) is None
