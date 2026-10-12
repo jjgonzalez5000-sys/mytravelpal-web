@@ -148,23 +148,24 @@
 <li><strong>Saved trips:</strong> until you delete them or delete your account. The detailed copy of a trip&rsquo;s plan is removed 90 days after its arrival date; the trip summary stays until you delete it. A deleted trip leaves for 30 days a minimal record (identifier and dates, no personal data) so that your other devices learn about the deletion.</li>
 <li><strong>Trip monitoring and alerts:</strong> monitoring is removed 30 days after the trip&rsquo;s arrival (or when you delete the trip) and its alerts go with it; the state of an already resolved alert is removed after 7 days.</li>
 <li><strong>Push notification identifiers:</strong> until the device is removed from your account, until the notification service reports them as no longer valid, or until you delete your account.</li>
-<li><strong>Shared trips:</strong> the link works for 30 days from the moment you create it.</li>
-<li><strong>Companion group sessions:</strong> the code works for 12 hours at most. If the driver ends the session, it is deleted at that moment. The last position of a session that simply expires is no longer shown to anyone and is erased when you request deletion of your data.</li>
+<li><strong>Shared trips:</strong> the link works for 30 days from the moment you create it; the copy is then deleted by a periodic cleanup. It is deleted at once when you delete your account.</li>
+<li><strong>Companion group sessions:</strong> the code works for 12 hours at most. If the driver ends the session, it is deleted at that moment. A session that simply expires is no longer shown to anyone and is deleted automatically by a periodic cleanup; it is also deleted when you delete your account.</li>
 <li><strong>Recent searches and local settings:</strong> on your device until you clear the App&rsquo;s data; the synced copy until you delete your account.</li>
-<li><strong>Suggestions and feedback:</strong> kept for as long as they are needed to handle them and improve the App, and deleted when you ask by writing to privacy@mytravelpal.io.</li>
-<li><strong>Usage accounting and per-installation activity:</strong> kept for as long as they are needed for cost control and abuse prevention, and deleted at your request through privacy@mytravelpal.io.</li>
+<li><strong>Suggestions and feedback:</strong> kept for as long as they are needed to handle them and improve the App, and deleted when you delete your account (the copy in our mailbox is deleted when you ask by email).</li>
+<li><strong>Usage accounting and per-installation activity:</strong> the installation record and the daily counters are deleted when you delete your account. The usage records (provider, feature, units, estimated cost) are kept for as long as they are needed for cost control, but without your account identifier after you delete your account.</li>
+<li><strong>Deletion marker:</strong> when you delete your account we keep for 31 days a one-way cryptographic hash of your account identifier and the time of the deletion, so that a sign-in token issued before it (for example on another phone) cannot recreate data. It cannot be reversed to your account, and it is deleted automatically afterwards.</li>
 <li><strong>Crash reports (Sentry):</strong> rolling 90 days.</li>
 <li><strong>Backend logs:</strong> rolling 7 days on Fly.io.</li>
 <li><strong>Backups:</strong> database dumps; the 14 most recent are kept.</li>
 </ul>
-<p>What is deleted when you delete your account from the App, and what we keep until you ask by email, is detailed on the <a href="/en/account-deletion">account deletion page</a>.</p>
+<p>What is deleted when you delete your account, and the little that is kept without any link to you, is detailed on the <a href="/en/account-deletion">account deletion page</a>.</p>
 <hr />
 
 <h2>6. Your rights (GDPR and nFADP)</h2>
 <p>You can, at any time:</p>
 <ul>
 <li><strong>Access your data:</strong> Settings → &ldquo;Download my data&rdquo;. For data that download does not include, write to privacy@mytravelpal.io.</li>
-<li><strong>Delete your account:</strong> Settings → &ldquo;Delete my account&rdquo; removes your profile, saved trips, monitoring and alerts, notification identifiers and vehicles, but it does not delete the account record itself (email, name and sign-in provider) or the other linked records listed on the <a href="/en/account-deletion">account deletion page</a>. To have them deleted, write to privacy@mytravelpal.io.</li>
+<li><strong>Delete your account:</strong> Settings → &ldquo;Delete my account&rdquo; deletes your account record (email, name and sign-in provider), profile, saved trips, monitoring and alerts, notification identifiers, vehicles, installation records, suggestions, shared trips and group sessions. Usage statistics are kept without your account identifier. Details are on the <a href="/en/account-deletion">account deletion page</a>. If you cannot use the App, write to privacy@mytravelpal.io.</li>
 <li><strong>Correct your data:</strong> edit your profile at any time from the App.</li>
 <li><strong>Withdraw your consent:</strong> for the AI profile, you can delete your preferences under Settings → AI Personalisation. For feedback with an email, write to privacy@mytravelpal.io. Device permissions (location, contacts, notifications) can be revoked in the system settings.</li>
 <li><strong>Object to processing and request its restriction:</strong> write to privacy@mytravelpal.io, or sign out and uninstall the App.</li>

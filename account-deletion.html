@@ -56,7 +56,7 @@
 <hr />
 
 <h2>Opción 2 &mdash; Solicitud por correo electrónico</h2>
-<p>Si no puedes abrir la app (por ejemplo, has perdido el móvil o la has desinstalado), o quieres que eliminemos también los registros que la opción 1 no borra (ver más abajo), escribe a
+<p>Si no puedes abrir la app (por ejemplo, has perdido el móvil o la has desinstalado), escribe a
 <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>
 con:</p>
 <ul>
@@ -64,36 +64,42 @@ con:</p>
   <li>La dirección de correo con la que iniciabas sesión (Google o Facebook)</li>
   <li>Opcional: fecha aproximada de tu último inicio de sesión</li>
 </ul>
-<p>Respondemos en un plazo de <strong>7 días laborables</strong> confirmando la eliminación. La ley nos obliga a completar la solicitud en 30 días como máximo. Una solicitud por correo elimina tu cuenta y todos los registros asociados a ella que se citan en esta página.</p>
+<p>Respondemos en un plazo de <strong>7 días laborables</strong> confirmando la eliminación. La ley nos obliga a completar la solicitud en 30 días como máximo. Una solicitud por correo elimina exactamente los mismos datos que la opción 1.</p>
 
 <hr />
 
-<h2>Qué se elimina al borrar la cuenta desde la app</h2>
+<h2>Qué se elimina al borrar la cuenta</h2>
+<p>El borrado se ejecuta como una sola operación en nuestro servidor: o se elimina todo lo siguiente o no se elimina nada, y el servidor responde con un error si ha fallado.</p>
 <ul>
+  <li><strong>Registro de cuenta</strong>: correo electrónico, nombre, proveedor de inicio de sesión, identificador interno y fechas de alta, último inicio de sesión y última actividad.</li>
   <li><strong>Perfil y todo lo que contiene</strong>: preferencias de viajero, perfil IA, ajustes sincronizados, apodo y país del Hall of Fame, tus lugares, búsquedas recientes, vehículos del garaje, contactos de emergencia y el nivel de suscripción con su token de compra.</li>
   <li><strong>Viajes guardados</strong>: todos los viajes del servidor, con sus selecciones, el plan guardado y las noches de hotel marcadas, así como los registros de viajes borrados.</li>
   <li><strong>Vigilancia de viajes y alertas</strong>: los viajes vigilados, su trazado, sus alertas y el estado de los avisos.</li>
   <li><strong>Identificadores de notificaciones push</strong> de tus dispositivos.</li>
+  <li><strong>Registros de instalación</strong>: el identificador aleatorio de la instalación, la versión de la app y la fecha de última actividad asociados a tu cuenta.</li>
+  <li><strong>Sugerencias enviadas</strong>: el texto, el correo de respuesta si lo diste, la versión y el idioma. Se borran, no se anonimizan.</li>
+  <li><strong>Viajes compartidos</strong>: las copias de viajes que compartiste mediante enlace se borran al instante, así que los enlaces dejan de funcionar de inmediato.</li>
+  <li><strong>Sesiones grupales Companion</strong> que creaste como conductor, incluida la última posición que guardaron.</li>
+  <li><strong>Contadores diarios de llamadas</strong> asociados a tu cuenta.</li>
   <li><strong>Datos locales del dispositivo</strong>: viajes y preferencias guardados en el móvil, y la sesión.</li>
 </ul>
+<p>Un token de inicio de sesión emitido antes de la eliminación deja de funcionar al instante (por ejemplo en otro móvil donde seguías con la sesión abierta), de modo que no puede escribir nada ni recuperar nada de esto. Al iniciar sesión de nuevo se crea una cuenta nueva y vacía.</p>
 
-<h2>Qué se conserva tras borrar desde la app, y cómo eliminarlo</h2>
-<p>Estos registros no se borran con el botón de la app. Se eliminan cuando nos lo pides por correo (opción 2):</p>
+<h2>Qué se conserva tras borrar la cuenta</h2>
 <ul>
-  <li><strong>Registro de cuenta</strong>: correo electrónico, nombre, proveedor de inicio de sesión, identificador interno y fechas de alta, último inicio de sesión y última actividad.</li>
-  <li><strong>Registro de instalación</strong>: identificador aleatorio de la instalación, versión de la app y fecha de última actividad, asociados a tu cuenta.</li>
-  <li><strong>Sugerencias enviadas</strong>: texto, correo de respuesta si lo diste, versión e idioma, asociados a tu cuenta. Se conservan mientras sean necesarias para atenderlas y se eliminan cuando lo pides por correo.</li>
-  <li><strong>Contabilidad de uso</strong>: registros de las llamadas a proveedores externos y contadores diarios asociados a tu identificador de cuenta, sin el contenido de tus consultas.</li>
-  <li><strong>Viajes compartidos</strong>: la copia de un viaje que compartiste mediante enlace deja de ser accesible a los 30 días.</li>
-  <li><strong>Sesiones grupales Companion caducadas</strong>: la última posición de una sesión que caducó sin que el conductor la terminara; nadie puede verla.</li>
+  <li><strong>Estadísticas de uso anónimas</strong>: los registros de llamadas a proveedores externos (proveedor, función, número de unidades o tokens, coste estimado y fecha) se mantienen para controlar costes. Se les quita el identificador de cuenta, de modo que ya no pueden vincularse a ti, y nunca contuvieron el contenido de tus consultas.</li>
+  <li><strong>Marca de eliminación</strong>: para que lo anterior funcione conservamos durante 31 días un hash criptográfico unidireccional de tu identificador de cuenta junto con la hora de la eliminación. No puede revertirse hasta tu cuenta, no está vinculado a ningún otro registro y se borra automáticamente pasados los 30 días que puede durar un token de sesión.</li>
+  <li><strong>Lista de invitados de la beta cerrada</strong>: si te invitamos a la beta cerrada, tu correo sigue en la lista que controla quién puede iniciar sesión. No está vinculado a ningún otro registro. Escribe a <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a> si quieres que lo quitemos.</li>
+  <li><strong>Registros que debamos conservar por ley</strong>, si en un caso concreto se aplica alguna obligación legal.</li>
 </ul>
+<p>Además, una limpieza periódica elimina automáticamente los viajes compartidos caducados y las sesiones grupales Companion caducadas, borres o no tu cuenta.</p>
 
 <h2>Copias que no controlamos nosotros directamente</h2>
 <ul>
-  <li><strong>Copias de seguridad de la base de datos</strong> hechas antes de la eliminación pueden contener tus datos hasta que se renueven (conservamos las 14 más recientes).</li>
+  <li><strong>Copias de seguridad de la base de datos</strong> hechas antes de la eliminación pueden contener tus datos hasta que se renueven (conservamos las 14 más recientes, es decir, hasta 14 días). No restauramos de ellas las cuentas eliminadas.</li>
   <li><strong>Informes de fallo</strong> (Sentry) se conservan 90 días y <strong>los logs del servidor</strong> 7 días.</li>
-  <li><strong>Mensajes de correo</strong> con tus sugerencias y capturas recibidos en nuestro buzón: los borramos al atender tu solicitud por correo.</li>
-  <li><strong>Pagos</strong>: no guardamos datos de pago ni facturas; los gestiona Google Play y los conserva según su propia política.</li>
+  <li><strong>Mensajes de correo</strong> con tus sugerencias y capturas recibidos en nuestro buzón: los borramos cuando nos lo pides por correo (ver opción 2).</li>
+  <li><strong>Pagos</strong>: no guardamos datos de pago ni facturas; los gestiona Google Play y conserva sus propios registros de facturación según su propia política.</li>
 </ul>
 
 <hr />

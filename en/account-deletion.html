@@ -56,7 +56,7 @@
 <hr />
 
 <h2>Option 2 &mdash; Request by email</h2>
-<p>If you cannot open the app (for example the phone is lost or you have already uninstalled it), or you want us to also delete the records that option 1 does not remove (see below), send an email to
+<p>If you cannot open the app (for example the phone is lost or you have already uninstalled it), send an email to
 <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>
 with:</p>
 <ul>
@@ -64,36 +64,42 @@ with:</p>
   <li>The email address you used to sign in (Google or Facebook)</li>
   <li>Optional: the approximate date of your last sign-in</li>
 </ul>
-<p>We reply within <strong>7 working days</strong> confirming the deletion. The law requires us to complete the request within 30 days at most. A request by email deletes your account and all the records linked to it that are listed on this page.</p>
+<p>We reply within <strong>7 working days</strong> confirming the deletion. The law requires us to complete the request within 30 days at most. A request by email deletes exactly the same data as option 1.</p>
 
 <hr />
 
-<h2>What is deleted when you delete your account from the app</h2>
+<h2>What is deleted when you delete your account</h2>
+<p>The deletion runs as a single operation on our server: either everything below is deleted or nothing is, and the server answers with an error if it failed.</p>
 <ul>
+  <li><strong>Account record</strong>: email address, name, sign-in provider, internal identifier and the dates of sign-up, last sign-in and last activity.</li>
   <li><strong>Profile and everything in it</strong>: traveller preferences, AI profile, synced settings, Hall of Fame nickname and country, your places, recent searches, garage vehicles, emergency contacts and the subscription tier with its purchase token.</li>
   <li><strong>Saved trips</strong>: every trip on the server, with its selections, the saved plan and the hotel nights you marked, as well as the records of deleted trips.</li>
   <li><strong>Trip monitoring and alerts</strong>: monitored trips, their route geometry, their alerts and the alert state.</li>
   <li><strong>Push notification identifiers</strong> of your devices.</li>
+  <li><strong>Installation records</strong>: the random installation identifier, the app version and the date of last activity linked to your account.</li>
+  <li><strong>Suggestions you sent</strong>: the text, the reply email if you gave one, the version and the language. They are deleted, not anonymised.</li>
+  <li><strong>Shared trips</strong>: the copies of trips you shared by link are deleted at once, so the links stop working immediately.</li>
+  <li><strong>Companion group sessions</strong> you created as the driver, including the last position they stored.</li>
+  <li><strong>Daily call counters</strong> linked to your account.</li>
   <li><strong>Local data on the device</strong>: trips and preferences saved on the phone, and the session.</li>
 </ul>
+<p>A sign-in token issued before the deletion stops working at once (for example on another phone where you were still signed in), so it cannot write anything or bring any of this back. Signing in again creates a new, empty account.</p>
 
-<h2>What is kept after deleting from the app, and how to have it deleted</h2>
-<p>These records are not removed by the in-app button. They are deleted when you ask us by email (option 2):</p>
+<h2>What is kept after deleting your account</h2>
 <ul>
-  <li><strong>Account record</strong>: email address, name, sign-in provider, internal identifier and the dates of sign-up, last sign-in and last activity.</li>
-  <li><strong>Installation record</strong>: the random installation identifier, the app version and the date of last activity, linked to your account.</li>
-  <li><strong>Suggestions you sent</strong>: text, reply email if you gave one, version and language, linked to your account. They are kept for as long as needed to handle them and deleted when you ask by email.</li>
-  <li><strong>Usage accounting</strong>: records of calls to external providers and daily counters linked to your account identifier, without the content of your queries.</li>
-  <li><strong>Shared trips</strong>: the copy of a trip you shared by link stops being accessible after 30 days.</li>
-  <li><strong>Expired Companion group sessions</strong>: the last position of a session that expired without the driver ending it; nobody can view it.</li>
+  <li><strong>Anonymous usage statistics</strong>: the records of calls to external providers (provider, feature, number of units or tokens, estimated cost, date) stay for cost control. The account identifier is removed from them, so they can no longer be linked to you, and they never contained the content of your queries.</li>
+  <li><strong>Deletion marker</strong>: to make the previous point work we keep, for 31 days, one one-way cryptographic hash of your account identifier together with the time of the deletion. It cannot be reversed to your account, is linked to no other record and is deleted automatically after the 30 days a sign-in token can last.</li>
+  <li><strong>Closed-beta invitation list</strong>: if you were invited to the closed beta, the invited email address stays on the list that controls who may sign in. It is not linked to any other record. Email <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a> if you want it removed.</li>
+  <li><strong>Records we must keep by law</strong>, if any legal obligation applies to a specific case.</li>
 </ul>
+<p>Expired shared trips and expired Companion group sessions are also removed automatically by a periodic cleanup, whether or not you delete your account.</p>
 
 <h2>Copies we do not control directly</h2>
 <ul>
-  <li><strong>Database backups</strong> made before the deletion may contain your data until they are rotated out (we keep the 14 most recent).</li>
+  <li><strong>Database backups</strong> made before the deletion may contain your data until they are rotated out (we keep the 14 most recent, so up to 14 days). We do not restore deleted accounts from them.</li>
   <li><strong>Crash reports</strong> (Sentry) are kept for 90 days and <strong>server logs</strong> for 7 days.</li>
-  <li><strong>Email messages</strong> with your suggestions and screenshots received in our mailbox: we delete them when handling your request by email.</li>
-  <li><strong>Payments</strong>: we do not keep payment data or invoices; Google Play handles them and keeps them under its own policy.</li>
+  <li><strong>Email messages</strong> with your suggestions and screenshots received in our mailbox: we delete them when you ask us by email (see option 2).</li>
+  <li><strong>Payments</strong>: we do not keep payment data or invoices; Google Play handles them and keeps its own billing records under its own policy.</li>
 </ul>
 
 <hr />
