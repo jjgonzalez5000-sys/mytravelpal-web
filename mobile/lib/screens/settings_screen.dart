@@ -225,33 +225,37 @@ class SettingsScreen extends ConsumerWidget {
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _pickTheme(context, ref, current: mode),
               ),
-              // Colour preset picker — three swatch chips. Ignored
-              // when Material You (below) is on AND the device is
-              // Android 12+, but the chips stay tappable so the user
-              // knows what will apply if they disable dynamic colour.
-              const _ColorPresetPicker(),
-              Consumer(builder: (context, ref, _) {
-                final enabled = ref.watch(themeDynamicProvider);
-                return SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.palette_outlined),
-                  title: Text(l.settingsDynamicColor),
-                  subtitle: Text(l.settingsDynamicColorSub),
-                  value: enabled,
-                  onChanged: (v) =>
-                      ref.read(themeDynamicProvider.notifier).set(v),
-                );
-              }),
-              Consumer(builder: (context, ref, _) {
-                final enabled = ref.watch(themeOledProvider);
-                return SwitchListTile.adaptive(
-                  secondary: const Icon(Icons.dark_mode_outlined),
-                  title: Text(l.settingsOled),
-                  subtitle: Text(l.settingsOledSub),
-                  value: enabled,
-                  onChanged: (v) =>
-                      ref.read(themeOledProvider.notifier).set(v),
-                );
-              }),
+              // Palette, Material You and OLED black are hidden on the
+              // plain light theme.
+              if (mode != ThemeMode.light) ...[
+                // Colour preset picker — three swatch chips. Ignored
+                // when Material You (below) is on AND the device is
+                // Android 12+, but the chips stay tappable so the user
+                // knows what will apply if they disable dynamic colour.
+                const _ColorPresetPicker(),
+                Consumer(builder: (context, ref, _) {
+                  final enabled = ref.watch(themeDynamicProvider);
+                  return SwitchListTile.adaptive(
+                    secondary: const Icon(Icons.palette_outlined),
+                    title: Text(l.settingsDynamicColor),
+                    subtitle: Text(l.settingsDynamicColorSub),
+                    value: enabled,
+                    onChanged: (v) =>
+                        ref.read(themeDynamicProvider.notifier).set(v),
+                  );
+                }),
+                Consumer(builder: (context, ref, _) {
+                  final enabled = ref.watch(themeOledProvider);
+                  return SwitchListTile.adaptive(
+                    secondary: const Icon(Icons.dark_mode_outlined),
+                    title: Text(l.settingsOled),
+                    subtitle: Text(l.settingsOledSub),
+                    value: enabled,
+                    onChanged: (v) =>
+                        ref.read(themeOledProvider.notifier).set(v),
+                  );
+                }),
+              ],
               const _DensityPicker(),
             ],
           ),
