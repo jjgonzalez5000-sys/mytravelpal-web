@@ -45,6 +45,7 @@ import '../widgets/trip_co2_row.dart';
 import '../widgets/my_place_category.dart';
 import '../widgets/my_places_on_route.dart';
 import '../widgets/custom_stop_sheet.dart';
+import '../widgets/stop_ideas_view.dart';
 import '../widgets/stop_suggestions_sheet.dart';
 import '../services/stop_slotting.dart';
 import '../services/toll_detour_waypoints.dart';
@@ -424,6 +425,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     // arrive in enrich — those get applied after the merge below.
     if (widget.initialSelections != null) {
       _applyOverrideSelections(widget.initialSelections!);
+      _autoSuggestions ??= _restoreSuggestions(widget.initialSelections!);
       // If enrich isn't a two-phase flow (already merged), the picks
       // can also be applied right now — response objects are already
       // populated. The two-phase path handles this after `.then` of
@@ -776,7 +778,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             travellers: profile?.travellers ?? 1,
             hasKids: profile?.hasKids ?? false,
             hasPets: profile?.hasPets ?? false,
-            limit: 3,
+            limit: 10,
+            extras: 25,
             locale: locale,
           );
       if (!mounted) return;
@@ -802,6 +805,14 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         for (final e in _suggestionStopKeys.entries)
           if (_addedStops.containsKey(e.value)) e.key,
       };
+
+  /// AI stop ideas saved with the trip, so reopening it never searches again.
+  StopSuggestionsResult? _restoreSuggestions(Map<String, dynamic> selections) {
+    final raw = selections['ai_suggestions'];
+    if (raw is! Map<String, dynamic>) return null;
+    final res = StopSuggestionsResult.fromJson(raw);
+    return res.suggestions.isEmpty ? null : res;
+  }
 
   /// suggestion key -> the `place:<id>` stop it was added as.
   final Map<String, String> _suggestionStopKeys = {};
@@ -842,19 +853,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   ?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
-        for (final s in res.suggestions)
-          SuggestionCard(
-            suggestion: s,
-            added: added.contains(suggestionKey(s)),
-            onAdd: () => _addSuggestion(s),
-            onTap: () => showSuggestionDetail(
-              context,
-              suggestion: s,
-              geometry: _response.route.geometry,
-              added: added.contains(suggestionKey(s)),
-              onAdd: _addSuggestion,
-            ),
-          ),
+        StopIdeasView(
+          suggestions: res.suggestions,
+          geometry: _response.route.geometry,
+          addedKeys: added,
+          ai: res.ai,
+          onAdd: _addSuggestion,
+        ),
       ],
     );
   }
@@ -3062,6 +3067,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final map = <String, dynamic>{
       if (placeIds.isNotEmpty) 'picked_place_ids': placeIds,
       if (stopPlans.isNotEmpty) 'stop_plans': stopPlans,
+      if (_autoSuggestions != null && _autoSuggestions!.suggestions.isNotEmpty)
+        'ai_suggestions': _autoSuggestions!.toJson(),
       if (fuelKeys.isNotEmpty) 'picked_fuel_keys': fuelKeys,
       if (restaurantKeys.isNotEmpty) 'picked_restaurant_keys': restaurantKeys,
       if (hotelsByDay.isNotEmpty) 'picked_hotel_keys_by_day': hotelsByDay,

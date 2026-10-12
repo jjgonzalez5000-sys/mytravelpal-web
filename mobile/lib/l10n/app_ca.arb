@@ -809,6 +809,23 @@
   "tollsUnavailableMessage": "Ara mateix no hem pogut obtenir els peatges d'aquesta ruta, així que el total no els inclou. Torna-ho a provar d'aquí a un moment.",
   "tripLegendDriving": "Conducció",
   "tripLegendBreakfast": "Esmorzar",
+  "myPlacesCatHistory": "Història",
+  "myPlacesCatBeach": "Platja",
+  "myPlacesCatShopping": "Compres",
+  "suggestFilterAll": "Tot",
+  "suggestFilterCount": "{label} ({count})",
+  "@suggestFilterCount": {
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "suggestMapFullscreen": "Mapa a pantalla completa",
+  "suggestMapClose": "Tanca el mapa",
+  "suggestAiPick": "Triat per la IA",
+  "suggestMoreNearby": "Més llocs a prop",
+  "suggestNoneForFilter": "No hi ha res d'aquest tipus a prop de la teva ruta",
+  "suggestShowMore": "Mostra'n {count} més",
+  "@suggestShowMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "tripLegendLunch": "Dinar",
   "tripLegendDinner": "Sopar",
   "tripLegendRest": "Parada afegida",

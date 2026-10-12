@@ -648,6 +648,7 @@ class ApiClient {
     bool hasKids = false,
     bool hasPets = false,
     int limit = 5,
+    int extras = 0,
     List<String> excludeNames = const [],
     String? locale,
   }) async {
@@ -665,6 +666,7 @@ class ApiClient {
       'has_kids': hasKids,
       'has_pets': hasPets,
       'limit': limit,
+      if (extras > 0) 'extras': extras,
       'exclude_names': excludeNames,
       if (normalizedLocale != null) 'locale': normalizedLocale,
     });

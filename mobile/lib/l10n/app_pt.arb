@@ -771,6 +771,23 @@
   "tollsUnavailableMessage": "Não foi possível obter as portagens deste percurso neste momento, por isso o total não as inclui. Tenta novamente daqui a pouco.",
   "tripLegendDriving": "Condução",
   "tripLegendBreakfast": "Pequeno-almoço",
+  "myPlacesCatHistory": "História",
+  "myPlacesCatBeach": "Praia",
+  "myPlacesCatShopping": "Compras",
+  "suggestFilterAll": "Tudo",
+  "suggestFilterCount": "{label} ({count})",
+  "@suggestFilterCount": {
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "suggestMapFullscreen": "Mapa em ecrã inteiro",
+  "suggestMapClose": "Fechar mapa",
+  "suggestAiPick": "Escolhido pela IA",
+  "suggestMoreNearby": "Mais locais por perto",
+  "suggestNoneForFilter": "Nada deste tipo perto do teu percurso",
+  "suggestShowMore": "Mostrar mais {count}",
+  "@suggestShowMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "tripLegendLunch": "Almoço",
   "tripLegendDinner": "Jantar",
   "tripLegendRest": "Paragem adicionada",

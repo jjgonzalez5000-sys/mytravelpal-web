@@ -2831,6 +2831,23 @@
   "tollsUnavailableMessage": "We couldn't get the toll prices for this route right now, so the total doesn't include them. Try again in a moment.",
   "tripLegendDriving": "Driving",
   "tripLegendBreakfast": "Breakfast",
+  "myPlacesCatHistory": "History",
+  "myPlacesCatBeach": "Beach",
+  "myPlacesCatShopping": "Shopping",
+  "suggestFilterAll": "All",
+  "suggestFilterCount": "{label} ({count})",
+  "@suggestFilterCount": {
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "suggestMapFullscreen": "Full screen map",
+  "suggestMapClose": "Close map",
+  "suggestAiPick": "Picked by AI",
+  "suggestMoreNearby": "More places nearby",
+  "suggestNoneForFilter": "Nothing of this type near your route",
+  "suggestShowMore": "Show {count} more",
+  "@suggestShowMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "tripLegendLunch": "Lunch",
   "tripLegendDinner": "Dinner",
   "tripLegendRest": "Rest stop added",

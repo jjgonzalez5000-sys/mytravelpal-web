@@ -4721,6 +4721,44 @@ class AppLocalizationsCa extends AppLocalizations {
   String get tripLegendBreakfast => 'Esmorzar';
 
   @override
+  String get myPlacesCatHistory => 'Història';
+
+  @override
+  String get myPlacesCatBeach => 'Platja';
+
+  @override
+  String get myPlacesCatShopping => 'Compres';
+
+  @override
+  String get suggestFilterAll => 'Tot';
+
+  @override
+  String suggestFilterCount(String label, int count) {
+    return '$label ($count)';
+  }
+
+  @override
+  String get suggestMapFullscreen => 'Mapa a pantalla completa';
+
+  @override
+  String get suggestMapClose => 'Tanca el mapa';
+
+  @override
+  String get suggestAiPick => 'Triat per la IA';
+
+  @override
+  String get suggestMoreNearby => 'Més llocs a prop';
+
+  @override
+  String get suggestNoneForFilter =>
+      'No hi ha res d\'aquest tipus a prop de la teva ruta';
+
+  @override
+  String suggestShowMore(int count) {
+    return 'Mostra\'n $count més';
+  }
+
+  @override
   String get tripLegendLunch => 'Dinar';
 
   @override

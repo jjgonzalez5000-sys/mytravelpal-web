@@ -2772,6 +2772,23 @@
   "tollsUnavailableMessage": "No hemos podido obtener los peajes de esta ruta ahora mismo, así que el total no los incluye. Inténtalo de nuevo en un momento.",
   "tripLegendDriving": "Conducción",
   "tripLegendBreakfast": "Desayuno",
+  "myPlacesCatHistory": "Historia",
+  "myPlacesCatBeach": "Playa",
+  "myPlacesCatShopping": "Compras",
+  "suggestFilterAll": "Todo",
+  "suggestFilterCount": "{label} ({count})",
+  "@suggestFilterCount": {
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "suggestMapFullscreen": "Mapa a pantalla completa",
+  "suggestMapClose": "Cerrar mapa",
+  "suggestAiPick": "Elegida por la IA",
+  "suggestMoreNearby": "Más lugares cerca",
+  "suggestNoneForFilter": "No hay nada de este tipo cerca de tu ruta",
+  "suggestShowMore": "Mostrar {count} más",
+  "@suggestShowMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "tripLegendLunch": "Comida",
   "tripLegendDinner": "Cena",
   "tripLegendRest": "Parada añadida",

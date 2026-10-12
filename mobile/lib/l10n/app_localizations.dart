@@ -8417,6 +8417,72 @@ abstract class AppLocalizations {
   /// **'Breakfast'**
   String get tripLegendBreakfast;
 
+  /// No description provided for @myPlacesCatHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get myPlacesCatHistory;
+
+  /// No description provided for @myPlacesCatBeach.
+  ///
+  /// In en, this message translates to:
+  /// **'Beach'**
+  String get myPlacesCatBeach;
+
+  /// No description provided for @myPlacesCatShopping.
+  ///
+  /// In en, this message translates to:
+  /// **'Shopping'**
+  String get myPlacesCatShopping;
+
+  /// No description provided for @suggestFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get suggestFilterAll;
+
+  /// No description provided for @suggestFilterCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{label} ({count})'**
+  String suggestFilterCount(String label, int count);
+
+  /// No description provided for @suggestMapFullscreen.
+  ///
+  /// In en, this message translates to:
+  /// **'Full screen map'**
+  String get suggestMapFullscreen;
+
+  /// No description provided for @suggestMapClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close map'**
+  String get suggestMapClose;
+
+  /// No description provided for @suggestAiPick.
+  ///
+  /// In en, this message translates to:
+  /// **'Picked by AI'**
+  String get suggestAiPick;
+
+  /// No description provided for @suggestMoreNearby.
+  ///
+  /// In en, this message translates to:
+  /// **'More places nearby'**
+  String get suggestMoreNearby;
+
+  /// No description provided for @suggestNoneForFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing of this type near your route'**
+  String get suggestNoneForFilter;
+
+  /// No description provided for @suggestShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show {count} more'**
+  String suggestShowMore(int count);
+
   /// No description provided for @tripLegendLunch.
   ///
   /// In en, this message translates to:

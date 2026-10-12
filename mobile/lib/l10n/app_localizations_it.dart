@@ -4728,6 +4728,44 @@ class AppLocalizationsIt extends AppLocalizations {
   String get tripLegendBreakfast => 'Colazione';
 
   @override
+  String get myPlacesCatHistory => 'Storia';
+
+  @override
+  String get myPlacesCatBeach => 'Spiaggia';
+
+  @override
+  String get myPlacesCatShopping => 'Shopping';
+
+  @override
+  String get suggestFilterAll => 'Tutto';
+
+  @override
+  String suggestFilterCount(String label, int count) {
+    return '$label ($count)';
+  }
+
+  @override
+  String get suggestMapFullscreen => 'Mappa a schermo intero';
+
+  @override
+  String get suggestMapClose => 'Chiudi mappa';
+
+  @override
+  String get suggestAiPick => 'Scelto dall\'IA';
+
+  @override
+  String get suggestMoreNearby => 'Altri luoghi nelle vicinanze';
+
+  @override
+  String get suggestNoneForFilter =>
+      'Niente di questo tipo vicino al tuo percorso';
+
+  @override
+  String suggestShowMore(int count) {
+    return 'Mostra altri $count';
+  }
+
+  @override
   String get tripLegendLunch => 'Pranzo';
 
   @override

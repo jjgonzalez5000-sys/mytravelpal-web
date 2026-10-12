@@ -2783,6 +2783,23 @@
   "tollsUnavailableMessage": "Die Mautkosten für diese Route konnten gerade nicht abgerufen werden, daher sind sie nicht in der Summe enthalten. Versuche es gleich noch einmal.",
   "tripLegendDriving": "Fahrt",
   "tripLegendBreakfast": "Frühstück",
+  "myPlacesCatHistory": "Geschichte",
+  "myPlacesCatBeach": "Strand",
+  "myPlacesCatShopping": "Einkaufen",
+  "suggestFilterAll": "Alle",
+  "suggestFilterCount": "{label} ({count})",
+  "@suggestFilterCount": {
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "suggestMapFullscreen": "Vollbildkarte",
+  "suggestMapClose": "Karte schließen",
+  "suggestAiPick": "Von der KI ausgewählt",
+  "suggestMoreNearby": "Weitere Orte in der Nähe",
+  "suggestNoneForFilter": "Nichts dieser Art in der Nähe deiner Route",
+  "suggestShowMore": "{count} weitere anzeigen",
+  "@suggestShowMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "tripLegendLunch": "Mittagessen",
   "tripLegendDinner": "Abendessen",
   "tripLegendRest": "Hinzugefügter Stopp",

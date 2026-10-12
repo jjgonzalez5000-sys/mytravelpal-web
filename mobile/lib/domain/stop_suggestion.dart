@@ -15,6 +15,8 @@ class StopSuggestion {
     required this.distanceFromRouteKm,
     required this.alongKm,
     required this.fitsWindow,
+    this.kind,
+    this.picked = true,
     this.website,
     this.attributes = const {},
   });
@@ -33,6 +35,12 @@ class StopSuggestion {
   final double distanceFromRouteKm;
   final double alongKm;
   final bool fitsWindow;
+
+  /// Normalised type from the server; null for answers that predate it.
+  final MyPlaceCategory? kind;
+
+  /// False for the extra nearby places the model did not choose.
+  final bool picked;
   final String? website;
 
   /// What the place itself lists: address, phone, website, opening hours,
@@ -41,10 +49,21 @@ class StopSuggestion {
 
   int get totalMinutes => visitMinutes + detourMinutes;
 
-  /// Closest of our own categories, so a suggestion saved as a place gets
-  /// a sensible icon.
-  MyPlaceCategory get placeCategory {
+  /// Type of the place: the server's normalised kind, or a guess from the
+  /// raw category for answers that predate it.
+  MyPlaceCategory get placeCategory => kind ?? _guessCategory();
+
+  MyPlaceCategory _guessCategory() {
     final c = category.toLowerCase();
+    if (c.contains('beach')) return MyPlaceCategory.beach;
+    if (c.contains('commercial')) return MyPlaceCategory.shopping;
+    if (c.contains('castle') ||
+        c.contains('ruines') ||
+        c.contains('heritage') ||
+        c.contains('archaeological') ||
+        c.contains('place_of_worship')) {
+      return MyPlaceCategory.history;
+    }
     if (c.contains('catering')) return MyPlaceCategory.food;
     if (c.contains('zoo') ||
         c.contains('aquarium') ||
@@ -54,21 +73,35 @@ class StopSuggestion {
     }
     if (c.contains('museum') ||
         c.contains('culture') ||
-        c.contains('heritage') ||
         c.contains('building')) {
       return MyPlaceCategory.culture;
     }
     if (c.contains('viewpoint') || c.contains('sights')) {
       return MyPlaceCategory.viewpoint;
     }
-    if (c.contains('natural') ||
-        c.contains('park') ||
-        c.contains('beach') ||
-        c.contains('forest')) {
+    if (c.contains('natural') || c.contains('park') || c.contains('forest')) {
       return MyPlaceCategory.nature;
     }
     return MyPlaceCategory.other;
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        'lat': coordinate.lat,
+        'lon': coordinate.lon,
+        'category': category,
+        if (kind != null) 'kind': kind!.name,
+        'why': why,
+        'visit_minutes': visitMinutes,
+        'detour_minutes': detourMinutes,
+        'distance_from_route_km': distanceFromRouteKm,
+        'along_km': alongKm,
+        'fits_window': fitsWindow,
+        'picked': picked,
+        if (website != null) 'website': website,
+        'attributes': attributes,
+      };
 
   /// Throws [FormatException] when the entry cannot describe a place.
   factory StopSuggestion.fromJson(Map<String, dynamic> json) {
@@ -83,6 +116,7 @@ class StopSuggestion {
       throw const FormatException('StopSuggestion: missing position');
     }
     final website = json['website'];
+    final kindName = json['kind'];
     return StopSuggestion(
       id: id,
       name: name,
@@ -95,6 +129,8 @@ class StopSuggestion {
           (json['distance_from_route_km'] as num?)?.toDouble() ?? 0,
       alongKm: (json['along_km'] as num?)?.toDouble() ?? 0,
       fitsWindow: json['fits_window'] as bool? ?? true,
+      kind: kindName is String ? _kindByName(kindName) : null,
+      picked: json['picked'] as bool? ?? true,
       website: website is String && website.isNotEmpty ? website : null,
       attributes: {
         if (json['attributes'] is Map<String, dynamic>)
@@ -106,6 +142,13 @@ class StopSuggestion {
       },
     );
   }
+}
+
+MyPlaceCategory? _kindByName(String name) {
+  for (final c in MyPlaceCategory.values) {
+    if (c.name == name) return c;
+  }
+  return null;
 }
 
 class StopSuggestionsResult {
@@ -126,6 +169,14 @@ class StopSuggestionsResult {
   final String? reason;
   final int windowMinutes;
   final int usedMinutes;
+
+  Map<String, dynamic> toJson() => {
+        'suggestions': [for (final s in suggestions) s.toJson()],
+        'ai': ai,
+        if (reason != null) 'reason': reason,
+        'window_minutes': windowMinutes,
+        'used_minutes': usedMinutes,
+      };
 
   factory StopSuggestionsResult.fromJson(Map<String, dynamic> json) {
     final rows = <StopSuggestion>[];

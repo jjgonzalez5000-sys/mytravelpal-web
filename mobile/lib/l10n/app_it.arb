@@ -2783,6 +2783,23 @@
   "tollsUnavailableMessage": "Al momento non siamo riusciti a ottenere i pedaggi di questo percorso, quindi il totale non li include. Riprova tra un attimo.",
   "tripLegendDriving": "Guida",
   "tripLegendBreakfast": "Colazione",
+  "myPlacesCatHistory": "Storia",
+  "myPlacesCatBeach": "Spiaggia",
+  "myPlacesCatShopping": "Shopping",
+  "suggestFilterAll": "Tutto",
+  "suggestFilterCount": "{label} ({count})",
+  "@suggestFilterCount": {
+    "placeholders": { "label": { "type": "String" }, "count": { "type": "int" } }
+  },
+  "suggestMapFullscreen": "Mappa a schermo intero",
+  "suggestMapClose": "Chiudi mappa",
+  "suggestAiPick": "Scelto dall'IA",
+  "suggestMoreNearby": "Altri luoghi nelle vicinanze",
+  "suggestNoneForFilter": "Niente di questo tipo vicino al tuo percorso",
+  "suggestShowMore": "Mostra altri {count}",
+  "@suggestShowMore": {
+    "placeholders": { "count": { "type": "int" } }
+  },
   "tripLegendLunch": "Pranzo",
   "tripLegendDinner": "Cena",
   "tripLegendRest": "Sosta aggiunta",

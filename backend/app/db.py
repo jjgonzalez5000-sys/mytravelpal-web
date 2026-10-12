@@ -268,6 +268,20 @@ _CREATE_STATEMENTS = [
     CREATE INDEX IF NOT EXISTS idx_poi_cache_expires_at
         ON poi_cache (expires_at)
     """,
+    # AI stop-suggestion candidates and picks per route corridor (see
+    # api/v1/suggest.py). Short-lived: the places layer below it lasts longer.
+    """
+    CREATE TABLE IF NOT EXISTS suggest_cache (
+        key TEXT PRIMARY KEY,
+        payload JSONB NOT NULL,
+        fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_suggest_cache_expires_at
+        ON suggest_cache (expires_at)
+    """,
     # Companion sessions — driver creates a session and shares a
     # 6-char join code. Passengers poll every 5s to get the
     # driver's live position + ETA. Driver pushes every 10s.

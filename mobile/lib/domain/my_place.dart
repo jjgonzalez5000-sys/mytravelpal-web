@@ -2,7 +2,17 @@ import '../api/models.dart' show LatLon;
 
 /// What kind of stop a saved place is. Drives the icon and, later, the
 /// kind of suggestion the AI layer pairs it with.
-enum MyPlaceCategory { food, viewpoint, culture, nature, kids, other }
+enum MyPlaceCategory {
+  food,
+  viewpoint,
+  culture,
+  history,
+  nature,
+  beach,
+  kids,
+  shopping,
+  other,
+}
 
 /// A place the driver likes to stop at, saved once and offered whenever a
 /// route passes near it. Unlike [FavoritePlace] (Home / Work shortcuts for

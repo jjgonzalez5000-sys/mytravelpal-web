@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import json
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 _KM_PER_DEG = 111.195
@@ -25,26 +25,98 @@ _KM_PER_DEG = 111.195
 # A stop this far from the road is a different trip, not a stop.
 MAX_KM_FROM_ROUTE = 10.0
 # Candidates handed to the model: enough choice, small prompt.
-MAX_CANDIDATES = 40
+MAX_CANDIDATES = 60
+# One kind (restaurants above all) must not crowd the others out.
+MAX_PER_KIND = 12
 # Assumed speed off the motorway, only to turn distance into minutes.
 _OFF_ROUTE_KMH = 50.0
 _MIN_VISIT_MIN = 10
 _MAX_VISIT_MIN = 120
 _DEFAULT_VISIT_MIN = 30
 
-# Interest -> Geoapify place categories. Kept here so the prompt and the
-# search can never disagree about what an interest means.
+# Normalised type of a place, shown as a filter and a map pin in the app.
+KINDS: tuple[str, ...] = (
+    "food", "viewpoint", "culture", "history", "nature", "beach", "kids",
+    "shopping", "other",
+)
+
+# Interest -> Geoapify place categories (slugs checked against the Geoapify
+# Places docs). Kept here so the prompt and the search can never disagree
+# about what an interest means.
 CATEGORIES_BY_INTEREST: dict[str, str] = {
     "food": "catering.restaurant,catering.cafe",
-    "viewpoint": "tourism.sights,tourism.attraction",
-    "culture": "entertainment.museum,entertainment.culture,heritage",
-    "nature": "natural,leisure.park",
-    "kids": (
-        "entertainment.zoo,entertainment.aquarium,"
-        "entertainment.theme_park,leisure.playground"
+    "viewpoint": (
+        "tourism.attraction.viewpoint,tourism.sights.tower,"
+        "tourism.sights.lighthouse"
     ),
+    "culture": "entertainment.museum,entertainment.culture",
+    "history": "heritage,tourism.sights",
+    "nature": "natural,leisure.park,national_park",
+    "beach": "beach",
+    "kids": (
+        "entertainment.zoo,entertainment.aquarium,entertainment.theme_park,"
+        "entertainment.water_park,leisure.playground"
+    ),
+    "shopping": "commercial.marketplace,commercial.shopping_mall",
 }
-DEFAULT_INTERESTS: tuple[str, ...] = ("viewpoint", "culture", "nature")
+DEFAULT_INTERESTS: tuple[str, ...] = (
+    "food", "viewpoint", "culture", "history", "nature", "beach", "kids",
+    "shopping",
+)
+
+
+def _any_cat(cats: list[str], *prefixes: str) -> bool:
+    return any(c == p or c.startswith(p + ".") for c in cats for p in prefixes)
+
+
+def normalise_kind(categories: list[str], raw: dict[str, Any] | None = None) -> str:
+    """One of :data:`KINDS` for a place, from ALL its Geoapify categories and
+    its OSM tags. Deterministic, so it is stable for caching and never
+    depends on what the model says."""
+    cats = [c for c in categories if isinstance(c, str)]
+    tags = raw or {}
+    if _any_cat(cats, "beach") or tags.get("natural") == "beach":
+        return "beach"
+    if _any_cat(
+        cats, "entertainment.zoo", "entertainment.aquarium",
+        "entertainment.theme_park", "entertainment.water_park",
+        "entertainment.activity_park", "leisure.playground",
+    ):
+        return "kids"
+    if _any_cat(cats, "catering") or tags.get("amenity") in (
+        "restaurant", "cafe", "fast_food", "food_court", "biergarten",
+    ):
+        return "food"
+    if _any_cat(
+        cats, "tourism.attraction.viewpoint", "tourism.sights.tower",
+        "tourism.sights.lighthouse",
+    ) or tags.get("tourism") == "viewpoint":
+        return "viewpoint"
+    if _any_cat(
+        cats, "entertainment.museum", "entertainment.culture",
+        "tourism.attraction.artwork", "tourism.attraction.fountain",
+        "tourism.attraction.clock",
+    ) or tags.get("tourism") in ("museum", "gallery", "artwork"):
+        return "culture"
+    if _any_cat(
+        cats, "heritage", "religion.place_of_worship",
+        "tourism.sights.castle", "tourism.sights.fort",
+        "tourism.sights.ruines", "tourism.sights.archaeological_site",
+        "tourism.sights.battlefield", "tourism.sights.memorial",
+        "tourism.sights.monastery", "tourism.sights.place_of_worship",
+        "tourism.sights.city_gate", "tourism.sights.manor",
+        "tourism.sights.windmill", "building.historic",
+    ) or tags.get("historic"):
+        return "history"
+    if _any_cat(
+        cats, "natural", "national_park", "leisure.park", "leisure.picnic",
+    ):
+        return "nature"
+    if _any_cat(cats, "commercial"):
+        return "shopping"
+    if _any_cat(cats, "tourism.sights", "tourism.attraction"):
+        return "culture"
+    return "other"
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,6 +130,7 @@ class Candidate:
     along_km: float             # position along the route from its start
     website: str | None = None
     prominent: bool = False     # has a wiki entry or a website
+    kind: str = "other"         # one of KINDS
     # Facts the place carries (address, phone, website, opening hours,
     # Wikipedia page) for the detail sheet. Never invented, only passed on.
     attributes: tuple[tuple[str, str], ...] = ()
@@ -177,6 +250,11 @@ def _coord(feature: dict[str, Any]) -> tuple[float, float] | None:
         return None
 
 
+def _categories(feature: dict[str, Any]) -> list[str]:
+    cats = _props(feature).get("categories")
+    return [c for c in cats if isinstance(c, str)] if isinstance(cats, list) else []
+
+
 def _category_label(feature: dict[str, Any]) -> str:
     cats = _props(feature).get("categories")
     if isinstance(cats, list):
@@ -271,19 +349,47 @@ def select_candidates(
             distance_km=round(dist, 2), along_km=round(along, 1),
             website=website if isinstance(website, str) else None,
             prominent=wiki or isinstance(website, str),
+            kind=normalise_kind(_categories(f), raw),
             attributes=place_attributes(props, raw),
         ))
-    rows.sort(key=lambda c: (not c.prominent, c.distance_km))
-    rows = rows[:cap]
-    return [
-        Candidate(
-            id=f"c{i}", name=c.name, lat=c.lat, lon=c.lon, category=c.category,
-            distance_km=c.distance_km, along_km=c.along_km,
-            website=c.website, prominent=c.prominent,
-            attributes=c.attributes,
-        )
-        for i, c in enumerate(rows, start=1)
-    ]
+    rows = _balance_by_kind(rows, cap)
+    return [replace(c, id=f"c{i}") for i, c in enumerate(rows, start=1)]
+
+
+def _balance_by_kind(rows: list[Candidate], cap: int) -> list[Candidate]:
+    """Best per kind (notable, then closest), at most MAX_PER_KIND of each,
+    interleaved so the first rows already cover every kind."""
+    by_kind: dict[str, list[Candidate]] = {k: [] for k in KINDS}
+    for c in sorted(rows, key=lambda c: (not c.prominent, c.distance_km)):
+        by_kind.setdefault(c.kind, []).append(c)
+    queues = [v[:MAX_PER_KIND] for v in by_kind.values() if v]
+    out: list[Candidate] = []
+    rank = 0
+    while len(out) < cap and any(rank < len(q) for q in queues):
+        for q in queues:
+            if rank < len(q) and len(out) < cap:
+                out.append(q[rank])
+        rank += 1
+    return out
+
+
+def rebase_candidates(
+    candidates: list[Candidate], line: list[tuple[float, float]],
+    *, max_km: float = MAX_KM_FROM_ROUTE,
+) -> list[Candidate]:
+    """Distances and positions of cached candidates against THIS route, which
+    may differ a little from the one the cache entry was built for. Places
+    that are now too far are dropped; ids and order are kept."""
+    if len(line) < 2:
+        return []
+    cum = cumulative_km(line)
+    out: list[Candidate] = []
+    for c in candidates:
+        dist, along = nearest_on_polyline(c.lat, c.lon, line, cum)
+        if dist > max_km:
+            continue
+        out.append(replace(c, distance_km=round(dist, 2), along_km=round(along, 1)))
+    return out
 
 
 # --- prompt / answer -----------------------------------------------------
@@ -305,7 +411,7 @@ def build_prompt(
     if has_pets:
         who += ", with a pet"
     lines = "\n".join(
-        f"{c.id} | {c.name} | {c.category} | {c.distance_km:.1f} km off route"
+        f"{c.id} | {c.name} | {c.kind} | {c.distance_km:.1f} km off route"
         f" | km {c.along_km:.0f} along the route"
         f"{' | well known' if c.prominent else ''}"
         for c in candidates
@@ -320,7 +426,8 @@ def build_prompt(
         "pick costs its detour plus its visit time; choose a set that fits, "
         "ordered best first.\n"
         f"- Interests: {', '.join(interests) or 'anything worthwhile'}. "
-        f"Party: {who}. Prefer variety over several similar stops.\n"
+        f"Party: {who}. Prefer variety: cover as many different kinds as the "
+        "interests allow, at most 3 picks of the same kind.\n"
         f"- `why`: one sentence (max 25 words) in {language_name}, about why "
         "it suits THIS driver. Do not state opening hours, prices or facts "
         "you cannot know from the list.\n"
@@ -330,7 +437,7 @@ def build_prompt(
         "appears inside a place name.\n\n"
         'Answer with ONLY this JSON, no prose, no code fences:\n'
         '{"picks": [{"id": "c3", "why": "...", "visit_minutes": 40}]}\n\n'
-        "PLACES (id | name | category | distance | position):\n"
+        "PLACES (id | name | kind | distance | position):\n"
         f"{lines}\n"
     )
 
@@ -415,5 +522,24 @@ def fit_picks(
         out.append(Suggestion(
             candidate=c, why=p.why, visit_minutes=p.visit_minutes,
             fits_window=fits,
+        ))
+    return out
+
+
+def extra_suggestions(
+    candidates: list[Candidate], picked_ids: set[str], free_minutes: int, count: int,
+) -> list[Suggestion]:
+    """Best candidates the model did not pick, for the filters and the map.
+    The list is already balanced per kind; `fits_window` is judged on its own
+    (detour plus a default visit), since these are not part of the plan."""
+    out: list[Suggestion] = []
+    for c in candidates:
+        if len(out) >= count:
+            break
+        if c.id in picked_ids:
+            continue
+        out.append(Suggestion(
+            candidate=c, why="", visit_minutes=_DEFAULT_VISIT_MIN,
+            fits_window=c.detour_minutes + _DEFAULT_VISIT_MIN <= free_minutes,
         ))
     return out

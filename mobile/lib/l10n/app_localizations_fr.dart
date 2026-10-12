@@ -4746,6 +4746,43 @@ class AppLocalizationsFr extends AppLocalizations {
   String get tripLegendBreakfast => 'Petit-déjeuner';
 
   @override
+  String get myPlacesCatHistory => 'Histoire';
+
+  @override
+  String get myPlacesCatBeach => 'Plage';
+
+  @override
+  String get myPlacesCatShopping => 'Shopping';
+
+  @override
+  String get suggestFilterAll => 'Tout';
+
+  @override
+  String suggestFilterCount(String label, int count) {
+    return '$label ($count)';
+  }
+
+  @override
+  String get suggestMapFullscreen => 'Carte en plein écran';
+
+  @override
+  String get suggestMapClose => 'Fermer la carte';
+
+  @override
+  String get suggestAiPick => 'Choisi par l\'IA';
+
+  @override
+  String get suggestMoreNearby => 'Plus de lieux à proximité';
+
+  @override
+  String get suggestNoneForFilter => 'Rien de ce type près de votre itinéraire';
+
+  @override
+  String suggestShowMore(int count) {
+    return 'Afficher $count de plus';
+  }
+
+  @override
   String get tripLegendLunch => 'Déjeuner';
 
   @override

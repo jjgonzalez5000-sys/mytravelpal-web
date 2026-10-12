@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../api/api_client.dart' show ApiException;
 import '../api/models.dart' show DayPlan, LatLon;
+import '../design/stop_category_style.dart';
 import '../design/tokens.dart';
 import '../domain/my_place.dart';
 import '../domain/stop_suggestion.dart';
@@ -12,6 +13,7 @@ import '../providers.dart';
 import '../services/route_slice.dart';
 import 'my_place_category.dart';
 import 'poi_detail_sheet.dart' show PoiKind, showPoiDetailSheet;
+import 'stop_ideas_view.dart' show StopIdeasView;
 
 /// Opens the AI stop-suggestions sheet. [onAdd] adds a suggestion to the
 /// route and reports whether it was added.
@@ -86,8 +88,11 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
     MyPlaceCategory.food,
     MyPlaceCategory.viewpoint,
     MyPlaceCategory.culture,
+    MyPlaceCategory.history,
     MyPlaceCategory.nature,
+    MyPlaceCategory.beach,
     MyPlaceCategory.kids,
+    MyPlaceCategory.shopping,
   ];
 
   /// Index into the driving days, or null for the whole trip.
@@ -130,6 +135,8 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
             travellers: widget.profile?.travellers ?? 1,
             hasKids: widget.profile?.hasKids ?? false,
             hasPets: widget.profile?.hasPets ?? false,
+            limit: 10,
+            extras: 25,
             locale: locale,
           );
       if (!mounted) return;
@@ -274,27 +281,31 @@ class _StopSuggestionsSheetState extends ConsumerState<StopSuggestionsSheet> {
                 style: t.labelMedium?.copyWith(color: scheme.primary),
               ),
             ),
-            for (final s in result.suggestions)
-              SuggestionCard(
-                suggestion: s,
-                added: _added.contains(suggestionKey(s)),
-                onAdd: () => _add(s),
-                onTap: () => showSuggestionDetail(
-                  context,
-                  suggestion: s,
-                  geometry: widget.geometry,
-                  added: _added.contains(suggestionKey(s)),
-                  onAdd: (x) async {
-                    await _add(x);
-                    return _added.contains(suggestionKey(x));
-                  },
-                ),
-              ),
+            StopIdeasView(
+              suggestions: result.suggestions,
+              geometry: widget.geometry,
+              addedKeys: _added,
+              ai: result.ai,
+              onAdd: (s) async {
+                await _add(s);
+                return _added.contains(suggestionKey(s));
+              },
+            ),
           ],
         ],
       ],
     );
   }
+}
+
+/// Maps link that lands on the named place (name searched near its
+/// coordinate) instead of a bare pin that Maps snaps to a neighbouring one.
+String suggestionMapsUrl(StopSuggestion s) {
+  final name = s.name.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return Uri.https('www.google.com', '/maps/search/', {
+    'api': '1',
+    'query': '$name ${s.coordinate.lat},${s.coordinate.lon}',
+  }).toString();
 }
 
 /// Opens the place's detail sheet: the route and the stop on a map, the
@@ -326,9 +337,13 @@ Future<void> showSuggestionDetail(
     origin: geometry.isNotEmpty ? geometry.first : s.coordinate,
     destination: geometry.isNotEmpty ? geometry.last : s.coordinate,
     routeGeometry: geometry,
-    attributes: s.attributes,
+    attributes: {
+      if (!s.attributes.containsKey('google_maps_url'))
+        'google_maps_url': suggestionMapsUrl(s),
+      ...s.attributes,
+    },
     icon: myPlaceCategoryIcon(s.placeCategory),
-    accent: Theme.of(context).colorScheme.primary,
+    accent: stopCategoryStyle(s.placeCategory).color,
     isAdded: added,
     // Add only: the detail's button would flip to "remove" and this does not
     // remove, so it closes once the stop is on the route.
@@ -347,11 +362,15 @@ class SuggestionCard extends StatelessWidget {
     required this.added,
     required this.onAdd,
     this.onTap,
+    this.aiPick = false,
   });
 
   final StopSuggestion suggestion;
   final bool added;
   final VoidCallback onAdd;
+
+  /// Marks the card as chosen by the model (not just a place nearby).
+  final bool aiPick;
 
   /// Tapping the card (anywhere but the button) opens the place's details.
   final VoidCallback? onTap;
@@ -362,6 +381,8 @@ class SuggestionCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final s = suggestion;
+    final style = stopCategoryStyle(s.placeCategory);
+    final tint = style.onSurface(Theme.of(context).brightness);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -378,15 +399,43 @@ class SuggestionCard extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: scheme.primaryContainer,
-            foregroundColor: scheme.onPrimaryContainer,
-            child: Icon(myPlaceCategoryIcon(s.placeCategory), size: 18),
+            backgroundColor: style.color,
+            foregroundColor: Colors.white,
+            child: Icon(style.icon, size: 18),
           ),
           const SizedBox(width: Tokens.space12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Wrap(
+                  spacing: Tokens.space8,
+                  children: [
+                    Text(
+                      myPlaceCategoryLabel(l, s.placeCategory),
+                      style: t.labelSmall?.copyWith(
+                        color: tint,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (aiPick)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.auto_awesome,
+                              size: 12, color: scheme.primary),
+                          const SizedBox(width: 3),
+                          Text(
+                            l.suggestAiPick,
+                            style: t.labelSmall?.copyWith(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
                 Text(
                   s.name,
                   style: t.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
