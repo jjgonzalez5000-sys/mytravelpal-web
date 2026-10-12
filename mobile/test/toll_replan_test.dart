@@ -29,7 +29,7 @@ PartialTollSkip _skip(double km, double savings, {int points = 6}) =>
     );
 
 void main() {
-  test('stale via points are not accumulated and never exceed the cap', () {
+  test('via points never exceed the cap', () {
     final skips2 = [_skip(100, 8), _skip(300, 20)];
     final staleVias = [
       for (var i = 0; i < 3; i++)
@@ -40,7 +40,7 @@ void main() {
       for (var i = 0; i < 5; i++)
         TripWaypoint(coordinate: LatLon(lat: 45 - i.toDouble(), lon: 5)),
     ];
-    // Partial skip again: vias are recomputed, so the old three are dropped.
+    // Partial skip again: the three earlier vias take the room that is left.
     final r = buildTollReplanRequest(
       base: _base(wps: [...stops, ...staleVias]),
       baselineSkips: skips2, kept: {0},
@@ -72,6 +72,51 @@ void main() {
   });
 
   final skips = [_skip(100, 8), _skip(300, 20), _skip(500, 5)];
+
+  test('a chained skip keeps the via points of the earlier one', () {
+    final first = buildTollReplanRequest(
+      base: _base(), baselineSkips: skips, kept: {0, 2},
+    );
+    final firstVias = first.waypoints.where((w) => w.viaOnly).toList();
+    expect(firstVias, isNotEmpty);
+
+    // New road: the earlier booth is gone and a fresh list is proposed.
+    final fresh = [_skip(150, 6), _skip(400, 9)];
+    final second = buildTollReplanRequest(
+      base: first, baselineSkips: fresh, kept: {0},
+    );
+    final keys = second.waypoints
+        .where((w) => w.viaOnly)
+        .map((w) => '${w.coordinate.lat},${w.coordinate.lon}')
+        .toSet();
+    for (final v in firstVias) {
+      expect(keys, contains('${v.coordinate.lat},${v.coordinate.lon}'));
+    }
+    expect(second.waypoints.where((w) => w.viaOnly).length,
+        greaterThan(firstVias.length));
+    expect(second.avoidTolls, isFalse);
+  });
+
+  test('earlier vias win the room over new ones when the cap is tight', () {
+    final stops = [
+      for (var i = 0; i < 6; i++)
+        TripWaypoint(coordinate: LatLon(lat: 45 - i.toDouble(), lon: 5)),
+    ];
+    final earlier = [
+      for (var i = 0; i < 2; i++)
+        TripWaypoint(
+            coordinate: LatLon(lat: 46 - i * 0.1, lon: 7), viaOnly: true),
+    ];
+    final r = buildTollReplanRequest(
+      base: _base(wps: [...stops, ...earlier]),
+      baselineSkips: [_skip(100, 50), _skip(300, 5)],
+      kept: {1},
+    );
+    expect(r.waypoints.length, lessThanOrEqualTo(kMaxPlanWaypoints));
+    final vias = r.waypoints.where((w) => w.viaOnly).toList();
+    expect(vias.length, 2);
+    expect(vias.map((w) => w.coordinate.lat).toSet(), {46.0, 45.9});
+  });
 
   test('nothing skipped keeps the paid route request', () {
     final r = buildTollReplanRequest(

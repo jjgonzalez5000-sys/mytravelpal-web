@@ -1262,7 +1262,6 @@
     }
   },
   "addedToRouteLabel": "HINZUGEFÜGT",
-  "replanWithStops": "Route mit Stopps neu berechnen",
   "addToRouteTooltip": "Zur Route hinzufügen",
   "removeFromRouteTooltip": "Aus Route entfernen",
   "addedStopsChip": "{count, plural, =1{1 Stopp hinzugefügt · +{minutes} Min} other{{count} Stopps hinzugefügt · +{minutes} Min}}",
@@ -1803,13 +1802,6 @@
   "tripCostHotel": "Hotel",
   "tripCostTotal": "Geschätzte Gesamtkosten",
   "tripCostNoExpense": "Keine Ausgaben",
-  "replanLostTitle": "Einige Auswahlen passen nicht mehr zur neuen Route",
-  "replanLostBody": "Da sich die Strecke ändert, passen diese Auswahlen nicht mehr zur Route. Wenn du fortfährst, werden sie abgewählt und wir bieten andere Optionen an. Wenn du abbrichst, bleibt dein aktueller Plan unverändert.",
-  "replanLostHotel": "Hotel: {name} · Tag {day}",
-  "replanLostRestaurant": "Restaurant: {name}",
-  "replanLostFuel": "Tankstelle: {name}",
-  "replanLostMeal": "Essenspause: {name}",
-  "replanLostSleep": "Übernachtungsstopp: {name}",
   "styleKmCapNone": "Max. km/Tag: unbegrenzt",
   "styleKmCapValue": "Max. km/Tag: {km} km",
   "styleKmCapRemove": "Kilometerlimit entfernen",
@@ -1890,8 +1882,6 @@
   "paywallPerYear": "{amount}/Jahr",
   "paywallPerMonth": "{amount}/Monat",
   "paywallLegal": "Die Zahlung wird bei Bestätigung des Kaufs deinem Google-Play-Konto belastet. Abos verlängern sich automatisch, sofern sie nicht mindestens 24 Stunden vor Ende des aktuellen Zeitraums gekündigt werden. Verwalten oder kündigen unter Play Store-Einstellungen > Abos.",
-  "replanLostConfirm": "Fortfahren und abwählen",
-  "replanLostCancel": "Aktuellen Plan behalten",
   "tripCostPerPerson": "{amount} / Person",
   "@tripCostPerPerson": {
     "placeholders": {
@@ -2208,7 +2198,6 @@
     }
   },
   "prepareDepartureNow": "Jetzt losfahren",
-  "replanNewDepartureTitle": "Neue Abfahrtszeit wird berechnet…",
   "planStopReorderHint": "Griff halten, um umzuordnen",
   "planSwapOriginDestination": "Umkehren",
   "planStopMoveUp": "Nach oben",
@@ -2759,8 +2748,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Nähern Sie sich dem Startpunkt, um den Fahrmodus zu aktivieren",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Mit Änderungen neu berechnen",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Tagesetappen werden optimiert...",
   "@replanTipRoute": {},
   "replanTipFuel": "Beste Tankstellen auf der Route werden gesucht...",
@@ -2784,6 +2771,16 @@
   "tripLegendDriving": "Fahrt",
   "tripLegendBreakfast": "Frühstück",
   "tripLegendLunch": "Mittagessen",
+  "replanUpdatedRoute": "Route aktualisiert",
+  "replanFailedTitle": "Route konnte nicht aktualisiert werden",
+  "replanRetry": "Erneut versuchen",
+  "replanDiscard": "Änderungen verwerfen",
+  "replanUnapplied": "Änderungen noch nicht angewendet",
+  "replanUndo": "Rückgängig",
+  "replanPicksDropped": "{n, plural, one{1 Auswahl passt nicht mehr zur neuen Route} other{{n} Auswahlen passen nicht mehr zur neuen Route}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Abendessen",
   "tripLegendRest": "Hinzugefügter Stopp",
   "tripLegendRestGhost": "Vorgeschlagene Pause, nicht hinzugefügt",
@@ -2883,8 +2880,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Profil & Fahrzeug",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Neuberechnung mit deinen neuen Einstellungen…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Plan fertig · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -2901,8 +2896,6 @@
   },
   "resultChartAdded": "  hinzugefügt",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "Deine Einstellungen haben sich geändert. Mit neuen Werten neu berechnen?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} Pause} other{{count} Pausen}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -3067,19 +3060,6 @@
   },
   "planSectionRoute": "ROUTE",
   "planSectionOnRoute": "AUF DER STRECKE",
-  "resultRecalculate": "Route neu berechnen",
-  "recalcPartStops": "{n, plural, one{1 Stopp} other{{n} Stopps}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 Maut umgangen} other{{n} Mautstellen umgangen}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 Tag angepasst} other{{n} Tage angepasst}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Endzeit ändern",
   "dayShiftApply": "Anwenden",
   "dayShiftPushNext": "{km} verschieben sich auf den nächsten Tag.",

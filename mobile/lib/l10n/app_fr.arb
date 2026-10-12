@@ -1262,7 +1262,6 @@
     }
   },
   "addedToRouteLabel": "AJOUTÉ",
-  "replanWithStops": "Recalculer l'itinéraire avec les arrêts",
   "addToRouteTooltip": "Ajouter à l'itinéraire",
   "removeFromRouteTooltip": "Retirer de l'itinéraire",
   "addedStopsChip": "{count, plural, =1{1 arrêt ajouté · +{minutes} min} other{{count} arrêts ajoutés · +{minutes} min}}",
@@ -1803,13 +1802,6 @@
   "tripCostHotel": "Hôtel",
   "tripCostTotal": "Total estimé",
   "tripCostNoExpense": "Aucune dépense",
-  "replanLostTitle": "Certains choix ne correspondent plus au nouvel itinéraire",
-  "replanLostBody": "Comme la distance change, ces choix ne correspondent plus à l'itinéraire. Si vous continuez, ils seront désélectionnés et nous vous proposerons d'autres options. Si vous annulez, votre plan actuel reste inchangé.",
-  "replanLostHotel": "Hôtel : {name} · jour {day}",
-  "replanLostRestaurant": "Restaurant : {name}",
-  "replanLostFuel": "Station-service : {name}",
-  "replanLostMeal": "Arrêt repas : {name}",
-  "replanLostSleep": "Arrêt pour la nuit : {name}",
   "styleKmCapNone": "Km max/jour : sans limite",
   "styleKmCapValue": "Km max/jour : {km} km",
   "styleKmCapRemove": "Supprimer la limite de km",
@@ -1890,8 +1882,6 @@
   "paywallPerYear": "{amount}/an",
   "paywallPerMonth": "{amount}/mois",
   "paywallLegal": "Le paiement sera débité de votre compte Google Play à la confirmation de l'achat. Les abonnements se renouvellent automatiquement, sauf annulation au moins 24 heures avant la fin de la période en cours. Gérez ou annulez dans Paramètres du Play Store > Abonnements.",
-  "replanLostConfirm": "Continuer et désélectionner",
-  "replanLostCancel": "Garder le plan actuel",
   "tripCostPerPerson": "{amount} / personne",
   "@tripCostPerPerson": {
     "placeholders": {
@@ -2208,7 +2198,6 @@
     }
   },
   "prepareDepartureNow": "Partir maintenant",
-  "replanNewDepartureTitle": "Recalcul avec le nouvel horaire de départ…",
   "planStopReorderHint": "Maintiens la poignée pour réorganiser",
   "planSwapOriginDestination": "Inverser",
   "planStopMoveUp": "Monter",
@@ -2759,8 +2748,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Rapprochez-vous du point de départ pour activer le mode conduite",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Recalculer avec les modifications",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Optimisation des étapes de la journée...",
   "@replanTipRoute": {},
   "replanTipFuel": "Recherche des meilleures stations sur le trajet...",
@@ -2784,6 +2771,16 @@
   "tripLegendDriving": "Conduite",
   "tripLegendBreakfast": "Petit-déjeuner",
   "tripLegendLunch": "Déjeuner",
+  "replanUpdatedRoute": "Itinéraire mis à jour",
+  "replanFailedTitle": "Impossible de mettre à jour l'itinéraire",
+  "replanRetry": "Réessayer",
+  "replanDiscard": "Annuler les modifications",
+  "replanUnapplied": "modifications non appliquées",
+  "replanUndo": "Annuler",
+  "replanPicksDropped": "{n, plural, one{1 choix ne correspond plus au nouvel itinéraire} other{{n} choix ne correspondent plus au nouvel itinéraire}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Dîner",
   "tripLegendRest": "Pause ajoutée",
   "tripLegendRestGhost": "Pause suggérée, non ajoutée",
@@ -2883,8 +2880,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Profil et véhicule",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Recalcul avec vos nouveaux paramètres…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Plan prêt · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -2901,8 +2896,6 @@
   },
   "resultChartAdded": "  ajouté",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "Vos paramètres ont changé. Recalculer avec les nouvelles valeurs ?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} arrêt} other{{count} arrêts}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -3067,19 +3060,6 @@
   },
   "planSectionRoute": "ITINÉRAIRE",
   "planSectionOnRoute": "SUR LA ROUTE",
-  "resultRecalculate": "Recalculer l'itinéraire",
-  "recalcPartStops": "{n, plural, one{1 arrêt} other{{n} arrêts}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 péage évité} other{{n} péages évités}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 jour ajusté} other{{n} jours ajustés}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Modifier l'heure de fin",
   "dayShiftApply": "Appliquer",
   "dayShiftPushNext": "{km} seront reportés au jour suivant.",

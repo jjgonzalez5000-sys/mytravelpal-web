@@ -51,21 +51,34 @@ TripPlanRequest buildTollReplanRequest({
     return base.copyWith(waypoints: realStops, avoidTolls: true);
   }
 
-  // Some skipped: vias are recomputed from the skips, never accumulated.
-  // Biggest savings first when the cap forces a choice; the driver's own
-  // stops always keep their place.
+  // Some skipped: vias already steering the road (earlier skips of this
+  // trip) stay, so a chained skip does not bring the first booth back; new
+  // skips follow, biggest savings first while the cap leaves room. The
+  // driver's own stops always keep their place.
   final ranked = [...skipped]..sort(
       (a, b) => baselineSkips[b].savingsEur
           .compareTo(baselineSkips[a].savingsEur),
     );
   final room =
       (kMaxPlanWaypoints - realStops.length).clamp(0, kMaxPlanWaypoints);
+  String keyOf(LatLon p) =>
+      '${p.lat.toStringAsFixed(4)},${p.lon.toStringAsFixed(4)}';
+  final seen = <String>{};
   final vias = <({double km, TripWaypoint wp})>[];
+  for (final v in keptVias) {
+    if (vias.length < room && seen.add(keyOf(v.coordinate))) {
+      vias.add((km: 0.0, wp: v));
+    }
+  }
   for (final i in ranked) {
     final skip = baselineSkips[i];
-    final pts = detourWaypointsFor(skip);
+    final pts = [
+      for (final p in detourWaypointsFor(skip))
+        if (!seen.contains(keyOf(p))) p,
+    ];
     if (pts.isEmpty || vias.length + pts.length > room) continue;
     for (final p in pts) {
+      seen.add(keyOf(p));
       vias.add((
         km: skip.distanceFromOriginKm,
         wp: TripWaypoint(coordinate: p, viaOnly: true),

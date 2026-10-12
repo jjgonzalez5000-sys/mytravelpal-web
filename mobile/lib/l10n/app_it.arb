@@ -1262,7 +1262,6 @@
     }
   },
   "addedToRouteLabel": "AGGIUNTO",
-  "replanWithStops": "Ricalcola percorso con soste",
   "addToRouteTooltip": "Aggiungi al percorso",
   "removeFromRouteTooltip": "Rimuovi dal percorso",
   "addedStopsChip": "{count, plural, =1{1 sosta aggiunta · +{minutes} min} other{{count} soste aggiunte · +{minutes} min}}",
@@ -1803,13 +1802,6 @@
   "tripCostHotel": "Hotel",
   "tripCostTotal": "Totale stimato",
   "tripCostNoExpense": "Nessuna spesa",
-  "replanLostTitle": "Alcune scelte non sono più adatte al nuovo percorso",
-  "replanLostBody": "Poiché i chilometri cambiano, queste scelte non corrispondono più al percorso. Se continui verranno deselezionate e ti proporremo altre opzioni. Se annulli, il piano attuale resta com'è.",
-  "replanLostHotel": "Hotel: {name} · giorno {day}",
-  "replanLostRestaurant": "Ristorante: {name}",
-  "replanLostFuel": "Distributore: {name}",
-  "replanLostMeal": "Sosta pasto: {name}",
-  "replanLostSleep": "Sosta per la notte: {name}",
   "styleKmCapNone": "Km max/giorno: nessun limite",
   "styleKmCapValue": "Km max/giorno: {km} km",
   "styleKmCapRemove": "Rimuovi il limite di km",
@@ -1890,8 +1882,6 @@
   "paywallPerYear": "{amount}/anno",
   "paywallPerMonth": "{amount}/mese",
   "paywallLegal": "Il pagamento verrà addebitato sul tuo account Google Play alla conferma dell'acquisto. Gli abbonamenti si rinnovano automaticamente salvo disdetta almeno 24 ore prima della fine del periodo in corso. Gestisci o annulla in Impostazioni del Play Store > Abbonamenti.",
-  "replanLostConfirm": "Continua e deseleziona",
-  "replanLostCancel": "Mantieni il piano attuale",
   "tripCostPerPerson": "{amount} / persona",
   "@tripCostPerPerson": {
     "placeholders": {
@@ -2208,7 +2198,6 @@
     }
   },
   "prepareDepartureNow": "Partire ora",
-  "replanNewDepartureTitle": "Ricalcolo con il nuovo orario di partenza…",
   "planStopReorderHint": "Tieni premuta la maniglia per riordinare",
   "planSwapOriginDestination": "Inverti",
   "planStopMoveUp": "Sposta su",
@@ -2759,8 +2748,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Avvicinati al punto di partenza per attivare la modalità guida",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Ricalcola con le modifiche applicate",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Ottimizzazione delle tappe giornaliere...",
   "@replanTipRoute": {},
   "replanTipFuel": "Ricerca delle migliori stazioni sul percorso...",
@@ -2784,6 +2771,16 @@
   "tripLegendDriving": "Guida",
   "tripLegendBreakfast": "Colazione",
   "tripLegendLunch": "Pranzo",
+  "replanUpdatedRoute": "Percorso aggiornato",
+  "replanFailedTitle": "Impossibile aggiornare il percorso",
+  "replanRetry": "Riprova",
+  "replanDiscard": "Annulla modifiche",
+  "replanUnapplied": "modifiche non applicate",
+  "replanUndo": "Annulla",
+  "replanPicksDropped": "{n, plural, one{1 scelta non è più compatibile con il nuovo percorso} other{{n} scelte non sono più compatibili con il nuovo percorso}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Cena",
   "tripLegendRest": "Sosta aggiunta",
   "tripLegendRestGhost": "Pausa suggerita, non aggiunta",
@@ -2883,8 +2880,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Profilo e veicolo",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Ricalcolo con le nuove impostazioni…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Piano pronto · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -2901,8 +2896,6 @@
   },
   "resultChartAdded": "  aggiunto",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "Le impostazioni sono cambiate. Ricalcolare con i nuovi valori?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} sosta} other{{count} soste}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -3067,19 +3060,6 @@
   },
   "planSectionRoute": "PERCORSO",
   "planSectionOnRoute": "LUNGO IL PERCORSO",
-  "resultRecalculate": "Ricalcola il percorso",
-  "recalcPartStops": "{n, plural, one{1 sosta} other{{n} soste}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 pedaggio evitato} other{{n} pedaggi evitati}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 giorno modificato} other{{n} giorni modificati}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Cambia l'ora di fine",
   "dayShiftApply": "Applica",
   "dayShiftPushNext": "{km} slitteranno al giorno successivo.",

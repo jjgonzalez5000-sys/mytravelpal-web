@@ -3991,12 +3991,6 @@ abstract class AppLocalizations {
   /// **'ADDED'**
   String get addedToRouteLabel;
 
-  /// No description provided for @replanWithStops.
-  ///
-  /// In en, this message translates to:
-  /// **'Recalculate route with stops'**
-  String get replanWithStops;
-
   /// No description provided for @addToRouteTooltip.
   ///
   /// In en, this message translates to:
@@ -5486,48 +5480,6 @@ abstract class AppLocalizations {
   /// **'No expense'**
   String get tripCostNoExpense;
 
-  /// No description provided for @replanLostTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Some picks no longer fit the new route'**
-  String get replanLostTitle;
-
-  /// No description provided for @replanLostBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Because the distance changes, these picks no longer match the route. If you continue they will be deselected and we will offer other options. If you cancel, your current plan stays as it is.'**
-  String get replanLostBody;
-
-  /// No description provided for @replanLostHotel.
-  ///
-  /// In en, this message translates to:
-  /// **'Hotel: {name} · day {day}'**
-  String replanLostHotel(String name, int day);
-
-  /// No description provided for @replanLostRestaurant.
-  ///
-  /// In en, this message translates to:
-  /// **'Restaurant: {name}'**
-  String replanLostRestaurant(String name);
-
-  /// No description provided for @replanLostFuel.
-  ///
-  /// In en, this message translates to:
-  /// **'Fuel station: {name}'**
-  String replanLostFuel(String name);
-
-  /// No description provided for @replanLostMeal.
-  ///
-  /// In en, this message translates to:
-  /// **'Meal stop: {name}'**
-  String replanLostMeal(String name);
-
-  /// No description provided for @replanLostSleep.
-  ///
-  /// In en, this message translates to:
-  /// **'Overnight stop: {name}'**
-  String replanLostSleep(String name);
-
   /// No description provided for @styleKmCapNone.
   ///
   /// In en, this message translates to:
@@ -6007,18 +5959,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Play Store Settings > Subscriptions.'**
   String get paywallLegal;
-
-  /// No description provided for @replanLostConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Continue and deselect'**
-  String get replanLostConfirm;
-
-  /// No description provided for @replanLostCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep current plan'**
-  String get replanLostCancel;
 
   /// No description provided for @tripCostPerPerson.
   ///
@@ -6891,12 +6831,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Leave now'**
   String get prepareDepartureNow;
-
-  /// No description provided for @replanNewDepartureTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Recalculating with new departure time…'**
-  String get replanNewDepartureTitle;
 
   /// No description provided for @planStopReorderHint.
   ///
@@ -8345,12 +8279,6 @@ abstract class AppLocalizations {
   /// **'Get closer to the departure point to activate driving mode'**
   String get resultCompanionFarFromOrigin;
 
-  /// No description provided for @resultReplanWithChanges.
-  ///
-  /// In en, this message translates to:
-  /// **'Recalculate with applied changes'**
-  String get resultReplanWithChanges;
-
   /// No description provided for @replanTipRoute.
   ///
   /// In en, this message translates to:
@@ -8422,6 +8350,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Lunch'**
   String get tripLegendLunch;
+
+  /// No description provided for @replanUpdatedRoute.
+  ///
+  /// In en, this message translates to:
+  /// **'Route updated'**
+  String get replanUpdatedRoute;
+
+  /// No description provided for @replanFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update the route'**
+  String get replanFailedTitle;
+
+  /// No description provided for @replanRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get replanRetry;
+
+  /// No description provided for @replanDiscard.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard changes'**
+  String get replanDiscard;
+
+  /// No description provided for @replanUnapplied.
+  ///
+  /// In en, this message translates to:
+  /// **'changes not applied yet'**
+  String get replanUnapplied;
+
+  /// No description provided for @replanUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get replanUndo;
+
+  /// No description provided for @replanPicksDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'{n, plural, one{1 choice no longer fits the new route} other{{n} choices no longer fit the new route}}'**
+  String replanPicksDropped(int n);
 
   /// No description provided for @tripLegendDinner.
   ///
@@ -8675,12 +8645,6 @@ abstract class AppLocalizations {
   /// **'Profile & vehicle'**
   String get resultTooltipProfile;
 
-  /// No description provided for @resultRecalculating.
-  ///
-  /// In en, this message translates to:
-  /// **'Recalculating with your new settings…'**
-  String get resultRecalculating;
-
   /// No description provided for @resultPlanReady.
   ///
   /// In en, this message translates to:
@@ -8704,12 +8668,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'  added'**
   String get resultChartAdded;
-
-  /// No description provided for @resultSettingsChangedBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Your settings have changed. Recalculate with the new values?'**
-  String get resultSettingsChangedBody;
 
   /// No description provided for @resultSummaryStops.
   ///
@@ -9094,30 +9052,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ON THE ROUTE'**
   String get planSectionOnRoute;
-
-  /// No description provided for @resultRecalculate.
-  ///
-  /// In en, this message translates to:
-  /// **'Recalculate route'**
-  String get resultRecalculate;
-
-  /// No description provided for @recalcPartStops.
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, one{1 stop} other{{n} stops}}'**
-  String recalcPartStops(int n);
-
-  /// No description provided for @recalcPartTolls.
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, one{1 toll skipped} other{{n} tolls skipped}}'**
-  String recalcPartTolls(int n);
-
-  /// No description provided for @recalcPartDays.
-  ///
-  /// In en, this message translates to:
-  /// **'{n, plural, one{1 day adjusted} other{{n} days adjusted}}'**
-  String recalcPartDays(int n);
 
   /// No description provided for @dayShiftConfirmTitle.
   ///

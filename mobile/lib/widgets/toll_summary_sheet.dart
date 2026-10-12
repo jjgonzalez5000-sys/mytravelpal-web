@@ -12,7 +12,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// Shows a full trip toll breakdown grouped by day.
 /// Tolls can be toggled (pay / skip) from here — changes propagate
 /// to [onToggle] which updates the parent result screen state.
-void showTollSummarySheet({
+Future<void> showTollSummarySheet({
   required BuildContext context,
   required List<PartialTollSkip> partialTollSkips,
   required List<DayPlan> days,
@@ -28,7 +28,7 @@ void showTollSummarySheet({
   double? routeTotalKm,
   HourlyTollReport? hourlyReport,
 }) {
-  showModalBottomSheet<void>(
+  return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,

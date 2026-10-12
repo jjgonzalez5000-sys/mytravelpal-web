@@ -1264,7 +1264,6 @@
   },
   "addToRouteTooltip": "Añadir a la ruta",
   "addedToRouteLabel": "AÑADIDO",
-  "replanWithStops": "Recalcular ruta con paradas",
   "removeFromRouteTooltip": "Quitar de la ruta",
   "addedStopsChip": "{count, plural, =1{1 parada añadida · +{minutes} min} other{{count} paradas añadidas · +{minutes} min}}",
   "@addedStopsChip": {
@@ -1804,13 +1803,6 @@
   "tripCostHotel": "Hotel",
   "tripCostTotal": "Total estimado",
   "tripCostNoExpense": "Sin gasto",
-  "replanLostTitle": "Algunas selecciones ya no encajan en la nueva ruta",
-  "replanLostBody": "Al cambiar los kilómetros, estas selecciones ya no corresponden a la ruta. Si continúas se desmarcarán y te ofreceremos otras opciones. Si cancelas, tu plan actual se queda como está.",
-  "replanLostHotel": "Hotel: {name} · día {day}",
-  "replanLostRestaurant": "Restaurante: {name}",
-  "replanLostFuel": "Gasolinera: {name}",
-  "replanLostMeal": "Parada de comida: {name}",
-  "replanLostSleep": "Parada para dormir: {name}",
   "styleKmCapNone": "Máx. km/día: sin límite",
   "styleKmCapValue": "Máx. km/día: {km} km",
   "styleKmCapRemove": "Quitar límite de km",
@@ -1891,8 +1883,6 @@
   "paywallPerYear": "{amount}/año",
   "paywallPerMonth": "{amount}/mes",
   "paywallLegal": "El pago se cargará a tu cuenta de Google Play al confirmar la compra. Las suscripciones se renuevan automáticamente salvo que las canceles al menos 24 horas antes del final del periodo actual. Gestiona o cancela en Ajustes de Play Store > Suscripciones.",
-  "replanLostConfirm": "Continuar y desmarcar",
-  "replanLostCancel": "Mantener el plan actual",
   "tripCostPerPerson": "{amount} / persona",
   "@tripCostPerPerson": {
     "placeholders": {
@@ -2209,7 +2199,6 @@
     }
   },
   "prepareDepartureNow": "Salir ahora",
-  "replanNewDepartureTitle": "Calculando con nueva hora de salida…",
   "planStopReorderHint": "Mantén pulsado el asa para reordenar",
   "planSwapOriginDestination": "Invertir",
   "planStopMoveUp": "Mover arriba",
@@ -2760,8 +2749,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Acércate al punto de salida para activar el modo conducción",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Recalcular con los cambios aplicados",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Optimizando las etapas del día...",
   "@replanTipRoute": {},
   "replanTipFuel": "Buscando las mejores gasolineras en ruta...",
@@ -2773,6 +2760,16 @@
   "tripLegendDriving": "Conducción",
   "tripLegendBreakfast": "Desayuno",
   "tripLegendLunch": "Comida",
+  "replanUpdatedRoute": "Ruta actualizada",
+  "replanFailedTitle": "No se pudo actualizar la ruta",
+  "replanRetry": "Reintentar",
+  "replanDiscard": "Descartar cambios",
+  "replanUnapplied": "cambios sin aplicar",
+  "replanUndo": "Deshacer",
+  "replanPicksDropped": "{n, plural, one{1 elección ya no encaja en la nueva ruta} other{{n} elecciones ya no encajan en la nueva ruta}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Cena",
   "tripLegendRest": "Parada añadida",
   "tripLegendRestGhost": "Descanso sugerido sin añadir",
@@ -2884,8 +2881,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Perfil y vehículo",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Recalculando con tus nuevos ajustes…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Plan listo · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -2902,8 +2897,6 @@
   },
   "resultChartAdded": "  añadido",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "Tus ajustes han cambiado. ¿Recalcular con los nuevos valores?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} parada} other{{count} paradas}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -3068,19 +3061,6 @@
   },
   "planSectionRoute": "RUTA",
   "planSectionOnRoute": "EN RUTA",
-  "resultRecalculate": "Recalcular ruta",
-  "recalcPartStops": "{n, plural, one{1 parada} other{{n} paradas}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 peaje evitado} other{{n} peajes evitados}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 día ajustado} other{{n} días ajustados}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Cambiar la hora de fin",
   "dayShiftApply": "Aplicar",
   "dayShiftPushNext": "{km} se moverán al día siguiente.",

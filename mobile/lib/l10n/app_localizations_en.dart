@@ -2182,9 +2182,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addedToRouteLabel => 'ADDED';
 
   @override
-  String get replanWithStops => 'Recalculate route with stops';
-
-  @override
   String get addToRouteTooltip => 'Add to route';
 
   @override
@@ -3049,38 +3046,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tripCostNoExpense => 'No expense';
 
   @override
-  String get replanLostTitle => 'Some picks no longer fit the new route';
-
-  @override
-  String get replanLostBody =>
-      'Because the distance changes, these picks no longer match the route. If you continue they will be deselected and we will offer other options. If you cancel, your current plan stays as it is.';
-
-  @override
-  String replanLostHotel(String name, int day) {
-    return 'Hotel: $name · day $day';
-  }
-
-  @override
-  String replanLostRestaurant(String name) {
-    return 'Restaurant: $name';
-  }
-
-  @override
-  String replanLostFuel(String name) {
-    return 'Fuel station: $name';
-  }
-
-  @override
-  String replanLostMeal(String name) {
-    return 'Meal stop: $name';
-  }
-
-  @override
-  String replanLostSleep(String name) {
-    return 'Overnight stop: $name';
-  }
-
-  @override
   String get styleKmCapNone => 'Max km/day: no limit';
 
   @override
@@ -3345,12 +3310,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get paywallLegal =>
       'Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Play Store Settings > Subscriptions.';
-
-  @override
-  String get replanLostConfirm => 'Continue and deselect';
-
-  @override
-  String get replanLostCancel => 'Keep current plan';
 
   @override
   String tripCostPerPerson(String amount) {
@@ -3842,10 +3801,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prepareDepartureNow => 'Leave now';
-
-  @override
-  String get replanNewDepartureTitle =>
-      'Recalculating with new departure time…';
 
   @override
   String get planStopReorderHint => 'Long-press the handle to reorder';
@@ -4667,9 +4622,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Get closer to the departure point to activate driving mode';
 
   @override
-  String get resultReplanWithChanges => 'Recalculate with applied changes';
-
-  @override
   String get replanTipRoute => 'Optimising day stages...';
 
   @override
@@ -4709,6 +4661,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tripLegendLunch => 'Lunch';
+
+  @override
+  String get replanUpdatedRoute => 'Route updated';
+
+  @override
+  String get replanFailedTitle => 'Could not update the route';
+
+  @override
+  String get replanRetry => 'Retry';
+
+  @override
+  String get replanDiscard => 'Discard changes';
+
+  @override
+  String get replanUnapplied => 'changes not applied yet';
+
+  @override
+  String get replanUndo => 'Undo';
+
+  @override
+  String replanPicksDropped(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n choices no longer fit the new route',
+      one: '1 choice no longer fits the new route',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get tripLegendDinner => 'Dinner';
@@ -4858,9 +4839,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultTooltipProfile => 'Profile & vehicle';
 
   @override
-  String get resultRecalculating => 'Recalculating with your new settings…';
-
-  @override
   String resultPlanReady(int km, int h, int m) {
     return 'Plan ready · $km km · ${h}h ${m}m';
   }
@@ -4876,10 +4854,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultChartAdded => '  added';
-
-  @override
-  String get resultSettingsChangedBody =>
-      'Your settings have changed. Recalculate with the new values?';
 
   @override
   String resultSummaryStops(int count) {
@@ -5136,42 +5110,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planSectionOnRoute => 'ON THE ROUTE';
-
-  @override
-  String get resultRecalculate => 'Recalculate route';
-
-  @override
-  String recalcPartStops(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n stops',
-      one: '1 stop',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String recalcPartTolls(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n tolls skipped',
-      one: '1 toll skipped',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String recalcPartDays(int n) {
-    String _temp0 = intl.Intl.pluralLogic(
-      n,
-      locale: localeName,
-      other: '$n days adjusted',
-      one: '1 day adjusted',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get dayShiftConfirmTitle => 'Change the end time';

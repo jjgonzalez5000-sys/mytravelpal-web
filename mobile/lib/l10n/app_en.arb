@@ -1262,7 +1262,6 @@
     }
   },
   "addedToRouteLabel": "ADDED",
-  "replanWithStops": "Recalculate route with stops",
   "addToRouteTooltip": "Add to route",
   "removeFromRouteTooltip": "Remove from route",
   "addedStopsChip": "{count, plural, =1{1 stop added · +{minutes} min} other{{count} stops added · +{minutes} min}}",
@@ -1803,28 +1802,6 @@
   "tripCostHotel": "Hotel",
   "tripCostTotal": "Total estimated",
   "tripCostNoExpense": "No expense",
-  "replanLostTitle": "Some picks no longer fit the new route",
-  "replanLostBody": "Because the distance changes, these picks no longer match the route. If you continue they will be deselected and we will offer other options. If you cancel, your current plan stays as it is.",
-  "replanLostHotel": "Hotel: {name} · day {day}",
-  "@replanLostHotel": {
-    "placeholders": { "name": { "type": "String" }, "day": { "type": "int" } }
-  },
-  "replanLostRestaurant": "Restaurant: {name}",
-  "@replanLostRestaurant": {
-    "placeholders": { "name": { "type": "String" } }
-  },
-  "replanLostFuel": "Fuel station: {name}",
-  "@replanLostFuel": {
-    "placeholders": { "name": { "type": "String" } }
-  },
-  "replanLostMeal": "Meal stop: {name}",
-  "@replanLostMeal": {
-    "placeholders": { "name": { "type": "String" } }
-  },
-  "replanLostSleep": "Overnight stop: {name}",
-  "@replanLostSleep": {
-    "placeholders": { "name": { "type": "String" } }
-  },
   "styleKmCapNone": "Max km/day: no limit",
   "styleKmCapValue": "Max km/day: {km} km",
   "@styleKmCapValue": {
@@ -1938,8 +1915,6 @@
     "placeholders": { "amount": { "type": "String" } }
   },
   "paywallLegal": "Payment will be charged to your Google Play account at confirmation of purchase. Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current period. Manage or cancel in Play Store Settings > Subscriptions.",
-  "replanLostConfirm": "Continue and deselect",
-  "replanLostCancel": "Keep current plan",
   "tripCostPerPerson": "{amount} / person",
   "@tripCostPerPerson": {
     "placeholders": {
@@ -2256,7 +2231,6 @@
     }
   },
   "prepareDepartureNow": "Leave now",
-  "replanNewDepartureTitle": "Recalculating with new departure time…",
   "planStopReorderHint": "Long-press the handle to reorder",
   "planSwapOriginDestination": "Swap",
   "planStopMoveUp": "Move up",
@@ -2807,8 +2781,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Get closer to the departure point to activate driving mode",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Recalculate with applied changes",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Optimising day stages...",
   "@replanTipRoute": {},
   "replanTipFuel": "Finding the best fuel stations on route...",
@@ -2832,6 +2804,16 @@
   "tripLegendDriving": "Driving",
   "tripLegendBreakfast": "Breakfast",
   "tripLegendLunch": "Lunch",
+  "replanUpdatedRoute": "Route updated",
+  "replanFailedTitle": "Could not update the route",
+  "replanRetry": "Retry",
+  "replanDiscard": "Discard changes",
+  "replanUnapplied": "changes not applied yet",
+  "replanUndo": "Undo",
+  "replanPicksDropped": "{n, plural, one{1 choice no longer fits the new route} other{{n} choices no longer fit the new route}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Dinner",
   "tripLegendRest": "Rest stop added",
   "tripLegendRestGhost": "Suggested rest, not added",
@@ -2931,8 +2913,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Profile & vehicle",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Recalculating with your new settings…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Plan ready · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -2949,8 +2929,6 @@
   },
   "resultChartAdded": "  added",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "Your settings have changed. Recalculate with the new values?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} stop} other{{count} stops}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -3115,19 +3093,6 @@
   },
   "planSectionRoute": "ROUTE",
   "planSectionOnRoute": "ON THE ROUTE",
-  "resultRecalculate": "Recalculate route",
-  "recalcPartStops": "{n, plural, one{1 stop} other{{n} stops}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 toll skipped} other{{n} tolls skipped}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 day adjusted} other{{n} days adjusted}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Change the end time",
   "dayShiftApply": "Apply",
   "dayShiftPushNext": "{km} will move to the next day.",

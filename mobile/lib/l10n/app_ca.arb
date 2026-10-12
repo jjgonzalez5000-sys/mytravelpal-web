@@ -168,7 +168,6 @@
     }
   },
   "prepareDepartureNow": "Sortir ara",
-  "replanNewDepartureTitle": "Recalculant amb la nova hora de sortida…",
   "planStopReorderHint": "Manté premuda la nansa per reordenar",
   "planSwapOriginDestination": "Invertir",
   "planStopMoveUp": "Mou amunt",
@@ -745,8 +744,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Acércate al punto de salida para activar el modo conducción",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Recalcular con los cambios aplicados",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Optimizando las etapas del día...",
   "@replanTipRoute": {},
   "replanTipFuel": "Buscando las mejores gasolineras en ruta...",
@@ -810,6 +807,16 @@
   "tripLegendDriving": "Conducció",
   "tripLegendBreakfast": "Esmorzar",
   "tripLegendLunch": "Dinar",
+  "replanUpdatedRoute": "Ruta actualitzada",
+  "replanFailedTitle": "No s'ha pogut actualitzar la ruta",
+  "replanRetry": "Torna-ho a provar",
+  "replanDiscard": "Descarta els canvis",
+  "replanUnapplied": "canvis sense aplicar",
+  "replanUndo": "Desfés",
+  "replanPicksDropped": "{n, plural, one{1 elecció ja no encaixa a la nova ruta} other{{n} eleccions ja no encaixen a la nova ruta}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Sopar",
   "tripLegendRest": "Parada afegida",
   "tripLegendRestGhost": "Descans suggerit sense afegir",
@@ -980,8 +987,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Perfil i vehicle",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Recalculant amb els nous ajustos…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Pla llest · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -998,8 +1003,6 @@
   },
   "resultChartAdded": "  afegit",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "Els teus ajustos han canviat. Recalcular amb els nous valors?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} parada} other{{count} parades}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -1020,19 +1023,6 @@
   },
   "planSectionRoute": "RUTA",
   "planSectionOnRoute": "A LA RUTA",
-  "resultRecalculate": "Recalcula la ruta",
-  "recalcPartStops": "{n, plural, one{1 parada} other{{n} parades}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 peatge evitat} other{{n} peatges evitats}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 dia ajustat} other{{n} dies ajustats}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Canvia l'hora de fi",
   "dayShiftApply": "Aplica",
   "dayShiftPushNext": "{km} es mouran al dia següent.",

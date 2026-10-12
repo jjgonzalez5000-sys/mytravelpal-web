@@ -168,7 +168,6 @@
     }
   },
   "prepareDepartureNow": "Sair agora",
-  "replanNewDepartureTitle": "A recalcular com o novo horário de partida…",
   "planStopReorderHint": "Mantém a alça para reordenar",
   "planSwapOriginDestination": "Inverter",
   "planStopMoveUp": "Mover para cima",
@@ -739,8 +738,6 @@
   "@resultStartCompanionNow": {},
   "resultCompanionFarFromOrigin": "Acércate al punto de salida para activar el modo conducción",
   "@resultCompanionFarFromOrigin": {},
-  "resultReplanWithChanges": "Recalcular con los cambios aplicados",
-  "@resultReplanWithChanges": {},
   "replanTipRoute": "Optimizando las etapas del día...",
   "@replanTipRoute": {},
   "replanTipFuel": "Buscando las mejores gasolineras en ruta...",
@@ -772,6 +769,16 @@
   "tripLegendDriving": "Condução",
   "tripLegendBreakfast": "Pequeno-almoço",
   "tripLegendLunch": "Almoço",
+  "replanUpdatedRoute": "Rota atualizada",
+  "replanFailedTitle": "Não foi possível atualizar a rota",
+  "replanRetry": "Tentar novamente",
+  "replanDiscard": "Descartar alterações",
+  "replanUnapplied": "alterações por aplicar",
+  "replanUndo": "Anular",
+  "replanPicksDropped": "{n, plural, one{1 escolha já não encaixa na nova rota} other{{n} escolhas já não encaixam na nova rota}}",
+  "@replanPicksDropped": {
+    "placeholders": { "n": { "type": "int" } }
+  },
   "tripLegendDinner": "Jantar",
   "tripLegendRest": "Paragem adicionada",
   "tripLegendRestGhost": "Pausa sugerida, não adicionada",
@@ -936,8 +943,6 @@
   "@resultRestStopFallback": {},
   "resultTooltipProfile": "Perfil e veículo",
   "@resultTooltipProfile": {},
-  "resultRecalculating": "Recalculando com as novas configurações…",
-  "@resultRecalculating": {},
   "resultPlanReady": "Plano pronto · {km} km · {h}h {m}m",
   "@resultPlanReady": {
     "placeholders": {
@@ -954,8 +959,6 @@
   },
   "resultChartAdded": "  adicionado",
   "@resultChartAdded": {},
-  "resultSettingsChangedBody": "As suas configurações mudaram. Recalcular com os novos valores?",
-  "@resultSettingsChangedBody": {},
   "resultSummaryStops": "{count, plural, one{{count} paragem} other{{count} paragens}}",
   "@resultSummaryStops": {
     "placeholders": { "count": { "type": "int" } }
@@ -976,19 +979,6 @@
   },
   "planSectionRoute": "ROTA",
   "planSectionOnRoute": "NA ROTA",
-  "resultRecalculate": "Recalcular a rota",
-  "recalcPartStops": "{n, plural, one{1 paragem} other{{n} paragens}}",
-  "@recalcPartStops": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartTolls": "{n, plural, one{1 portagem evitada} other{{n} portagens evitadas}}",
-  "@recalcPartTolls": {
-    "placeholders": { "n": { "type": "int" } }
-  },
-  "recalcPartDays": "{n, plural, one{1 dia ajustado} other{{n} dias ajustados}}",
-  "@recalcPartDays": {
-    "placeholders": { "n": { "type": "int" } }
-  },
   "dayShiftConfirmTitle": "Alterar a hora de fim",
   "dayShiftApply": "Aplicar",
   "dayShiftPushNext": "{km} passam para o dia seguinte.",
