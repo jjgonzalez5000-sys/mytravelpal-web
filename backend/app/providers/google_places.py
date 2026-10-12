@@ -30,9 +30,13 @@ Design choices:
 from __future__ import annotations
 
 import asyncio
+import difflib
 import logging
+import math
 import os
+import re
 import time
+import unicodedata
 from dataclasses import replace
 from typing import Any
 
@@ -49,13 +53,18 @@ _TTL_S = 24 * 3600
 # search — big enough to survive a 100 m OSM/Google coord skew,
 # small enough to avoid grabbing a same-named venue three towns
 # over.
-_BIAS_RADIUS_M = 400
+_BIAS_RADIUS_M = 250
+# A Google result is accepted only when it is this close to our own
+# coordinate AND its name resembles ours; otherwise we stamp nothing.
+_MAX_MATCH_M = 150.0
+_MIN_NAME_SIM = 0.6
+_NEG_TTL_S = 3600
 # Field mask keeps us on the "Essentials" SKU. Adding reviews /
 # photos would jump into "Enterprise" ($20/1000) — deferred.
 _FIELD_MASK = (
     "places.id,places.displayName,places.rating,"
     "places.userRatingCount,places.priceLevel,"
-    "places.googleMapsUri,places.location"
+    "places.googleMapsUri,places.location,places.formattedAddress"
 )
 
 
@@ -69,7 +78,87 @@ _CACHE: dict[str, tuple[float, dict[str, Any] | None]] = {}
 
 
 def _cache_key(name: str, lat: float, lon: float) -> str:
-    return f"{name.lower().strip()}|{round(lat, 3)},{round(lon, 3)}"
+    return f"v2|{name.lower().strip()}|{round(lat, 3)},{round(lon, 3)}"
+
+
+def cache_lookup(name: str, lat: float, lon: float) -> tuple[bool, dict[str, Any] | None]:
+    """(fresh entry found, cached value); negative results are cached too."""
+    cached = _CACHE.get(_cache_key(name, lat, lon))
+    if cached is None:
+        return False, None
+    ts, val = cached
+    ttl = _TTL_S if val is not None else _NEG_TTL_S
+    if time.monotonic() - ts < ttl:
+        return True, val
+    return False, None
+
+
+def _norm(text: str) -> str:
+    folded = unicodedata.normalize("NFKD", text or "")
+    folded = "".join(c for c in folded if not unicodedata.combining(c))
+    return re.sub(r"[^a-z0-9]+", " ", folded.lower()).strip()
+
+
+def _name_similarity(a: str, b: str) -> float:
+    na, nb = _norm(a), _norm(b)
+    if not na or not nb:
+        return 0.0
+    ratio = difflib.SequenceMatcher(None, na, nb).ratio()
+    ta, tb = set(na.split()), set(nb.split())
+    small = min(ta, tb, key=len)
+    contained = len(ta & tb) / len(small) if small else 0.0
+    # Containment alone would match "Hotel" to anything.
+    if len(small) < 2:
+        contained = 0.0
+    return max(ratio, contained)
+
+
+def _distance_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = p2 - p1
+    dl = math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 6371000.0 * 2 * math.asin(min(1.0, math.sqrt(h)))
+
+
+def _pick_best(
+    places: list[dict[str, Any]],
+    name: str,
+    lat: float,
+    lon: float,
+    max_m: float = _MAX_MATCH_M,
+) -> dict[str, Any] | None:
+    """Best Google result for our POI, or None when none is trustworthy."""
+    best: dict[str, Any] | None = None
+    best_score = -1e9
+    for p in places:
+        loc = p.get("location") or {}
+        plat, plon = loc.get("latitude"), loc.get("longitude")
+        if not isinstance(plat, (int, float)) or not isinstance(plon, (int, float)):
+            continue
+        disp = p.get("displayName")
+        gname = disp.get("text") if isinstance(disp, dict) else disp
+        sim = _name_similarity(name, str(gname or ""))
+        dist = _distance_m(lat, lon, float(plat), float(plon))
+        if sim < _MIN_NAME_SIM or dist > max_m:
+            continue
+        score = sim - dist / 300.0
+        if score > best_score:
+            best, best_score = p, score
+    return best
+
+
+def address_hint(attrs: dict[str, str]) -> str | None:
+    """Best address string available in a POI's attributes."""
+    for k in ("google_address", "here_address", "address_line1"):
+        v = (attrs.get(k) or "").strip()
+        if v:
+            return v
+    street = " ".join(
+        x for x in (attrs.get("addr:street"), attrs.get("addr:housenumber")) if x
+    )
+    city = attrs.get("addr:city") or ""
+    return ", ".join(x for x in (street, city) if x) or None
 
 
 class GooglePlacesEnricher:
@@ -100,6 +189,7 @@ class GooglePlacesEnricher:
             async with sem:
                 extra = await self._lookup(
                     r.name, r.coordinate.lat, r.coordinate.lon, key,
+                    address_hint(dict(r.attributes)),
                 )
             if extra is None:
                 return r
@@ -131,6 +221,7 @@ class GooglePlacesEnricher:
             async with sem:
                 extra = await self._lookup(
                     h.name, h.coordinate.lat, h.coordinate.lon, key,
+                    address_hint(dict(h.attributes)),
                 )
             if extra is None:
                 return h
@@ -143,22 +234,26 @@ class GooglePlacesEnricher:
         return tuple(await asyncio.gather(*(_one(h) for h in candidates)))
 
     async def _lookup(
-        self, name: str, lat: float, lon: float, key: str,
+        self,
+        name: str,
+        lat: float,
+        lon: float,
+        key: str,
+        address: str | None = None,
     ) -> dict[str, Any] | None:
-        cached = _CACHE.get(_cache_key(name, lat, lon))
-        if cached is not None:
-            ts, val = cached
-            if time.monotonic() - ts < _TTL_S:
-                return val
+        ck = _cache_key(name, lat, lon)
+        found, val = cache_lookup(name, lat, lon)
+        if found:
+            return val
         payload = {
-            "textQuery": name,
+            "textQuery": f"{name}, {address}" if address else name,
             "locationBias": {
                 "circle": {
                     "center": {"latitude": lat, "longitude": lon},
                     "radius": _BIAS_RADIUS_M,
                 },
             },
-            "maxResultCount": 1,
+            "maxResultCount": 5,
         }
         headers = {
             "Content-Type": "application/json",
@@ -182,23 +277,27 @@ class GooglePlacesEnricher:
             body = r.json()
         except ValueError:
             return None
-        places = body.get("places") or []
-        if not places:
-            _CACHE[_cache_key(name, lat, lon)] = (time.monotonic(), None)
+        p = _pick_best(body.get("places") or [], name, lat, lon)
+        if p is None:
+            _CACHE[ck] = (time.monotonic(), None)
             return None
-        p = places[0]
         out: dict[str, Any] = {}
+        if p.get("id"):
+            out["google_place_id"] = str(p["id"])
+        disp = p.get("displayName")
+        gname = disp.get("text") if isinstance(disp, dict) else disp
+        if gname:
+            out["google_name"] = str(gname)
+        if p.get("formattedAddress"):
+            out["google_address"] = str(p["formattedAddress"])
         if isinstance(p.get("rating"), (int, float)):
             out["rating"] = round(float(p["rating"]), 1)
         if isinstance(p.get("userRatingCount"), int):
             out["rating_count"] = p["userRatingCount"]
         if p.get("priceLevel"):
-            # Google returns strings like "PRICE_LEVEL_MODERATE" —
-            # keep raw so the mobile side can map to €/€€/€€€.
+            # Raw "PRICE_LEVEL_MODERATE"; mobile maps it to EUR signs.
             out["google_price_level"] = str(p["priceLevel"])
         if p.get("googleMapsUri"):
             out["google_maps_url"] = str(p["googleMapsUri"])
-        _CACHE[_cache_key(name, lat, lon)] = (
-            time.monotonic(), out if out else None,
-        )
+        _CACHE[ck] = (time.monotonic(), out if out else None)
         return out or None

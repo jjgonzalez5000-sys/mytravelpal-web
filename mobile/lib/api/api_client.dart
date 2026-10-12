@@ -34,6 +34,17 @@ class ApiException implements Exception {
   String toString() => 'ApiException($statusCode): $body';
 }
 
+/// Google place the backend matched to a POI (all fields optional).
+@immutable
+class ResolvedPlace {
+  const ResolvedPlace({this.googlePlaceId, this.googleMapsUrl, this.address});
+  final String? googlePlaceId;
+  final String? googleMapsUrl;
+  final String? address;
+
+  bool get isEmpty => googlePlaceId == null && googleMapsUrl == null;
+}
+
 class ApiClient {
   ApiClient({ApiConfig config = ApiConfig.fromEnv, http.Client? httpClient})
       : _baseUrl = config.baseUrl,
@@ -696,6 +707,44 @@ class ApiClient {
       return WeatherPoint.fromJson(
         jsonDecode(response.body) as Map<String, dynamic>,
       );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Google place id for a POI, resolved lazily when the user opens it in
+  /// Maps. Null on any failure or when the backend has no certain match.
+  Future<ResolvedPlace?> resolvePlace({
+    required String name,
+    required double lat,
+    required double lon,
+    String? address,
+  }) async {
+    final uri = Uri.parse('$_baseUrl/v1/places/resolve').replace(
+      queryParameters: {
+        'name': name,
+        'lat': '$lat',
+        'lon': '$lon',
+        if (address != null && address.isNotEmpty) 'address': address,
+      },
+    );
+    try {
+      final response = await _http
+          .get(uri, headers: _headers())
+          .timeout(const Duration(milliseconds: 2500));
+      if (response.statusCode != 200) return null;
+      final j = jsonDecode(response.body) as Map<String, dynamic>;
+      String? str(String k) {
+        final v = j[k];
+        return v is String && v.isNotEmpty ? v : null;
+      }
+
+      final out = ResolvedPlace(
+        googlePlaceId: str('google_place_id'),
+        googleMapsUrl: str('google_maps_url'),
+        address: str('google_address'),
+      );
+      return out.isEmpty ? null : out;
     } catch (_) {
       return null;
     }

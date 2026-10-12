@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.api.premium import is_premium
 from app.auth.dependency import current_user_optional
@@ -24,10 +24,12 @@ from app.domain import (
     Coordinate,
     Country,
     FuelType,
+    Hotel,
     MealPreferences,
     MealSlot,
     OvernightPolicy,
     PriceBand,
+    Restaurant,
     RestStop,
     RestStopType,
     TravelPace,
@@ -774,6 +776,19 @@ class FuelCostOut(BaseModel):
     notes: list[str] = Field(default_factory=list)
 
 
+class _GoogleIdFromAttributes(BaseModel):
+    """Exposes ``attributes['google_place_id']`` as a typed field."""
+
+    google_place_id: str | None = None
+
+    @model_validator(mode="after")
+    def _fill_google_place_id(self):
+        attrs = getattr(self, "attributes", None)
+        if self.google_place_id is None and attrs:
+            self.google_place_id = attrs.get("google_place_id") or None
+        return self
+
+
 class MealStopOut(BaseModel):
     slot: MealSlot
     at: datetime
@@ -789,6 +804,8 @@ class MealStopOut(BaseModel):
     # The stop's actual GPS. Used by the mobile mini-map thumbnail.
     lat: float | None = None
     lon: float | None = None
+    google_place_id: str | None = None
+    restaurant_address: str | None = None
 
 
 class SleepStopOut(BaseModel):
@@ -801,6 +818,8 @@ class SleepStopOut(BaseModel):
     city_hint: str | None = None
     lat: float | None = None
     lon: float | None = None
+    google_place_id: str | None = None
+    hotel_address: str | None = None
 
 
 class OptimizationsOut(BaseModel):
@@ -830,7 +849,7 @@ class TimeWindowOut(BaseModel):
     recommended: bool
 
 
-class FuelPriceOut(BaseModel):
+class FuelPriceOut(_GoogleIdFromAttributes):
     station_name: str
     country: Country
     price_eur_per_l: float
@@ -900,7 +919,7 @@ class WaypointAnchorOut(BaseModel):
     lon: float
 
 
-class HotelOut(BaseModel):
+class HotelOut(_GoogleIdFromAttributes):
     name: str
     country: Country
     price_eur_per_night: float
@@ -914,7 +933,7 @@ class HotelOut(BaseModel):
     photo_url: str | None = None  # Wikimedia Commons thumbnail (CC-BY-SA)
 
 
-class RestaurantOut(BaseModel):
+class RestaurantOut(_GoogleIdFromAttributes):
     name: str
     country: Country
     price_eur_per_meal: float
@@ -1511,6 +1530,68 @@ def _empty_route() -> RouteOut:
         countries_crossed=[],
         geometry=[],
     )
+
+
+_PICK_LOOKUP_CAP = 12
+_GOOGLE_KEYS = ("google_place_id", "google_maps_url", "google_address")
+
+
+def _pick_key(name: str, lat: float, lon: float) -> tuple[str, float, float]:
+    return (name.strip().lower(), round(lat, 4), round(lon, 4))
+
+
+async def _google_ids_for_picks(
+    picks: list,
+    known: list,
+) -> dict[tuple[str, float, float], dict[str, str]]:
+    """Google ids for the restaurants / hotels chosen for meal and sleep stops.
+
+    Reuses what the list enrichment already resolved; the rest (bounded)
+    is looked up now. Fail silent: a pick without ids falls back to the
+    lazy resolve on the phone.
+    """
+    out: dict[tuple[str, float, float], dict[str, str]] = {}
+    for k in known:
+        if k.attributes.get("google_place_id"):
+            out[_pick_key(k.name, k.lat, k.lon)] = {
+                a: k.attributes[a] for a in _GOOGLE_KEYS if k.attributes.get(a)
+            }
+    missing = [
+        p for p in picks
+        if _pick_key(p.name, p.coordinate.lat, p.coordinate.lon) not in out
+    ][:_PICK_LOOKUP_CAP]
+    if not missing:
+        return out
+    enricher = GooglePlacesEnricher()
+    try:
+        for fn, group in (
+            (enricher.enrich_restaurants, [p for p in missing if isinstance(p, Restaurant)]),
+            (enricher.enrich_hotels, [p for p in missing if isinstance(p, Hotel)]),
+        ):
+            for p in await fn(tuple(group)) if group else ():
+                attrs = dict(p.attributes)
+                if attrs.get("google_place_id"):
+                    out[_pick_key(p.name, p.coordinate.lat, p.coordinate.lon)] = {
+                        a: attrs[a] for a in _GOOGLE_KEYS if attrs.get(a)
+                    }
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Google Places pick enrichment failed: %r", exc)
+    return out
+
+
+def _pick_address(poi, google: dict[tuple[str, float, float], dict[str, str]]) -> str | None:
+    if poi is None:
+        return None
+    g = google.get(_pick_key(poi.name, poi.coordinate.lat, poi.coordinate.lon), {})
+    attrs = dict(poi.attributes)
+    return g.get("google_address") or attrs.get("here_address") or attrs.get("address_line1")
+
+
+def _pick_gid(poi, google: dict[tuple[str, float, float], dict[str, str]]) -> str | None:
+    if poi is None:
+        return None
+    g = google.get(_pick_key(poi.name, poi.coordinate.lat, poi.coordinate.lon), {})
+    return g.get("google_place_id") or dict(poi.attributes).get("google_place_id")
 
 
 def _enrich_route(
@@ -2406,6 +2487,7 @@ async def _plan_enrich_impl(
     _origin_label: str | None = None
     _dest_label: str | None = None
     _meal_hint_by_km: dict[float, str | None] = {}
+    _pick_google: dict[tuple[str, float, float], dict[str, str]] = {}
     if profile is not None:
         restaurants_requested = bool(
             payload.restaurant_max_detour_minutes
@@ -2824,6 +2906,12 @@ async def _plan_enrich_impl(
             m.rest_stop.distance_from_origin_km: meal_city_hints[i]
             for i, m in enumerate(opt.meal_stops)
         }
+        _pick_google = await _google_ids_for_picks(
+            [m.restaurant for m in opt.meal_stops if m.restaurant]
+            + ([opt.sleep_stop.hotel]
+               if opt.sleep_stop is not None and opt.sleep_stop.hotel else []),
+            [*restaurants_out, *hotels_out],
+        )
         optimizations_out = OptimizationsOut(
             meal_stops=[
                 MealStopOut(
@@ -2849,6 +2937,8 @@ async def _plan_enrich_impl(
                         m.restaurant.coordinate.lon if m.restaurant
                         else m.rest_stop.coordinate.lon
                     ),
+                    google_place_id=_pick_gid(m.restaurant, _pick_google),
+                    restaurant_address=_pick_address(m.restaurant, _pick_google),
                 )
                 for i, m in enumerate(opt.meal_stops)
             ],
@@ -2881,6 +2971,12 @@ async def _plan_enrich_impl(
                         opt.sleep_stop.hotel.coordinate.lon
                         if opt.sleep_stop.hotel
                         else opt.sleep_stop.rest_stop.coordinate.lon
+                    ),
+                    google_place_id=_pick_gid(
+                        opt.sleep_stop.hotel, _pick_google,
+                    ),
+                    hotel_address=_pick_address(
+                        opt.sleep_stop.hotel, _pick_google,
                     ),
                 )
                 if opt.sleep_stop is not None else None
@@ -3067,6 +3163,19 @@ async def _plan_enrich_impl(
             destination_label=_dest_label,
             day_overrides=_day_overrides_map(payload),
         )
+        if multiday is not None:
+            _day_picks = [
+                m.restaurant for d in multiday.days for m in d.meal_stops
+                if m.restaurant
+                and _pick_key(
+                    m.restaurant.name, m.restaurant.coordinate.lat,
+                    m.restaurant.coordinate.lon,
+                ) not in _pick_google
+            ]
+            if _day_picks:
+                _pick_google.update(
+                    await _google_ids_for_picks(_day_picks, restaurants_out),
+                )
         _log.info(
             "day_plan OUT: is_multiday=%s days=%d per_day_labels=%s",
             multiday is not None,
@@ -3154,6 +3263,12 @@ async def _plan_enrich_impl(
                                     m.restaurant.coordinate.lon
                                     if m.restaurant
                                     else m.rest_stop.coordinate.lon
+                                ),
+                                google_place_id=_pick_gid(
+                                    m.restaurant, _pick_google,
+                                ),
+                                restaurant_address=_pick_address(
+                                    m.restaurant, _pick_google,
                                 ),
                             )
                             for m in d.meal_stops

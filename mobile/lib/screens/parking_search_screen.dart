@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
 import '../providers.dart';
+import '../services/maps_place_url.dart';
 import '../widgets/location_search_field.dart';
 import '../widgets/skeleton.dart';
 
@@ -99,29 +99,10 @@ class _ParkingSearchScreenState
         ),
       );
 
-  Future<void> _openInMaps(Parking p) async {
-    // Geo pin at the exact coord with the parking name as label —
-    // never a name search (parking names collide across cities).
-    final label = Uri.encodeComponent(p.name.trim());
-    final uri = Uri.parse(
-      'geo:${p.coordinate.lat},${p.coordinate.lon}'
-      '?q=${p.coordinate.lat},${p.coordinate.lon}($label)',
-    );
-    try {
-      final ok =
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (ok) return;
-    } catch (_) {}
-    await launchUrl(
-      Uri.https('www.google.com', '/maps/search/', {
-        'api': '1',
-        'query': '${p.coordinate.lat},${p.coordinate.lon}',
-        'center': '${p.coordinate.lat},${p.coordinate.lon}',
-        'zoom': '17',
-      }),
-      mode: LaunchMode.platformDefault,
-    );
-  }
+  Future<void> _openInMaps(Parking p) => openPlaceInMaps(
+        context,
+        MapsPlace(name: p.name, coordinate: p.coordinate, pinOnly: true),
+      );
 
   @override
   Widget build(BuildContext context) {

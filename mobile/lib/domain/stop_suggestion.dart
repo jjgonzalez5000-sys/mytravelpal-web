@@ -103,6 +103,8 @@ class StopSuggestion {
               e.key: e.value as String,
         // The top-level website is the same fact; keep one place to read it.
         if (website is String && website.isNotEmpty) 'website': website,
+        if (json['google_place_id'] is String) 'google_place_id': json['google_place_id'] as String,
+        if (json['google_maps_url'] is String) 'google_maps_url': json['google_maps_url'] as String,
       },
     );
   }

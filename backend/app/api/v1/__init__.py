@@ -13,6 +13,7 @@ from app.api.v1 import (
     inspire,
     narrative,
     parking,
+    places,
     profile,
     speed_cameras,
     suggest,
@@ -35,6 +36,7 @@ router.include_router(companion.router)
 router.include_router(companion_session.router)
 router.include_router(inspire.router)
 router.include_router(parking.router)
+router.include_router(places.router)
 router.include_router(speed_cameras.router)
 router.include_router(weather.router)
 router.include_router(diagnostics.router)

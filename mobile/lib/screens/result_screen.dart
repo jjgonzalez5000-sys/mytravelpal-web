@@ -53,6 +53,7 @@ import '../widgets/toll_summary_sheet.dart';
 import '../widgets/trip_day_bars.dart';
 import '../widgets/trip_quality_score.dart';
 import '../services/trip_export.dart';
+import '../services/maps_place_url.dart';
 import '../services/trip_share_image.dart';
 import '../services/trip_share_service.dart';
 import '../services/trip_sharing.dart';
@@ -2346,6 +2347,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           coordinate: h.coordinate,
           distanceFromOriginKm: _kmFromOrigin(h.coordinate),
           onRemove: () => _removeByKey(key),
+          attributes: h.attributes,
         ));
       }
     }
@@ -2362,6 +2364,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           coordinate: r.coordinate,
           distanceFromOriginKm: _kmFromOrigin(r.coordinate),
           onRemove: () => _removeByKey(key),
+          attributes: r.attributes,
         ));
       }
     }
@@ -2382,6 +2385,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           coordinate: p.coordinate!,
           distanceFromOriginKm: p.distanceFromOriginKm,
           onRemove: () => _removeByKey(key),
+          attributes: p.attributes,
         ));
       }
     }
@@ -2414,6 +2418,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           coordinate: m.coordinate!,
           distanceFromOriginKm: _kmFromOrigin(m.coordinate!),
           onRemove: () => _removeByKey(key),
+          attributes: m.mapsAttributes,
         ));
       }
     }
@@ -2428,6 +2433,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           coordinate: sleep.coordinate!,
           distanceFromOriginKm: _kmFromOrigin(sleep.coordinate!),
           onRemove: () => _removeByKey(key),
+          attributes: sleep.mapsAttributes,
         ));
       }
     }
@@ -9078,25 +9084,11 @@ class _DestinationParkingSection extends StatelessWidget {
   const _DestinationParkingSection({required this.parkings});
   final List<PlanParking> parkings;
 
-  Future<void> _openMaps(PlanParking p) async {
-    final label = Uri.encodeComponent(p.name.trim());
-    final geo = Uri.parse(
-      'geo:${p.coordinate.lat},${p.coordinate.lon}'
-      '?q=${p.coordinate.lat},${p.coordinate.lon}($label)',
-    );
-    try {
-      final ok =
-          await launchUrl(geo, mode: LaunchMode.externalApplication);
-      if (ok) return;
-    } catch (_) {}
-    await launchUrl(
-      Uri.https('www.google.com', '/maps/search/', {
-        'api': '1',
-        'query': '${p.coordinate.lat},${p.coordinate.lon}',
-      }),
-      mode: LaunchMode.platformDefault,
-    );
-  }
+  Future<void> _openMaps(BuildContext context, PlanParking p) =>
+      openPlaceInMaps(
+        context,
+        MapsPlace(name: p.name, coordinate: p.coordinate, pinOnly: true),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -9118,7 +9110,7 @@ class _DestinationParkingSection extends StatelessWidget {
         children: [
           for (final p in parkings)
             InkWell(
-              onTap: () => _openMaps(p),
+              onTap: () => _openMaps(context, p),
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 child: Row(
@@ -10289,7 +10281,7 @@ class _MultiDaySleepPreview extends StatelessWidget {
               detourKm: 0,
               distanceFromRouteKm: 0,
               coordinate: coord,
-              attributes: const {},
+              attributes: sleepStop.mapsAttributes,
             ),
           );
           showPoiDetailSheet(

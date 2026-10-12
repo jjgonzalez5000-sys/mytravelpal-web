@@ -951,6 +951,7 @@ class DayPlanSection extends StatelessWidget {
       out['price'] = '${m.restaurantPriceEurPerMeal!.toStringAsFixed(0)} €';
     }
     if (m.cityHint != null) out['city'] = m.cityHint!;
+    out.addAll(m.mapsAttributes);
     return out;
   }
 

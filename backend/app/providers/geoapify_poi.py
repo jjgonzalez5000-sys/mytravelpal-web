@@ -290,6 +290,22 @@ def _is_hostel_like(feature: dict[str, Any]) -> bool:
     return False
 
 
+
+def _with_address(
+    feature: dict[str, Any], attrs: tuple[tuple[str, str], ...],
+) -> tuple[tuple[str, str], ...]:
+    """Address and city first, so the 12-tag cap never drops them."""
+    props = feature.get("properties") or {}
+    have = {k for k, _ in attrs}
+    lead: list[tuple[str, str]] = []
+    line = props.get("address_line2") or props.get("formatted")
+    if isinstance(line, str) and line.strip() and "address_line1" not in have:
+        lead.append(("address_line1", line.strip()[:200]))
+    city = props.get("city")
+    if isinstance(city, str) and city.strip() and "addr:city" not in have:
+        lead.append(("addr:city", city.strip()))
+    return (tuple(lead) + attrs)[:12]
+
 class GeoapifyHotelsProvider:
     _CATEGORY_HOTEL_ONLY = "accommodation.hotel"
     _CATEGORY_ALL = (
@@ -410,11 +426,14 @@ class GeoapifyHotelsProvider:
         base = anchor.hotel_anchor_eur if anchor else 120.0
         price = round(base * (1 + ((stars or 3) - 3) * 0.3), 2)
         raw = _raw_tags(feature)
-        attrs = tuple(
-            (k, str(v))
-            for k, v in raw.items()
-            if v not in (None, "") and isinstance(v, (str, int, float, bool))
-        )[:12]
+        attrs = _with_address(
+            feature,
+            tuple(
+                (k, str(v))
+                for k, v in raw.items()
+                if v not in (None, "") and isinstance(v, (str, int, float, bool))
+            ),
+        )
         return Hotel(
             name=_name(feature),
             coordinate=coord,
@@ -565,11 +584,14 @@ class GeoapifyRestaurantsProvider:
         else:
             price = base
         raw = _raw_tags(feature)
-        attrs = tuple(
-            (k, str(v))
-            for k, v in raw.items()
-            if v not in (None, "") and isinstance(v, (str, int, float, bool))
-        )[:12]
+        attrs = _with_address(
+            feature,
+            tuple(
+                (k, str(v))
+                for k, v in raw.items()
+                if v not in (None, "") and isinstance(v, (str, int, float, bool))
+            ),
+        )
         return Restaurant(
             name=_name(feature),
             coordinate=coord,

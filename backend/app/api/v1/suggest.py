@@ -72,6 +72,8 @@ class SuggestionOut(BaseModel):
     along_km: float
     fits_window: bool
     website: str | None = None
+    google_place_id: str | None = None
+    google_maps_url: str | None = None
     # Address, phone, opening hours, Wikipedia link... when the place has them.
     attributes: dict[str, str] = Field(default_factory=dict)
 
@@ -257,6 +259,8 @@ async def suggest_stops(
                 along_km=s.candidate.along_km,
                 fits_window=s.fits_window, website=s.candidate.website,
                 attributes=dict(s.candidate.attributes),
+                google_place_id=dict(s.candidate.attributes).get("google_place_id"),
+                google_maps_url=dict(s.candidate.attributes).get("google_maps_url"),
             )
             for s in fitted
         ],

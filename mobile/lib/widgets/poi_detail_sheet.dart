@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api/models.dart';
 import '../l10n/app_localizations.dart';
 import '../screens/parking_search_screen.dart';
+import '../services/maps_place_url.dart';
 import 'osm_attribution.dart';
 import 'skeleton.dart';
 
@@ -201,6 +202,7 @@ class _PoiDetailSheetState extends State<_PoiDetailSheet> {
               // address fields are available.
               _ContactInfoRow(
                 kind: kind,
+                name: name,
                 attributes: widget.attributes,
                 poi: poi,
               ),
@@ -1304,11 +1306,13 @@ class _AttrChip extends StatelessWidget {
 class _ContactInfoRow extends StatelessWidget {
   const _ContactInfoRow({
     required this.kind,
+    required this.name,
     required this.attributes,
     required this.poi,
   });
 
   final PoiKind kind;
+  final String name;
   final Map<String, String> attributes;
   final LatLon poi;
 
@@ -1355,9 +1359,6 @@ class _ContactInfoRow extends StatelessWidget {
     }
     return null;
   }
-
-  Uri _mapsForAddress(String address) =>
-      Uri.parse('https://maps.google.com/?q=${poi.lat},${poi.lon}&z=17');
 
   @override
   Widget build(BuildContext context) {
@@ -1441,7 +1442,14 @@ class _ContactInfoRow extends StatelessWidget {
               icon: Icons.place_outlined,
               label: l.poiContactAddress,
               value: address,
-              onTap: () => _open(context, _mapsForAddress(address)),
+              onTap: () => openPlaceInMaps(
+                context,
+                mapsPlaceFromAttributes(
+                  name: name,
+                  coordinate: poi,
+                  attributes: attributes,
+                ),
+              ),
             ),
           if (phone != null)
             infoRow(
@@ -1532,105 +1540,14 @@ class _ExternalCtaRow extends StatelessWidget {
     }
   }
 
-  // Android's geo URI drops a *labeled* pin at exact coordinates
-  // and Google Maps opens it directly — no text search, no
-  // "just the coords" limbo the previous coord-only https link
-  // produced. Format: `geo:<lat>,<lon>?q=<lat>,<lon>(<Label>)`.
-  // Parens around the label are the standard way to attach a
-  // marker title. Fallback for devices without a geo handler
-  // uses the https URL scoped by both name AND coord bounds so
-  // Maps text-searches near the point, not globally.
-  Uri _geoUri() {
-    // Trim / normalize whitespace in the label — some Maps
-    // builds refuse geo URIs whose label contains newlines.
-    final label = Uri.encodeComponent(
-      name.replaceAll(RegExp(r'\s+'), ' ').trim(),
-    );
-    return Uri.parse(
-      'geo:${poi.lat},${poi.lon}?q=${poi.lat},${poi.lon}($label)',
-    );
-  }
-
-  // maps.google.com/?q=lat,lon drops a pin at the EXACT coordinates
-  // without any address geocoding. The /maps/search/ endpoint
-  // resolves coords to the nearest known address (can be 10-50 m off);
-  // the direct ?q= format pins the raw coordinate every time.
-  Uri _googleMapsHttpsFallback() =>
-      Uri.parse('https://maps.google.com/?q=${poi.lat},${poi.lon}&z=17');
-
-  /// Deterministic Google Maps URL when the POI carries a
-  /// `google_maps_url` attribute (fed in by the backend's Google
-  /// Places enricher). This links to the exact Google Place page
-  /// — right business, right coords, no name-search fuzzy match.
-  /// Returns null when the attribute isn't present, e.g. hotels
-  /// before Places enrichment ships for them.
-  Uri? _placeUrl() {
-    final raw = attributes['google_maps_url'];
-    if (raw == null || raw.isEmpty) return null;
-    final u = Uri.tryParse(raw);
-    if (u == null || !u.hasScheme) return null;
-    return u;
-  }
-
-  /// True when the visible name is a synthesized "km N" fallback
-  /// rather than a real POI label. Backend emits these when Overpass
-  /// didn't match a named place within the search radius; passing
-  /// "km 184" as a Google Maps search query resolves to garbage
-  /// ("kilometer 184" as a text search).
-  bool get _isFallbackName {
-    final trimmed = name.trim();
-    return trimmed.isEmpty ||
-        trimmed == '—' ||
-        RegExp(r'^km\s+\d+', caseSensitive: false).hasMatch(trimmed);
-  }
-
-  /// Google Maps search URL biased to the POI coord — Maps performs a
-  /// name lookup within the map viewport so it lands on the ACTUAL
-  /// business card (not a bare lat/lon pin the user has to close +
-  /// zoom + tap again to reach). Tester 2026-09-30: geo: URIs opened
-  /// an unnamed pin; users had to deselect and hunt for the POI on
-  /// the map. This format resolves the POI directly.
-  ///
-  /// When the label is a "km N" fallback (backend couldn't name the
-  /// POI), fall back to coord-only query — Maps drops a pin at the
-  /// right coord instead of searching for the literal string "km 184"
-  /// which resolves to nothing useful.
-  Uri _mapsSearchUri() {
-    if (_isFallbackName) {
-      return Uri.https('www.google.com', '/maps/search/', {
-        'api': '1',
-        'query': '${poi.lat},${poi.lon}',
-      });
-    }
-    final label = name.replaceAll(RegExp(r'\s+'), ' ').trim();
-    return Uri.https('www.google.com', '/maps/search/', {
-      'api': '1',
-      // "<name> <lat>,<lon>" as a single query — Google Maps interprets
-      // this as "search NAME near LAT,LON" and picks the closest match.
-      'query': '$label ${poi.lat},${poi.lon}',
-    });
-  }
-
-  Future<void> _openInMaps(BuildContext context) async {
-    var ok = false;
-    // 1. Places-enriched URL: resolves to the exact Google Place card.
-    final place = _placeUrl();
-    if (place != null) {
-      try {
-        ok = await launchUrl(place, mode: LaunchMode.externalApplication);
-      } catch (_) {
-        ok = false;
-      }
-      if (ok) return;
-    }
-    // 2. Coord-only Maps URL: query=lat,lon drops an exact pin with no
-    //    text search. geo: URIs look correct but Google Maps treats the
-    //    q= parameter as a text search query, showing global results
-    //    instead of pinning the location. HTTPS + externalApplication
-    //    opens the Maps app directly on Android.
-    if (!context.mounted) return;
-    await _launch(context, _googleMapsHttpsFallback());
-  }
+  Future<void> _openInMaps(BuildContext context) => openPlaceInMaps(
+        context,
+        mapsPlaceFromAttributes(
+          name: name,
+          coordinate: poi,
+          attributes: attributes,
+        ),
+      );
 
   // Booking.com Affiliate tracking ID. Register at
   // affiliate.booking.com to get your own `aid`.

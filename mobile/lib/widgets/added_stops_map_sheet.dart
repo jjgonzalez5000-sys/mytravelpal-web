@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../api/models.dart';
 import '../design/tokens.dart';
+import '../services/maps_place_url.dart';
 import 'osm_attribution.dart';
 
 /// Icon + colour signal for each supported stop type. Kept in one
@@ -24,6 +24,7 @@ class AddedStop {
     this.plannedAt,
     this.visitMinutes,
     this.onEditTime,
+    this.attributes = const {},
   });
 
   final AddedStopKind kind;
@@ -49,6 +50,9 @@ class AddedStop {
 
   /// Lets the driver move the stop to another time of the day.
   final VoidCallback? onEditTime;
+
+  /// Place facts (Google ids, address) for the Maps button.
+  final Map<String, String> attributes;
 
   IconData get icon => switch (kind) {
         AddedStopKind.hotel => Icons.hotel_outlined,
@@ -325,17 +329,14 @@ class _StopCallout extends StatelessWidget {
           IconButton(
             tooltip: 'Open in Google Maps',
             icon: const Icon(Icons.open_in_new, size: 20),
-            onPressed: () {
-              final q = Uri.encodeComponent(
-                '${stop.coordinate.lat},${stop.coordinate.lon}',
-              );
-              launchUrl(
-                Uri.parse(
-                  'https://www.google.com/maps/search/?api=1&query=$q',
-                ),
-                mode: LaunchMode.externalApplication,
-              );
-            },
+            onPressed: () => openPlaceInMaps(
+              context,
+              mapsPlaceFromAttributes(
+                name: stop.label,
+                coordinate: stop.coordinate,
+                attributes: stop.attributes,
+              ),
+            ),
           ),
           IconButton(
             tooltip: 'Eliminar parada',

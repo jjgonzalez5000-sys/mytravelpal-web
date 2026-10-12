@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../api/models.dart';
 import '../design/tokens.dart';
 import '../l10n/app_localizations.dart';
+import '../services/maps_place_url.dart';
 
 // ---------------------------------------------------------------------------
 // Public entry points
@@ -487,15 +488,14 @@ class _HotelDetailSheet extends StatelessWidget {
     } catch (_) {}
   }
 
-  Future<void> _openMaps(BuildContext context) async {
-    final lat = hotel.coordinate.lat;
-    final lon = hotel.coordinate.lon;
-    final uri = Uri.parse('https://maps.google.com/?q=$lat,$lon&z=17');
-    try {
-      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!ok) await launchUrl(uri, mode: LaunchMode.platformDefault);
-    } catch (_) {}
-  }
+  Future<void> _openMaps(BuildContext context) => openPlaceInMaps(
+        context,
+        mapsPlaceFromAttributes(
+          name: hotel.name,
+          coordinate: hotel.coordinate,
+          attributes: hotel.attributes,
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -1329,10 +1329,13 @@ class _RestaurantCard extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(),
-                        onPressed: () => _openRestaurantMaps(
+                        onPressed: () => openPlaceInMaps(
                           context,
-                          restaurant.coordinate.lat,
-                          restaurant.coordinate.lon,
+                          mapsPlaceFromAttributes(
+                            name: restaurant.name,
+                            coordinate: restaurant.coordinate,
+                            attributes: restaurant.attributes,
+                          ),
                         ),
                       ),
                       const SizedBox(width: Tokens.space8),
@@ -1350,15 +1353,6 @@ class _RestaurantCard extends StatelessWidget {
       ),
     );
   }
-}
-
-Future<void> _openRestaurantMaps(
-    BuildContext context, double lat, double lon) async {
-  final uri = Uri.parse('https://maps.google.com/?q=$lat,$lon&z=17');
-  try {
-    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok) await launchUrl(uri, mode: LaunchMode.platformDefault);
-  } catch (_) {}
 }
 
 // ---------------------------------------------------------------------------

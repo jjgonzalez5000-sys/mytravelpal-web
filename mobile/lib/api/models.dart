@@ -1364,7 +1364,11 @@ class FuelPrice {
                 lat: (json['lat'] as num).toDouble(),
                 lon: (json['lon'] as num).toDouble(),
               ),
-        attributes: _readAttrs(json['attributes']),
+        attributes: {
+          ..._readAttrs(json['attributes']),
+          if (json['google_place_id'] is String)
+            'google_place_id': json['google_place_id'] as String,
+        },
         unitLabel: (json['unit_label'] as String?) ?? '€/L',
         isChargingStation:
             (json['is_charging_station'] as bool?) ?? false,
@@ -1651,6 +1655,8 @@ class MealStopOpt {
     this.restaurantCoordinate,
     this.cityHint,
     this.coordinate,
+    this.googlePlaceId,
+    this.restaurantAddress,
   });
 
   final String slot;
@@ -1665,6 +1671,14 @@ class MealStopOpt {
   /// Coord for the mini-map thumbnail (restaurant if picked,
   /// otherwise the rest-stop coord that anchors the meal slot).
   final LatLon? coordinate;
+  final String? googlePlaceId;
+  final String? restaurantAddress;
+
+  /// Place facts for the shared POI sheet and its Maps button.
+  Map<String, String> get mapsAttributes => {
+        if (googlePlaceId != null) 'google_place_id': googlePlaceId!,
+        if (restaurantAddress != null) 'address_line1': restaurantAddress!,
+      };
 
   factory MealStopOpt.fromJson(Map<String, dynamic> j) => MealStopOpt(
         slot: j['slot'] as String,
@@ -1687,6 +1701,8 @@ class MealStopOpt {
                 lat: (j['lat'] as num).toDouble(),
                 lon: (j['lon'] as num).toDouble(),
               ),
+        googlePlaceId: j['google_place_id'] as String?,
+        restaurantAddress: j['restaurant_address'] as String?,
       );
 }
 
@@ -1700,6 +1716,8 @@ class SleepStopOpt {
     this.hotelCoordinate,
     this.cityHint,
     this.coordinate,
+    this.googlePlaceId,
+    this.hotelAddress,
   });
 
   final DateTime at;
@@ -1709,6 +1727,14 @@ class SleepStopOpt {
   final LatLon? hotelCoordinate;
   final String? cityHint;
   final LatLon? coordinate;
+  final String? googlePlaceId;
+  final String? hotelAddress;
+
+  /// Place facts for the shared POI sheet and its Maps button.
+  Map<String, String> get mapsAttributes => {
+        if (googlePlaceId != null) 'google_place_id': googlePlaceId!,
+        if (hotelAddress != null) 'address_line1': hotelAddress!,
+      };
 
   factory SleepStopOpt.fromJson(Map<String, dynamic> j) => SleepStopOpt(
         at: DateTime.parse(j['at'] as String),
@@ -1730,6 +1756,8 @@ class SleepStopOpt {
                 lat: (j['lat'] as num).toDouble(),
                 lon: (j['lon'] as num).toDouble(),
               ),
+        googlePlaceId: j['google_place_id'] as String?,
+        hotelAddress: j['hotel_address'] as String?,
       );
 }
 
