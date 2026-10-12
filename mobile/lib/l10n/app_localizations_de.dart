@@ -2786,7 +2786,7 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get planErrorPremium =>
-      'Diese Route benötigt Premium. Aktiviere es für die stündliche Mautanalyse.';
+      'Einige Optionen dieser Reise sind in deinem Tarif nicht enthalten.';
 
   @override
   String get planErrorRateLimit =>
@@ -3271,10 +3271,10 @@ class AppLocalizationsDe extends AppLocalizations {
   String get paywallFreeF2 => 'Kraftstoffpreise entlang der Route';
 
   @override
-  String get paywallFreeF3 => 'Hotel- und Restaurantvorschläge';
+  String get paywallFreeF3 => 'Hotels, Restaurants, Parkplätze und Aktivitäten';
 
   @override
-  String get paywallFreeF4 => '3 gespeicherte Reisen';
+  String get paywallFreeF4 => '1 gespeicherte Reise';
 
   @override
   String get paywallCurrentPlan => 'Aktueller Tarif';
@@ -3289,14 +3289,15 @@ class AppLocalizationsDe extends AppLocalizations {
   String get paywallEssentialF2 => 'Unbegrenzt gespeicherte Reisen';
 
   @override
-  String get paywallEssentialF3 => 'Wetter entlang der Route';
+  String get paywallEssentialF3 =>
+      'Mautfreie Alternative und stündliche Mautanalyse';
 
   @override
   String get paywallEssentialF4 =>
-      'Gefahrenereignisse (Brände, Überschwemmungen)';
+      'Gezieltes Maut-Umfahren und Blitzerwarnungen';
 
   @override
-  String get paywallEssentialF5 => 'Aufschlüsselung der Reisekosten';
+  String get paywallEssentialF5 => 'Unbegrenzte Reiseinspiration';
 
   @override
   String get paywallEssentialF6 => '14 Tage kostenlos testen';
@@ -3326,7 +3327,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get paywallPremiumF2 => 'KI-Companion während der Fahrt';
 
   @override
-  String get paywallPremiumF3 => 'KI-Reiseinspiration';
+  String get paywallPremiumF3 => 'KI-Stoppvorschläge und Reiseerzählung';
 
   @override
   String get paywallPremiumF4 => 'Hotelpreis-Alarme in Echtzeit';
@@ -3344,7 +3345,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get paywallRestore => 'Käufe wiederherstellen';
 
   @override
-  String get planOptTollFreeLocked => 'Mautfreie Optionen erfordern Premium';
+  String get planOptTollFreeLocked => 'Mautfreie Optionen erfordern Essential';
 
   @override
   String get planOptSeePlans => 'Tarife ansehen';
@@ -4729,6 +4730,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Die Mautkosten für diese Route konnten gerade nicht abgerufen werden, daher sind sie nicht in der Summe enthalten. Versuche es gleich noch einmal.';
 
   @override
+  String planOptSavedActivatesWith(String plan) {
+    return 'Gespeichert: an, aktiv mit $plan';
+  }
+
+  @override
   String get tripLegendDriving => 'Fahrt';
 
   @override
@@ -4864,15 +4870,15 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get settingsTierFeaturesPremium =>
-      '✓ KI-Companion · Optimierte Maut · Android Auto · Gruppen · Reisemonitor';
+      '✓ KI-Vorschläge und Erzählung · KI-Companion · Android Auto · Gruppen · Reisemonitor';
 
   @override
   String get settingsTierFeaturesEssential =>
-      '✓ Optimale Tankstellen · Basismaut · Unwetterwarnungen · Blitzer';
+      '✓ Mautfreie Alternative · Stündliche Mautanalyse · Maut umfahren · Blitzer · Unbegrenzte Reisen';
 
   @override
   String get settingsTierFeaturesFree =>
-      'Nur Basisplanung · Keine Kraftstoff- oder Mautoptimierung';
+      'Hotels, Restaurants, Parkplätze, Warnungen und Routenvarianten · 1 gespeicherte Reise';
 
   @override
   String resultStationAdded(String name) {

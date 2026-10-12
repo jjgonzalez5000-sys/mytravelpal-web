@@ -253,6 +253,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
   TripProfile? _overrideProfile;
   bool _loading = false;
   String? _error;
+  bool _errorNeedsPlan = false;
 
   /// Round-trip toggle. When ON the plan screen shows a second
   /// date+time picker for the return leg and the submit fires two
@@ -688,6 +689,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     final origin = _origin;
     final destination = _destination;
     if (origin == null || destination == null) {
+      _errorNeedsPlan = false;
       setState(() => _error =
           AppLocalizations.of(context).planErrorPickEndpoints);
       return;
@@ -695,6 +697,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _errorNeedsPlan = false;
     });
     // Show the rotating "we're working" modal while the request is in
     // flight. It's non-dismissable so the user can't accidentally kill
@@ -907,17 +910,6 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
               desiredDepartureAt: _returnDeparture,
             )
           : null;
-      // Free tier: multi-day trips with hotel suggestions require Essential.
-      // Gate here (after the API call) because multi-day is only known
-      // from the response, not from the form inputs.
-      if (response.days.length > 1 &&
-          _hotelPrefs.enabled &&
-          !ref.read(isEssentialOrAboveProvider)) {
-        if (!mounted) return;
-        await BillingService.showPurchaseSheet(context, ref);
-        return;
-      }
-
       // Fire-and-forget learning tracker — records country + multi-day
       // usage so the AI companion gains context over time.
       unawaited(
@@ -959,6 +951,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
       // falls through to a generic "algo fue mal" that still surfaces
       // the code so support can diagnose from a user screenshot.
       final l = AppLocalizations.of(context);
+      _errorNeedsPlan = e.statusCode == 402;
       setState(() => _error = switch (e.statusCode) {
         401 => l.planErrorAuth,
         402 => l.planErrorPremium,
@@ -1633,8 +1626,13 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     onAlertsChanged: (v) =>
                         setState(() => _alertsEnabled = v),
                     tollAlternativeEnabled: _tollAlternativeOn,
-                    onTollAlternativeChanged: (v) =>
-                        setState(() => _tollAlternativeEnabled = v),
+                    tollAlternativeSaved: _tollAlternativeEnabled,
+                    onTollAlternativeChanged: (v) {
+                      setState(() => _tollAlternativeEnabled = v);
+                      unawaited(ref
+                          .read(appPrefsProvider)
+                          .setTollAlternativeDefault(v));
+                    },
                     onTollFreeLockedTap:
                         ref.watch(isEssentialOrAboveProvider)
                             ? null
@@ -1646,6 +1644,7 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                     onActivitiesChanged: (v) =>
                         setState(() => _activitiesEnabled = v),
                     aiSuggestEnabled: _aiSuggestOn,
+                    aiSuggestSaved: _aiSuggestEnabled,
                     onAiSuggestChanged: (v) {
                       setState(() => _aiSuggestEnabled = v);
                       unawaited(ref
@@ -1687,13 +1686,28 @@ class _PlanScreenState extends ConsumerState<PlanScreen> {
                             const SizedBox(height: Tokens.space8),
                             Align(
                               alignment: Alignment.centerRight,
-                              child: TextButton.icon(
-                                onPressed: _loading ? null : _submit,
-                                icon: const Icon(Icons.refresh, size: 18),
-                                label: Text(l.planErrorRetry),
-                                style: TextButton.styleFrom(
-                                  foregroundColor: scheme.onErrorContainer,
-                                ),
+                              child: Wrap(
+                                children: [
+                                  if (_errorNeedsPlan)
+                                    TextButton(
+                                      onPressed: () =>
+                                          BillingService.showPurchaseSheet(
+                                              context, ref),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor:
+                                            scheme.onErrorContainer,
+                                      ),
+                                      child: Text(l.planOptSeePlans),
+                                    ),
+                                  TextButton.icon(
+                                    onPressed: _loading ? null : _submit,
+                                    icon: const Icon(Icons.refresh, size: 18),
+                                    label: Text(l.planErrorRetry),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: scheme.onErrorContainer,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
@@ -1734,10 +1748,14 @@ class _CompactToggle extends StatelessWidget {
     required this.value,
     required this.onChanged,
     this.onLockedTap,
+    this.savedHint,
   });
   final IconData icon;
   final String title;
   final String subtitle;
+
+  /// Shown instead of [subtitle] on a locked row whose stored choice is on.
+  final String? savedHint;
   final bool value;
   final ValueChanged<bool> onChanged;
 
@@ -1770,11 +1788,13 @@ class _CompactToggle extends StatelessWidget {
                   Text(title,
                       style: t.titleSmall
                           ?.copyWith(fontWeight: FontWeight.w600)),
-                  Text(subtitle,
+                  Text(locked && savedHint != null ? savedHint! : subtitle,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: t.bodySmall
-                          ?.copyWith(color: scheme.onSurfaceVariant)),
+                      style: t.bodySmall?.copyWith(
+                          color: locked && savedHint != null
+                              ? scheme.primary
+                              : scheme.onSurfaceVariant)),
                 ],
               ),
             ),
@@ -1894,9 +1914,16 @@ class _OnRoutePicker extends StatefulWidget {
     required this.onActivitiesChanged,
     required this.aiSuggestEnabled,
     required this.onAiSuggestChanged,
+    this.aiSuggestSaved = false,
+    this.tollAlternativeSaved = false,
     this.onAiSuggestLockedTap,
     this.onTollFreeLockedTap,
   });
+
+  /// The driver's stored wish, kept while the plan does not include the
+  /// option so a locked row can say it will activate on upgrade.
+  final bool aiSuggestSaved;
+  final bool tollAlternativeSaved;
 
   final bool aiSuggestEnabled;
   final ValueChanged<bool> onAiSuggestChanged;
@@ -2106,6 +2133,10 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
               icon: Icons.auto_awesome,
               title: l.planOptAiSuggestTitle,
               subtitle: l.planOptAiSuggestSub,
+              savedHint: widget.onAiSuggestLockedTap != null &&
+                      widget.aiSuggestSaved
+                  ? l.planOptSavedActivatesWith('Premium')
+                  : null,
               value: widget.aiSuggestEnabled,
               onChanged: widget.onAiSuggestChanged,
               onLockedTap: widget.onAiSuggestLockedTap,
@@ -2199,6 +2230,10 @@ class _OnRoutePickerState extends State<_OnRoutePicker> {
                           icon: Icons.euro,
                           title: l.planOptTollFreeTitle,
                           subtitle: l.planOptTollFreeSub,
+                          savedHint: widget.onTollFreeLockedTap != null &&
+                                  widget.tollAlternativeSaved
+                              ? l.planOptSavedActivatesWith('Essential')
+                              : null,
                           value: widget.tollAlternativeEnabled,
                           onChanged: widget.onTollAlternativeChanged,
                           onLockedTap: widget.onTollFreeLockedTap,

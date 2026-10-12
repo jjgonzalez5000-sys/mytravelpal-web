@@ -8,6 +8,7 @@ import 'models.dart';
 
 import '../domain/auth_user.dart';
 import '../domain/garage_vehicle.dart';
+import '../domain/plan_gates.dart';
 import '../domain/stop_suggestion.dart';
 import '../domain/vehicle_model.dart';
 import 'config.dart';
@@ -44,12 +45,17 @@ class ApiClient {
   final String? _apiKey;
   final http.Client _http;
   bool _premium = false;
+  TierCaps _caps = TierCaps.unrestricted;
   String? _authToken;
 
   /// Toggle whether outgoing requests should declare Premium status via
   /// the `X-MyTravelPal-Premium` header. Set by
   /// `apiClientWithPremiumProvider` from the current Riverpod state.
   void setPremium(bool value) => _premium = value;
+
+  /// What the current plan unlocks; every plan request is sanitised with it
+  /// so a stale gated option never reaches the server.
+  void setCaps(TierCaps caps) => _caps = caps;
 
   /// Set the bearer token to attach as `Authorization`. Passing null
   /// clears it. Wired through `apiClientWithPremiumProvider`.
@@ -135,7 +141,7 @@ class ApiClient {
     final uri = Uri.parse('$_baseUrl/v1/trips/plan/stream');
     final req = http.Request('POST', uri)
       ..headers.addAll(_headers(acceptLanguage: locale))
-      ..body = jsonEncode(request.toJson());
+      ..body = jsonEncode(sanitizeForTier(request, _caps).toJson());
 
     final streamed = await _http
         .send(req)
@@ -199,7 +205,7 @@ class ApiClient {
     String? locale,
   }) async {
     final uri = Uri.parse('$_baseUrl$pathSuffix');
-    final body = jsonEncode(request.toJson());
+    final body = jsonEncode(sanitizeForTier(request, _caps).toJson());
     const attempts = 3;
     Object? lastError;
     for (var i = 0; i < attempts; i++) {
@@ -234,7 +240,7 @@ class ApiClient {
     String? locale,
   }) async {
     final uri = Uri.parse('$_baseUrl/v1/trips/plan');
-    final body = jsonEncode(request.toJson());
+    final body = jsonEncode(sanitizeForTier(request, _caps).toJson());
     // /plan fans out to routing, weather, POI providers and gov fuel
     // feeds — worst case ~15 s warm, more on cold-start. The default
     // Dart `http.Client` timeout is aggressive enough to abort those
@@ -334,7 +340,7 @@ class ApiClient {
       uri,
       headers: _headers(acceptLanguage: normalizedLocale),
       body: jsonEncode({
-        'plan_request': planRequest.toJson(),
+        'plan_request': sanitizeForTier(planRequest, _caps).toJson(),
         'origin_name': originName,
         'destination_name': destinationName,
         if (normalizedLocale != null) 'lang': normalizedLocale,

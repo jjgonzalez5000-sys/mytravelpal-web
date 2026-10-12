@@ -902,7 +902,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                   color: scheme.onSurfaceVariant,
                 ),
                 title: Text(l.planOptAiSuggestTitle),
-                subtitle: Text(l.planOptAiSuggestSub),
+                subtitle: Text(!premium && _aiPref
+                    ? l.planOptSavedActivatesWith('Premium')
+                    : l.planOptAiSuggestSub),
                 value: aiActive,
                 onChanged: (v) async {
                   if (!premium) {
@@ -1770,9 +1772,34 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             }
           : l.planErrorNetwork;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
+        SnackBar(
+          content: Text(message),
+          action: e is ApiException && e.statusCode == 402
+              ? SnackBarAction(
+                  label: l.planOptSeePlans,
+                  onPressed: () =>
+                      BillingService.showPurchaseSheet(context, ref),
+                )
+              : null,
+        ),
       );
     }
+  }
+
+  /// Keeps (pays) or skips a toll booth; skipping reroutes, which needs a
+  /// plan that includes toll skipping.
+  void _setTollKept(int i, bool kept) {
+    if (!kept && !ref.read(tierCapsProvider).tollSkip) {
+      unawaited(BillingService.showPurchaseSheet(context, ref));
+      return;
+    }
+    setState(() {
+      if (kept) {
+        _tollSkipEnabled.add(i);
+      } else {
+        _tollSkipEnabled.remove(i);
+      }
+    });
   }
 
   /// After the plan changed (a replan, or a saved trip reopening), puts each
@@ -2755,7 +2782,18 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 _ => l.planErrorGeneric(e.statusCode),
               }
             : l.planErrorNetwork;
-        messenger.showSnackBar(SnackBar(content: Text(message)));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(message),
+            action: e is ApiException && e.statusCode == 402
+                ? SnackBarAction(
+                    label: l.planOptSeePlans,
+                    onPressed: () =>
+                        BillingService.showPurchaseSheet(context, ref),
+                  )
+                : null,
+          ),
+        );
       }
     }
   }
@@ -3675,13 +3713,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             partialTollSkips: _response.partialTollSkips,
                             days: _response.days,
                             tollSkipEnabled: _tollSkipEnabled,
-                            onToggle: (i, pay) => setState(() {
-                              if (pay) {
-                                _tollSkipEnabled.add(i);
-                              } else {
-                                _tollSkipEnabled.remove(i);
-                              }
-                            }),
+                            onToggle: _setTollKept,
                             routeTollCostEur: route.tollCostEur,
                             vignetteCostEur: route.vignetteCostEur,
                             vignetteCountries: route.vignetteCountries,
@@ -3966,13 +3998,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     widget.request.hotelMaxDetourMinutes! > 0,
             partialTollSkips: _response.partialTollSkips,
             enabledTollIndices: _tollSkipEnabled,
-            onToggleToll: (i, enabled) => setState(() {
-              if (enabled) {
-                _tollSkipEnabled.add(i);
-              } else {
-                _tollSkipEnabled.remove(i);
-              }
-            }),
+            onToggleToll: _setTollKept,
             hourlyTollReport: _response.hourlyTollReport,
             tripDepartureAt: widget.desiredDepartureAt,
             routeFreeFlowMinutes: _response.route.freeFlowMinutes,
@@ -4013,10 +4039,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
             profileIsCamper: widget.request.tripProfile?.vehicle.type
                     == VehicleType.camper,
             consistencyIssues: _response.consistencyIssues,
-            // Hotel arbitrage is a Premium intelligence feature.
-            hotelArbitrage: ref.watch(isPremiumProvider)
-                ? _response.hotelArbitrage
-                : null,
+            hotelArbitrage: _response.hotelArbitrage,
             isEv: widget.request.tripProfile?.vehicle.fuelType
                 == FuelType.electric,
           ),

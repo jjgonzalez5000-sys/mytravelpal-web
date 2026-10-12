@@ -9,6 +9,7 @@ import 'domain/emergency_contact.dart';
 import 'domain/favorite_place.dart';
 import 'domain/garage_vehicle.dart';
 import 'domain/my_place.dart';
+import 'domain/plan_gates.dart';
 import 'domain/trip_profile.dart';
 import 'domain/units.dart';
 import 'domain/vehicle_model.dart';
@@ -465,28 +466,26 @@ final StateNotifierProvider<MyPlacesNotifier, List<MyPlace>> myPlacesProvider =
   );
 });
 
-/// Subscription tier for the current session.
-///
-/// Values: "free" | "essential" | "premium"
-///
-/// Initialized to "free"; [BillingService.initialize] and
-/// [BillingService.restorePurchases] update this after verifying a
-/// receipt with the backend. The legacy [premiumProvider] below
-/// is an alias kept for backwards compatibility with all existing
-/// gate checks.
-// Closed beta (kBetaAccess, the default) starts everyone on 'premium'. A
-// production build passes --dart-define=BETA_ACCESS=false and starts on 'free'.
-final subscriptionTierProvider = StateProvider<String>(
-  (ref) => defaultTierFor(betaAccess: kBetaAccess),
-);
+/// Subscription tier of the account: "free" | "essential" | "premium".
+/// Persisted, so a restart keeps the tier the driver picked or bought;
+/// [BillingService] updates it after verifying a receipt.
+class SubscriptionTierNotifier extends StateNotifier<String> {
+  SubscriptionTierNotifier(this._prefs) : super(_prefs.subscriptionTier);
+  final AppPrefs _prefs;
 
-/// Sets the tier AND the legacy premium flag together. The flag is what the
-/// API client sends to the server (`X-MyTravelPal-Premium`), so changing only
-/// the tier left server-side premium gates stuck on the old value.
-Future<void> applySubscriptionTier(WidgetRef ref, String tier) async {
-  ref.read(subscriptionTierProvider.notifier).state = tier;
-  await ref.read(premiumProvider.notifier).set(premiumFlagForTier(tier));
+  Future<void> set(String tier) async {
+    state = tier;
+    await _prefs.setSubscriptionTier(tier);
+  }
 }
+
+final subscriptionTierProvider =
+    StateNotifierProvider<SubscriptionTierNotifier, String>((ref) {
+  return SubscriptionTierNotifier(ref.watch(appPrefsProvider));
+});
+
+Future<void> applySubscriptionTier(WidgetRef ref, String tier) =>
+    ref.read(subscriptionTierProvider.notifier).set(tier);
 
 /// True when the user has an Essential or Premium subscription.
 final isEssentialOrAboveProvider = Provider<bool>((ref) {
@@ -499,28 +498,15 @@ final isPremiumProvider = Provider<bool>((ref) {
   return ref.watch(subscriptionTierProvider) == 'premium';
 });
 
-/// Whether the user is on the Premium tier.
-///
-/// Kept as a [StateNotifierProvider] alias so all existing
-/// [premiumProvider] gate checks continue to work without a
-/// mass-rename refactor. [BillingService] writes through
-/// [subscriptionTierProvider] AND calls [PremiumNotifier.set] so
-/// both stay in sync. The initial value still reads from
-/// [AppPrefs.isPremium] so dogfood builds where [AppPrefs.isPremium]
-/// was hard-coded to true remain unaffected until the value is
-/// explicitly changed by the purchase flow.
-class PremiumNotifier extends StateNotifier<bool> {
-  PremiumNotifier(this._prefs) : super(_prefs.isPremium);
-  final AppPrefs _prefs;
+/// The server-side premium flag (`X-MyTravelPal-Premium`), derived from the
+/// tier so the two can never disagree.
+final premiumProvider = Provider<bool>((ref) {
+  return premiumFlagForTier(ref.watch(subscriptionTierProvider));
+});
 
-  Future<void> set(bool value) async {
-    state = value;
-    await _prefs.setPremium(value);
-  }
-}
-
-final premiumProvider = StateNotifierProvider<PremiumNotifier, bool>((ref) {
-  return PremiumNotifier(ref.watch(appPrefsProvider));
+/// What the current tier unlocks.
+final tierCapsProvider = Provider<TierCaps>((ref) {
+  return capsFor(tierFromString(ref.watch(subscriptionTierProvider)));
 });
 
 @immutable
@@ -561,8 +547,10 @@ final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
 final apiClientWithPremiumProvider = Provider<ApiClient>((ref) {
   final base = ref.watch(apiClientProvider);
   final premium = ref.watch(premiumProvider);
+  final caps = ref.watch(tierCapsProvider);
   final auth = ref.watch(authProvider);
   base.setPremium(premium);
+  base.setCaps(caps);
   base.setAuthToken(auth.token);
   return base;
 });

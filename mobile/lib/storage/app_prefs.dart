@@ -57,6 +57,7 @@ class AppPrefs {
   static const _unitSystemKey = 'unit_system.v1';
   static const _tripProfileKey = 'trip_profile.v1';
   static const _premiumKey = 'premium.v1';
+  static const _subscriptionTierKey = 'subscription_tier.v1';
   static const _authTokenKey = 'auth_token.v1';
   static const _authUserKey = 'auth_user.v1';
   static const _recentSearchesKey = 'recent_searches.v1';
@@ -349,6 +350,18 @@ class AppPrefs {
       premiumFlagForTier(defaultTierFor(betaAccess: kBetaAccess));
   Future<void> setPremium(bool value) => _prefs.setBool(_premiumKey, value);
 
+  /// Persisted subscription tier ("free" | "essential" | "premium"). A build
+  /// that only stored the legacy premium flag as false resumes on free.
+  String get subscriptionTier {
+    final stored = _prefs.getString(_subscriptionTierKey);
+    if (stored != null && stored.isNotEmpty) return stored;
+    if (_prefs.getBool(_premiumKey) == false) return 'free';
+    return defaultTierFor(betaAccess: kBetaAccess);
+  }
+
+  Future<void> setSubscriptionTier(String tier) =>
+      _prefs.setString(_subscriptionTierKey, tier);
+
   String? get authToken => _prefs.getString(_authTokenKey);
   AuthUser? get authUser {
     final raw = _prefs.getString(_authUserKey);
@@ -598,6 +611,7 @@ class AppPrefs {
     await _prefs.remove(_unitSystemKey);
     await _prefs.remove(_tripProfileKey);
     await _prefs.remove(_premiumKey);
+    await _prefs.remove(_subscriptionTierKey);
     await _prefs.remove(_authTokenKey);
     await _prefs.remove(_authUserKey);
     await _prefs.remove(_recentSearchesKey);
@@ -619,6 +633,7 @@ class AppPrefs {
     await _prefs.remove(_authUserKey);
     await _prefs.remove(_tripProfileKey);
     await _prefs.remove(_premiumKey);
+    await _prefs.remove(_subscriptionTierKey);
     await _prefs.remove(_recentSearchesKey);
     await _prefs.remove(_favoriteHotelsKey);
     await _prefs.remove(_favoriteRestaurantsKey);

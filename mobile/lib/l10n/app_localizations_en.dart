@@ -2773,7 +2773,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get planErrorPremium =>
-      'This route needs Premium. Enable it to include hourly toll analysis.';
+      'Some options in this trip are not included in your plan.';
 
   @override
   String get planErrorRateLimit =>
@@ -3255,10 +3255,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallFreeF2 => 'Fuel prices along route';
 
   @override
-  String get paywallFreeF3 => 'Hotel + restaurant suggestions';
+  String get paywallFreeF3 => 'Hotels, restaurants, parking and activities';
 
   @override
-  String get paywallFreeF4 => '3 saved trips';
+  String get paywallFreeF4 => '1 saved trip';
 
   @override
   String get paywallCurrentPlan => 'Current plan';
@@ -3273,13 +3273,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallEssentialF2 => 'Unlimited saved trips';
 
   @override
-  String get paywallEssentialF3 => 'Weather along route';
+  String get paywallEssentialF3 =>
+      'Toll-free alternative and hourly toll analysis';
 
   @override
-  String get paywallEssentialF4 => 'Adverse events (fires, floods)';
+  String get paywallEssentialF4 =>
+      'Toll skipping and speed-camera radar alerts';
 
   @override
-  String get paywallEssentialF5 => 'Trip cost breakdown';
+  String get paywallEssentialF5 => 'Unlimited trip inspiration';
 
   @override
   String get paywallEssentialF6 => '14-day free trial';
@@ -3309,7 +3311,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallPremiumF2 => 'AI Trip Companion (in-drive)';
 
   @override
-  String get paywallPremiumF3 => 'AI trip inspiration';
+  String get paywallPremiumF3 => 'AI stop suggestions and trip narrative';
 
   @override
   String get paywallPremiumF4 => 'Real-time hotel price alerts';
@@ -3327,7 +3329,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get paywallRestore => 'Restore purchases';
 
   @override
-  String get planOptTollFreeLocked => 'Toll-free options require Premium';
+  String get planOptTollFreeLocked => 'Toll-free options require Essential';
 
   @override
   String get planOptSeePlans => 'See plans';
@@ -4702,6 +4704,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'We couldn\'t get the toll prices for this route right now, so the total doesn\'t include them. Try again in a moment.';
 
   @override
+  String planOptSavedActivatesWith(String plan) {
+    return 'Saved: on, activates with $plan';
+  }
+
+  @override
   String get tripLegendDriving => 'Driving';
 
   @override
@@ -4836,15 +4843,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsTierFeaturesPremium =>
-      '✓ AI Companion · Optimised tolls · Android Auto · Groups · Trip monitor';
+      '✓ AI suggestions and narrative · AI Companion · Android Auto · Groups · Trip monitor';
 
   @override
   String get settingsTierFeaturesEssential =>
-      '✓ Optimal fuel stations · Basic tolls · Adverse alerts · Speed cameras';
+      '✓ Toll-free alternative · Hourly toll analysis · Toll skipping · Speed-camera alerts · Unlimited trips';
 
   @override
   String get settingsTierFeaturesFree =>
-      'Basic planning only · No fuel or toll optimisation';
+      'Hotels, restaurants, parking, alerts and route variants · 1 saved trip';
 
   @override
   String resultStationAdded(String name) {

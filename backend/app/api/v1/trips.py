@@ -1428,27 +1428,19 @@ async def _plan_shared_preamble(
     )
 
 
-def _enforce_premium_gates(
-    payload: TripPlanRequest, premium: bool,
-) -> None:
-    """Raise 402 for any premium-only feature toggled on by a free user.
+def _apply_tier(payload: TripPlanRequest, premium: bool) -> TripPlanRequest:
+    """Drop premium-only options a free caller asked for instead of failing.
 
-    Called by every endpoint BEFORE the cache lookup so a cached
-    response from an earlier premium request can never bypass the
-    gate for a subsequent free-tier caller with the same payload.
+    A downgrade can leave the flag in a saved or in-flight payload, and a
+    402 there only reads as an upgrade nag. Called by every plan endpoint
+    BEFORE the cache key is computed, so a free caller never reads or writes
+    a premium body. Idempotent. Hotels, restaurants, parking and every other
+    affiliate-earning datum are never gated server-side.
     """
 
     if payload.include_hourly_toll_analysis and not premium:
-        raise HTTPException(
-            status_code=status.HTTP_402_PAYMENT_REQUIRED,
-            detail={
-                "error": "premium_required",
-                "message": (
-                    "Hourly toll analysis is a Premium feature. "
-                    "Upgrade to enable it."
-                ),
-            },
-        )
+        return payload.model_copy(update={"include_hourly_toll_analysis": False})
+    return payload
 
 
 _VIGNETTE_OP_COUNTRY_HINTS: dict[str, str] = {
@@ -1858,7 +1850,7 @@ async def _plan_enrich_impl(
     # Premium gate is also enforced at the endpoint layer BEFORE the
     # cache lookup — kept here as a safety net in case a future caller
     # invokes this function directly without going through the router.
-    _enforce_premium_gates(payload, premium)
+    payload = _apply_tier(payload, premium)
 
     route = preamble.route
     profile = preamble.profile
@@ -3519,7 +3511,7 @@ async def plan_trip(
     concurrently and merges the two into the full-shaped response.
     """
 
-    _enforce_premium_gates(payload, premium)
+    payload = _apply_tier(payload, premium)
     cache = get_plan_cache()
     key = cache.key_for(payload, PlanCacheSlot.FULL)
     hit = await cache.get(key)
@@ -3564,7 +3556,7 @@ async def plan_trip_core(
     payload while ``/plan/enrich`` is still in flight.
     """
 
-    _enforce_premium_gates(payload, premium)
+    payload = _apply_tier(payload, premium)
     cache = get_plan_cache()
     key = cache.key_for(payload, PlanCacheSlot.CORE)
     hit = await cache.get(key)
@@ -3601,7 +3593,7 @@ async def plan_trip_enrich(
     the legacy ``/plan`` merge needs the enriched version.
     """
 
-    _enforce_premium_gates(payload, premium)
+    payload = _apply_tier(payload, premium)
     cache = get_plan_cache()
     key = cache.key_for(payload, PlanCacheSlot.ENRICH)
     hit = await cache.get(key)
@@ -3671,7 +3663,7 @@ async def plan_trip_stream(
     ticks fire while enrich is in flight so the bar keeps moving.
     """
 
-    _enforce_premium_gates(payload, premium)
+    payload = _apply_tier(payload, premium)
 
     async def _generate():
         def _sse(data: dict) -> str:

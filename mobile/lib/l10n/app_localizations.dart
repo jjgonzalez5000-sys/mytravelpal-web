@@ -4973,7 +4973,7 @@ abstract class AppLocalizations {
   /// No description provided for @planErrorPremium.
   ///
   /// In en, this message translates to:
-  /// **'This route needs Premium. Enable it to include hourly toll analysis.'**
+  /// **'Some options in this trip are not included in your plan.'**
   String get planErrorPremium;
 
   /// No description provided for @planErrorRateLimit.
@@ -5837,13 +5837,13 @@ abstract class AppLocalizations {
   /// No description provided for @paywallFreeF3.
   ///
   /// In en, this message translates to:
-  /// **'Hotel + restaurant suggestions'**
+  /// **'Hotels, restaurants, parking and activities'**
   String get paywallFreeF3;
 
   /// No description provided for @paywallFreeF4.
   ///
   /// In en, this message translates to:
-  /// **'3 saved trips'**
+  /// **'1 saved trip'**
   String get paywallFreeF4;
 
   /// No description provided for @paywallCurrentPlan.
@@ -5873,19 +5873,19 @@ abstract class AppLocalizations {
   /// No description provided for @paywallEssentialF3.
   ///
   /// In en, this message translates to:
-  /// **'Weather along route'**
+  /// **'Toll-free alternative and hourly toll analysis'**
   String get paywallEssentialF3;
 
   /// No description provided for @paywallEssentialF4.
   ///
   /// In en, this message translates to:
-  /// **'Adverse events (fires, floods)'**
+  /// **'Toll skipping and speed-camera radar alerts'**
   String get paywallEssentialF4;
 
   /// No description provided for @paywallEssentialF5.
   ///
   /// In en, this message translates to:
-  /// **'Trip cost breakdown'**
+  /// **'Unlimited trip inspiration'**
   String get paywallEssentialF5;
 
   /// No description provided for @paywallEssentialF6.
@@ -5945,7 +5945,7 @@ abstract class AppLocalizations {
   /// No description provided for @paywallPremiumF3.
   ///
   /// In en, this message translates to:
-  /// **'AI trip inspiration'**
+  /// **'AI stop suggestions and trip narrative'**
   String get paywallPremiumF3;
 
   /// No description provided for @paywallPremiumF4.
@@ -5981,7 +5981,7 @@ abstract class AppLocalizations {
   /// No description provided for @planOptTollFreeLocked.
   ///
   /// In en, this message translates to:
-  /// **'Toll-free options require Premium'**
+  /// **'Toll-free options require Essential'**
   String get planOptTollFreeLocked;
 
   /// No description provided for @planOptSeePlans.
@@ -8405,6 +8405,12 @@ abstract class AppLocalizations {
   /// **'We couldn\'t get the toll prices for this route right now, so the total doesn\'t include them. Try again in a moment.'**
   String get tollsUnavailableMessage;
 
+  /// No description provided for @planOptSavedActivatesWith.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved: on, activates with {plan}'**
+  String planOptSavedActivatesWith(String plan);
+
   /// No description provided for @tripLegendDriving.
   ///
   /// In en, this message translates to:
@@ -8642,19 +8648,19 @@ abstract class AppLocalizations {
   /// No description provided for @settingsTierFeaturesPremium.
   ///
   /// In en, this message translates to:
-  /// **'✓ AI Companion · Optimised tolls · Android Auto · Groups · Trip monitor'**
+  /// **'✓ AI suggestions and narrative · AI Companion · Android Auto · Groups · Trip monitor'**
   String get settingsTierFeaturesPremium;
 
   /// No description provided for @settingsTierFeaturesEssential.
   ///
   /// In en, this message translates to:
-  /// **'✓ Optimal fuel stations · Basic tolls · Adverse alerts · Speed cameras'**
+  /// **'✓ Toll-free alternative · Hourly toll analysis · Toll skipping · Speed-camera alerts · Unlimited trips'**
   String get settingsTierFeaturesEssential;
 
   /// No description provided for @settingsTierFeaturesFree.
   ///
   /// In en, this message translates to:
-  /// **'Basic planning only · No fuel or toll optimisation'**
+  /// **'Hotels, restaurants, parking, alerts and route variants · 1 saved trip'**
   String get settingsTierFeaturesFree;
 
   /// No description provided for @resultStationAdded.

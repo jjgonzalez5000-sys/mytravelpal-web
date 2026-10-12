@@ -131,10 +131,10 @@ class TestPremiumGating:
         }
         return client.post("/v1/trips/plan", json=payload, headers=headers or {})
 
-    def test_hourly_toll_requires_premium(self) -> None:
+    def test_hourly_toll_is_dropped_for_free_not_rejected(self) -> None:
         response = self._plan(include_hourly_toll_analysis=True)
-        assert response.status_code == 402
-        assert response.json()["detail"]["error"] == "premium_required"
+        assert response.status_code == 200
+        assert response.json()["hourly_toll_report"] is None
 
     def test_hourly_toll_allowed_with_premium_header(self) -> None:
         response = self._plan(

@@ -193,8 +193,8 @@ class BillingService {
         }
       }
 
-      // Persist tier both in the subscription tier provider and in the
-      // legacy premiumProvider alias so all gates stay consistent.
+      // Persisting the tier also drives the derived premium flag so all
+      // gates stay consistent.
       if (ref != null) {
         await applySubscriptionTier(ref, tier);
       }

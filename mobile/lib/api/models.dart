@@ -706,6 +706,8 @@ class TripPlanRequest {
     List<DayOverride>? dayOverrides,
     bool? avoidTolls,
     bool? avoidMotorways,
+    bool? includeTollAlternative,
+    bool? includeHourlyTollAnalysis,
     DateTime? desiredDepartureAt,
   }) =>
       TripPlanRequest(
@@ -728,9 +730,11 @@ class TripPlanRequest {
         restaurantConditions: restaurantConditions,
         includeAdverseEvents: includeAdverseEvents,
         adverseEventsMaxDistanceKm: adverseEventsMaxDistanceKm,
-        includeTollAlternative: includeTollAlternative,
+        includeTollAlternative:
+            includeTollAlternative ?? this.includeTollAlternative,
         includeRouteComparison: includeRouteComparison,
-        includeHourlyTollAnalysis: includeHourlyTollAnalysis,
+        includeHourlyTollAnalysis:
+            includeHourlyTollAnalysis ?? this.includeHourlyTollAnalysis,
         avoidMotorways: avoidMotorways ?? this.avoidMotorways,
         avoidTolls: avoidTolls ?? this.avoidTolls,
         preferScenic: preferScenic,

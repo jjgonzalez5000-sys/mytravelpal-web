@@ -2778,7 +2778,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get planErrorPremium =>
-      'Questo percorso richiede Premium. Attivalo per includere l\'analisi pedaggi per ora.';
+      'Alcune opzioni di questo viaggio non sono incluse nel tuo piano.';
 
   @override
   String get planErrorRateLimit =>
@@ -3264,10 +3264,10 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallFreeF2 => 'Prezzi del carburante lungo il percorso';
 
   @override
-  String get paywallFreeF3 => 'Suggerimenti di hotel e ristoranti';
+  String get paywallFreeF3 => 'Hotel, ristoranti, parcheggi e attività';
 
   @override
-  String get paywallFreeF4 => '3 viaggi salvati';
+  String get paywallFreeF4 => '1 viaggio salvato';
 
   @override
   String get paywallCurrentPlan => 'Piano attuale';
@@ -3282,13 +3282,14 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallEssentialF2 => 'Viaggi salvati illimitati';
 
   @override
-  String get paywallEssentialF3 => 'Meteo lungo il percorso';
+  String get paywallEssentialF3 =>
+      'Alternativa senza pedaggi e analisi oraria dei pedaggi';
 
   @override
-  String get paywallEssentialF4 => 'Eventi avversi (incendi, alluvioni)';
+  String get paywallEssentialF4 => 'Evita pedaggi specifici e avvisi autovelox';
 
   @override
-  String get paywallEssentialF5 => 'Dettaglio dei costi del viaggio';
+  String get paywallEssentialF5 => 'Ispirazione di viaggio illimitata';
 
   @override
   String get paywallEssentialF6 => '14 giorni di prova gratuita';
@@ -3318,7 +3319,8 @@ class AppLocalizationsIt extends AppLocalizations {
   String get paywallPremiumF2 => 'Companion IA durante la guida';
 
   @override
-  String get paywallPremiumF3 => 'Ispirazione di viaggio con IA';
+  String get paywallPremiumF3 =>
+      'Suggerimenti di soste con IA e racconto del viaggio';
 
   @override
   String get paywallPremiumF4 => 'Avvisi sui prezzi degli hotel in tempo reale';
@@ -3337,7 +3339,7 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get planOptTollFreeLocked =>
-      'Le opzioni senza pedaggi richiedono Premium';
+      'Le opzioni senza pedaggi richiedono Essential';
 
   @override
   String get planOptSeePlans => 'Vedi i piani';
@@ -4722,6 +4724,11 @@ class AppLocalizationsIt extends AppLocalizations {
       'Al momento non siamo riusciti a ottenere i pedaggi di questo percorso, quindi il totale non li include. Riprova tra un attimo.';
 
   @override
+  String planOptSavedActivatesWith(String plan) {
+    return 'Salvato: attivo, si attiva con $plan';
+  }
+
+  @override
   String get tripLegendDriving => 'Guida';
 
   @override
@@ -4858,15 +4865,15 @@ class AppLocalizationsIt extends AppLocalizations {
 
   @override
   String get settingsTierFeaturesPremium =>
-      '✓ Companion IA · Pedaggi ottimizzati · Android Auto · Gruppi · Monitor viaggio';
+      '✓ Suggerimenti e racconto con IA · Companion IA · Android Auto · Gruppi · Monitor viaggio';
 
   @override
   String get settingsTierFeaturesEssential =>
-      '✓ Stazioni ottimali · Pedaggi base · Allerte avverse · Autovelox';
+      '✓ Alternativa senza pedaggi · Analisi oraria dei pedaggi · Evita pedaggi · Autovelox · Viaggi illimitati';
 
   @override
   String get settingsTierFeaturesFree =>
-      'Solo pianificazione base · Senza ottimizzazione carburante o pedaggi';
+      'Hotel, ristoranti, parcheggi, allerte e varianti di percorso · 1 viaggio salvato';
 
   @override
   String resultStationAdded(String name) {

@@ -51,7 +51,7 @@ _MEMORY_MAX = 200
 # Bump to throw away every cached plan at once (a Redis cache survives
 # deploys): old entries simply stop matching. 2026-10-10b: avoid_tolls,
 # via_only waypoints and per-day end_minutes change the plan contract.
-_CACHE_VERSION = "2026-10-11a"
+_CACHE_VERSION = "2026-10-12a"
 
 
 class PlanCacheSlot(str, Enum):
