@@ -2,7 +2,15 @@
 
 Public static landing + legal docs for [MyTravelPal](https://www.mytravelpal.io).
 
-Deployed via Cloudflare Pages on push to `main`.
+Deployed via Cloudflare Pages on push to `main` of the PUBLIC repo
+`jjgonzalez5000-sys/mytravelpal-web`.
+
+Source of truth: this directory (`web/`) inside the private MyTravelPal
+monorepo. Edit here, then publish with `make web-publish` from the
+monorepo root (`git subtree push`), which pushes only `web/` and its
+history to the public repo. Never commit to the public repo directly, or
+the next publish will need a pull first. Nothing outside `web/` is ever
+published.
 
 ## Structure
 
