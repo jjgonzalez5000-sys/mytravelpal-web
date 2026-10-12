@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Delete your MyTravelPal account &mdash; MyTravelPal</title>
-<meta name="description" content="Steps to request deletion of your MyTravelPal account and the data linked to it. Play Store requirement.">
+<meta name="description" content="How to delete your MyTravelPal account and the data linked to it: steps in the app, request by email, what is deleted and what is kept.">
 <meta property="og:title" content="Delete your MyTravelPal account">
 <meta property="og:description" content="How to delete your MyTravelPal account and associated data.">
 <meta property="og:url" content="https://www.mytravelpal.io/en/account-deletion">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#F44F72">
+<link rel="canonical" href="https://www.mytravelpal.io/en/account-deletion">
 <link rel="alternate" hreflang="es" href="https://www.mytravelpal.io/account-deletion">
 <link rel="alternate" hreflang="en" href="https://www.mytravelpal.io/en/account-deletion">
 <link rel="alternate" hreflang="x-default" href="https://www.mytravelpal.io/account-deletion">
@@ -35,103 +36,86 @@
 </nav></header>
 <main class="page"><div class="container">
 <h1>Delete your MyTravelPal account</h1>
-<p><strong>Last updated: 2026-09-28</strong></p>
-<p>MyTravelPal is a road-trip planning Android app. You can request
-deletion of your account and every piece of data linked to it at any
-time. This page describes both self-service (in-app) and manual (email)
-paths.</p>
+<p><strong>Last updated: 2026-10-12</strong></p>
+<p>MyTravelPal is a road-trip planning Android app. You can delete your account and the data linked to it at any time. This page describes the two ways to do it (from the app itself and by email), what is deleted and what is kept.</p>
 
 <hr />
 
-<h2>Option 1 &mdash; In-app deletion (recommended)</h2>
-<p>This is the fastest route. It runs synchronously against our
-backend and removes every server-side row we hold for your account.</p>
+<h2>Option 1 &mdash; Delete from the app</h2>
+<p>This is the fastest route. With an Internet connection, the deletion runs immediately on our server.</p>
 <ol>
   <li>Open the <strong>MyTravelPal</strong> app on your Android device.</li>
-  <li>Tap the <strong>Profile</strong> tab in the bottom navigation.</li>
-  <li>Scroll to <strong>Account &rarr; Delete my account</strong>.</li>
-  <li>Read the confirmation dialog, then tap <strong>Delete permanently</strong>.</li>
-  <li>The app calls <code>DELETE /v1/me/account</code>, wipes the
-  local trip storage and signs you out.</li>
+  <li>On the <strong>Plan</strong> screen, tap the gear icon (<strong>Settings</strong>) in the top bar.</li>
+  <li>Expand the <strong>Account</strong> section and tap <strong>Delete my account</strong>.</li>
+  <li>Read the confirmation prompt and tap <strong>Delete forever</strong>.</li>
+  <li>The app asks the server to delete your data, clears the trips and preferences saved on the device and signs you out.</li>
 </ol>
-<p>You will land on the login screen. Any device that was signed in with
-the same account is signed out on its next open.</p>
+<p>You will land on the sign-in screen. If you want a copy of your data first, use <strong>Download my data</strong> in the same <strong>Account</strong> section.</p>
+<p><strong>Important:</strong> the app clears the data on the device and signs you out even if it cannot reach the server, and in that case it does not warn you. Delete while connected to the Internet and, if you are unsure the request reached the server, email <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a> (option 2) and we will check.</p>
 
 <hr />
 
-<h2>Option 2 &mdash; Email request</h2>
-<p>If you can&apos;t open the app (for example the phone is lost or you&apos;ve
-already uninstalled), send an email to
+<h2>Option 2 &mdash; Request by email</h2>
+<p>If you cannot open the app (for example the phone is lost or you have already uninstalled it), or you want us to also delete the records that option 1 does not remove (see below), send an email to
 <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>
 with:</p>
 <ul>
   <li>Subject: <em>Account deletion request</em></li>
   <li>The email address you used to sign in (Google or Facebook)</li>
-  <li>Optional: the approximate date of your last login</li>
+  <li>Optional: the approximate date of your last sign-in</li>
 </ul>
-<p>We reply within <strong>7 working days</strong> confirming the
-deletion. GDPR requires we complete the request within 30 days at most.</p>
+<p>We reply within <strong>7 working days</strong> confirming the deletion. The law requires us to complete the request within 30 days at most. A request by email deletes your account and all the records linked to it that are listed on this page.</p>
 
 <hr />
 
-<h2>What gets deleted</h2>
+<h2>What is deleted when you delete your account from the app</h2>
 <ul>
-  <li><strong>Profile</strong>: your traveller preferences (departure
-    hour, driving cap, meal windows, dietary flags, hotel &amp;
-    restaurant preferences).</li>
-  <li><strong>Saved trips</strong>: every trip you saved from the
-    result screen, including the tweaks you re-saved (picked hotels,
-    fuel stops, day overrides).</li>
-  <li><strong>Garage vehicles</strong>: every car you added, with tank
-    size and fuel-type defaults.</li>
-  <li><strong>Emergency contacts</strong>: the phones you added for the
-    crash-detection SOS flow (if any).</li>
-  <li><strong>Authentication rows</strong>: the account record itself,
-    the JWT session tokens on our servers, and the OAuth link to Google
-    or Facebook.</li>
+  <li><strong>Profile and everything in it</strong>: traveller preferences, AI profile, synced settings, Hall of Fame nickname and country, your places, recent searches, garage vehicles, emergency contacts and the subscription tier with its purchase token.</li>
+  <li><strong>Saved trips</strong>: every trip on the server, with its selections, the saved plan and the hotel nights you marked, as well as the records of deleted trips.</li>
+  <li><strong>Trip monitoring and alerts</strong>: monitored trips, their route geometry, their alerts and the alert state.</li>
+  <li><strong>Push notification identifiers</strong> of your devices.</li>
+  <li><strong>Local data on the device</strong>: trips and preferences saved on the phone, and the session.</li>
 </ul>
 
-<h2>What we keep, and for how long</h2>
+<h2>What is kept after deleting from the app, and how to have it deleted</h2>
+<p>These records are not removed by the in-app button. They are deleted when you ask us by email (option 2):</p>
 <ul>
-  <li><strong>Anonymous crash logs</strong> collected by Sentry keep
-    a hashed device fingerprint for <strong>90 days</strong> for
-    stability triage &mdash; they carry no personal data.</li>
-  <li><strong>Aggregated, non-identifiable metrics</strong> (e.g.
-    "N plans computed on 2026-09-25", "median trip distance in FR")
-    are kept indefinitely for product analytics. These cannot be
-    re-associated with an individual account.</li>
-  <li><strong>Legal / financial obligations</strong>: if you made
-    a payment (currently none &mdash; we&apos;re free during beta),
-    invoicing records are kept for the period required by Spanish tax
-    law (4-6 years) with only your billing name and amount.</li>
+  <li><strong>Account record</strong>: email address, name, sign-in provider, internal identifier and the dates of sign-up, last sign-in and last activity.</li>
+  <li><strong>Installation record</strong>: the random installation identifier, the app version and the date of last activity, linked to your account.</li>
+  <li><strong>Suggestions you sent</strong>: text, reply email if you gave one, version and language, linked to your account. They are kept for as long as needed to handle them and deleted when you ask by email.</li>
+  <li><strong>Usage accounting</strong>: records of calls to external providers and daily counters linked to your account identifier, without the content of your queries.</li>
+  <li><strong>Shared trips</strong>: the copy of a trip you shared by link stops being accessible after 30 days.</li>
+  <li><strong>Expired Companion group sessions</strong>: the last position of a session that expired without the driver ending it; nobody can view it.</li>
 </ul>
 
-<p>Everything else is deleted &mdash; there is no cold-storage backup
-of your account after the deletion completes.</p>
+<h2>Copies we do not control directly</h2>
+<ul>
+  <li><strong>Database backups</strong> made before the deletion may contain your data until they are rotated out (we keep the 14 most recent).</li>
+  <li><strong>Crash reports</strong> (Sentry) are kept for 90 days and <strong>server logs</strong> for 7 days.</li>
+  <li><strong>Email messages</strong> with your suggestions and screenshots received in our mailbox: we delete them when handling your request by email.</li>
+  <li><strong>Payments</strong>: we do not keep payment data or invoices; Google Play handles them and keeps them under its own policy.</li>
+</ul>
 
 <hr />
 
 <h2>Just delete some data, keep the account?</h2>
-<p>You don&apos;t have to delete everything to trim the data we hold on
-you. From the app you can:</p>
+<p>You do not have to delete everything to reduce the data we hold on you. From the app you can:</p>
 <ul>
-  <li>Delete a single saved trip: <strong>Trips</strong> tab &rarr;
-    long-press a trip &rarr; <strong>Delete</strong>.</li>
-  <li>Delete a garage vehicle: <strong>Profile</strong> &rarr;
-    <strong>My garage</strong> &rarr; swipe left on a vehicle.</li>
-  <li>Clear recent searches: <strong>Profile</strong> &rarr;
-    <strong>Privacy</strong> &rarr; <strong>Clear recent searches</strong>.</li>
+  <li>Delete a saved trip: <strong>My trips</strong> tab &rarr; the trip&rsquo;s trash icon.</li>
+  <li>Delete a garage vehicle: <strong>Settings</strong> &rarr; <strong>My garage</strong> &rarr; delete the vehicle.</li>
+  <li>Remove your AI preferences: <strong>Settings</strong> &rarr; <strong>AI Personalisation</strong> (untick the options).</li>
+  <li>Remove an emergency contact: <strong>Settings</strong> &rarr; <strong>Contacts &amp; Safety</strong> &rarr; <strong>Emergency contacts</strong>.</li>
 </ul>
 
 <hr />
 
-<p>Full data-handling detail is on the
+<p>Full data-handling detail is in the
 <a href="/en/privacy">Privacy Policy</a>. Questions?
 <a href="mailto:privacy@mytravelpal.io">privacy@mytravelpal.io</a>.</p>
 
 </div></main>
 <footer><div class="container">
-<small>&copy; 2026 MyTravelPal &middot; <a href="/en/about">About</a> &middot; <a href="/en/blog/">Blog</a> &middot; <a href="/en/privacy">Privacy</a> &middot; <a href="/en/terms">Terms</a> &middot; <a href="/en/support">Support</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
+<small>&copy; 2026 MyTravelPal &middot; <a href="/en/about">About</a> &middot; <a href="/en/blog/">Blog</a> &middot; <a href="/en/privacy">Privacy</a> &middot; <a href="/en/terms">Terms</a> &middot; <a href="/en/support">Support</a> &middot; <a href="/en/account-deletion">Delete account</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
 </div></footer>
 <script>
   document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){

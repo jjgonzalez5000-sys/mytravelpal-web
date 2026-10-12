@@ -25,6 +25,7 @@ disk each page still lives as an `.html` file next to its EN counterpart.
 /support                       support.html
 /privacy                       privacy.html
 /terms                         terms.html
+/account-deletion              account-deletion.html
 /blog/                         blog/index.html
 /blog/spain-toll-guide-2026    blog/spain-toll-guide-2026.html
 /blog/france-scenic-routes     blog/france-scenic-routes.html
@@ -36,6 +37,7 @@ disk each page still lives as an `.html` file next to its EN counterpart.
 /en/support                    en/support.html
 /en/privacy                    en/privacy.html
 /en/terms                      en/terms.html
+/en/account-deletion           en/account-deletion.html
 /en/blog/                      en/blog/index.html
 /en/blog/spain-toll-guide-2026 en/blog/spain-toll-guide-2026.html
 /en/blog/france-scenic-routes  en/blog/france-scenic-routes.html
@@ -44,8 +46,9 @@ disk each page still lives as an `.html` file next to its EN counterpart.
 favicon.svg                    inline compass-M favicon
 style.css                      shared stylesheet (both languages)
 sitemap.xml                    all URLs, ES + EN, with hreflang tags
-robots.txt
-.well-known/security.txt       responsible disclosure contact
+robots.txt                     points to the www sitemap
+_headers                       Cloudflare Pages headers (security.txt as text/plain)
+.well-known/security.txt       responsible disclosure contact (RFC 9116)
 ```
 
 Each ES page carries a small `ES | EN` toggle in the nav; every English
@@ -54,8 +57,10 @@ that redirects first-time visitors whose browser locale is not Spanish
 to `/en/`. The switcher writes `localStorage.mtp-lang` so the choice
 sticks.
 
-Every page also emits three `<link rel="alternate" hreflang>` tags
-(`es`, `en`, `x-default`) so Google can serve the right variant.
+Every page also emits a `<link rel="canonical">` (absolute, `https://www.mytravelpal.io`,
+clean URL) and three `<link rel="alternate" hreflang>` tags (`es`, `en`,
+`x-default`) so Google can serve the right variant. The canonical host is
+`www`; the apex 301-redirects to it (Cloudflare redirect rule).
 
 ## Deploy
 
