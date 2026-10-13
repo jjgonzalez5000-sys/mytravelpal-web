@@ -1,0 +1,5 @@
+# Cloudflare Pages redirects (https://developers.cloudflare.com/pages/configuration/redirects/)
+# /get is the single place holding the Play opt-in link (closed beta). 302 so it can change.
+/get  https://play.google.com/apps/internaltest/4701450026926519232  302
+# Retired stateless share style (/join?from=&to=&at=). Slug pages /join/<SLUG> are served by Functions.
+/join  /  302

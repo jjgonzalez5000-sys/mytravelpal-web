@@ -47,8 +47,13 @@ favicon.svg                    inline compass-M favicon
 style.css                      shared stylesheet (both languages)
 sitemap.xml                    all URLs, ES + EN, with hreflang tags
 robots.txt                     points to the www sitemap
-_headers                       Cloudflare Pages headers (security.txt as text/plain)
+_headers                       Cloudflare Pages headers (security.txt as text/plain, assetlinks.json as JSON)
+_redirects                     /get (Play opt-in, the only place holding that URL) and retired /join
+_routes.json                   only /join/* and /c/* invoke Functions
 .well-known/security.txt       responsible disclosure contact (RFC 9116)
+.well-known/assetlinks.json    Android App Links (package + both signing fingerprints, public values)
+functions/                     Pages Functions: /join/<SLUG> and /c/<CODE> (logic in functions/_lib/pages.js)
+img/og-default.png             default Open Graph image (1200x630)
 ```
 
 Each ES page carries a small `ES | EN` toggle in the nav; every English
@@ -61,6 +66,21 @@ Every page also emits a `<link rel="canonical">` (absolute, `https://www.mytrave
 clean URL) and three `<link rel="alternate" hreflang>` tags (`es`, `en`,
 `x-default`) so Google can serve the right variant. The canonical host is
 `www`; the apex 301-redirects to it (Cloudflare redirect rule).
+
+## Dynamic pages (Pages Functions)
+
+`/join/<SLUG>` and `/c/<CODE>` are rendered by Functions that fetch the public,
+anonymised endpoints `GET /v1/public/share/<slug>` and
+`GET /v1/public/companion/<code>` of the Fly API (no app API key, no secrets).
+Set the `API_BASE` environment variable in Cloudflare Pages to change the API
+origin (default `https://mytravelpal-api.fly.dev`). Set the secret
+`WEB_PROXY_SECRET` in Cloudflare Pages (same value as the Fly secret
+`MYTRAVELPAL_WEB_PROXY_SECRET`, never commit it): the Functions then forward
+the visitor IP (`CF-Connecting-IP`) so the API rate-limits per visitor instead
+of per Cloudflare egress address. Without it every visitor shares one bucket.
+Tests live outside `web/`
+(`tools/web-tests/`, run `node --test tools/web-tests/pages.test.mjs`) so they
+are not deployed; `python3 tools/check_site.py` crawls the site for broken links.
 
 ## Deploy
 

@@ -1,4 +1,18 @@
 User-agent: *
 Allow: /
+Disallow: /join/
+Disallow: /c/
+
+# Link-preview fetchers must read the Open Graph tags of shared links. The pages
+# send noindex, so search engines (Googlebot, Bingbot) stay on the group above.
+User-agent: facebookexternalhit
+User-agent: Facebot
+User-agent: Twitterbot
+User-agent: WhatsApp
+User-agent: TelegramBot
+User-agent: Slackbot
+User-agent: LinkedInBot
+User-agent: Discordbot
+Allow: /
 
 Sitemap: https://www.mytravelpal.io/sitemap.xml
