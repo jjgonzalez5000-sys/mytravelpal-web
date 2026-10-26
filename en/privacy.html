@@ -36,7 +36,7 @@
 </nav></header>
 <main class="page"><div class="container">
 <h1>MyTravelPal — Privacy Policy</h1>
-<p><strong>Last updated: 2026-10-14</strong></p>
+<p><strong>Last updated: 2026-10-26</strong></p>
 <p>MyTravelPal (&ldquo;we&rdquo;, &ldquo;the App&rdquo;) is an Android app that helps you plan road trips across Europe. This policy explains what personal data we collect, why we collect it, who we share it with, how long we keep it and what rights you have under the EU General Data Protection Regulation (GDPR) and the Swiss Federal Act on Data Protection (nFADP).</p>
 <p><strong>Data controller:</strong> José Javier González García<br>Route de Saint-Cergue 24bis #1028 · 1260 Nyon (VD) · Switzerland · hello@mytravelpal.io</p>
 <p><strong>Privacy contact:</strong> privacy@mytravelpal.io</p>
@@ -134,10 +134,14 @@
 <tr><td>Wikipedia, Wikidata and Wikimedia Commons</td><td>Short texts and photos of the places in the trip story (Premium), and photos of hotels and restaurants</td><td>Our server queries coordinates, place names and the language, with no account data; your device downloads the photos directly from Wikimedia (upload.wikimedia.org), which receives your IP address and the usual technical data of a connection, but no account identifier, email or name</td><td>United States</td></tr>
 <tr><td>Frankfurter (on your device)</td><td>Exchange rates to show prices in another currency</td><td>Your device queries api.frankfurter.app directly (about once a day): it receives your IP address and the usual technical data of a connection, with no personal content in the request</td><td>Public service</td></tr>
 <tr><td>Cloudflare</td><td>Hosting and DNS of the mytravelpal.io website</td><td>Technical data of visits to the website</td><td>United States and global network</td></tr>
-<tr><td>Booking.com, TheFork, GetYourGuide, Google Maps</td><td>Links to hotels, restaurants, activities and maps</td><td>Only if you tap a link: public search parameters and, where applicable, our affiliate code. From then on the destination site&rsquo;s own policy applies</td><td>Depends on the provider</td></tr>
+<tr><td>Cloudflare Web Analytics</td><td>Cookie-free, aggregated visit statistics for the mytravelpal.io website (not the App)</td><td>The page address (without query string), the referring page, browser, operating system, device type and the country derived from the connection, plus page load timings; see section 10</td><td>United States and global network</td></tr>
+<tr><td>Viator (Tripadvisor)</td><td>Things to do at your destination (the &ldquo;Things to do&rdquo; sheet) and affiliate links to its activities</td><td>From our server: only the city name, the country, the App language and the display currency, with no account data and no coordinates. If you tap an activity, your device opens Viator&rsquo;s tracked link, which carries our partner identifiers</td><td>United States and other countries</td></tr>
+<tr><td>Stay22</td><td>Affiliate links for stays: &ldquo;Book this night&rdquo;, the hotel booking panel (&ldquo;Book on&hellip;&rdquo;) and the Companion hotel suggestion. Stay22 forwards you to Booking.com, Expedia, Hotels.com, Vrbo or Agoda</td><td>Only if you tap a link: what is in the link (see &ldquo;Partner links&rdquo; below). From then on Stay22&rsquo;s policy and the booking site&rsquo;s own policy apply</td><td>Canada and other countries</td></tr>
+<tr><td>Booking.com, Expedia, Hotels.com, Vrbo, Agoda (reached through Stay22), GetYourGuide, TheFork, Google Maps</td><td>Booking sites for hotels, activities and restaurants, and maps</td><td>Only if you tap a link: public search parameters and, where applicable, our affiliate code. From then on the destination site&rsquo;s own policy applies</td><td>Depends on the provider</td></tr>
 </tbody>
 </table>
 <p>We do not send your personal data to any other third party. Providers acting as processors handle the data to provide us with the service and under our instructions.</p>
+<p><em>Partner links (affiliate links):</em> some buttons in the App open a partner&rsquo;s site: Stay22 (which forwards you to Booking.com, Expedia, Hotels.com, Vrbo or Agoda) for hotels, Viator and GetYourGuide for things to do. If you book through one of these links, we may receive a commission from the partner, at no extra cost to you. Nothing is sent when the button is shown; the link is opened only when you tap it, inside the App&rsquo;s browser view, and it carries only what is visible in its address: the hotel name (if you picked one), the coordinates of the hotel or of the overnight area (never your GPS position), the check-in and check-out dates, the number of adults (and, for a direct Booking.com link, of rooms), the city name for activities, our affiliate identifier and a label naming the App screen the link came from. It never carries your name, email, account identifier or trip history. Once the page opens, the partner may set its own cookies and process your data under its own privacy policy, as on any website you visit. The TheFork and Google Maps links carry no affiliate code. More on the <a href="/en/affiliate-disclosure">affiliate disclosure page</a>.</p>
 <p><em>Note on language model calls (Anthropic):</em> when you use AI Inspiration or the Companion assistant we send Anthropic the text of your query together with a summary of the trip context (for example destination, remaining kilometres, upcoming stops or number of days) and of your travel preferences, but no name, email or account identifier. If you ask the assistant a question while driving, the summary also includes your approximate position as the name of the nearest town (or, if none is found, coordinates rounded to about 100 metres), your direction of travel, speed, local time, fuel level and the names of the places found near you; your exact position is never sent to Anthropic. Conversations are not used to train models under Anthropic&rsquo;s API terms of use.</p>
 <hr />
 
@@ -185,7 +189,7 @@
 <hr />
 
 <h2>8. International transfers</h2>
-<p>The server and the database run in the EU (Fly.io&rsquo;s Paris region), and the data controller is based in Switzerland. Sentry stores reports in its EU data region. Some providers in the table above (among them Anthropic, Resend, Google, Cloudflare, HERE, NASA, USGS and Wikimedia) are headquartered or process data outside the EU and Switzerland; in that case they act under the European Commission&rsquo;s standard contractual clauses or equivalent mechanisms. Booking.com, TheFork and GetYourGuide receive only the public URL parameters when you tap their links.</p>
+<p>The server and the database run in the EU (Fly.io&rsquo;s Paris region), and the data controller is based in Switzerland. Sentry stores reports in its EU data region. Some providers in the table above (among them Anthropic, Resend, Google, Cloudflare, HERE, NASA, USGS and Wikimedia) are headquartered or process data outside the EU and Switzerland; in that case they act under the European Commission&rsquo;s standard contractual clauses or equivalent mechanisms. Stay22, the booking sites behind it (Booking.com, Expedia, Hotels.com, Vrbo, Agoda), Viator, GetYourGuide and TheFork receive only the URL parameters described above when you tap their links; Viator also receives from our server the city name, country, language and currency of a things-to-do search.</p>
 <hr />
 
 <h2>9. Security</h2>
@@ -193,14 +197,15 @@
 <hr />
 
 <h2>10. Website</h2>
-<p>The mytravelpal.io website is static and hosted on Cloudflare. We use no cookies, analytics or third-party resources. It stores only the language you choose in your browser (local storage). Like any web server, the hosting provider processes technical connection data, such as the IP address, to serve the pages.</p>
+<p>The mytravelpal.io website is static and hosted on Cloudflare. It sets no cookies. It stores only the language you choose in your browser (local storage). Like any web server, the hosting provider processes technical connection data, such as the IP address, to serve the pages.</p>
+<p><strong>Web Analytics:</strong> to know how many people read the site and which pages are useful, the website pages load Cloudflare Web Analytics (a script from static.cloudflareinsights.com). It gives us only aggregated statistics: number of visits and page views per page, the referring site, browser, operating system, device type, country and page load times. According to Cloudflare, it does not use cookies or local storage, does not &ldquo;fingerprint&rdquo; visitors through their IP address or user agent, does not log the query string of the address, and does not track individual visitors across websites. We cannot see who you are or build a profile of you, and the data is not used for advertising. The country comes from the connection Cloudflare already processes to serve the page. This analytics runs on the website only; the App does not use it. See <a href="https://www.cloudflare.com/privacypolicy/" rel="noopener">Cloudflare&rsquo;s privacy policy</a> and its <a href="https://www.cloudflare.com/web-analytics/" rel="noopener">Web Analytics description</a>. Our legal basis is our legitimate interest in measuring the reach of the site in a way that does not identify you; you can block the script with any content blocker without losing any function of the site.</p>
 <hr />
 
 <h2>11. Changes to this policy</h2>
 <p>We may update this policy as the App evolves. Material changes will be announced inside the App before they take effect. The &ldquo;Last updated&rdquo; date reflects the version in force.</p>
 </div></main>
 <footer><div class="container">
-<small>&copy; 2026 MyTravelPal &middot; <a href="/en/about">About</a> &middot; <a href="/en/blog/">Blog</a> &middot; <a href="/en/privacy">Privacy</a> &middot; <a href="/en/terms">Terms</a> &middot; <a href="/en/support">Support</a> &middot; <a href="/en/account-deletion">Delete account</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
+<small>&copy; 2026 MyTravelPal &middot; <a href="/en/about">About</a> &middot; <a href="/en/blog/">Blog</a> &middot; <a href="/en/partners">For partners</a> &middot; <a href="/en/affiliate-disclosure">Affiliate disclosure</a> &middot; <a href="/en/privacy">Privacy</a> &middot; <a href="/en/terms">Terms</a> &middot; <a href="/en/support">Support</a> &middot; <a href="/en/account-deletion">Delete account</a> &middot; <a href="mailto:hello@mytravelpal.io">hello@mytravelpal.io</a></small>
 </div></footer>
 <script>
   document.querySelectorAll('.lang-switch a[data-lang]').forEach(function(el){
@@ -209,4 +214,6 @@
     });
   });
 </script>
+<!-- Cloudflare Web Analytics (cookie-free). Token: see web/README.md, "Web Analytics". -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "CF_BEACON_TOKEN"}'></script>
 </body></html>

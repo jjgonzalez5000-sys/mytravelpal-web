@@ -7,6 +7,13 @@ const CACHE_FOUND = 'public, max-age=300';
 const CACHE_NOT_FOUND = 'public, max-age=60';
 const CACHE_FALLBACK = 'no-store';
 
+// Cloudflare Web Analytics token (public, not a secret). Placeholder until the
+// owner copies the real one: web/README.md, "Web Analytics". The static pages
+// carry the same value; tools/check_site.py checks they agree.
+const BEACON_TOKEN = 'CF_BEACON_TOKEN';
+const BEACON_SRC = 'https://static.cloudflareinsights.com/beacon.min.js';
+const BEACON_CONNECT = 'https://cloudflareinsights.com';
+
 const CODE_RE = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{6}$/;
 
 const STRINGS = {
@@ -242,6 +249,7 @@ function layout({ lang, title, description, canonical, openUrl, body, ogTitle })
     body,
     `<div class="ctas">${ctas.join('')}</div>`,
     `</div></main>`,
+    `<script defer src="${BEACON_SRC}" data-cf-beacon='${e(JSON.stringify({ token: BEACON_TOKEN }))}'></script>`,
     `</body>`,
     `</html>`,
     ``,
@@ -390,7 +398,7 @@ function htmlResponse(html, status, cacheControl) {
       'Referrer-Policy': 'no-referrer',
       Vary: 'Accept-Language',
       'Content-Security-Policy':
-        "default-src 'none'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+        `default-src 'none'; style-src 'self'; img-src 'self' data:; script-src ${BEACON_SRC}; connect-src 'self' ${BEACON_CONNECT}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
     },
   });
 }
@@ -443,4 +451,6 @@ export const constants = {
   CACHE_FOUND,
   CACHE_NOT_FOUND,
   CACHE_FALLBACK,
+  BEACON_TOKEN,
+  BEACON_SRC,
 };

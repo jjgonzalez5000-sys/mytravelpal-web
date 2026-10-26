@@ -26,6 +26,8 @@ disk each page still lives as an `.html` file next to its EN counterpart.
 /privacy                       privacy.html
 /terms                         terms.html
 /account-deletion              account-deletion.html
+/partners                      partners.html       (for travel brands and affiliate reviewers)
+/affiliate-disclosure          affiliate-disclosure.html
 /blog/                         blog/index.html
 /blog/spain-toll-guide-2026    blog/spain-toll-guide-2026.html
 /blog/france-scenic-routes     blog/france-scenic-routes.html
@@ -38,6 +40,8 @@ disk each page still lives as an `.html` file next to its EN counterpart.
 /en/privacy                    en/privacy.html
 /en/terms                      en/terms.html
 /en/account-deletion           en/account-deletion.html
+/en/partners                   en/partners.html
+/en/affiliate-disclosure       en/affiliate-disclosure.html
 /en/blog/                      en/blog/index.html
 /en/blog/spain-toll-guide-2026 en/blog/spain-toll-guide-2026.html
 /en/blog/france-scenic-routes  en/blog/france-scenic-routes.html
@@ -81,6 +85,46 @@ of per Cloudflare egress address. Without it every visitor shares one bucket.
 Tests live outside `web/`
 (`tools/web-tests/`, run `node --test tools/web-tests/pages.test.mjs`) so they
 are not deployed; `python3 tools/check_site.py` crawls the site for broken links.
+
+Blog articles live in `blog/<slug>.html` and `en/blog/<slug>.html` (same
+English slug in both languages). A new article also needs a card in both
+`blog/index.html` files and two `<url>` entries in `sitemap.xml`; the footer of
+every page links `/partners` and `/affiliate-disclosure`.
+
+## Web Analytics (Cloudflare, cookie-free)
+
+Every static page ends with the Cloudflare Web Analytics beacon, and the
+dynamic `/join` and `/c` pages emit it from `functions/_lib/pages.js`
+(`BEACON_TOKEN`; their CSP allows `static.cloudflareinsights.com` in
+`script-src` and `cloudflareinsights.com` plus `'self'` in `connect-src`).
+`/get` is a redirect and serves no HTML. The token is public (not a secret),
+but until the owner copies it every page carries the placeholder
+`CF_BEACON_TOKEN`. `python3 tools/check_site.py` fails if a page lacks the
+beacon or its token differs from `pages.js`, and warns while the placeholder
+is still there; `tools/web-tests/pages.test.mjs` checks the same.
+
+Owner step, choose ONE of the two (only one snippet can run per page):
+
+1. Manual snippet (what the pages contain today). Cloudflare dashboard >
+   Analytics & Logs > Web Analytics > Add a site > hostname
+   `www.mytravelpal.io` > Done > Manage site: choose the manual JS snippet
+   option and copy the `token` value from the snippet. Then, from the monorepo
+   root, replace the placeholder everywhere and check:
+   ```
+   grep -rl CF_BEACON_TOKEN web | xargs sed -i 's/CF_BEACON_TOKEN/<token>/g'
+   python3 tools/check_site.py && node --test tools/web-tests/pages.test.mjs
+   ```
+2. Automatic setup. For a hostname proxied through Cloudflare (our Workers
+   custom domain is), adding the site in Web Analytics enables automatic
+   injection by default and needs no token in the code. In that case remove
+   the two beacon lines from every page and the script tag in `pages.js`
+   (and the checks above), otherwise pages would carry two snippets.
+   Automatic injection is skipped for responses sent with
+   `Cache-Control: public, no-transform`.
+
+Docs: https://developers.cloudflare.com/web-analytics/get-started/ and
+https://developers.cloudflare.com/web-analytics/faq/ (CSP). The privacy
+pages (section 10) describe what it collects.
 
 ## Deploy
 
