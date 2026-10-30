@@ -1,4 +1,4 @@
-# Image assets — MyTravelPal web
+# Image assets — Optitrips web
 
 The homepage (`index.html`) references these image files. Layout has
 already reserved space for them via `width`/`height` attributes, so the

@@ -1,11 +1,11 @@
 # mytravelpal-web
 
-Public static landing + legal docs for [MyTravelPal](https://www.mytravelpal.io).
+Public static landing + legal docs for [Optitrips](https://www.mytravelpal.io).
 
 Deployed via Cloudflare Pages on push to `main` of the PUBLIC repo
 `jjgonzalez5000-sys/mytravelpal-web`.
 
-Source of truth: this directory (`web/`) inside the private MyTravelPal
+Source of truth: this directory (`web/`) inside the private app
 monorepo. Edit here, then publish with `make web-publish` from the
 monorepo root (`git subtree push`), which pushes only `web/` and its
 history to the public repo. Never commit to the public repo directly, or
