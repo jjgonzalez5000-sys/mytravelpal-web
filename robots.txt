@@ -15,4 +15,4 @@ User-agent: LinkedInBot
 User-agent: Discordbot
 Allow: /
 
-Sitemap: https://www.mytravelpal.io/sitemap.xml
+Sitemap: https://www.optitrips.com/sitemap.xml

@@ -1,4 +1,4 @@
-const SITE = 'https://www.mytravelpal.io';
+const SITE = 'https://www.optitrips.com';
 const DEFAULT_API_BASE = 'https://mytravelpal-api.fly.dev';
 const PACKAGE_ID = 'com.mytravelpal.travel';
 const OG_IMAGE = `${SITE}/img/og-default.png`;
@@ -202,7 +202,7 @@ export function appLinks(path) {
   const clean = path.replace(/^\//, '');
   const https = `${SITE}/${clean}`;
   const fallback = encodeURIComponent(`${SITE}/get`);
-  const intent = `intent://www.mytravelpal.io/${clean}#Intent;scheme=https;package=${PACKAGE_ID};S.browser_fallback_url=${fallback};end`;
+  const intent = `intent://www.optitrips.com/${clean}#Intent;scheme=https;package=${PACKAGE_ID};S.browser_fallback_url=${fallback};end`;
   return { https, intent };
 }
 

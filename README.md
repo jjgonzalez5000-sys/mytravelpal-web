@@ -1,6 +1,6 @@
 # mytravelpal-web
 
-Public static landing + legal docs for [Optitrips](https://www.mytravelpal.io).
+Public static landing + legal docs for [Optitrips](https://www.optitrips.com).
 
 Deployed via Cloudflare Pages on push to `main` of the PUBLIC repo
 `jjgonzalez5000-sys/mytravelpal-web`.
@@ -66,10 +66,18 @@ that redirects first-time visitors whose browser locale is not Spanish
 to `/en/`. The switcher writes `localStorage.mtp-lang` so the choice
 sticks.
 
-Every page also emits a `<link rel="canonical">` (absolute, `https://www.mytravelpal.io`,
+Every page also emits a `<link rel="canonical">` (absolute, `https://www.optitrips.com`,
 clean URL) and three `<link rel="alternate" hreflang>` tags (`es`, `en`,
 `x-default`) so Google can serve the right variant. The canonical host is
-`www`; the apex 301-redirects to it (Cloudflare redirect rule).
+`www`. `worker.js` answers the apex `optitrips.com` and the old hosts
+`mytravelpal.io` and `www.mytravelpal.io` with a 301 to
+`https://www.optitrips.com` (same path and query), except paths under
+`/.well-known/`: those are served on every host, because Android verifies App
+Links on each host without following redirects (installed apps check
+`https://mytravelpal.io/.well-known/assetlinks.json`) and security.txt must
+stay reachable. For that the Worker runs first on every request
+(`run_worker_first: true` in `wrangler.jsonc`). Contact emails stay on
+`@mytravelpal.io` until Email Routing is set up for optitrips.com.
 
 ## Dynamic pages (Pages Functions)
 
@@ -107,7 +115,7 @@ Owner step, choose ONE of the two (only one snippet can run per page):
 
 1. Manual snippet (what the pages contain today). Cloudflare dashboard >
    Analytics & Logs > Web Analytics > Add a site > hostname
-   `www.mytravelpal.io` > Done > Manage site: choose the manual JS snippet
+   `www.optitrips.com` > Done > Manage site: choose the manual JS snippet
    option and copy the `token` value from the snippet. Then, from the monorepo
    root, replace the placeholder everywhere and check:
    ```
@@ -129,7 +137,8 @@ pages (section 10) describe what it collects.
 ## Deploy
 
 1. Cloudflare Pages -> connect this repo -> framework "None" -> build cmd empty.
-2. Add `mytravelpal.io` and `www.mytravelpal.io` under Custom Domains.
+2. Add `www.optitrips.com` and `optitrips.com` under Custom Domains, and keep
+   `mytravelpal.io` and `www.mytravelpal.io` attached (the Worker redirects them).
 3. HTTPS auto after DNS propagates.
 4. In the project settings, keep "clean URLs" ON — internal links across
    the site use `/about` rather than `/about.html`.

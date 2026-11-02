@@ -5,6 +5,8 @@
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
-    "run_worker_first": ["/join/*", "/c/*"]
+    // true: every request passes the Worker so the old hosts and the apex
+    // get their 301 to https://www.optitrips.com (see worker.js).
+    "run_worker_first": true
   }
 }
