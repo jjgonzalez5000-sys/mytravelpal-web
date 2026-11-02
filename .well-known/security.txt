@@ -1,4 +1,4 @@
-Contact: mailto:security@mytravelpal.io
+Contact: mailto:security@optitrips.com
 Expires: 2027-10-12T00:00:00.000Z
 Preferred-Languages: en, es
 Canonical: https://www.optitrips.com/.well-known/security.txt

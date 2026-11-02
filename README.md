@@ -77,7 +77,7 @@ Links on each host without following redirects (installed apps check
 `https://mytravelpal.io/.well-known/assetlinks.json`) and security.txt must
 stay reachable. For that the Worker runs first on every request
 (`run_worker_first: true` in `wrangler.jsonc`). Contact emails stay on
-`@mytravelpal.io` until Email Routing is set up for optitrips.com.
+`@optitrips.com` (Cloudflare Email Routing since 2026-11-02).
 
 ## Dynamic pages (Pages Functions)
 
