@@ -362,3 +362,34 @@ header nav {
 /* Footer ------------------------------------------------------------ */
 footer { border-top: 1px solid var(--border); padding: 28px 0 40px; color: var(--muted); font-size: 14px; text-align: center; }
 footer a { color: var(--muted); }
+
+/* Real app screenshots ---------------------------------------------- */
+.shots {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(200px, 240px);
+  gap: 24px;
+  margin-top: 32px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 12px;
+}
+.shot-card {
+  margin: 0;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.shot-card img {
+  width: 100%;
+  height: auto;
+  border-radius: 22px;
+  border: 2px solid #1a1f24;
+  box-shadow: 0 24px 50px -18px rgba(15,18,22,0.35), 0 4px 12px rgba(15,18,22,0.08);
+}
+.shot-card figcaption {
+  color: var(--muted);
+  font-size: 14px;
+  text-align: center;
+}
