@@ -57,7 +57,7 @@ _routes.json                   only /join/* and /c/* invoke Functions
 .well-known/security.txt       responsible disclosure contact (RFC 9116)
 .well-known/assetlinks.json    Android App Links (package + both signing fingerprints, public values)
 functions/                     Pages Functions: /join/<SLUG> and /c/<CODE> (logic in functions/_lib/pages.js)
-img/og-default.png             default Open Graph image (1200x630)
+img/og-optitrips.png             default Open Graph image (1200x630)
 ```
 
 Each ES page carries a small `ES | EN` toggle in the nav; every English

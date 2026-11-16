@@ -1,7 +1,7 @@
 const SITE = 'https://www.optitrips.com';
 const DEFAULT_API_BASE = 'https://mytravelpal-api.fly.dev';
 const PACKAGE_ID = 'com.mytravelpal.travel';
-const OG_IMAGE = `${SITE}/img/og-default.png`;
+const OG_IMAGE = `${SITE}/img/og-optitrips.png`;
 const API_TIMEOUT_MS = 3000;
 const CACHE_FOUND = 'public, max-age=300';
 const CACHE_NOT_FOUND = 'public, max-age=60';
