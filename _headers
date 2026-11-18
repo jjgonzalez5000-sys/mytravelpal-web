@@ -9,3 +9,15 @@
   Content-Type: application/json
   X-Content-Type-Options: nosniff
   Access-Control-Allow-Origin: *
+
+# In-app hotel payment (the app's WebView). Keys travel in the URL fragment;
+# never cached, never indexed, no referrer.
+/pay
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer
+
+/pay/*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
+  Referrer-Policy: no-referrer

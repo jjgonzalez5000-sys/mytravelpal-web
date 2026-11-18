@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /join/
 Disallow: /c/
+Disallow: /pay
 
 # Link-preview fetchers must read the Open Graph tags of shared links. The pages
 # send noindex, so search engines (Googlebot, Bingbot) stay on the group above.

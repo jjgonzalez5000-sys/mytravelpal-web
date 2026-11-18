@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Pago completado &mdash; Optitrips</title>
+<meta name="theme-color" content="#F44F72">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .done { max-width: 560px; margin: 0 auto; padding: 48px 20px; text-align: center; }
+  .done .tick { width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%;
+    background: linear-gradient(135deg, #FF7A45, var(--coral) 55%, var(--coral-dark));
+    color: #fff; font-size: 34px; line-height: 64px; font-weight: 800; }
+  .done h1 { font-size: 26px; margin: 0 0 8px; }
+  .done p { color: var(--ink-2); margin: 0; }
+</style>
+</head>
+<body>
+<header><nav class="container"><span class="brand">Optitrips</span></nav></header>
+<main class="done">
+  <div class="tick" aria-hidden="true">&#10003;</div>
+  <h1 id="title">Pago completado</h1>
+  <p id="text">Vuelve a la app para terminar la reserva. Te enviaremos la confirmaci&oacute;n por email.</p>
+</main>
+<script>
+(function () {
+  if (/^(es|ca|gl|eu)\b/i.test(navigator.language || 'es')) return;
+  document.documentElement.lang = 'en';
+  document.title = 'Payment complete — Optitrips';
+  document.getElementById('title').textContent = 'Payment complete';
+  document.getElementById('text').textContent =
+    'Go back to the app to finish the booking. We will email you the confirmation.';
+})();
+</script>
+</body>
+</html>

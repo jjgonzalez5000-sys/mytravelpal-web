@@ -23,6 +23,8 @@ disk each page still lives as an `.html` file next to its EN counterpart.
 /about                         about.html
 /beta                          beta.html
 /support                       support.html
+/pay                           pay.html            (in-app hotel payment, keys in the #fragment; noindex)
+/pay/done                      pay/done.html       (payment return page caught by the app WebView)
 /privacy                       privacy.html
 /terms                         terms.html
 /account-deletion              account-deletion.html

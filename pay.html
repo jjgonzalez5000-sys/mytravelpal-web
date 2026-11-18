@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Pago seguro &mdash; Optitrips</title>
+<meta name="theme-color" content="#F44F72">
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/style.css">
+<style>
+  .pay { max-width: 560px; margin: 0 auto; padding: 24px 20px 48px; }
+  .pay h1 { font-size: 24px; margin: 8px 0 6px; letter-spacing: -0.01em; }
+  .pay .note { color: var(--muted); font-size: 15px; margin: 0 0 20px; }
+  .pay .ribbon { display: none; background: var(--bg-2); border: 1px solid var(--border);
+    border-left: 4px solid var(--coral); border-radius: 8px; padding: 10px 14px;
+    font-size: 15px; margin: 0 0 18px; color: var(--ink-2); }
+  .pay .error { display: none; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; background: #fff; color: var(--ink-2); }
+  #targetElement { min-height: 320px; }
+  .pay .secure { color: var(--muted); font-size: 13px; margin-top: 22px; }
+</style>
+</head>
+<body>
+<header><nav class="container"><span class="brand">Optitrips</span></nav></header>
+<main class="pay">
+  <h1 id="title">Pago seguro</h1>
+  <p class="note" id="note">Introduce los datos de tu tarjeta. El cobro lo hace Nuitee (LiteAPI), que gestiona la reserva del hotel.</p>
+  <div class="ribbon" id="ribbon">Reserva de prueba: usa una tarjeta de prueba, no se cobra nada.</div>
+  <div class="error" id="error">No se ha podido abrir el pago. Vuelve a la app e int&eacute;ntalo de nuevo.</div>
+  <div id="targetElement"></div>
+  <p class="secure" id="secure">Optitrips nunca ve ni guarda los datos de tu tarjeta.</p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var RETURN_URL = 'https://www.optitrips.com/pay/done';
+  var SCRIPT = 'https://payment-wrapper.liteapi.travel/dist/liteAPIPayment.js?v=a1';
+  var en = !/^(es|ca|gl|eu)\b/i.test(navigator.language || 'es');
+  if (en) {
+    document.documentElement.lang = 'en';
+    document.title = 'Secure payment — Optitrips';
+    document.getElementById('title').textContent = 'Secure payment';
+    document.getElementById('note').textContent =
+      'Enter your card details. The charge is made by Nuitee (LiteAPI), which handles the hotel booking.';
+    document.getElementById('ribbon').textContent =
+      'Test booking: use a test card, nothing is charged.';
+    document.getElementById('error').textContent =
+      'The payment could not be opened. Go back to the app and try again.';
+    document.getElementById('secure').textContent =
+      'Optitrips never sees or stores your card details.';
+  }
+
+  // The keys travel in the fragment, which browsers never send to a server.
+  var params = {};
+  (location.hash || '').replace(/^#/, '').split('&').forEach(function (kv) {
+    var i = kv.indexOf('=');
+    if (i > 0) {
+      try { params[kv.slice(0, i)] = decodeURIComponent(kv.slice(i + 1)); } catch (e) {}
+    }
+  });
+  // Drop them from the address bar and the history entry.
+  if (history.replaceState) history.replaceState(null, '', location.pathname);
+
+  var sk = params.sk || '';
+  var pk = params.pk || '';
+  function fail() {
+    document.getElementById('error').style.display = 'block';
+    document.getElementById('targetElement').style.display = 'none';
+  }
+  if (!/^[A-Za-z0-9_\-.]{8,400}$/.test(sk) || (pk !== 'sandbox' && pk !== 'live')) {
+    fail();
+    return;
+  }
+  if (pk === 'sandbox') document.getElementById('ribbon').style.display = 'block';
+
+  var s = document.createElement('script');
+  s.src = SCRIPT;
+  s.async = true;
+  s.onerror = fail;
+  s.onload = function () {
+    try {
+      var payment = new window.LiteAPIPayment({
+        publicKey: pk,
+        secretKey: sk,
+        returnUrl: RETURN_URL,
+        targetElement: '#targetElement',
+        appearance: { theme: 'flat' },
+        options: { business: { name: 'Optitrips' } }
+      });
+      payment.handlePayment();
+    } catch (e) {
+      fail();
+    }
+  };
+  document.head.appendChild(s);
+})();
+</script>
+</body>
+</html>
