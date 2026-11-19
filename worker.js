@@ -1,6 +1,9 @@
-import { handleShare, handleCompanion } from './functions/_lib/pages.js';
+import { handleShare, handleCompanion, handleLegacyJoin } from './functions/_lib/pages.js';
 
 const DYNAMIC = /^\/(join|c)\/([^/]+)\/?$/;
+// Legacy stateless share links (/join?from=&to=&at=) sent by older app builds:
+// a landing that hands the trip to the app; /join without a valid query goes home.
+const LEGACY_JOIN = /^\/join\/?$/;
 
 // Canonical site. The old brand hosts and the bare apex answer with a 301 to
 // it, keeping the path and query.
@@ -26,6 +29,7 @@ export default {
     if (redirect) return redirect;
     const method = request.method;
     if (method === 'GET' || method === 'HEAD') {
+      if (LEGACY_JOIN.test(url.pathname)) return handleLegacyJoin({ request });
       const match = DYNAMIC.exec(url.pathname);
       if (match) {
         let id = match[2];

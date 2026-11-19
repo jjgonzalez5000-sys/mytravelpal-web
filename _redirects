@@ -3,5 +3,6 @@
 # join the optitrips_beta Google Group first; the email list also works). Open beta or production: the store listing,
 # https://play.google.com/store/apps/details?id=com.mytravelpal.travel. 302 so it can change.
 /get  https://play.google.com/apps/testing/com.mytravelpal.travel  302
-# Retired stateless share style (/join?from=&to=&at=). Slug pages /join/<SLUG> are served by Functions.
-/join  /  302
+# /join (legacy stateless share links, /join?from=&to=&at=) is answered by worker.js
+# (functions/join/index.js on Pages): a landing that opens the trip in the app.
+# Slug pages /join/<SLUG> are dynamic too. No redirect rule here.

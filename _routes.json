@@ -1,5 +1,5 @@
 {
   "version": 1,
-  "include": ["/join/*", "/c/*"],
+  "include": ["/join", "/join/*", "/c/*"],
   "exclude": []
 }

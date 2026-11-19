@@ -48,6 +48,12 @@ const STRINGS = {
     fallbackHeading: 'Open this link in Optitrips',
     fallbackBody: 'We could not load the preview right now. If you have the app, it will open the content; otherwise get it below.',
     eurSuffix: ' EUR',
+    legacyTitle: (o, d) => `${o} to ${d} - Optitrips`,
+    legacyHeading: (o, d) => `${o} to ${d}`,
+    legacyDesc: 'A road trip shared with Optitrips. Open it in the app to plan it with your own preferences.',
+    legacyDeparture: 'Departure',
+    legacyHint: 'Open it in the app to plan this trip: best departure time, tolls, stops, hotels and weather along the route.',
+    legacyTimeZone: 'UTC',
   },
   es: {
     locale: 'es_ES',
@@ -80,6 +86,12 @@ const STRINGS = {
     fallbackHeading: 'Abre este enlace en Optitrips',
     fallbackBody: 'Ahora mismo no podemos cargar la vista previa. Si tienes la app, abrirá el contenido; si no, consíguela abajo.',
     eurSuffix: ' EUR',
+    legacyTitle: (o, d) => `${o} a ${d} - Optitrips`,
+    legacyHeading: (o, d) => `${o} a ${d}`,
+    legacyDesc: 'Un road trip compartido con Optitrips. Ábrelo en la app para planificarlo con tus preferencias.',
+    legacyDeparture: 'Salida',
+    legacyHint: 'Ábrelo en la app para planificar este viaje: mejor hora de salida, peajes, paradas, hoteles y tiempo a lo largo de la ruta.',
+    legacyTimeZone: 'UTC',
   },
 };
 
@@ -206,7 +218,7 @@ export function appLinks(path) {
   return { https, intent };
 }
 
-function layout({ lang, title, description, canonical, openUrl, body, ogTitle }) {
+function layout({ lang, title, description, canonical, openUrl, body, ogTitle, beacon = true }) {
   const t = STRINGS[lang];
   const e = escapeHtml;
   const meta = [
@@ -249,7 +261,7 @@ function layout({ lang, title, description, canonical, openUrl, body, ogTitle })
     body,
     `<div class="ctas">${ctas.join('')}</div>`,
     `</div></main>`,
-    `<script defer src="${BEACON_SRC}" data-cf-beacon='${e(JSON.stringify({ token: BEACON_TOKEN }))}'></script>`,
+    ...(beacon ? [`<script defer src="${BEACON_SRC}" data-cf-beacon='${e(JSON.stringify({ token: BEACON_TOKEN }))}'></script>`] : []),
     `</body>`,
     `</html>`,
     ``,
@@ -387,7 +399,11 @@ export async function fetchPublic(url, fetchImpl, timeoutMs = API_TIMEOUT_MS, ex
   }
 }
 
-function htmlResponse(html, status, cacheControl) {
+// Pages without the analytics beacon (the legacy /join landing) allow no script.
+const CSP_DEFAULT = `default-src 'none'; style-src 'self'; img-src 'self' data:; script-src ${BEACON_SRC}; connect-src 'self' ${BEACON_CONNECT}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`;
+const CSP_NO_SCRIPT = "default-src 'none'; style-src 'self'; img-src 'self' data:; script-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
+
+function htmlResponse(html, status, cacheControl, csp = CSP_DEFAULT) {
   return new Response(html, {
     status,
     headers: {
@@ -397,8 +413,7 @@ function htmlResponse(html, status, cacheControl) {
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'no-referrer',
       Vary: 'Accept-Language',
-      'Content-Security-Policy':
-        `default-src 'none'; style-src 'self'; img-src 'self' data:; script-src ${BEACON_SRC}; connect-src 'self' ${BEACON_CONNECT}; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`,
+      'Content-Security-Policy': csp,
     },
   });
 }
@@ -440,6 +455,117 @@ export function handleShare(args) {
 
 export function handleCompanion(args) {
   return handle({ ...args, id: args.code, kind: 'companion' });
+}
+
+// ---------------------------------------------------------------------------
+// Legacy stateless share links: /join?from=<name>:<lat>,<lon>&to=...&at=<ISO>.
+// Older app builds shared them; App Links only claim /join/<SLUG>, so these
+// open in the browser. The landing shows the trip and hands it to the app as
+// mytravelpal://trip?o=&d=&t=&on=&dn= (the format the manifest accepts and
+// the app decodes in trip_sharing.dart decodeTripLink). Nothing is fetched,
+// stored or tracked: no API call, no analytics beacon, no script.
+// ---------------------------------------------------------------------------
+
+function parseLegacyPoint(raw) {
+  if (typeof raw !== 'string' || raw.length > 300) return null;
+  const sep = raw.lastIndexOf(':');
+  const coords = sep >= 0 ? raw.slice(sep + 1) : raw;
+  const name = sep >= 0 ? cleanText(raw.slice(0, sep), 80) : null;
+  const m = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/.exec(coords);
+  if (!m) return null;
+  const lat = Number.parseFloat(m[1]);
+  const lon = Number.parseFloat(m[2]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  if (lat < -90 || lat > 90 || lon < -180 || lon > 180) return null;
+  return { name, lat, lon };
+}
+
+// {from, to, at} from the query of a legacy link, or null when from or to is
+// missing or malformed. `at` is a Date or null (absent or unparseable).
+export function parseLegacyJoin(searchParams) {
+  if (!searchParams || typeof searchParams.get !== 'function') return null;
+  const from = parseLegacyPoint(searchParams.get('from'));
+  const to = parseLegacyPoint(searchParams.get('to'));
+  if (!from || !to) return null;
+  const rawAt = searchParams.get('at');
+  let at = null;
+  if (typeof rawAt === 'string' && rawAt.length <= 40) {
+    const ms = Date.parse(rawAt);
+    if (!Number.isNaN(ms)) at = new Date(ms);
+  }
+  return { from, to, at };
+}
+
+function coordText(p) {
+  return `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`;
+}
+
+// App deep link and Android intent for a parsed legacy trip. Without a
+// departure the app link carries [now] (the app needs one to open the form).
+export function legacyAppLinks(trip, now = new Date()) {
+  const params = new URLSearchParams();
+  params.set('o', coordText(trip.from));
+  params.set('d', coordText(trip.to));
+  params.set('t', (trip.at || now).toISOString());
+  if (trip.from.name) params.set('on', trip.from.name);
+  if (trip.to.name) params.set('dn', trip.to.name);
+  const query = params.toString();
+  const app = `mytravelpal://trip?${query}`;
+  const fallback = encodeURIComponent(`${SITE}/get`);
+  const intent = `intent://trip?${query}#Intent;scheme=mytravelpal;package=${PACKAGE_ID};S.browser_fallback_url=${fallback};end`;
+  return { app, intent };
+}
+
+function formatDeparture(date, lang) {
+  const t = STRINGS[lang];
+  try {
+    const text = new Intl.DateTimeFormat(lang === 'es' ? 'es-ES' : 'en-GB', {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: 'UTC',
+    }).format(date);
+    return `${text} ${t.legacyTimeZone}`;
+  } catch {
+    return `${date.toISOString().slice(0, 16).replace('T', ' ')} ${t.legacyTimeZone}`;
+  }
+}
+
+export function renderLegacyJoinPage(trip, lang, now = new Date()) {
+  const t = STRINGS[lang];
+  const e = escapeHtml;
+  const o = trip.from.name || coordText(trip.from);
+  const d = trip.to.name || coordText(trip.to);
+  const { intent } = legacyAppLinks(trip, now);
+  const parts = [`<h1>${e(t.legacyHeading(o, d))}</h1>`];
+  if (trip.at) {
+    parts.push(`<ul>`, `<li><strong>${e(t.legacyDeparture)}:</strong> ${e(formatDeparture(trip.at, lang))}</li>`, `</ul>`);
+  }
+  parts.push(`<p>${e(t.legacyHint)}</p>`);
+  return layout({
+    lang,
+    title: t.legacyTitle(o, d),
+    ogTitle: t.legacyHeading(o, d),
+    description: t.legacyDesc,
+    canonical: null,
+    openUrl: intent,
+    body: parts.join('\n'),
+    beacon: false,
+  });
+}
+
+// GET /join (no slug). A valid legacy query renders the landing; anything
+// else goes to the home page as the retired redirect did.
+export function handleLegacyJoin({ request, now } = {}) {
+  let url;
+  try {
+    url = new URL(request.url);
+  } catch {
+    return Response.redirect(`${SITE}/`, 302);
+  }
+  const trip = parseLegacyJoin(url.searchParams);
+  if (!trip) return Response.redirect(`${SITE}/`, 302);
+  const lang = requestLang(request);
+  return htmlResponse(renderLegacyJoinPage(trip, lang, now || new Date()), 200, CACHE_FALLBACK, CSP_NO_SCRIPT);
 }
 
 export const constants = {
