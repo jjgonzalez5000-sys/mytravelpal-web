@@ -37,10 +37,9 @@ const STRINGS = {
     companionTitle: 'Group trip - Optitrips Companion',
     companionHeading: 'Join the group trip',
     companionDesc: 'Follow your group on the road with Optitrips Companion.',
-    companionActive: 'The group is on the road.',
+    companionActive: 'Trip in progress: open the app to ask to join.',
+    companionApproval: 'The trip owner accepts each person before they see the trip.',
     companionInactive: 'This group trip is not active right now. It may not have started yet or it has already ended.',
-    destination: 'Destination',
-    eta: 'Estimated arrival in',
     notFoundTitle: 'Link not found - Optitrips',
     notFoundHeading: 'This link is not available',
     notFoundBody: 'It may have expired or been mistyped.',
@@ -75,10 +74,9 @@ const STRINGS = {
     companionTitle: 'Viaje en grupo - Optitrips Companion',
     companionHeading: 'Únete al viaje en grupo',
     companionDesc: 'Sigue a tu grupo en carretera con Optitrips Companion.',
-    companionActive: 'El grupo está en carretera.',
+    companionActive: 'Viaje en curso: abre la app para pedir unirte.',
+    companionApproval: 'El organizador del viaje acepta a cada persona antes de que vea el viaje.',
     companionInactive: 'Este viaje en grupo no está activo ahora mismo. Puede que aún no haya empezado o que ya haya terminado.',
-    destination: 'Destino',
-    eta: 'Llegada estimada en',
     notFoundTitle: 'Enlace no encontrado - Optitrips',
     notFoundHeading: 'Este enlace no está disponible',
     notFoundBody: 'Puede que haya caducado o que esté mal escrito.',
@@ -183,14 +181,12 @@ export function normalizeShare(raw) {
   };
 }
 
+// Only whether the trip is live: destination, ETA and position are for the
+// members the owner accepted in the app (trip join approval), never for the
+// page, even if an API answer carried them.
 export function normalizeCompanion(raw) {
   if (!raw || typeof raw !== 'object' || typeof raw.active !== 'boolean') return null;
-  const eta = cleanNumber(raw.eta_minutes, { min: 0, max: 10080 });
-  return {
-    active: raw.active,
-    destination_city: cleanText(raw.destination_city, 80),
-    eta_minutes: eta === null ? null : Math.round(eta),
-  };
+  return { active: raw.active };
 }
 
 function formatInt(n, lang) {
@@ -201,13 +197,6 @@ function formatInt(n, lang) {
 function formatEur(n, lang) {
   const text = n >= 100 ? formatInt(n, lang) : n.toFixed(2).replace('.', lang === 'es' ? ',' : '.');
   return `${text}${STRINGS[lang].eurSuffix}`;
-}
-
-function formatDuration(minutes) {
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m} min`;
-  return m === 0 ? `${h} h` : `${h} h ${m} min`;
 }
 
 export function appLinks(path) {
@@ -307,10 +296,7 @@ export function renderCompanionPage(data, lang, code) {
   const { intent } = appLinks(`c/${code}`);
   const parts = [`<h1>${e(t.companionHeading)}</h1>`];
   if (data.active) {
-    parts.push(`<p>${e(t.companionActive)}</p>`, `<ul>`);
-    if (data.destination_city) parts.push(`<li><strong>${e(t.destination)}:</strong> ${e(data.destination_city)}</li>`);
-    if (data.eta_minutes !== null) parts.push(`<li><strong>${e(t.eta)}:</strong> ${e(formatDuration(data.eta_minutes))}</li>`);
-    parts.push(`</ul>`);
+    parts.push(`<p>${e(t.companionActive)}</p>`, `<p>${e(t.companionApproval)}</p>`);
   } else {
     parts.push(`<p>${e(t.companionInactive)}</p>`);
   }
